@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { ImdbIcon, SimklIcon } from '../components/ServiceIcons';
+import React, { useState, useEffect } from 'react';
+import { ImdbIcon, SimklIcon, TraktIcon } from '../components/ServiceIcons';
 import * as tmdbService from '../services/tmdbService';
-import { HistoryItem, TrackedItem } from '../types';
+import { HistoryItem, TrackedItem, UserRatings, WatchProgress } from '../types';
+import * as traktService from '../services/traktService';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
     <div className="mb-4">
@@ -234,12 +236,164 @@ const CsvFileImporter: React.FC<{ onImport: (history: HistoryItem[], completed: 
 };
 
 
+// --- Trakt Importer Component ---
+
+const TraktImporter: React.FC<{ onImport: (data: any) => void }> = ({ onImport }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<string | null>(null);
+    const [token, setToken] = useLocalStorage('trakt_token', null);
+
+    useEffect(() => {
+        const authCode = sessionStorage.getItem('trakt_auth_code');
+        if (authCode) {
+            sessionStorage.removeItem('trakt_auth_code');
+            handleTokenExchange(authCode);
+        }
+    }, []);
+
+    const handleTokenExchange = async (code: string) => {
+        setIsLoading(true);
+        setFeedback('Authenticating with Trakt...');
+        const fetchedToken = await traktService.exchangeCodeForToken(code);
+        if (fetchedToken) {
+            setToken(fetchedToken);
+            setFeedback('Authentication successful! Click Import to begin.');
+        } else {
+            setError('Failed to authenticate with Trakt. Please try again.');
+        }
+        setIsLoading(false);
+    };
+
+    const handleImport = async () => {
+        if (!token) {
+            setError('Not connected to Trakt.');
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
+        try {
+            const history: HistoryItem[] = [];
+            const completed: TrackedItem[] = [];
+            const planToWatch: TrackedItem[] = [];
+            const watchProgress: WatchProgress = {};
+            const ratings: UserRatings = {};
+
+            // 1. Watched Movies
+            setFeedback('Fetching watched movies...');
+            const watchedMovies = await traktService.getWatchedMovies(token);
+            for (const item of watchedMovies) {
+                if (!item.movie?.ids?.tmdb) continue;
+                const trackedItem = { id: item.movie.ids.tmdb, title: item.movie.title, media_type: 'movie' as const, poster_path: null };
+                completed.push(trackedItem);
+                history.push({ ...trackedItem, logId: `trakt-movie-${item.movie.ids.tmdb}`, timestamp: item.last_watched_at });
+            }
+
+            // 2. Watched Shows
+            setFeedback(`Processing ${watchedMovies.length} movies. Fetching watched shows...`);
+            const watchedShows = await traktService.getWatchedShows(token);
+            for (const item of watchedShows) {
+                if (!item.show?.ids?.tmdb) continue;
+                const showId = item.show.ids.tmdb;
+                const trackedItem = { id: showId, title: item.show.title, media_type: 'tv' as const, poster_path: null };
+                
+                if (!watchProgress[showId]) watchProgress[showId] = {};
+                
+                item.seasons.forEach(season => {
+                    if (!watchProgress[showId][season.number]) watchProgress[showId][season.number] = {};
+                    season.episodes.forEach(ep => {
+                        watchProgress[showId][season.number][ep.number] = { status: 2 };
+                        history.push({ ...trackedItem, logId: `trakt-tv-${showId}-${season.number}-${ep.number}`, timestamp: ep.last_watched_at, seasonNumber: season.number, episodeNumber: ep.number });
+                    });
+                });
+
+                // Check if show is complete and add to list
+                // This is a simplified check. A full check would require fetching TMDB details.
+                if (item.plays > 0) completed.push(trackedItem);
+            }
+
+            // 3. Watchlist
+            setFeedback(`Processing ${watchedShows.length} shows. Fetching watchlist...`);
+            const watchlist = await traktService.getWatchlist(token);
+            for (const item of watchlist) {
+                const media = item.movie || item.show;
+                if (!media?.ids?.tmdb) continue;
+                planToWatch.push({ id: media.ids.tmdb, title: media.title, media_type: item.type === 'show' ? 'tv' : 'movie', poster_path: null });
+            }
+
+            // 4. Ratings
+            setFeedback(`Processing ${watchlist.length} watchlist items. Fetching ratings...`);
+            const traktRatings = await traktService.getRatings(token);
+            for (const item of traktRatings) {
+                 const media = item.movie || item.show;
+                if (!media?.ids?.tmdb || item.type === 'season' || item.type === 'episode') continue;
+                ratings[media.ids.tmdb] = {
+                    rating: Math.ceil(item.rating / 2), // Convert 1-10 to 1-5
+                    date: item.rated_at
+                };
+            }
+
+            setFeedback('Finalizing import...');
+            onImport({ history, completed, planToWatch, watchProgress, ratings });
+            setFeedback('Import complete! Your library has been updated.');
+
+        } catch (e: any) {
+            setError(`An error occurred during import: ${e.message}`);
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-card-gradient rounded-lg shadow-md p-6 mt-8">
+            <div className="flex items-start space-x-4">
+                <TraktIcon className="w-10 h-10 text-red-500 flex-shrink-0"/>
+                <div>
+                    <SectionHeader title="Import from Trakt.tv" />
+                    <p className="text-sm text-text-secondary -mt-4 mb-4">
+                        Connect your Trakt account to import your watch history, watchlist, and ratings.
+                    </p>
+                </div>
+            </div>
+
+            {token ? (
+                <div className="space-y-4">
+                    <p className="text-green-400 text-sm font-semibold text-center">✓ Connected to Trakt.tv</p>
+                    <button onClick={handleImport} disabled={isLoading} className="w-full text-center btn-secondary">
+                        {isLoading ? feedback : 'Start Import'}
+                    </button>
+                    <button onClick={() => { setToken(null); setFeedback(null); }} disabled={isLoading} className="w-full text-center text-xs text-text-secondary hover:underline">
+                        Disconnect
+                    </button>
+                </div>
+            ) : (
+                <button onClick={traktService.redirectToTraktAuth} disabled={isLoading} className="w-full text-center btn-secondary flex items-center justify-center space-x-2">
+                    <TraktIcon className="w-5 h-5" />
+                    <span>{isLoading ? feedback : 'Connect to Trakt'}</span>
+                </button>
+            )}
+
+            {error && <p className="text-xs text-red-500 text-center mt-2">{error}</p>}
+            {!isLoading && feedback && !error && <p className="text-xs text-green-500 text-center mt-2">{feedback}</p>}
+        </div>
+    );
+};
+
+
 // --- MAIN SCREEN ---
 interface ImportsScreenProps {
     onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
+    onTraktImportCompleted: (data: {
+        history: HistoryItem[];
+        completed: TrackedItem[];
+        planToWatch: TrackedItem[];
+        watchProgress: WatchProgress;
+        ratings: UserRatings;
+    }) => void;
 }
 
-const ImportsScreen: React.FC<ImportsScreenProps> = ({ onImportCompleted }) => {
+const ImportsScreen: React.FC<ImportsScreenProps> = ({ onImportCompleted, onTraktImportCompleted }) => {
   return (
     <div className="animate-fade-in max-w-4xl mx-auto">
       <style>{`
@@ -248,10 +402,12 @@ const ImportsScreen: React.FC<ImportsScreenProps> = ({ onImportCompleted }) => {
           background-color: var(--color-bg-secondary); color: var(--text-color-primary); transition: all 0.2s;
         }
         .btn-secondary:hover { filter: brightness(1.25); }
+        .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
         strong { color: var(--text-color-primary); font-weight: 600; }
       `}</style>
 
       <CsvFileImporter onImport={onImportCompleted} />
+      <TraktImporter onImport={onTraktImportCompleted} />
     </div>
   );
 };

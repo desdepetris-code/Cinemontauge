@@ -485,6 +485,19 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
     }
   }, [userId]);
 
+  // --- Trakt Redirect Handler ---
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+
+    if (code) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleShortcutNavigate('profile', 'imports');
+      // Pass the code to the imports screen to handle the token exchange
+      sessionStorage.setItem('trakt_auth_code', code);
+    }
+  }, []);
+
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
@@ -525,7 +538,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
             }
         };
         checkForNewSeasons();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks-exhaustive-deps
     }, [watching, addNotification]);
   
   // --- Background Status Check for Notifications ---
@@ -926,6 +939,53 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
     setCompleted(prev => [...uniqueCompleted, ...prev]);
   }, [history, completed, setHistory, setCompleted]);
 
+  const handleTraktImportCompleted = useCallback((data: {
+    history: HistoryItem[];
+    completed: TrackedItem[];
+    planToWatch: TrackedItem[];
+    watchProgress: WatchProgress;
+    ratings: UserRatings;
+  }) => {
+    const mergeUniqueById = (arr1: TrackedItem[], arr2: TrackedItem[]): TrackedItem[] => {
+      const combined = [...arr1, ...arr2];
+      const map = new Map(combined.map(item => [item.id, item]));
+      return Array.from(map.values());
+    };
+
+    setHistory(prev => {
+        const existingLogIds = new Set(prev.map(p => p.logId));
+        const uniqueNew = data.history.filter(h => !existingLogIds.has(h.logId));
+        return [...uniqueNew, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    });
+    setCompleted(prev => mergeUniqueById(prev, data.completed));
+    setPlanToWatch(prev => mergeUniqueById(prev, data.planToWatch));
+    
+    setWatchProgress(prev => {
+      const newProgress = JSON.parse(JSON.stringify(prev));
+      for (const showId in data.watchProgress) {
+        if (!newProgress[showId]) {
+          newProgress[showId] = data.watchProgress[showId];
+        } else {
+          for (const seasonNum in data.watchProgress[showId]) {
+            if (!newProgress[showId][seasonNum]) {
+              newProgress[showId][seasonNum] = data.watchProgress[showId][seasonNum];
+            } else {
+              newProgress[showId][seasonNum] = {
+                ...newProgress[showId][seasonNum],
+                ...data.watchProgress[showId][seasonNum]
+              };
+            }
+          }
+        }
+      }
+      return newProgress;
+    });
+
+    setRatings(prev => ({ ...prev, ...data.ratings }));
+    alert('Trakt import complete! Your data has been merged.');
+
+  }, [setHistory, setCompleted, setPlanToWatch, setWatchProgress, setRatings]);
+
   const handleToggleFavoriteEpisode = useCallback((showId: number, seasonNumber: number, episodeNumber: number) => {
     setFavoriteEpisodes(prev => {
       const newFavs = JSON.parse(JSON.stringify(prev));
@@ -1139,6 +1199,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
           onBackupToDrive={() => {}}
           onRestoreFromDrive={() => {}}
           onImportCompleted={handleImportCompleted}
+          onTraktImportCompleted={handleTraktImportCompleted}
           onToggleEpisode={(showId, season, episode, status) => {
             const showInfo = watching.find(s => s.id === showId) || completed.find(s => s.id === showId);
             if (showInfo) handleToggleEpisode(showId, season, episode, status, showInfo);

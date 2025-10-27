@@ -1,3 +1,4 @@
+
 // types.ts
 
 export interface TmdbImage {
@@ -491,4 +492,63 @@ export interface PublicCustomList extends CustomList {
         id: string;
         username: string;
     }
+}
+
+// --- Trakt.tv Types ---
+export interface TraktToken {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    refresh_token: string;
+    scope: string;
+    created_at: number; // Unix timestamp
+}
+
+interface TraktIds {
+    trakt: number;
+    slug: string;
+    imdb: string;
+    tmdb: number;
+}
+
+interface TraktMedia {
+    title: string;
+    year: number;
+    ids: TraktIds;
+}
+
+export interface TraktWatchedMovie {
+    plays: number;
+    last_watched_at: string;
+    movie: TraktMedia;
+}
+
+export interface TraktWatchedShow {
+    plays: number;
+    last_watched_at: string;
+    show: TraktMedia;
+    seasons: {
+        number: number;
+        episodes: {
+            number: number;
+            plays: number;
+            last_watched_at: string;
+        }[];
+    }[];
+}
+
+export interface TraktWatchlistItem {
+    rank: number;
+    listed_at: string;
+    type: 'movie' | 'show';
+    movie?: TraktMedia;
+    show?: TraktMedia;
+}
+
+export interface TraktRating {
+    rated_at: string;
+    rating: number; // 1-10
+    type: 'movie' | 'show' | 'season' | 'episode';
+    movie?: TraktMedia;
+    show?: TraktMedia;
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings } from '../types';
+import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings } from '../types';
 import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ChartBarIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
@@ -99,6 +99,13 @@ interface ProfileProps {
   onBackupToDrive: () => void;
   onRestoreFromDrive: () => void;
   onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
+  onTraktImportCompleted: (data: {
+    history: HistoryItem[];
+    completed: TrackedItem[];
+    planToWatch: TrackedItem[];
+    watchProgress: WatchProgress;
+    ratings: UserRatings;
+  }) => void;
   onToggleEpisode: (showId: number, seasonNumber: number, episodeNumber: number, currentStatus: number) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   favoriteEpisodes: FavoriteEpisodes;
@@ -126,7 +133,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl } = props;
+  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted } = props;
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const stats = useCalculatedStats(userData);
@@ -158,7 +165,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'achievements': return <AchievementsScreen userData={userData} />;
-      case 'imports': return <ImportsScreen onImportCompleted={props.onImportCompleted} />;
+      case 'imports': return <ImportsScreen onImportCompleted={props.onImportCompleted} onTraktImportCompleted={onTraktImportCompleted} />;
       case 'settings': return <Settings {...props} />;
       default: return <StatsScreen userData={userData} genres={genres} />;
     }
