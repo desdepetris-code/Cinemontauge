@@ -3,9 +3,8 @@ import { useLocalStorage } from './useLocalStorage';
 import { themes as builtInThemes } from '../themes';
 import { Theme } from '../types';
 
-export function useTheme(): [Theme, (themeId: string) => void] {
+export function useTheme(customThemes: Theme[]): [Theme, (themeId: string) => void] {
   const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'original-dark');
-  const [customThemes] = useLocalStorage<Theme[]>('customThemes', []);
 
   const allThemes = useMemo(() => [...builtInThemes, ...customThemes], [customThemes]);
 
@@ -27,6 +26,24 @@ export function useTheme(): [Theme, (themeId: string) => void] {
     root.style.setProperty('--color-bg-primary', activeTheme.colors.bgPrimary);
     root.style.setProperty('--color-bg-secondary', activeTheme.colors.bgSecondary);
     root.style.setProperty('--color-bg-backdrop', activeTheme.colors.bgBackdrop);
+    
+    // Set pattern variables if they exist, otherwise clear them
+    root.style.setProperty('--pattern-bg-size', activeTheme.colors.patternBgSize || 'auto');
+    root.style.setProperty('--pattern-bg-color', activeTheme.colors.patternBgColor || 'transparent');
+    root.style.setProperty('--pattern-bg-position', activeTheme.colors.patternBgPosition || '0 0');
+
+    // Support for pattern backgrounds from new theme editor
+    // Check if theme has pattern properties to apply them
+    if (activeTheme.colors.patternBgSize) {
+        document.body.style.backgroundSize = 'var(--pattern-bg-size, auto)';
+        document.body.style.backgroundColor = 'var(--pattern-bg-color, transparent)';
+        document.body.style.backgroundPosition = 'var(--pattern-bg-position, 0 0)';
+    } else {
+        document.body.style.backgroundSize = 'auto';
+        document.body.style.backgroundColor = 'transparent';
+        document.body.style.backgroundPosition = '0 0';
+    }
+
 
   }, [activeTheme]);
 

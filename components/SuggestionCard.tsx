@@ -26,16 +26,18 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({ item, onSelect, onAddCl
             <img
                 src={posterSrc}
                 alt={title}
-                className="w-full aspect-[2/3] object-cover bg-bg-secondary rounded-lg shadow-lg"
+                className="w-full aspect-[2/3] object-cover bg-bg-secondary rounded-lg shadow-lg group-hover:brightness-75 transition-all"
                 loading="lazy"
             />
-            <button 
-                onClick={handleAdd}
-                className="absolute top-2 right-2 z-10 p-1.5 bg-backdrop rounded-full text-white opacity-0 group-hover:opacity-100 hover:bg-primary-accent transition-all"
-                aria-label={`Add ${title} to a list`}
-            >
-                <PlusIcon className="w-5 h-5" />
-            </button>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <button 
+                    onClick={handleAdd}
+                    className="p-3 bg-backdrop rounded-full text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"
+                    aria-label={`Add ${title} to a list`}
+                >
+                    <PlusIcon className="w-6 h-6" />
+                </button>
+            </div>
         </div>
     );
 };

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { TmdbMedia, CustomList, CustomListItem } from '../types';
+import { TmdbMedia, CustomList, CustomListItem, TrackedItem } from '../types';
+import { ChevronRightIcon, XMarkIcon } from './Icons';
 
 interface AddToListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  itemToAdd: TmdbMedia | null;
+  itemToAdd: TmdbMedia | TrackedItem | null;
   customLists: CustomList[];
   onAddToList: (listId: string, item: CustomListItem) => void;
   onCreateAndAddToList: (listName: string, item: CustomListItem) => void;
+  onGoToDetails: (id: number, media_type: 'tv' | 'movie') => void;
 }
 
-const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemToAdd, customLists, onAddToList, onCreateAndAddToList }) => {
+const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemToAdd, customLists, onAddToList, onCreateAndAddToList, onGoToDetails }) => {
     const [view, setView] = useState<'list' | 'create'>('list');
     const [newListName, setNewListName] = useState('');
 
@@ -23,7 +25,7 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
     };
 
     const handleAdd = (listId: string) => {
-        const item: CustomListItem = { id: itemToAdd.id, media_type: itemToAdd.media_type, title: itemToAdd.title || itemToAdd.name || 'Untitled', poster_path: itemToAdd.poster_path };
+        const item: CustomListItem = { id: itemToAdd.id, media_type: itemToAdd.media_type, title: itemToAdd.title || (itemToAdd as TmdbMedia).name || 'Untitled', poster_path: itemToAdd.poster_path };
         onAddToList(listId, item);
         resetAndClose();
     };
@@ -33,17 +35,36 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
             alert("Please enter a list name.");
             return;
         }
-        const item: CustomListItem = { id: itemToAdd.id, media_type: itemToAdd.media_type, title: itemToAdd.title || itemToAdd.name || 'Untitled', poster_path: itemToAdd.poster_path };
+        const item: CustomListItem = { id: itemToAdd.id, media_type: itemToAdd.media_type, title: itemToAdd.title || (itemToAdd as TmdbMedia).name || 'Untitled', poster_path: itemToAdd.poster_path };
         onCreateAndAddToList(newListName.trim(), item);
         resetAndClose();
     };
+    
+    const handleGoToDetailsClick = () => {
+        onGoToDetails(itemToAdd.id, itemToAdd.media_type);
+        resetAndClose();
+    };
+
+    const detailsPageText = itemToAdd.media_type === 'tv' ? 'Show Page' : 'Movie Page';
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" onClick={resetAndClose}>
-            <div className="bg-card-gradient rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={resetAndClose}>
+            <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
+                <button onClick={resetAndClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
+                    <XMarkIcon className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={handleGoToDetailsClick}
+                    className="w-full flex items-center justify-between p-3 mb-4 rounded-md bg-bg-secondary hover:brightness-125 transition-colors font-semibold"
+                >
+                    <span>{detailsPageText}</span>
+                    <ChevronRightIcon className="w-5 h-5" />
+                </button>
+                <div className="w-full border-t border-bg-secondary/50 mb-4"></div>
+
                 {view === 'list' ? (
                     <>
-                        <h2 className="text-xl font-bold text-text-primary mb-4">Add to a list...</h2>
+                        <h2 className="text-xl font-bold text-text-primary mb-4">Add to a watchlist...</h2>
                         {customLists.length > 0 ? (
                             <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
                                 {customLists.map(list => (

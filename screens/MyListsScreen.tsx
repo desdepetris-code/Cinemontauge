@@ -1,28 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { UserData, WatchStatus, TrackedItem, CustomList, CustomListItem } from '../types';
-import CompactShowCard from '../components/CompactShowCard';
+import ListGrid from '../components/ListGrid';
 import ListFilterBar from '../components/ListFilterBar';
-import { PlusIcon, TrashIcon } from '../components/Icons';
+import { PlusIcon, TrashIcon, GlobeAltIcon, LockClosedIcon } from '../components/Icons';
 
 // --- Reusable Components ---
-
-const ListGrid: React.FC<{ items: TrackedItem[]; onSelect: (id: number, media_type: 'tv' | 'movie') => void; listId?: string, onRemoveItem?: (listId: string, itemId: number) => void }> = ({ items, onSelect, listId, onRemoveItem }) => {
-    if (items.length === 0) return <p className="text-text-secondary text-center py-4">This list is empty.</p>;
-    return (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-            {items.map(item => (
-                 <div key={item.id} className="relative group">
-                    <CompactShowCard item={item} onSelect={onSelect} />
-                    {listId && onRemoveItem && (
-                         <button onClick={() => onRemoveItem(listId, item.id)} className="absolute -top-2 -right-2 z-10 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            <TrashIcon className="w-3 h-3"/>
-                        </button>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-};
 
 const ListSection: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
     <section className="mb-8">
@@ -31,14 +13,16 @@ const ListSection: React.FC<{ title: string; children: React.ReactNode; }> = ({ 
     </section>
 );
 
-const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name: string, description: string) => void; listToEdit?: CustomList | null }> = ({ isOpen, onClose, onSave, listToEdit }) => {
+const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name: string, description: string, isPublic: boolean) => void; listToEdit?: CustomList | null }> = ({ isOpen, onClose, onSave, listToEdit }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [isPublic, setIsPublic] = useState(false);
 
     React.useEffect(() => {
         if (isOpen) {
             setName(listToEdit?.name || '');
             setDescription(listToEdit?.description || '');
+            setIsPublic(listToEdit?.isPublic || false);
         }
     }, [isOpen, listToEdit]);
 
@@ -46,7 +30,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
     
     const handleSave = () => {
         if (!name.trim()) return alert("List name cannot be empty.");
-        onSave(name, description);
+        onSave(name, description, isPublic);
         onClose();
     };
 
@@ -57,6 +41,19 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
                 <div className="space-y-4">
                     <input type="text" placeholder="List Name" value={name} onChange={e => setName(e.target.value)} className="w-full p-3 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent" />
                     <textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 p-3 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent" />
+                    <div className="flex items-center justify-between p-3 bg-bg-secondary rounded-md">
+                        <label htmlFor="is-public-toggle" className="text-text-primary font-medium">
+                            Make List Public
+                            <p className="text-xs text-text-secondary font-normal">Public lists can be discovered by other users.</p>
+                        </label>
+                        <input 
+                            type="checkbox" 
+                            id="is-public-toggle"
+                            checked={isPublic} 
+                            onChange={e => setIsPublic(e.target.checked)}
+                            className="h-5 w-5 rounded border-gray-300 text-primary-accent focus:ring-primary-accent" 
+                        />
+                    </div>
                 </div>
                 <div className="flex justify-end space-x-4 mt-6">
                     <button onClick={onClose} className="px-6 py-2 rounded-md text-text-primary bg-bg-secondary hover:brightness-125 transition-all">Cancel</button>
@@ -84,31 +81,33 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, genres, onSelec
   const [listToEdit, setListToEdit] = useState<CustomList | null>(null);
   
   const filteredLists = useMemo(() => {
-    const applyFilter = (items: TrackedItem[]) => {
+    const applyFilter = (items: (TrackedItem | CustomListItem)[]) => {
       if (!selectedGenreId) return items;
-      return items.filter(item => item.genre_ids?.includes(selectedGenreId));
+      return items.filter(item => (item as TrackedItem).genre_ids?.includes(selectedGenreId));
     };
 
     return {
       watching: applyFilter(userData.watching),
       planToWatch: applyFilter(userData.planToWatch),
       completed: applyFilter(userData.completed),
+      onHold: applyFilter(userData.onHold),
+      dropped: applyFilter(userData.dropped),
       favorites: applyFilter(userData.favorites),
       customLists: (userData.customLists || []).map(list => ({
           ...list,
-          items: applyFilter(list.items as TrackedItem[]) as CustomListItem[],
+          items: applyFilter(list.items),
       }))
     };
   }, [userData, selectedGenreId]);
 
-  const handleCreateList = (name: string, description: string) => {
-    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString() };
+  const handleCreateList = (name: string, description: string, isPublic: boolean) => {
+    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), isPublic };
     setCustomLists(prev => [newList, ...prev]);
   };
     
-  const handleEditList = (name: string, description: string) => {
+  const handleEditList = (name: string, description: string, isPublic: boolean) => {
     if (!listToEdit) return;
-    setCustomLists(prev => prev.map(l => l.id === listToEdit.id ? { ...l, name, description } : l));
+    setCustomLists(prev => prev.map(l => l.id === listToEdit.id ? { ...l, name, description, isPublic } : l));
   };
 
   const handleDeleteList = (listId: string) => {
@@ -140,6 +139,8 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, genres, onSelec
         {(!selectedStatus || selectedStatus === 'watching') && <ListSection title="Watching" children={<ListGrid items={filteredLists.watching} onSelect={onSelectShow} />} />}
         {(!selectedStatus || selectedStatus === 'planToWatch') && <ListSection title="Plan to Watch" children={<ListGrid items={filteredLists.planToWatch} onSelect={onSelectShow} />} />}
         {(!selectedStatus || selectedStatus === 'completed') && <ListSection title="Completed" children={<ListGrid items={filteredLists.completed} onSelect={onSelectShow} />} />}
+        {(!selectedStatus || selectedStatus === 'onHold') && <ListSection title="On Hold" children={<ListGrid items={filteredLists.onHold} onSelect={onSelectShow} />} />}
+        {(!selectedStatus || selectedStatus === 'dropped') && <ListSection title="Dropped" children={<ListGrid items={filteredLists.dropped} onSelect={onSelectShow} />} />}
         {(!selectedStatus || selectedStatus === 'favorites') && <ListSection title="Favorites" children={<ListGrid items={filteredLists.favorites} onSelect={onSelectShow} />} />}
 
         {!selectedStatus && (
@@ -154,17 +155,21 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, genres, onSelec
                     {filteredLists.customLists.map(list => (
                         <div key={list.id}>
                             <div className="flex justify-between items-baseline">
-                                <div>
+                                <div className="flex items-center space-x-2">
+                                    {list.isPublic 
+                                        ? <GlobeAltIcon className="w-5 h-5 text-sky-400 flex-shrink-0" title="Public"/> 
+                                        : <LockClosedIcon className="w-5 h-5 text-text-secondary flex-shrink-0" title="Private"/>
+                                    }
                                     <h3 className="text-xl font-bold text-text-primary">{list.name}</h3>
-                                    {list.description && <p className="text-sm text-text-secondary mt-1">{list.description}</p>}
                                 </div>
                                 <div className="flex items-center space-x-2 flex-shrink-0">
                                     <button onClick={() => { setListToEdit(list); setIsModalOpen(true); }} className="text-xs font-semibold text-primary-accent hover:underline">Edit</button>
                                     <button onClick={() => handleDeleteList(list.id)} className="text-xs font-semibold text-red-500 hover:underline">Delete</button>
                                 </div>
                             </div>
+                            {list.description && <p className="text-sm text-text-secondary mt-1 pl-7">{list.description}</p>}
                             <div className="mt-3">
-                                <ListGrid items={list.items as TrackedItem[]} onSelect={onSelectShow} listId={list.id} onRemoveItem={handleRemoveItem} />
+                                <ListGrid items={list.items} onSelect={onSelectShow} listId={list.id} onRemoveItem={handleRemoveItem} />
                             </div>
                         </div>
                     ))}

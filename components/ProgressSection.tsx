@@ -1,5 +1,4 @@
 import React from 'react';
-// FIX: Removed ManualMediaDetails as it is not defined in types.ts and part of a removed feature.
 import { TrackedItem, WatchProgress } from '../types';
 import ProgressItem from './ProgressItem';
 
@@ -7,11 +6,8 @@ interface ProgressSectionProps {
   items: TrackedItem[];
   watchProgress: WatchProgress;
   onSelect: (id: number, media_type: 'tv' | 'movie') => void;
-  // FIX: Removed manualEntries as it relies on the non-existent ManualMediaDetails type.
-  // manualEntries: Record<number, ManualMediaDetails>;
 }
 
-// FIX: Removed manualEntries from props, as it's part of a removed feature.
 const ProgressSection: React.FC<ProgressSectionProps> = ({ items, watchProgress, onSelect }) => {
   return (
     <div className="mb-8">

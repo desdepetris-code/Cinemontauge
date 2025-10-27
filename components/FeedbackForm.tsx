@@ -5,12 +5,12 @@ const FeedbackForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [requestType, setRequestType] = useState('General Question');
+  const [requestType, setRequestType] = useState('Feature Request');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message || !requestType || !subject) {
+    if (!message || !requestType) {
       alert('Please fill out all required fields.');
       return;
     }
@@ -18,19 +18,28 @@ const FeedbackForm: React.FC = () => {
     const mailtoBody = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
     window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(mailtoSubject)}&body=${encodeURIComponent(mailtoBody)}`;
     setSubmitted(true);
-    
-    // Clear form for politeness, in case mailto fails or user comes back
+  };
+
+  const handleReset = () => {
+    setSubmitted(false);
     setName('');
     setEmail('');
     setSubject('');
     setMessage('');
+    setRequestType('Feature Request');
   };
 
   if (submitted) {
     return (
-      <div className="p-4 m-4 text-center dark:bg-green-500/10 bg-green-500/20 text-green-700 dark:text-green-300 rounded-lg">
-        <p className="font-semibold">Your message has been sent to the SceneIt support team.</p>
-        <p className="text-sm">We’ll get back to you soon!</p>
+      <div className="p-4 m-4 text-center bg-green-500/20 text-green-300 rounded-lg">
+        <p className="font-semibold">Your email client has been opened.</p>
+        <p className="text-sm">Please send the pre-filled email to submit your feedback.</p>
+        <button
+          onClick={handleReset}
+          className="mt-4 px-4 py-2 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity font-semibold"
+        >
+          Submit Another Request
+        </button>
       </div>
     );
   }
@@ -45,13 +54,16 @@ const FeedbackForm: React.FC = () => {
       </div>
       <div className="relative">
         <select value={requestType} onChange={e => setRequestType(e.target.value)} className={`${inputClass} appearance-none`}>
-            <option>Bug Report</option>
             <option>Feature Request</option>
+            <option>Update Suggestion</option>
+            <option>Bug Report</option>
+            <option>Data Correction</option>
+            <option>UI/UX Feedback</option>
             <option>General Question</option>
             <option>Account Help</option>
         </select>
       </div>
-      <input type="text" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} required/>
+      <input type="text" placeholder="Subject (Optional)" value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} />
       <textarea placeholder="Message" value={message} onChange={e => setMessage(e.target.value)} className={inputClass} rows={5} required></textarea>
       <button type="submit" className="w-full py-3 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity font-semibold">
         Submit Request

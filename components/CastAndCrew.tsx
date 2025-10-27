@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { TmdbMediaDetails, CrewMember } from '../types';
+import React, { useState, useMemo } from 'react';
+import { TmdbMediaDetails, CrewMember, TvdbShow, CastMember } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface CastAndCrewProps {
   details: TmdbMediaDetails | null;
+  tvdbDetails: TvdbShow | null;
   onSelectPerson: (personId: number) => void;
 }
 
@@ -11,14 +12,39 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
     <h2 className="text-xl font-bold text-text-primary mb-4">{title}</h2>
 );
 
-const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) => {
+const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, tvdbDetails, onSelectPerson }) => {
   const [showFullCast, setShowFullCast] = useState(false);
   
-  const allCast = details?.credits?.cast || [];
+  const allCast = useMemo(() => {
+    const tmdbCast = details?.credits?.cast || [];
+    if (details?.media_type !== 'tv' || !tvdbDetails || !tvdbDetails.characters) {
+        return tmdbCast;
+    }
+
+    const tvdbCharacters = tvdbDetails.characters;
+    const tmdbCastMap = new Map(tmdbCast.map(c => [c.name.toLowerCase().trim(), c]));
+
+    const newCastFromTvdb = tvdbCharacters.reduce((acc, tvdbChar) => {
+        if (tvdbChar.personName && !tmdbCastMap.has(tvdbChar.personName.toLowerCase().trim())) {
+            // This actor is not in the TMDB list, add them.
+            acc.push({
+                id: -tvdbChar.id, // Use a negative ID to signify it's from TVDB and not a valid TMDB person ID.
+                name: tvdbChar.personName,
+                character: tvdbChar.name,
+                profile_path: tvdbChar.image, // TVDB provides a full URL for the image.
+            } as CastMember);
+        }
+        return acc;
+    }, [] as CastMember[]);
+
+    return [...tmdbCast, ...newCastFromTvdb];
+
+  }, [details, tvdbDetails]);
+  
   const castToShow = showFullCast ? allCast : allCast.slice(0, 10);
   
   const crew = details?.credits?.crew || [];
-  // FIX: Explicitly type the 'item' parameter in the map function to correct type inference.
+  // Explicitly type the 'item' parameter in the map function to correct type inference.
   const creators = Array.from(new Map(crew.filter(c => c.job === 'Creator' || c.job === 'Screenplay' || c.job === 'Writer').map((item: CrewMember) => [item.id, item])).values()).slice(0,5);
   const directors = Array.from(new Map(crew.filter(c => c.job === 'Director').map((item: CrewMember) => [item.id, item])).values()).slice(0,5);
 
@@ -33,7 +59,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
             <SectionHeader title="Cast" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {castToShow.map(person => (
-                <div key={person.id} className="text-center group cursor-pointer" onClick={() => onSelectPerson(person.id)}>
+                <div key={`${person.id}-${person.character}`} className={`text-center group ${person.id > 0 ? 'cursor-pointer' : 'cursor-default'}`} onClick={person.id > 0 ? () => onSelectPerson(person.id) : undefined}>
                 <img
                     src={getImageUrl(person.profile_path, 'w185', 'profile')}
                     alt={person.name}
@@ -66,7 +92,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
                     <div>
                         <h3 className="font-semibold text-text-secondary mb-2">Created &amp; Written By</h3>
                         <ul className="space-y-1">
-                            {/* FIX: Explicitly type `person` as `CrewMember` to resolve TS error. */}
+                            {/* Explicitly type `person` as `CrewMember` to resolve TS error. */}
                             {creators.map((person: CrewMember, index) => <li key={`${person.id}-${index}`} className="text-text-primary">{person.name}</li>)}
                         </ul>
                     </div>
@@ -75,7 +101,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
                     <div>
                         <h3 className="font-semibold text-text-secondary mb-2">Directed By</h3>
                         <ul className="space-y-1">
-                            {/* FIX: Explicitly type `person` as `CrewMember` to resolve TS error. */}
+                            {/* Explicitly type `person` as `CrewMember` to resolve TS error. */}
                             {directors.map((person: CrewMember, index) => <li key={`${person.id}-${index}`} className="text-text-primary">{person.name}</li>)}
                         </ul>
                     </div>

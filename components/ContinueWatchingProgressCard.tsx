@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, TvdbShow } from '../types';
+import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, TvdbShow, EpisodeTag } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
 import { PlayIcon } from './Icons';
 import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
+import { getEpisodeTag } from '../utils/episodeTagUtils';
 
 interface ContinueWatchingProgressCardProps {
     item: TrackedItem;
     watchProgress: WatchProgress;
     onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
-    onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number) => void;
+    onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, item: TrackedItem) => void;
 }
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
@@ -160,6 +161,12 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         ];
     }, [nextEpisodeInfo, seasonDetails, details, tvdbDetails]);
 
+    const episodeTag: EpisodeTag | null = useMemo(() => {
+        if (!nextEpisodeInfo || !details) return null;
+        const season = details.seasons?.find(s => s.season_number === nextEpisodeInfo.season_number);
+        return getEpisodeTag(nextEpisodeInfo, season, details, seasonDetails);
+    }, [nextEpisodeInfo, details, seasonDetails]);
+
     if (isLoading) {
         return (
             <div className="w-full aspect-[10/16] bg-card-gradient rounded-lg shadow-md animate-pulse">
@@ -173,7 +180,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     const handleMarkWatched = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (nextEpisode) {
-            onToggleEpisode(item.id, nextEpisode.season, nextEpisode.episode, 0);
+            onToggleEpisode(item.id, nextEpisode.season, nextEpisode.episode, 0, item);
         }
     };
 
@@ -185,15 +192,22 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
             <FallbackImage 
                 srcs={seasonPosterSrcs}
                 placeholder={PLACEHOLDER_POSTER}
+                noPlaceholder={true}
                 alt={`${item.title} season poster`} 
                 className="absolute inset-0 w-full h-full object-cover" 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
             
+            {episodeTag && (
+                <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm ${episodeTag.className}`}>
+                    {episodeTag.text}
+                </div>
+            )}
             {nextEpisodeInfo && (
               <FallbackImage 
                 srcs={episodeStillSrcs} 
                 placeholder={PLACEHOLDER_STILL}
+                noPlaceholder={true}
                 alt="Next episode thumbnail" 
                 className="absolute bottom-[28%] right-3 w-28 aspect-video object-cover rounded-md border-2 border-white/20 shadow-lg transition-transform duration-300 group-hover:scale-105"
               />

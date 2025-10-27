@@ -24,7 +24,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-card-gradient rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+      <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
         <h2 className="text-2xl font-bold text-text-primary mb-4">Customize Appearance</h2>
         
         <div className="flex p-1 bg-bg-secondary rounded-full mb-4 self-start">

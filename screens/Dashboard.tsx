@@ -1,11 +1,5 @@
-
-
-
-
-
-
-import React, { useState } from 'react';
-import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo } from '../types';
+import React, { useState, useMemo } from 'react';
+import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
@@ -16,7 +10,6 @@ import GenericCarousel from '../components/GenericCarousel';
 import { discoverMedia, getUpcomingMovies } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
-import AddToListModal from '../components/AddToListModal';
 import LiveWatchControls from '../components/LiveWatchControls';
 
 interface DashboardProps {
@@ -26,13 +19,16 @@ interface DashboardProps {
   watchProgress: UserData['watchProgress'];
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number) => void;
   onShortcutNavigate: (screen: ScreenName, profileTab?: ProfileTab) => void;
-  onAddItemToList: (item: TmdbMedia, list: WatchStatus) => void;
+  onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
   setCustomLists: React.Dispatch<React.SetStateAction<CustomList[]>>;
   liveWatchMedia: LiveWatchMediaInfo | null;
   liveWatchElapsedSeconds: number;
   liveWatchIsPaused: boolean;
   onLiveWatchTogglePause: () => void;
   onLiveWatchStop: () => void;
+  onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
+  onToggleFavoriteShow: (item: TrackedItem) => void;
+  favorites: TrackedItem[];
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -44,42 +40,82 @@ const ApiKeyWarning: React.FC = () => (
     </div>
 );
 
+const fetchPopularAndTopRatedTV = async (): Promise<TmdbMedia[]> => {
+    const [popular, topRated] = await Promise.all([
+        discoverMedia('tv', { sortBy: 'popularity.desc' }),
+        discoverMedia('tv', { sortBy: 'vote_average.desc', vote_count_gte: 200 })
+    ]);
+    const combined = new Map<number, TmdbMedia>();
+    popular.forEach(item => combined.set(item.id, item));
+    topRated.forEach(item => combined.set(item.id, item));
+    return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+};
+
+const fetchPopularAndTopRatedMovies = async (): Promise<TmdbMedia[]> => {
+    const [popular, topRated] = await Promise.all([
+        discoverMedia('movie', { sortBy: 'popularity.desc' }),
+        discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300 })
+    ]);
+    const combined = new Map<number, TmdbMedia>();
+    popular.forEach(item => combined.set(item.id, item));
+    topRated.forEach(item => combined.set(item.id, item));
+    return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+};
+
 const Dashboard: React.FC<DashboardProps> = ({
-    userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onAddItemToList, setCustomLists,
-    liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop
+    userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
+    liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites
 }) => {
-  // FIX: Cast TMDB_API_KEY to string to prevent TypeScript error on constant comparison.
+  // Cast TMDB_API_KEY to string to prevent TypeScript error on constant comparison.
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
-  
-  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
-  const [itemToAddToList, setItemToAddToList] = useState<TmdbMedia | null>(null);
 
-  const handleOpenAddToListModal = (item: TmdbMedia) => {
-      setItemToAddToList(item);
-      setIsAddToListModalOpen(true);
-  };
+  const trackedShowsForNewSeasons = useMemo(() => {
+    const allItems = new Map<number, TrackedItem>();
 
-  const handleAddToList = (listId: string, item: CustomListItem) => {
-      setCustomLists(prev => prev.map(list => {
-          if (list.id === listId) {
-              if (list.items.some(i => i.id === item.id)) return list; // Already exists
-              return { ...list, items: [item, ...list.items] };
-          }
-          return list;
-      }));
-  };
-  
-  const handleCreateAndAddToList = (listName: string, item: CustomListItem) => {
-      const newList: CustomList = {
-          id: `cl-${Date.now()}`,
-          name: listName,
-          description: '',
-          items: [item],
-          createdAt: new Date().toISOString()
-      };
-      setCustomLists(prev => [newList, ...prev]);
-  };
+    // From standard lists
+    [
+        ...userData.watching,
+        ...userData.planToWatch,
+        ...userData.completed,
+        ...userData.onHold,
+        ...userData.dropped,
+        ...userData.favorites,
+    ].forEach(item => {
+        if (item.media_type === 'tv' && !allItems.has(item.id)) {
+            allItems.set(item.id, item);
+        }
+    });
 
+    // From custom lists
+    (userData.customLists || []).forEach(list => {
+        (list.items || []).forEach((item: CustomListItem) => {
+            if (item.media_type === 'tv' && !allItems.has(item.id)) {
+                allItems.set(item.id, {
+                    id: item.id,
+                    media_type: 'tv',
+                    title: item.title,
+                    poster_path: item.poster_path,
+                    genre_ids: [], // Not available in CustomListItem, but optional
+                });
+            }
+        });
+    });
+
+    // From history
+    (userData.history || []).forEach((item: HistoryItem) => {
+        if (item.media_type === 'tv' && !allItems.has(item.id)) {
+            allItems.set(item.id, {
+                id: item.id,
+                media_type: 'tv',
+                title: item.title,
+                poster_path: item.poster_path,
+                genre_ids: [], // Not available in HistoryItem, but optional
+            });
+        }
+    });
+
+    return Array.from(allItems.values());
+  }, [userData]);
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -116,28 +152,20 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Discovery Carousels */}
       {isApiKeyMissing ? <ApiKeyWarning /> : (
         <>
-            <NewSeasons onSelectShow={onSelectShowInModal} />
-            <NewReleases mediaType="movie" title="🍿 New Movie Releases" onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
-            <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
-            <TrendingSection mediaType="movie" title="🔥 Trending Movies" onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
-            <GenericCarousel title="✨ Popular Movies" fetcher={() => discoverMedia('movie', { sortBy: 'popularity.desc' })} onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
-            <GenericCarousel title="🌟 Top Rated TV Shows" fetcher={() => discoverMedia('tv', { sortBy: 'vote_average.desc', vote_count_gte: 200 })} onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
-            <GenericCarousel title="📅 Upcoming Movies" fetcher={getUpcomingMovies} onSelectShow={onSelectShow} onAddItemToList={onAddItemToList} />
+            <NewSeasons onSelectShow={onSelectShowInModal} trackedShows={trackedShowsForNewSeasons} />
+            <NewReleases mediaType="movie" title="🍿 New Movie Releases" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
+            <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
+            <TrendingSection mediaType="movie" title="🔥 Trending Movies" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
+            <GenericCarousel title="📺 Popular & Top Rated TV Shows" fetcher={fetchPopularAndTopRatedTV} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
+            <GenericCarousel title="🎬 Popular & Top Rated Movies" fetcher={fetchPopularAndTopRatedMovies} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
+            <GenericCarousel title="📅 Upcoming Movies" fetcher={getUpcomingMovies} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
             <MyListSuggestions
                 userData={userData}
                 onSelectShow={onSelectShow}
-                onOpenAddToListModal={handleOpenAddToListModal}
+                onOpenAddToListModal={onOpenAddToListModal}
             />
         </>
       )}
-      <AddToListModal
-        isOpen={isAddToListModalOpen}
-        onClose={() => setIsAddToListModalOpen(false)}
-        itemToAdd={itemToAddToList}
-        customLists={userData.customLists}
-        onAddToList={handleAddToList}
-        onCreateAndAddToList={handleCreateAndAddToList}
-    />
     </div>
   );
 };

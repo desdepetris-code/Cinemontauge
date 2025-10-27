@@ -34,6 +34,8 @@ export const MAL_AUTH_BASE_URL = 'https://myanimelist.net/v1/oauth2/authorize';
 export const MAL_TOKEN_URL = 'https://myanimelist.net/v1/oauth2/token';
 export const MAL_REDIRECT_URI = window.location.origin + window.location.pathname;
 
+export const GEMINI_API_KEY = 'AIzaSyD5D5_TFw-5uzyrYZGOIH2AxpX9lmHBC-s';
+
 
 // Placeholder Images
 export const PLACEHOLDER_POSTER = 'https://via.placeholder.com/342x513.png?text=SceneIt';

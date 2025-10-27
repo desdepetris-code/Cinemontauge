@@ -36,7 +36,7 @@ const MovieCollection: React.FC<MovieCollectionProps> = ({ collectionId, current
 
   // Filter out the current movie and sort by release date
   const otherMovies = collection.parts
-    .filter(Boolean) // Fix: Prevent crash if API returns null in parts array
+    .filter(Boolean) // Prevent crash if API returns null in parts array
     .filter(movie => movie.id !== currentMovieId)
     .sort((a, b) => {
       const dateA = new Date(a.release_date || 0).getTime();

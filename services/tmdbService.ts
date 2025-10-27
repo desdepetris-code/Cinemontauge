@@ -1,6 +1,5 @@
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
-// FIX: Import PersonDetails type for the new getPersonDetails function.
-import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails } from '../types';
+import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
 
 // --- Caching Logic ---
@@ -110,6 +109,25 @@ export const searchMedia = async (query: string): Promise<TmdbMedia[]> => {
     }
 };
 
+export const searchMediaPaginated = async (
+    query: string,
+    page: number = 1
+): Promise<{ results: TmdbMedia[], total_pages: number }> => {
+    const data = await fetchFromTmdb<{ results: (TmdbMedia & { media_type: 'movie' | 'tv' | 'person' })[], total_pages: number }>(`search/multi?query=${encodeURIComponent(query)}&page=${page}`);
+    return {
+        results: data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv'),
+        total_pages: data.total_pages
+    };
+};
+
+export const searchPeoplePaginated = async (
+    query: string,
+    page: number = 1
+): Promise<{ results: TmdbPerson[], total_pages: number }> => {
+    const data = await fetchFromTmdb<{ results: TmdbPerson[], total_pages: number }>(`search/person?query=${encodeURIComponent(query)}&page=${page}`);
+    return data;
+};
+
 export const findByImdbId = async (imdbId: string): Promise<TmdbFindResponse> => {
     const cacheKey = `tmdb_find_${imdbId}`;
     const cachedData = getFromCache<TmdbFindResponse>(cacheKey);
@@ -199,8 +217,16 @@ export const getPopularShowsAllTime = async (): Promise<TmdbMedia[]> => {
     return data.results.map(item => ({...item, media_type: 'tv'}));
 };
 
-export const getNewSeasons = async (): Promise<TmdbMediaDetails[]> => {
-    const cacheKey = 'tmdb_new_seasons_v2';
+export const getNewSeasons = async (forceRefresh = false): Promise<TmdbMediaDetails[]> => {
+    const cacheKey = 'tmdb_new_seasons_v3';
+    if (forceRefresh) {
+        try {
+            localStorage.removeItem(cacheKey);
+        } catch (error) {
+            console.error("Error clearing new seasons cache", error);
+        }
+    }
+
     const cachedData = getFromCache<CachedNewSeasonShow[]>(cacheKey);
     if (cachedData) {
         // The component expects TmdbMediaDetails[], but it only uses a subset of properties.
@@ -217,7 +243,7 @@ export const getNewSeasons = async (): Promise<TmdbMediaDetails[]> => {
 
         const params = `&air_date.gte=${formatDate(sevenDaysAgo)}&air_date.lte=${formatDate(today)}&sort_by=popularity.desc`;
 
-        const pagePromises = [1, 2, 3, 4, 5].map(page => 
+        const pagePromises = [1, 2, 3].map(page => 
             fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/tv?page=${page}${params}`)
         );
 
@@ -230,6 +256,8 @@ export const getNewSeasons = async (): Promise<TmdbMediaDetails[]> => {
         let detailedShows = (await Promise.all(detailPromises)).filter((d): d is TmdbMediaDetails => d !== null);
 
         const sevenDaysAgoTimestamp = sevenDaysAgo.getTime();
+        const todayEndTimestamp = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
+
 
         // Filter for shows that had an episode air in the last 7 days
         detailedShows = detailedShows.filter(show => {
@@ -239,8 +267,8 @@ export const getNewSeasons = async (): Promise<TmdbMediaDetails[]> => {
             // Use T00:00:00 to avoid timezone issues when comparing dates
             const airDate = new Date(lastEp.air_date + 'T00:00:00').getTime();
             
-            // Check if the last aired episode was within the last 7 days.
-            return airDate >= sevenDaysAgoTimestamp;
+            // Check if the last aired episode was within the last 7 days and not in the future.
+            return airDate >= sevenDaysAgoTimestamp && airDate <= todayEndTimestamp;
         });
 
         // Final sort by the most recent air date
@@ -345,7 +373,6 @@ export const getCollectionDetails = async (collectionId: number): Promise<TmdbCo
     return data;
 };
 
-// FIX: Add getPersonDetails function to fetch actor details from TMDB.
 export const getPersonDetails = async (personId: number): Promise<PersonDetails> => {
     const cacheKey = `tmdb_person_${personId}`;
     const cachedData = getFromCache<PersonDetails>(cacheKey);

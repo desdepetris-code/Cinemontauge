@@ -7,7 +7,7 @@ interface GenreFilterProps {
 }
 
 const GenreFilter: React.FC<GenreFilterProps> = ({ genres, selectedGenreId, onSelectGenre }) => {
-  // Fix: Explicitly cast to string to resolve 'unknown' type inference issue.
+  // Explicitly cast to string to resolve 'unknown' type inference issue.
   const sortedGenres = Object.entries(genres).sort(([, nameA], [, nameB]) => String(nameA).localeCompare(String(nameB)));
 
   return (

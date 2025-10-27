@@ -36,6 +36,8 @@ const ListFilterBar: React.FC<ListFilterBarProps> = ({ genres, selectedGenreId, 
     { id: 'watching', name: 'Watching' },
     { id: 'planToWatch', name: 'Plan to Watch' },
     { id: 'completed', name: 'Completed' },
+    { id: 'onHold', name: 'On Hold' },
+    { id: 'dropped', name: 'Dropped' },
     { id: 'favorites', name: 'Favorites' },
   ];
 

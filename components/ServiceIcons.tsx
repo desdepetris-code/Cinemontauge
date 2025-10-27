@@ -1,7 +1,7 @@
 import React from 'react';
 
-// Change prop type from SVG to IMG attributes
-type IconProps = React.ImgHTMLAttributes<HTMLImageElement>;
+// Use SVG props for SVG components
+type IconProps = React.SVGProps<SVGSVGElement>;
 
 export const ImdbIcon: React.FC<IconProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 32" fill="currentColor" {...props}>

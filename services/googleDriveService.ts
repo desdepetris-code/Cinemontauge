@@ -39,7 +39,7 @@ export const initGoogleDriveClient = async (): Promise<void> => {
     await loadGapiScript();
     
     await new Promise<void>((resolve, reject) => {
-        // FIX: The placeholder GOOGLE_API_KEY was causing the discovery document to fail loading.
+        // The placeholder GOOGLE_API_KEY was causing the discovery document to fail loading.
         // For OAuth flows accessing user data, the apiKey is not required for initialization,
         // as the user's access token will authorize the API calls. Removing it resolves the error.
         gapi.client.init({

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, PlusIcon, StarIcon } from '../components/Icons';
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
-import { useTheme } from '../hooks/useTheme';
-import { themes } from '../themes';
 import Legal from './Legal';
 import { clearApiCache } from '../utils/cacheUtils';
-import { DriveStatus, Theme, NotificationSettings } from '../types';
+import { DriveStatus, NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes } from '../types';
 import { GOOGLE_CLIENT_ID } from '../constants';
-import CustomThemeModal from '../components/CustomThemeModal';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import ThemeSettings from '../components/ThemeSettings';
+import ResetPasswordModal from '../components/ResetPasswordModal';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
     <div 
@@ -62,20 +61,26 @@ interface SettingsProps {
     onDriveSignOut: () => void;
     onBackupToDrive: () => void;
     onRestoreFromDrive: () => void;
-    isVip: boolean;
     notificationSettings: NotificationSettings;
     setNotificationSettings: React.Dispatch<React.SetStateAction<NotificationSettings>>;
+    // State setters
+    setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
+    setWatchProgress: React.Dispatch<React.SetStateAction<WatchProgress>>;
+    setEpisodeRatings: React.Dispatch<React.SetStateAction<EpisodeRatings>>;
+    setFavoriteEpisodes: React.Dispatch<React.SetStateAction<FavoriteEpisodes>>;
+    setTheme: (themeId: string) => void;
+    customThemes: Theme[];
+    setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
+    onLogout: () => void;
+    onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
 }
 
 const Settings: React.FC<SettingsProps> = (props) => {
-  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, isVip, notificationSettings, setNotificationSettings } = props;
-  const [activeTheme, setTheme] = useTheme();
+  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
-  const [isCustomThemeModalOpen, setIsCustomThemeModalOpen] = useState(false);
-  const [customThemes, setCustomThemes] = useLocalStorage<Theme[]>('customThemes', []);
   const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
   const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
-  const [themeFilter, setThemeFilter] = useState<'dark' | 'light' | 'all'>('all');
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem('sceneit_import_success') === 'true') {
@@ -84,22 +89,6 @@ const Settings: React.FC<SettingsProps> = (props) => {
     }
     setLastLocalBackup(localStorage.getItem('auto_backup_last_timestamp'));
   }, []);
-
-  const handleSaveCustomTheme = (newTheme: Theme) => {
-    setCustomThemes(prev => [...prev, newTheme]);
-    setTheme(newTheme.id); // Optionally switch to the new theme immediately
-  };
-
-  const handleDeleteCustomTheme = (e: React.MouseEvent, themeId: string) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this theme?")) {
-        setCustomThemes(prev => prev.filter(t => t.id !== themeId));
-        if (activeTheme.id === themeId) {
-            setTheme('original-dark'); // Switch to a default theme if the active one is deleted
-        }
-    }
-  };
-
 
   const handleToggleNotification = (setting: keyof NotificationSettings) => {
     setNotificationSettings(prev => {
@@ -221,24 +210,29 @@ const Settings: React.FC<SettingsProps> = (props) => {
 
   const handleClearHistory = () => {
     if (window.confirm('Are you sure you want to clear your entire watch history? This cannot be undone.')) {
-        localStorage.removeItem('history');
-        window.location.reload();
+        setHistory([]);
     }
   };
 
   const handleResetProgress = () => {
-    if (window.confirm('Are you sure you want to reset all your watch progress? Your lists will remain, but all shows will be marked as unwatched.')) {
-        localStorage.removeItem('watch_progress');
-        window.location.reload();
+    if (window.confirm('Are you sure you want to reset all your watch progress? This includes episode ratings and favorites. Your lists will remain.')) {
+        setWatchProgress({});
+        setEpisodeRatings({});
+        setFavoriteEpisodes({});
     }
   };
 
   const handleResetSettings = () => {
     if (window.confirm('Are you sure you want to reset all app settings to their default values? This will not affect your lists or progress.')) {
-        localStorage.removeItem('themeId');
-        localStorage.removeItem('customThemes');
-        localStorage.removeItem('notification_settings');
-        window.location.reload();
+        setTheme('original-dark');
+        setCustomThemes([]);
+        setNotificationSettings({
+            masterEnabled: true,
+            newEpisodes: true,
+            movieReleases: true,
+            appAnnouncements: true,
+            sounds: true,
+        });
     }
   };
 
@@ -253,229 +247,174 @@ const Settings: React.FC<SettingsProps> = (props) => {
     return <Legal onBack={() => setActiveView('settings')} />;
   }
 
-  const filteredBuiltInThemes = themes.filter(theme => themeFilter === 'all' || theme.base === themeFilter);
-  const filteredCustomThemes = customThemes.filter(theme => themeFilter === 'all' || theme.base === themeFilter);
-
-
   return (
-    <div className="animate-fade-in max-w-2xl mx-auto">
-        <CustomThemeModal 
-            isOpen={isCustomThemeModalOpen}
-            onClose={() => setIsCustomThemeModalOpen(false)}
-            onSave={handleSaveCustomTheme}
-        />
-        <SettingsCard title="Cloud Sync & Backup">
-            { !driveStatus.isGapiReady ? (
-                <div className="p-4 text-text-secondary">Loading Google Drive client...</div>
-            ) : driveStatus.isSignedIn && driveStatus.user ? (
-                <div>
-                    <div className="p-4 flex items-center space-x-4">
-                        <img src={driveStatus.user.imageUrl} alt="profile" className="w-12 h-12 rounded-full" />
-                        <div>
-                            <p className="font-semibold text-text-primary">{driveStatus.user.name}</p>
-                            <p className="text-sm text-text-secondary">{driveStatus.user.email}</p>
-                        </div>
-                    </div>
-                    {driveStatus.lastSync && (
-                        <div className="px-4 pb-2 text-xs text-text-secondary">
-                            Last sync: {new Date(driveStatus.lastSync).toLocaleString()}
-                        </div>
-                    )}
-                    <div className="p-4 border-t border-bg-secondary/50 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button onClick={onBackupToDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
-                            <UploadIcon className="h-4 w-4" />
-                            <span>{driveStatus.isSyncing ? 'Syncing...' : 'Sync Now'}</span>
-                        </button>
-                        <button onClick={onRestoreFromDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
-                            <DownloadIcon className="h-4 w-4" />
-                            <span>Restore</span>
-                        </button>
-                        <button onClick={onDriveSignOut} disabled={driveStatus.isSyncing} className="w-full px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-50">
-                            Disconnect
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <div className="p-4">
-                    <p className="text-text-secondary mb-4">
-                        Connect your Google Drive account to back up your watch history, lists, and progress. This also allows you to sync data across devices.
-                    </p>
-                    <button
-                        onClick={onDriveSignIn}
-                        disabled={!driveStatus.isGapiReady || GOOGLE_CLIENT_ID.startsWith('YOUR_')}
-                        className="w-full flex items-center justify-center space-x-2 py-3 rounded-lg bg-white text-gray-700 font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <GoogleIcon />
-                        <span>Sign in with Google</span>
-                    </button>
-                    {driveStatus.error && <p className="text-red-500 text-sm mt-2 text-center">{driveStatus.error}</p>}
-                    {GOOGLE_CLIENT_ID.startsWith('YOUR_') && <p className="text-yellow-500 text-xs mt-2 text-center">Feature disabled. Admin needs to configure API keys.</p>}
-                </div>
-            )}
-        </SettingsCard>
+    <>
+      <ResetPasswordModal
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => setIsResetPasswordModalOpen(false)}
+        onSave={onUpdatePassword}
+      />
+      <div className="animate-fade-in max-w-2xl mx-auto">
+          <SettingsCard title="Account Management">
+              <SettingsRow title="Reset Password" subtitle="Change the password for your account.">
+                  <button onClick={() => setIsResetPasswordModalOpen(true)} className="px-4 py-2 text-sm rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors">
+                      Change
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Log Out" subtitle="Sign out of your current session.">
+                  <button onClick={onLogout} className="px-4 py-2 text-sm rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors">
+                      Log Out
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Delete Account" subtitle="Permanently delete your account and all data." isDestructive>
+                  <button
+                      onClick={handleDeleteAccount}
+                      className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                  >
+                      <TrashIcon className="h-4 w-4" />
+                      <span>Delete</span>
+                  </button>
+              </SettingsRow>
+          </SettingsCard>
 
-        <SettingsCard title="Account Management">
-            <SettingsRow title="Edit Profile" subtitle="Username, bio, profile picture.">
-                <button disabled className="px-3 py-1.5 text-sm rounded-md bg-bg-secondary/50 text-text-secondary/50 cursor-not-allowed">Edit</button>
-            </SettingsRow>
-            <SettingsRow title="Security" subtitle="Password, two-factor authentication.">
-                <button disabled className="px-3 py-1.5 text-sm rounded-md bg-bg-secondary/50 text-text-secondary/50 cursor-not-allowed">Manage</button>
-            </SettingsRow>
-            <SettingsRow title="Delete Account" subtitle="Permanently delete your account and all data." isDestructive>
-                <button
-                    onClick={handleDeleteAccount}
-                    className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                >
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Delete</span>
-                </button>
-            </SettingsRow>
-        </SettingsCard>
+          <SettingsCard title="Cloud Sync & Backup">
+              { !driveStatus.isGapiReady ? (
+                  <div className="p-4 text-text-secondary">Loading Google Drive client...</div>
+              ) : driveStatus.isSignedIn && driveStatus.user ? (
+                  <div>
+                      <div className="p-4 flex items-center space-x-4">
+                          <img src={driveStatus.user.imageUrl} alt="profile" className="w-12 h-12 rounded-full" />
+                          <div>
+                              <p className="font-semibold text-text-primary">{driveStatus.user.name}</p>
+                              <p className="text-sm text-text-secondary">{driveStatus.user.email}</p>
+                          </div>
+                      </div>
+                      {driveStatus.lastSync && (
+                          <div className="px-4 pb-2 text-xs text-text-secondary">
+                              Last sync: {new Date(driveStatus.lastSync).toLocaleString()}
+                          </div>
+                      )}
+                      <div className="p-4 border-t border-bg-secondary/50 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <button onClick={onBackupToDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
+                              <UploadIcon className="h-4 w-4" />
+                              <span>{driveStatus.isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                          </button>
+                          <button onClick={onRestoreFromDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
+                              <DownloadIcon className="h-4 w-4" />
+                              <span>Restore</span>
+                          </button>
+                          <button onClick={onDriveSignOut} disabled={driveStatus.isSyncing} className="w-full px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-50">
+                              Disconnect
+                          </button>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="p-4">
+                      <p className="text-text-secondary mb-4">
+                          Connect your Google Drive account to back up your watch history, lists, and progress. This also allows you to sync data across devices.
+                      </p>
+                      <button
+                          onClick={onDriveSignIn}
+                          disabled={!driveStatus.isGapiReady || GOOGLE_CLIENT_ID.startsWith('YOUR_')}
+                          className="w-full flex items-center justify-center space-x-2 py-3 rounded-lg bg-white text-gray-700 font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                          <GoogleIcon />
+                          <span>Sign in with Google</span>
+                      </button>
+                      {driveStatus.error && <p className="text-red-500 text-sm mt-2 text-center">{driveStatus.error}</p>}
+                      {GOOGLE_CLIENT_ID.startsWith('YOUR_') && <p className="text-yellow-500 text-xs mt-2 text-center">Feature disabled. Admin needs to configure API keys.</p>}
+                  </div>
+              )}
+          </SettingsCard>
+          
+          <SettingsCard title="Notifications & Preferences">
+              <SettingsRow title="Enable All Notifications" subtitle="Master control for all app alerts.">
+                  <ToggleSwitch enabled={notificationSettings.masterEnabled} onChange={() => handleToggleNotification('masterEnabled')} />
+              </SettingsRow>
+              <SettingsRow title="New Episode / Season" subtitle="Alerts for new content you're tracking." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.newEpisodes} onChange={() => handleToggleNotification('newEpisodes')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
+              <SettingsRow title="Movie Releases & Updates" subtitle="News about movies on your lists (e.g., sequels)." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.movieReleases} onChange={() => handleToggleNotification('movieReleases')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
+              <SettingsRow title="App Announcements" subtitle="Receive updates and news about SceneIt." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.appAnnouncements} onChange={() => handleToggleNotification('appAnnouncements')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
+              <SettingsRow title="Notification Sounds" subtitle="Play a sound for new notifications." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.sounds} onChange={() => handleToggleNotification('sounds')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
+          </SettingsCard>
         
-        <SettingsCard title="Notifications & Preferences">
-            <SettingsRow title="Enable All Notifications" subtitle="Master control for all app alerts.">
-                <ToggleSwitch enabled={notificationSettings.masterEnabled} onChange={() => handleToggleNotification('masterEnabled')} />
-            </SettingsRow>
-             <SettingsRow title="New Episode / Season" subtitle="Alerts for new content you're tracking." disabled={!notificationSettings.masterEnabled}>
-                <ToggleSwitch enabled={notificationSettings.newEpisodes} onChange={() => handleToggleNotification('newEpisodes')} disabled={!notificationSettings.masterEnabled}/>
-            </SettingsRow>
-             <SettingsRow title="Movie Releases & Updates" subtitle="News about movies on your lists (e.g., sequels)." disabled={!notificationSettings.masterEnabled}>
-                <ToggleSwitch enabled={notificationSettings.movieReleases} onChange={() => handleToggleNotification('movieReleases')} disabled={!notificationSettings.masterEnabled}/>
-            </SettingsRow>
-            <SettingsRow title="App Announcements" subtitle="Receive updates and news about SceneIt." disabled={!notificationSettings.masterEnabled}>
-                <ToggleSwitch enabled={notificationSettings.appAnnouncements} onChange={() => handleToggleNotification('appAnnouncements')} disabled={!notificationSettings.masterEnabled}/>
-            </SettingsRow>
-            <SettingsRow title="Notification Sounds" subtitle="Play a sound for new notifications." disabled={!notificationSettings.masterEnabled}>
-                <ToggleSwitch enabled={notificationSettings.sounds} onChange={() => handleToggleNotification('sounds')} disabled={!notificationSettings.masterEnabled}/>
-            </SettingsRow>
-        </SettingsCard>
-      
-        <SettingsCard title="Theme Customization">
-            <div className="p-4 border-b border-bg-secondary/50">
-                <p className="text-text-secondary mb-3 font-semibold">Filter Themes</p>
-                <div className="flex p-1 bg-bg-secondary rounded-full">
-                    <button onClick={() => setThemeFilter('dark')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${themeFilter === 'dark' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Dark</button>
-                    <button onClick={() => setThemeFilter('light')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${themeFilter === 'light' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Light</button>
-                    <button onClick={() => setThemeFilter('all')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${themeFilter === 'all' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>All</button>
-                </div>
-            </div>
-            <div className="p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {filteredBuiltInThemes.map(theme => (
-                        <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group">
-                            <div 
-                                style={{ backgroundImage: theme.colors.bgGradient }}
-                                className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${activeTheme.id === theme.id ? 'border-primary-accent' : 'border-transparent'}`}
-                            >
-                            </div>
-                            <p className={`text-center text-sm mt-2 font-semibold transition-colors ${activeTheme.id === theme.id ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                {theme.name}
-                            </p>
-                        </div>
-                    ))}
-                    <div onClick={() => isVip && setIsCustomThemeModalOpen(true)} className={`group ${isVip ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
-                        <div className={`h-20 rounded-lg border-2 border-dashed  flex items-center justify-center transition-all ${isVip ? 'border-text-secondary/50 bg-bg-secondary/30 group-hover:border-primary-accent group-hover:bg-bg-secondary/50' : 'border-text-secondary/20 bg-bg-secondary/10'}`}>
-                            {isVip ? <PlusIcon className="w-8 h-8 text-text-secondary/80 group-hover:text-primary-accent transition-colors" /> : <StarIcon filled className="w-8 h-8 text-yellow-500/50" />}
-                        </div>
-                        <p className={`text-center text-sm mt-2 font-semibold  transition-colors ${isVip ? 'text-text-secondary group-hover:text-text-primary' : 'text-text-secondary/50'}`}>
-                            {isVip ? 'Create New' : 'VIP Feature'}
-                        </p>
-                    </div>
-                </div>
-                {!isVip && <p className="text-center text-xs text-yellow-400 mt-4">Unlock custom themes by earning VIP passes from hard achievements!</p>}
+          <ThemeSettings customThemes={props.customThemes} setCustomThemes={props.setCustomThemes} />
 
-                {filteredCustomThemes.length > 0 && (
-                    <div className="mt-8 pt-4 border-t border-bg-secondary/50">
-                        <p className="text-text-secondary mb-4 font-semibold">My Themes</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                             {filteredCustomThemes.map(theme => (
-                                <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group relative">
-                                    <button onClick={(e) => handleDeleteCustomTheme(e, theme.id)} className="absolute -top-2 -right-2 z-10 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
-                                        <TrashIcon className="w-3 h-3"/>
-                                    </button>
-                                    <div 
-                                        style={{ backgroundImage: theme.colors.bgGradient }}
-                                        className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${activeTheme.id === theme.id ? 'border-primary-accent' : 'border-transparent'}`}
-                                    >
-                                    </div>
-                                    <p className={`text-center text-sm mt-2 font-semibold transition-colors ${activeTheme.id === theme.id ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                        {theme.name}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </SettingsCard>
+          <SettingsCard title="Privacy & Data">
+              <SettingsRow title="Download Backup" subtitle="Save a JSON file of all your data to your device.">
+                  <button onClick={handleExportData} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
+                      <DownloadIcon className="h-4 w-4" />
+                      <span>Download</span>
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Restore from File" subtitle="Upload a backup file to restore your data.">
+                  <button onClick={() => handleImportData('file')} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
+                      <UploadIcon className="h-4 w-4" />
+                      <span>Restore</span>
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Automatic Local Backup" subtitle="Automatically back up data to this device every 24 hours.">
+                  <ToggleSwitch enabled={autoBackupEnabled} onChange={setAutoBackupEnabled} />
+              </SettingsRow>
+              <div className="px-4 pb-4 border-b border-bg-secondary/50">
+                  <button 
+                      onClick={() => handleImportData('local')} 
+                      disabled={!lastLocalBackup}
+                      className="w-full text-center px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      Restore from Local Backup
+                  </button>
+                  {lastLocalBackup && <p className="text-xs text-text-secondary text-center mt-2">Last backup: {new Date(lastLocalBackup).toLocaleString()}</p>}
+              </div>
 
-        <SettingsCard title="Privacy & Data">
-            <SettingsRow title="Download Backup" subtitle="Save a JSON file of all your data to your device.">
-                <button onClick={handleExportData} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
-                    <DownloadIcon className="h-4 w-4" />
-                    <span>Download</span>
-                </button>
-            </SettingsRow>
-             <SettingsRow title="Restore from File" subtitle="Upload a backup file to restore your data.">
-                <button onClick={() => handleImportData('file')} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
-                    <UploadIcon className="h-4 w-4" />
-                    <span>Restore</span>
-                </button>
-            </SettingsRow>
-            <SettingsRow title="Automatic Local Backup" subtitle="Automatically back up data to this device every 24 hours.">
-                <ToggleSwitch enabled={autoBackupEnabled} onChange={setAutoBackupEnabled} />
-            </SettingsRow>
-             <div className="px-4 pb-4 border-b border-bg-secondary/50">
-                <button 
-                    onClick={() => handleImportData('local')} 
-                    disabled={!lastLocalBackup}
-                    className="w-full text-center px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Restore from Local Backup
-                </button>
-                {lastLocalBackup && <p className="text-xs text-text-secondary text-center mt-2">Last backup: {new Date(lastLocalBackup).toLocaleString()}</p>}
-            </div>
+              <SettingsRow title="Clear API Cache" subtitle="Frees up storage by removing temporary movie & show data.">
+                  <button onClick={handleClearApiCache} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
+                      <TrashIcon className="h-4 w-4" />
+                      <span>Clear</span>
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Clear Watch History" subtitle="Removes all entries from your history." isDestructive>
+                  <button onClick={handleClearHistory} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                      <TrashIcon className="h-4 w-4" />
+                      <span>Clear</span>
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Reset All Progress" subtitle="Marks all episodes as unwatched." isDestructive>
+                  <button onClick={handleResetProgress} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                      <TrashIcon className="h-4 w-4" />
+                      <span>Reset</span>
+                  </button>
+              </SettingsRow>
+              <SettingsRow title="Reset App Settings" subtitle="Revert theme and preferences to default." isDestructive>
+                  <button onClick={handleResetSettings} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
+                      <ArrowPathIcon className="h-4 w-4" />
+                      <span>Reset</span>
+                  </button>
+              </SettingsRow>
+          </SettingsCard>
+        
+          <SettingsCard title="Legal">
+              <SettingsRow 
+                  title="Terms of Service & Privacy" 
+                  subtitle="View the app's policies and copyright information."
+                  onClick={() => setActiveView('legal')}
+              >
+                  <ChevronRightIcon className="h-6 w-6 text-text-secondary" />
+              </SettingsRow>
+          </SettingsCard>
 
-            <SettingsRow title="Clear API Cache" subtitle="Frees up storage by removing temporary movie & show data.">
-                <button onClick={handleClearApiCache} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Clear</span>
-                </button>
-            </SettingsRow>
-            <SettingsRow title="Clear Watch History" subtitle="Removes all entries from your history." isDestructive>
-                <button onClick={handleClearHistory} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20">
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Clear</span>
-                </button>
-            </SettingsRow>
-            <SettingsRow title="Reset All Progress" subtitle="Marks all episodes as unwatched." isDestructive>
-                <button onClick={handleResetProgress} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20">
-                    <TrashIcon className="h-4 w-4" />
-                    <span>Reset</span>
-                </button>
-            </SettingsRow>
-            <SettingsRow title="Reset App Settings" subtitle="Revert theme and preferences to default." isDestructive>
-                <button onClick={handleResetSettings} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
-                    <ArrowPathIcon className="h-4 w-4" />
-                    <span>Reset</span>
-                </button>
-            </SettingsRow>
-        </SettingsCard>
-      
-        <SettingsCard title="Legal">
-            <SettingsRow 
-                title="Terms of Service & Privacy" 
-                subtitle="View the app's policies and copyright information."
-                onClick={() => setActiveView('legal')}
-            >
-                <ChevronRightIcon className="h-6 w-6 text-text-secondary" />
-            </SettingsRow>
-        </SettingsCard>
-
-        <SettingsCard title="Support & Feedback">
-            <FeedbackForm />
-        </SettingsCard>
-    </div>
+          <SettingsCard title="Support & Feedback">
+              <FeedbackForm />
+          </SettingsCard>
+      </div>
+    </>
   );
 };
 

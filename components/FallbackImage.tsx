@@ -3,37 +3,44 @@ import React, { useState, useEffect } from 'react';
 interface FallbackImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   srcs: (string | null | undefined)[];
   placeholder: string;
+  noPlaceholder?: boolean;
 }
 
-const FallbackImage: React.FC<FallbackImageProps> = ({ srcs, placeholder, ...props }) => {
-  // Memoize the valid (non-null, non-undefined) sources to avoid re-filtering on every render
+const FallbackImage: React.FC<FallbackImageProps> = ({ srcs, placeholder, noPlaceholder, ...props }) => {
   const validSrcs = React.useMemo(() => srcs.filter((s): s is string => !!s), [srcs]);
   
-  const [currentSrc, setCurrentSrc] = useState<string>(validSrcs[0] || placeholder);
-  
+  const [imageToRender, setImageToRender] = useState<string>(validSrcs[0] || (noPlaceholder ? 'fail' : placeholder));
+
   useEffect(() => {
-    // When the sources array changes, reset to the first valid source or placeholder
-    setCurrentSrc(validSrcs[0] || placeholder);
-  }, [validSrcs, placeholder]);
+    setImageToRender(validSrcs[0] || (noPlaceholder ? 'fail' : placeholder));
+  }, [validSrcs, placeholder, noPlaceholder]);
 
   const handleError = () => {
-    // Find the index of the current failing src
-    const currentIndex = validSrcs.indexOf(currentSrc);
+    const currentIndex = validSrcs.indexOf(imageToRender);
     const nextIndex = currentIndex + 1;
     
-    // If there's a next valid source in our list, try it
     if (nextIndex < validSrcs.length) {
-      setCurrentSrc(validSrcs[nextIndex]);
+      setImageToRender(validSrcs[nextIndex]);
     } else {
-      // If all valid sources have failed, fall back to the placeholder
-      setCurrentSrc(placeholder);
+      // No more valid srcs
+      if (noPlaceholder) {
+        setImageToRender('fail');
+      } else {
+        // Prevent loop if placeholder fails
+        if (imageToRender !== placeholder) {
+          setImageToRender(placeholder);
+        } else {
+          setImageToRender('fail');
+        }
+      }
     }
   };
+  
+  if (imageToRender === 'fail') {
+    return <div className={props.className} style={{ backgroundColor: 'var(--color-bg-secondary)' }} />;
+  }
 
-  // If the placeholder itself fails, we don't want to trigger an infinite error loop.
-  const onErrorHandler = currentSrc === placeholder ? undefined : handleError;
-
-  return <img src={currentSrc} onError={onErrorHandler} {...props} />;
+  return <img src={imageToRender} onError={handleError} {...props} />;
 };
 
 export default FallbackImage;

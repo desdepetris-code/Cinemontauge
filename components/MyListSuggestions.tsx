@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserData, TmdbMedia } from '../types';
+import { UserData, TmdbMedia, TrackedItem } from '../types';
 import { discoverMedia } from '../services/tmdbService';
 import SuggestionCard from './SuggestionCard';
 
 interface MyListSuggestionsProps {
   userData: UserData;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
-  onOpenAddToListModal: (item: TmdbMedia) => void;
+  onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
 }
 
 const MyListSuggestions: React.FC<MyListSuggestionsProps> = ({ userData, onSelectShow, onOpenAddToListModal }) => {
@@ -31,9 +31,11 @@ const MyListSuggestions: React.FC<MyListSuggestionsProps> = ({ userData, onSelec
                     discoverMedia('movie', { sortBy: 'popularity.desc' }),
                     discoverMedia('tv', { sortBy: 'popularity.desc' })
                 ]);
-                const combined = [...movies, ...tv].sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
-                const filtered = combined.filter(item => !allUserMediaIds.has(item.id));
-                setSuggestions(filtered.slice(0, 12));
+                
+                const filteredMovies = movies.filter(item => !allUserMediaIds.has(item.id)).slice(0, 6);
+                const filteredTv = tv.filter(item => !allUserMediaIds.has(item.id)).slice(0, 6);
+                
+                setSuggestions([...filteredMovies, ...filteredTv]);
             } catch (error) {
                 console.error("Failed to fetch suggestions:", error);
             } finally {

@@ -25,6 +25,14 @@ export interface TmdbMedia {
   rating?: number; // For rated items
 }
 
+export interface TmdbPerson {
+    id: number;
+    name: string;
+    profile_path: string | null;
+    known_for_department: string;
+    popularity: number;
+}
+
 export interface TrackedItem {
   id: number;
   title: string;
@@ -191,16 +199,18 @@ export interface HistoryItem {
   timestamp: string;
   seasonNumber?: number;
   episodeNumber?: number;
+  note?: string;
 }
 
 export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string }>;
-export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'favorites';
+export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'favorites';
 
-export type ProfileTab = 'overview' | 'history' | 'progress' | 'imports' | 'achievements' | 'settings' | 'seasonLog' | 'favorites' | 'lists' | 'journal';
+export type ProfileTab = 'overview' | 'history' | 'stats' | 'imports' | 'achievements' | 'settings' | 'seasonLog' | 'favorites' | 'lists' | 'journal' | 'ratings' | 'searchHistory' | 'commentHistory';
 
-export type ScreenName = 'home' | 'recommendations' | 'search' | 'stats' | 'profile' | 'history' | 'achievements';
+export type ScreenName = 'home' | 'recommendations' | 'search' | 'progress' | 'profile' | 'history' | 'achievements';
 
 export type FavoriteEpisodes = Record<number, Record<number, Record<number, boolean>>>; // showId -> seasonNum -> episodeNum -> true
+export type EpisodeRatings = Record<number, Record<number, Record<number, number>>>; // showId -> seasonNum -> episodeNum -> rating
 
 // --- Theme Types ---
 export interface Theme {
@@ -218,12 +228,14 @@ export interface Theme {
     bgPrimary: string;
     bgSecondary: string;
     bgBackdrop: string;
+    patternBgSize?: string;
+    patternBgColor?: string;
+    patternBgPosition?: string;
   };
 }
 
 // --- Achievement Types ---
 export type AchievementDifficulty = 'Easy' | 'Medium' | 'Hard';
-export type AchievementReward = 'none' | 'vipPass' | 'vipFeature';
 
 
 export interface CustomListItem {
@@ -239,19 +251,33 @@ export interface CustomList {
   description: string;
   items: CustomListItem[];
   createdAt: string;
+  isPublic?: boolean;
 }
 
-export type UserRatings = Record<number, number>; // mediaId -> rating (1-5)
+export type UserRatings = Record<number, { rating: number; date: string }>; // mediaId -> { rating, date }
+export type SearchHistoryItem = { query: string; timestamp: string };
+
+export interface Comment {
+    id: string; // uuid
+    mediaKey: string; // e.g., 'movie-123' or 'tv-456-s1-e2'
+    text: string;
+    timestamp: string;
+}
 
 export interface UserData {
     watching: TrackedItem[];
     planToWatch: TrackedItem[];
     completed: TrackedItem[];
+    onHold: TrackedItem[];
+    dropped: TrackedItem[];
     favorites: TrackedItem[];
     watchProgress: WatchProgress;
     history: HistoryItem[];
     customLists: CustomList[];
     ratings: UserRatings;
+    episodeRatings: EpisodeRatings;
+    searchHistory: SearchHistoryItem[];
+    comments: Comment[];
 }
 
 export interface CalculatedStats {
@@ -289,15 +315,18 @@ export interface CalculatedStats {
     mostActiveDay: string;
     // For achievements
     completedSeasonsCount?: number;
+    ratedItemsCount: number;
+    customListsCount: number;
+    maxItemsInCustomList: number;
+    distinctMoodsCount: number;
 }
 
 export interface Achievement {
   id: string;
   name: string;
   description: string;
+  // FIX: Add difficulty to Achievement interface to be used for sorting.
   difficulty: AchievementDifficulty;
-  reward: AchievementReward;
-  adminApprovalRequired: boolean;
   // check function returns current progress and the goal to unlock
   check: (data: UserData, stats: CalculatedStats) => { progress: number; goal: number };
 }
@@ -423,10 +452,6 @@ export interface DriveStatus {
 }
 
 // --- VIP & Season Log Types ---
-export interface VipStatus {
-  expires: number | null; // Timestamp
-}
-
 export interface SeasonLogItem {
   showId: number;
   showTitle: string;
@@ -446,4 +471,24 @@ export interface LiveWatchMediaInfo {
   seasonNumber?: number;
   episodeNumber?: number;
   episodeTitle?: string;
+}
+
+// --- Episode Tag ---
+export interface EpisodeTag {
+  text: string;
+  className: string;
+}
+
+// --- Community Search Types ---
+export interface PublicUser {
+    id: string;
+    username: string;
+    profilePictureUrl: string | null;
+}
+
+export interface PublicCustomList extends CustomList {
+    user: {
+        id: string;
+        username: string;
+    }
 }

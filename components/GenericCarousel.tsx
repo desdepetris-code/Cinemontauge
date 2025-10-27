@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { TmdbMedia, WatchStatus } from '../types';
-import { PlusIcon } from './Icons';
+import { TmdbMedia, TrackedItem } from '../types';
+import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
+import MarkAsWatchedModal from './MarkAsWatchedModal';
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
@@ -12,8 +13,13 @@ const getFullImageUrl = (path: string | null | undefined, size: string) => {
 const CarouselCard: React.FC<{
     item: TmdbMedia;
     onSelect: (id: number, media_type: 'tv' | 'movie') => void;
-    onAdd: (item: TmdbMedia, list: WatchStatus) => void;
-}> = ({ item, onSelect, onAdd }) => {
+    onAdd: (item: TmdbMedia) => void;
+    onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
+    onToggleFavoriteShow: (item: TrackedItem) => void;
+    isFavorite: boolean;
+    isCompleted: boolean;
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted }) => {
+    const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const backdropSrcs = [
         getFullImageUrl(item.backdrop_path, 'w500'),
         getFullImageUrl(item.poster_path, 'w342'),
@@ -21,32 +27,81 @@ const CarouselCard: React.FC<{
     const title = item.title || item.name;
     const handleAddClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onAdd(item, 'planToWatch');
+        onAdd(item);
+    };
+    const handleMarkWatchedClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onMarkShowAsWatched(item);
+    };
+    const handleFavoriteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const trackedItem: TrackedItem = {
+            id: item.id,
+            title: item.title || item.name || 'Untitled',
+            media_type: item.media_type,
+            poster_path: item.poster_path,
+            genre_ids: item.genre_ids,
+        };
+        onToggleFavoriteShow(trackedItem);
+    };
+    const handleCalendarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setMarkAsWatchedModalState({ isOpen: true, item: item });
+    };
+    const handleSaveWatchedDate = (data: { date: string; note: string }) => {
+        if (markAsWatchedModalState.item) {
+            onMarkShowAsWatched(markAsWatchedModalState.item, data.date);
+        }
+        setMarkAsWatchedModalState({ isOpen: false, item: null });
     };
     return (
-        <div 
-            className="w-72 flex-shrink-0 relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
-            onClick={() => onSelect(item.id, item.media_type)}
-        >
-            <div className="aspect-video">
-                <FallbackImage 
-                    srcs={backdropSrcs}
-                    placeholder={PLACEHOLDER_BACKDROP}
-                    alt={`${title} backdrop`}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+        <>
+            <MarkAsWatchedModal
+                isOpen={markAsWatchedModalState.isOpen}
+                onClose={() => setMarkAsWatchedModalState({ isOpen: false, item: null })}
+                mediaTitle={markAsWatchedModalState.item?.title || markAsWatchedModalState.item?.name || ''}
+                onSave={handleSaveWatchedDate}
+            />
+            <div className="w-72 flex-shrink-0">
+                <div 
+                    className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
+                    onClick={() => onSelect(item.id, item.media_type)}
+                >
+                    <div className="aspect-video">
+                        <FallbackImage 
+                            srcs={backdropSrcs}
+                            placeholder={PLACEHOLDER_BACKDROP}
+                            noPlaceholder={true}
+                            alt={`${title} backdrop`}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                         <h3 className="text-white font-bold text-md truncate">{title}</h3>
+                    </div>
+                    {isCompleted && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white pointer-events-none">
+                            <CheckCircleIcon className="w-10 h-10" />
+                            <span className="font-bold mt-1">Watched</span>
+                        </div>
+                    )}
+                </div>
+                <div className="w-full mt-2 grid grid-cols-4 gap-1.5">
+                    <button onClick={handleFavoriteClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-colors ${isFavorite ? 'bg-primary-accent/20 text-primary-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Favorite">
+                        <HeartIcon filled={isFavorite} className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Mark as Watched">
+                        <CheckCircleIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Set Watched Date">
+                        <CalendarIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
+                        <PlusIcon className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
-                 <h3 className="text-white font-bold text-md truncate">{title}</h3>
-            </div>
-             <button
-                onClick={handleAddClick}
-                className="absolute top-2 right-2 p-1.5 bg-backdrop rounded-full text-white opacity-0 group-hover:opacity-100 hover:bg-primary-accent transition-all"
-                aria-label={`Add ${title} to Plan to Watch`}
-            >
-                <PlusIcon className="w-5 h-5" />
-            </button>
-        </div>
+        </>
     );
 };
 
@@ -54,10 +109,14 @@ interface GenericCarouselProps {
   title: string;
   fetcher: () => Promise<TmdbMedia[]>;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
-  onAddItemToList: (item: TmdbMedia, list: WatchStatus) => void;
+  onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
+  onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
+  onToggleFavoriteShow: (item: TrackedItem) => void;
+  favorites: TrackedItem[];
+  completed: TrackedItem[];
 }
 
-const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSelectShow, onAddItemToList }) => {
+const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -82,8 +141,9 @@ const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSel
                 <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="w-72 h-[162px] flex-shrink-0">
-                             <div className="w-full h-full bg-bg-secondary rounded-lg"></div>
+                        <div key={i} className="w-72 flex-shrink-0">
+                             <div className="aspect-video bg-bg-secondary rounded-lg"></div>
+                             <div className="h-9 bg-bg-secondary rounded-md mt-2"></div>
                         </div>
                     ))}
                 </div>
@@ -99,14 +159,22 @@ const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSel
         <div className="mb-8">
             <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
             <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4">
-                {media.map(item => (
-                    <CarouselCard 
-                        key={`${item.id}-${item.media_type}`}
-                        item={item}
-                        onSelect={onSelectShow}
-                        onAdd={onAddItemToList}
-                    />
-                ))}
+                {media.map(item => {
+                    const isFavorite = favorites.some(fav => fav.id === item.id);
+                    const isCompleted = completed.some(c => c.id === item.id);
+                    return (
+                        <CarouselCard 
+                            key={`${item.id}-${item.media_type}`}
+                            item={item}
+                            onSelect={onSelectShow}
+                            onAdd={onOpenAddToListModal}
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onToggleFavoriteShow={onToggleFavoriteShow}
+                            isFavorite={isFavorite}
+                            isCompleted={isCompleted}
+                        />
+                    );
+                })}
                 <div className="w-4 flex-shrink-0"></div>
             </div>
         </div>

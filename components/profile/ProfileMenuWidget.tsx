@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ProfileTab } from '../../types';
 import { BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon } from '../Icons';
@@ -8,7 +7,7 @@ interface ProfileMenuWidgetProps {
 }
 
 const menuItems: { id: ProfileTab, label: string, icon: React.ReactNode }[] = [
-    { id: 'progress', label: 'Full Progress', icon: <BookOpenIcon className="w-5 h-5" /> },
+    { id: 'journal', label: 'Journal', icon: <BookOpenIcon className="w-5 h-5" /> },
     { id: 'seasonLog', label: 'Season Log', icon: <CollectionIcon className="w-5 h-5" /> },
     { id: 'history', label: 'Full History', icon: <ClockIcon className="w-5 h-5" /> },
     { id: 'achievements', label: 'All Achievements', icon: <BadgeIcon className="w-5 h-5" /> },

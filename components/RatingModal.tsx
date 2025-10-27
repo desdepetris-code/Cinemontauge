@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StarIcon } from './Icons';
+import { StarIcon, XMarkIcon } from './Icons';
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -43,8 +43,11 @@ const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSave, curr
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-card-gradient rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
+            <XMarkIcon className="w-5 h-5" />
+        </button>
         <h2 className="text-2xl font-bold text-text-primary mb-2 text-center">Rate this!</h2>
         <p className="text-text-secondary mb-6 text-center">{mediaTitle}</p>
         

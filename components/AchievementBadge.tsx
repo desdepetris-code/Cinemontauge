@@ -1,15 +1,15 @@
 
+
 import React from 'react';
 import { UserAchievementStatus } from '../types';
 import { BadgeIcon } from './Icons';
 
 interface AchievementBadgeProps {
   achievement: UserAchievementStatus;
-  isPending: boolean;
 }
 
-const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement, isPending }) => {
-  const { name, description, unlocked, progress, goal, reward, adminApprovalRequired } = achievement;
+const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
+  const { name, description, unlocked, progress, goal } = achievement;
   
   const progressPercent = goal > 0 ? Math.min((progress / goal) * 100, 100) : 0;
 
@@ -25,15 +25,7 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement, isPend
       <div className="mt-4">
         {unlocked ? (
           <div className="text-center">
-            {reward !== 'none' && adminApprovalRequired && isPending && (
-                <p className="text-xs font-semibold text-yellow-500">Awaiting Admin Approval</p>
-            )}
-            {reward !== 'none' && (!adminApprovalRequired || !isPending) && (
-                 <p className="text-xs font-semibold text-primary-accent">Reward: {reward === 'vipPass' ? 'VIP Pass' : 'VIP Feature'}</p>
-            )}
-            {reward === 'none' && (
-                <p className="text-xs font-semibold text-green-500">Unlocked!</p>
-            )}
+            <p className="text-xs font-semibold text-green-500">Unlocked!</p>
           </div>
         ) : (
           <div>

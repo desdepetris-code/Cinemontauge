@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry } from '../types';
+import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
 import { LiveWatchMediaInfo } from '../types';
-import MoodSelectorModal from './MoodSelectorModal';
 import { formatRuntime } from '../utils/formatUtils';
+import { getEpisodeTag } from '../utils/episodeTagUtils';
+import MarkAsWatchedModal from './MarkAsWatchedModal';
+import CommentModal from './CommentModal';
+
 
 interface EpisodeDetailModalProps {
   isOpen: boolean;
@@ -22,14 +25,51 @@ interface EpisodeDetailModalProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onSaveJournal: (showId: number, seasonNumber: number, episodeNumber: number, entry: JournalEntry) => void;
   watchProgress: WatchProgress;
+  onNext: () => void;
+  onPrevious: () => void;
+  onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string) => void;
+  onRate: () => void;
+  episodeRating: number;
+  onSaveComment: (mediaKey: string, text: string) => void;
+  comments: Comment[];
 }
 
 const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
-  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress
+  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onSaveComment, comments,
 }) => {
-  const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const [isLogWatchModalOpen, setIsLogWatchModalOpen] = useState(false);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const minSwipeDistance = 50;
 
   if (!isOpen || !episode) return null;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+      setTouchEnd(0);
+      setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+      setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+      if (!touchStart || !touchEnd) return;
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > minSwipeDistance;
+      const isRightSwipe = distance < -minSwipeDistance;
+
+      if (isLeftSwipe) onNext();
+      else if (isRightSwipe) onPrevious();
+      
+      setTouchStart(0);
+      setTouchEnd(0);
+  };
+  
+  const currentIndex = seasonDetails.episodes.findIndex(e => e.id === episode.id);
+  const isFirst = currentIndex <= 0;
+  const isLast = currentIndex >= seasonDetails.episodes.length - 1;
 
   const today = new Date().toISOString().split('T')[0];
   const isFuture = episode.air_date && episode.air_date > today;
@@ -49,25 +89,41 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
     onClose();
   };
   
-  const handleSaveMood = (mood: string) => {
+  const handleSaveLogWatch = (data: { date: string, note: string }) => {
     if (!episode) return;
-    const existingJournal = watchProgress[showDetails.id]?.[episode.season_number]?.[episode.episode_number]?.journal;
-    const newEntry: JournalEntry = {
-        text: existingJournal?.text || '',
-        mood: mood,
-        timestamp: new Date().toISOString()
+    const trackedItem: TrackedItem = {
+        id: showDetails.id,
+        title: showDetails.name || 'Untitled',
+        media_type: 'tv',
+        poster_path: showDetails.poster_path,
+        genre_ids: showDetails.genres.map(g => g.id),
     };
-    onSaveJournal(showDetails.id, episode.season_number, episode.episode_number, newEntry);
-    setIsMoodModalOpen(false);
+    onAddWatchHistory(trackedItem, episode.season_number, episode.episode_number, data.date, data.note);
   };
 
-  const currentMood = watchProgress[showDetails.id]?.[episode.season_number]?.[episode.episode_number]?.journal?.mood;
+  const season = showDetails.seasons?.find(s => s.season_number === episode.season_number);
+  const tag: EpisodeTag | null = getEpisodeTag(episode, season, showDetails, seasonDetails);
+  
+  const episodeMediaKey = `tv-${showDetails.id}-s${episode.season_number}-e${episode.episode_number}`;
+  const existingComment = comments.find(c => c.mediaKey === episodeMediaKey);
 
   return (
     <>
-      <MoodSelectorModal isOpen={isMoodModalOpen} onClose={() => setIsMoodModalOpen(false)} onSelectMood={handleSaveMood} currentMood={currentMood} />
+      <MarkAsWatchedModal
+        isOpen={isLogWatchModalOpen}
+        onClose={() => setIsLogWatchModalOpen(false)}
+        mediaTitle={`S${episode.season_number} E${episode.episode_number}: ${episode.name}`}
+        onSave={handleSaveLogWatch}
+      />
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        mediaTitle={`S${episode.season_number} E${episode.episode_number}: ${episode.name}`}
+        initialText={existingComment?.text}
+        onSave={(text) => onSaveComment(episodeMediaKey, text)}
+      />
       <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-card-gradient rounded-lg shadow-xl w-full max-w-2xl h-[90vh] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-2xl h-[90vh] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
           <div className="relative h-48 flex-shrink-0">
               {episode.still_path ? (
                   <img 
@@ -79,36 +135,44 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   <div className="w-full h-full bg-bg-secondary rounded-t-lg" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+              {tag && (
+                <div className={`absolute top-4 right-16 text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm ${tag.className}`}>
+                    {tag.text}
+                </div>
+              )}
               <button onClick={onClose} className="absolute top-4 left-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-10"><ChevronLeftIcon className="h-6 w-6" /></button>
+              <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-10"><XMarkIcon className="h-6 w-6" /></button>
               <div className="absolute bottom-0 left-0 p-4 flex items-end space-x-3">
                   <img src={getImageUrl(showDetails.poster_path, 'w92')} alt="Show Poster" className="w-12 h-18 object-cover rounded-md border-2 border-white/20"/>
                   <img src={getImageUrl(seasonDetails.poster_path, 'w92')} alt="Season Poster" className="w-12 h-18 object-cover rounded-md border-2 border-white/20"/>
               </div>
           </div>
-
-          <div className="p-6 flex-grow overflow-y-auto space-y-4">
-              <div>
-                  <p className="text-sm text-text-secondary">{showDetails.name} &bull; S{episode.season_number} E{episode.episode_number}</p>
-                  <h2 className="text-2xl font-bold text-text-primary">{episode.name}</h2>
-                   <div className="flex items-center space-x-2 text-xs text-text-secondary/80 mt-1">
-                        {episode.air_date && <span>Aired: {new Date(episode.air_date + 'T00:00:00').toLocaleDateString()}</span>}
-                        {episode.runtime && episode.runtime > 0 && episode.air_date && <span>&bull;</span>}
-                        {episode.runtime && episode.runtime > 0 && <span>{formatRuntime(episode.runtime)}</span>}
-                    </div>
+            <div className="flex-grow relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+              {!isFirst && (
+                  <button onClick={onPrevious} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-backdrop rounded-full text-text-primary z-20 hover:bg-bg-secondary transition-colors">
+                      <ChevronLeftIcon className="h-6 w-6" />
+                  </button>
+              )}
+              <div className="absolute inset-0 overflow-y-auto p-6 space-y-4">
+                  <div>
+                      <p className="text-sm font-semibold text-text-secondary">{showDetails.name} &bull; S{episode.season_number} E{episode.episode_number}</p>
+                      <h2 className="text-2xl font-bold text-text-primary">{episode.name}</h2>
+                      <div className="flex items-center space-x-2 text-xs text-text-secondary/80 mt-1">
+                          {episode.air_date && <span>Aired: {new Date(episode.air_date + 'T00:00:00').toLocaleDateString()}</span>}
+                          {episode.runtime && episode.runtime > 0 && episode.air_date && <span>&bull;</span>}
+                          {episode.runtime && episode.runtime > 0 && <span>{formatRuntime(episode.runtime)}</span>}
+                      </div>
+                  </div>
+                  <p className="text-text-secondary text-sm">{episode.overview || "No description available."}</p>
               </div>
-              <p className="text-text-secondary text-sm">{episode.overview || "No description available."}</p>
+              {!isLast && (
+                  <button onClick={onNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-backdrop rounded-full text-text-primary z-20 hover:bg-bg-secondary transition-colors">
+                      <ChevronRightIcon className="h-6 w-6" />
+                  </button>
+              )}
           </div>
-
           <div className="p-4 border-t border-bg-secondary/50 flex flex-wrap justify-center gap-2">
               <button
-                  disabled={isFuture}
-                  onClick={handleLiveWatch}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-accent-gradient text-on-accent ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:opacity-90 transition-opacity'}`}
-              >
-                  <PlayCircleIcon className="w-5 h-5"/>
-                  <span>Live Watch</span>
-              </button>
-            <button
                   disabled={isFuture}
                   onClick={onToggleWatched}
                   className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${isWatched ? 'bg-green-500/20 text-green-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
@@ -118,11 +182,19 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               </button>
               <button
                   disabled={isFuture}
-                  onClick={() => setIsMoodModalOpen(true)}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${currentMood ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  onClick={handleLiveWatch}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
-                  <span className="text-xl">{currentMood || '😶'}</span>
-                  <span>Mood</span>
+                  <PlayCircleIcon className="w-5 h-5"/>
+                  <span>Live Watch</span>
+              </button>
+              <button
+                  disabled={isFuture}
+                  onClick={() => setIsLogWatchModalOpen(true)}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+              >
+                  <CalendarIcon className="w-5 h-5"/>
+                  <span>Log Watch</span>
               </button>
               <button
                   disabled={isFuture}
@@ -137,8 +209,24 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   onClick={onToggleFavorite}
                   className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${isFavorited ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
-                  <StarIcon filled={isFavorited} className="w-5 h-5"/>
+                  <HeartIcon filled={isFavorited} className="w-5 h-5"/>
                   <span>{isFavorited ? 'Favorited' : 'Favorite'}</span>
+              </button>
+               <button
+                  disabled={isFuture}
+                  onClick={onRate}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${episodeRating > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+              >
+                  <StarIcon className="w-5 h-5"/>
+                  <span>{episodeRating > 0 ? `Rated ${episodeRating}/5` : 'Rate'}</span>
+              </button>
+              <button
+                  disabled={isFuture}
+                  onClick={() => setIsCommentModalOpen(true)}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${existingComment ? 'bg-blue-500/20 text-blue-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+              >
+                  <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
+                  <span>{existingComment ? 'Edit Comment' : 'Comment'}</span>
               </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrackedItem } from '../types';
-import { getImageUrl } from '../utils/imageUtils';
+import FallbackImage from './FallbackImage';
+import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER } from '../constants';
 
 interface CompactShowCardProps {
   item: TrackedItem;
@@ -8,7 +9,7 @@ interface CompactShowCardProps {
 }
 
 const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => {
-    const posterSrc = getImageUrl(item.poster_path, 'w342');
+    const posterSrcs = [item.poster_path ? `${TMDB_IMAGE_BASE_URL}w342${item.poster_path}` : null];
     const title = item.title;
 
     return (
@@ -17,8 +18,10 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
             className="cursor-pointer group transform hover:-translate-y-1 transition-transform duration-300"
         >
             <div className="relative rounded-md overflow-hidden shadow-lg">
-                <img
-                    src={posterSrc}
+                <FallbackImage
+                    srcs={posterSrcs}
+                    placeholder={PLACEHOLDER_POSTER}
+                    noPlaceholder={true}
                     alt={title}
                     className="w-full aspect-[2/3] object-cover bg-bg-secondary"
                     loading="lazy"

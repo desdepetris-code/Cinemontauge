@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem } from '../types';
 import { getMediaDetails, getSeasonDetails, clearMediaCache } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon } from '../components/Icons';
+import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon } from '../components/Icons';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 // --- TYPE DEFINITIONS ---
@@ -29,20 +29,6 @@ const QuickStat: React.FC<{ label: string; value: string | number; icon: React.R
     </div>
 );
 
-const RecentEpisodeItem: React.FC<{ item: HistoryItem, onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void }> = ({ item, onSelectShow }) => (
-    <div 
-        className="flex items-center p-2 bg-bg-secondary/50 rounded-md cursor-pointer hover:bg-bg-secondary"
-        onClick={() => onSelectShow(item.id, 'tv')}
-    >
-        <img src={getImageUrl(item.poster_path, 'w92')} alt={item.title} className="w-10 h-15 rounded-md flex-shrink-0"/>
-        <div className="ml-3 min-w-0">
-            <p className="font-semibold text-sm truncate">{item.title}</p>
-            <p className="text-xs text-text-secondary">Watched S{item.seasonNumber} E{item.episodeNumber}</p>
-            <p className="text-xs text-text-secondary/70">{new Date(item.timestamp).toLocaleDateString()}</p>
-        </div>
-    </div>
-);
-
 const ProgressCard: React.FC<{
     item: EnrichedShowData;
     onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number) => void;
@@ -51,9 +37,9 @@ const ProgressCard: React.FC<{
     isEpisodeFavorited: boolean;
 }> = ({ item, onToggleEpisode, onToggleFavoriteEpisode, onSelectShow, isEpisodeFavorited }) => {
     
-    if (!item.nextEpisodeInfo) return null; // Should already be filtered out, but for safety
+    if (!item.nextEpisodeInfo) return null;
 
-    const { details, nextEpisodeInfo, watchedCount, totalEpisodes } = item;
+    const { nextEpisodeInfo, watchedCount, totalEpisodes } = item;
     const progressPercent = totalEpisodes > 0 ? (watchedCount / totalEpisodes) * 100 : 0;
     
     const handleMarkWatched = (e: React.MouseEvent) => {
@@ -66,43 +52,56 @@ const ProgressCard: React.FC<{
         onToggleFavoriteEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number);
     };
 
+    const showPosterUrl = getImageUrl(item.poster_path, 'w154');
+    const episodeStillUrl = getImageUrl(item.nextEpisodeInfo.still_path, 'w500', 'still');
+
     return (
-        <div className="bg-card-gradient rounded-lg shadow-md p-4 flex flex-col space-y-3">
-            <div className="flex space-x-4 cursor-pointer" onClick={() => onSelectShow(item.id, 'tv')}>
-                <img src={getImageUrl(item.poster_path, 'w342')} alt={item.title} className="w-20 h-30 object-cover rounded-md"/>
-                <div className="flex-grow min-w-0">
-                    <h3 className="font-bold text-text-primary truncate">{item.title}</h3>
-                    <p className="text-sm text-text-secondary truncate">
-                        S{nextEpisodeInfo.season_number} E{nextEpisodeInfo.episode_number}: {nextEpisodeInfo.name}
-                    </p>
-                    {nextEpisodeInfo.air_date && <p className="text-xs text-text-secondary/70 mt-1">Airs: {new Date(nextEpisodeInfo.air_date).toLocaleDateString()}</p>}
-                </div>
-            </div>
-            
-            <div>
-                <div className="flex justify-between text-xs text-text-secondary">
-                    <span>Overall Progress</span>
-                    <span>{watchedCount} / {totalEpisodes}</span>
-                </div>
-                <div className="w-full bg-bg-secondary rounded-full h-1.5 mt-1">
-                    <div className="bg-accent-gradient h-1.5 rounded-full" style={{ width: `${progressPercent}%` }}></div>
-                </div>
+        <div className="bg-card-gradient rounded-lg shadow-md flex overflow-hidden h-48">
+            {/* Left side: Small card (poster) */}
+            <div className="w-32 flex-shrink-0 cursor-pointer" onClick={() => onSelectShow(item.id, 'tv')}>
+                <img src={showPosterUrl} alt={item.title} className="w-full h-full object-cover" />
             </div>
 
-            <div className="flex items-center space-x-2">
-                <button
+            {/* Right side: Episode image and info */}
+            <div className="flex-grow relative group cursor-pointer" onClick={() => onSelectShow(item.id, 'tv')}>
+                <img src={episodeStillUrl} alt={item.nextEpisodeInfo.name} className="w-full h-full object-cover" />
+                
+                {/* Overlay for play button */}
+                <div 
                     onClick={handleMarkWatched}
-                    className="flex-grow py-2 px-3 text-sm font-semibold rounded-md bg-accent-gradient text-white hover:opacity-90 transition-opacity"
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 >
-                    Mark Watched
-                </button>
+                    <div className="p-3 bg-backdrop rounded-full">
+                        <PlayIcon className="w-6 h-6 text-white"/>
+                    </div>
+                </div>
+                
+                {/* Favorite Button */}
                 <button 
                     onClick={handleToggleFav}
-                    className={`p-2 rounded-md transition-colors ${isEpisodeFavorited ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-secondary hover:text-yellow-400'}`}
-                    aria-label="Favorite episode"
+                    className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${isEpisodeFavorited ? 'text-yellow-400 bg-black/50' : 'text-white/80 bg-black/50 hover:text-yellow-400'}`}
+                    aria-label="Toggle Favorite"
                 >
                     <StarIcon filled={isEpisodeFavorited} className="w-5 h-5"/>
                 </button>
+
+                {/* Info overlay at the bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+                    <h3 className="font-bold text-white truncate">{item.title}</h3>
+                    <p className="text-sm text-white/80 truncate">
+                        S{item.nextEpisodeInfo.season_number} E{item.nextEpisodeInfo.episode_number}: {item.nextEpisodeInfo.name}
+                    </p>
+                    {/* Progress Bar */}
+                    <div className="mt-2">
+                        <div className="flex justify-between text-xs text-white/80">
+                            <span>Overall Progress</span>
+                            <span>{item.watchedCount} / {item.totalEpisodes} ({Math.round(progressPercent)}%)</span>
+                        </div>
+                        <div className="w-full bg-white/20 rounded-full h-1 mt-1">
+                            <div className="bg-accent-gradient h-1 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -111,6 +110,12 @@ const ProgressCard: React.FC<{
 
 // --- MAIN SCREEN COMPONENT ---
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+}
+
 interface ProgressScreenProps {
   userData: UserData;
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number) => void;
@@ -118,10 +123,12 @@ interface ProgressScreenProps {
   favoriteEpisodes: FavoriteEpisodes;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
+  currentUser: User | null;
+  onAuthClick: () => void;
 }
 
 const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
-    const { userData, favoriteEpisodes } = props;
+    const { userData, favoriteEpisodes, currentUser, onAuthClick } = props;
     const { watching, watchProgress, history } = userData;
     
     const [sortOption, setSortOption] = useState<SortOption>('lastWatched');
@@ -262,10 +269,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         };
     }, [enrichedShows]);
     
-    const recentlyWatchedTv = useMemo(() => {
-        return history.filter(h => h.media_type === 'tv').slice(0, 5);
-    }, [history]);
-
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold text-text-primary">Progress</h1>
@@ -302,10 +305,10 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
 
                 {isLoading ? (
                     <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => <div key={i} className="bg-card-gradient rounded-lg shadow-md p-4 animate-pulse h-40"></div>)}
+                        {[...Array(3)].map((_, i) => <div key={i} className="bg-card-gradient rounded-lg shadow-md p-4 animate-pulse h-48"></div>)}
                     </div>
                 ) : sortedShows.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         {sortedShows.map(item => {
                             const nextEp = item.nextEpisodeInfo;
                             const isFav = nextEp ? (favoriteEpisodes[item.id]?.[nextEp.season_number]?.[nextEp.episode_number] || false) : false;
@@ -314,20 +317,28 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     </div>
                 ) : (
                     <div className="text-center py-16 bg-bg-secondary/30 rounded-lg">
-                        <h2 className="text-xl font-bold text-text-primary">All Caught Up!</h2>
-                        <p className="mt-2 text-text-secondary max-w-sm mx-auto">Add a new show to your "Watching" list to track it here.</p>
+                        {currentUser ? (
+                             <>
+                                <h2 className="text-xl font-bold text-text-primary">All Caught Up!</h2>
+                                <p className="mt-2 text-text-secondary max-w-sm mx-auto">Add a new show to your "Watching" list to track it here.</p>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-xl font-bold text-text-primary">Welcome to Your Progress Page!</h2>
+                                <p className="mt-2 text-text-secondary max-w-sm mx-auto">
+                                    Your watched episodes will be tracked here. Your data is currently saved on this device.
+                                </p>
+                                <button
+                                    onClick={onAuthClick}
+                                    className="mt-4 px-4 py-2 text-sm font-semibold rounded-full bg-accent-gradient text-on-accent hover:opacity-90 transition-opacity"
+                                >
+                                    Log In or Sign Up to Sync
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </section>
-            
-            {recentlyWatchedTv.length > 0 && (
-                <section>
-                    <h2 className="text-xl font-bold text-text-primary mb-4">Recently Finished</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {recentlyWatchedTv.map(item => <RecentEpisodeItem key={item.timestamp} item={item} onSelectShow={props.onSelectShow} />)}
-                    </div>
-                </section>
-            )}
         </div>
     );
 };

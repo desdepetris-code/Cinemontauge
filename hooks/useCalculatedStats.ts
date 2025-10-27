@@ -3,7 +3,7 @@ import { UserData, CalculatedStats, TrackedItem, EpisodeProgress } from '../type
 
 export function useCalculatedStats(data: UserData): CalculatedStats {
   return useMemo(() => {
-    // FIX: Filter out history items with invalid timestamps to prevent crashes.
+    // Filter out history items with invalid timestamps to prevent crashes.
     const validHistory = data.history.filter(h => h.timestamp && !isNaN(new Date(h.timestamp).getTime()));
 
     // Total episodes watched
@@ -193,6 +193,12 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
         
         monthlyActivityData.push({ month: label, count });
     }
+    
+    // --- New stats for achievements ---
+    const ratedItemsCount = Object.keys(data.ratings).length;
+    const customListsCount = data.customLists.length;
+    const maxItemsInCustomList = data.customLists.length > 0 ? Math.max(0, ...data.customLists.map(l => l.items.length)) : 0;
+    const distinctMoodsCount = Object.keys(moodDistribution).length;
 
     const extendedStats: CalculatedStats = {
       totalEpisodesWatched,
@@ -227,6 +233,10 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
       moviesWatchedThisYear,
       hoursWatchedThisYear: Math.round(hoursWatchedThisYear),
       mostActiveDay,
+      ratedItemsCount,
+      customListsCount,
+      maxItemsInCustomList,
+      distinctMoodsCount,
     };
 
     return extendedStats;

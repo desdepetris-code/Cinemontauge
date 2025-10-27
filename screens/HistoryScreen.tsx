@@ -1,93 +1,179 @@
-
-
-import React, { useState, useMemo } from 'react';
-import { HistoryItem } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
-import { TrashIcon, ChevronDownIcon } from '../components/Icons';
+import { TrashIcon, ChevronDownIcon, StarIcon } from '../components/Icons';
+import { getMediaDetails } from '../services/tmdbService';
+import ListGrid from '../components/ListGrid';
 
-interface HistoryScreenProps {
+type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments';
+
+// --- WATCH HISTORY TAB ---
+
+const WatchHistory: React.FC<{
   history: HistoryItem[];
   onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
   onDeleteHistoryItem: (logId: string) => void;
+}> = ({ history, onSelectShow, onDeleteHistoryItem }) => {
+  type HistoryFilter = 'all' | 'tv' | 'movie';
+  type DateFilter = 'all' | 'today' | 'week' | 'month';
+
+  const [filter, setFilter] = useState<HistoryFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+
+  const filteredHistory = useMemo(() => {
+    let items = history;
+    if (filter !== 'all') items = items.filter(item => item.media_type === filter);
+
+    const now = new Date();
+    if (dateFilter !== 'all') {
+      items = items.filter(item => {
+        const itemDate = new Date(item.timestamp);
+        if (dateFilter === 'today') return itemDate.toDateString() === now.toDateString();
+        if (dateFilter === 'week') {
+          const oneWeekAgo = new Date(); oneWeekAgo.setDate(now.getDate() - 7);
+          return itemDate >= oneWeekAgo;
+        }
+        if (dateFilter === 'month') {
+          const oneMonthAgo = new Date(); oneMonthAgo.setMonth(now.getMonth() - 1);
+          return itemDate >= oneMonthAgo;
+        }
+        return true;
+      });
+    }
+    return items;
+  }, [history, filter, dateFilter]);
+
+  const groupedHistory = useMemo(() => {
+    const groups: Record<string, HistoryItem[]> = {};
+    filteredHistory.forEach(item => {
+      const groupKey = new Date(item.timestamp).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(item);
+    });
+    return groups;
+  }, [filteredHistory]);
+  
+  const groupOrder = Object.keys(groupedHistory).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+  return (
+    <div>
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+        <div className="relative">
+          <select value={filter} onChange={(e) => setFilter(e.target.value as HistoryFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
+            <option value="all">All Types</option>
+            <option value="tv">TV Shows</option>
+            <option value="movie">Movies</option>
+          </select>
+          <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+        </div>
+        <div className="relative">
+          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+          </select>
+          <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+        </div>
+      </div>
+      <section className="space-y-6">
+        {groupOrder.length > 0 ? groupOrder.map(groupTitle => (
+          <div key={groupTitle}>
+            <h3 className="font-bold text-lg text-text-primary mb-3">{groupTitle}</h3>
+            <div className="space-y-2">
+              {groupedHistory[groupTitle].map(item => (
+                <div key={item.logId} className="bg-card-gradient p-3 rounded-lg flex items-center space-x-4">
+                  <img src={getImageUrl(item.poster_path, 'w92')} alt={item.title} className="w-12 h-18 rounded-md cursor-pointer flex-shrink-0" onClick={() => onSelectShow(item.id, item.media_type)} />
+                  <div className="flex-grow min-w-0" onClick={() => onSelectShow(item.id, item.media_type)}>
+                    <p className="font-semibold text-text-primary truncate cursor-pointer">{item.title}</p>
+                    <p className="text-sm text-text-secondary cursor-pointer">{item.media_type === 'tv' ? `S${item.seasonNumber} E${item.episodeNumber}` : 'Movie'}</p>
+                    <p className="text-xs text-text-secondary/80 mt-1">{new Date(item.timestamp).toLocaleTimeString()}</p>
+                    {item.note && <p className="text-xs text-text-secondary/80 mt-1 italic truncate" title={item.note}>Note: {item.note}</p>}
+                  </div>
+                  <button onClick={() => onDeleteHistoryItem(item.logId)} className="ml-auto p-2 rounded-full text-text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0" aria-label="Delete history item"><TrashIcon className="w-5 h-5" /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )) : <div className="text-center py-20 bg-bg-secondary/30 rounded-lg"><h2 className="text-xl font-bold">No History Found</h2><p className="mt-2 text-text-secondary">Your watch history for the selected filters is empty.</p></div>}
+      </section>
+    </div>
+  );
+};
+
+// --- SEARCH HISTORY TAB ---
+
+const SearchHistory: React.FC<{
+  searchHistory: SearchHistoryItem[];
+  onDelete: (timestamp: string) => void;
+  onClear: () => void;
+}> = ({ searchHistory, onDelete, onClear }) => (
+  <div>
+    {searchHistory.length > 0 && <button onClick={onClear} className="mb-4 text-sm font-semibold text-red-500 hover:underline">Clear All Searches</button>}
+    {searchHistory.length > 0 ? (
+      <ul className="divide-y divide-bg-secondary/50">
+        {searchHistory.map(item => (
+          <li key={item.timestamp} className="py-3 flex items-center justify-between">
+            <div>
+              <p className="text-text-primary">{item.query}</p>
+              <p className="text-xs text-text-secondary">{new Date(item.timestamp).toLocaleString()}</p>
+            </div>
+            <button onClick={() => onDelete(item.timestamp)} className="p-2 rounded-full text-text-secondary hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+          </li>
+        ))}
+      </ul>
+    ) : <div className="text-center py-20 bg-bg-secondary/30 rounded-lg"><h2 className="text-xl font-bold">No Search History</h2><p className="mt-2 text-text-secondary">Your recent searches will appear here.</p></div>}
+  </div>
+);
+
+// --- MAIN SCREEN ---
+interface HistoryScreenProps {
+  userData: UserData;
+  onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onDeleteHistoryItem: (logId: string) => void;
+  onDeleteSearchHistoryItem: (timestamp: string) => void;
+  onClearSearchHistory: () => void;
+  genres: Record<number, string>;
 }
 
-type HistoryFilter = 'all' | 'tv' | 'movie';
+const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
+  const [activeTab, setActiveTab] = useState<HistoryTab>('watch');
 
-const HistoryScreen: React.FC<HistoryScreenProps> = ({ history, onSelectShow, onDeleteHistoryItem }) => {
-    const [filter, setFilter] = useState<HistoryFilter>('all');
+  const tabs: { id: HistoryTab, label: string }[] = [
+    { id: 'watch', label: 'Watch' },
+    { id: 'search', label: 'Search' },
+    { id: 'ratings', label: 'Ratings' },
+    { id: 'favorites', label: 'Favorites' },
+    { id: 'comments', label: 'Comments' },
+  ];
 
-    const filteredHistory = useMemo(() => {
-        if (filter === 'all') {
-            return history;
-        }
-        return history.filter(item => item.media_type === filter);
-    }, [history, filter]);
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'watch': return <WatchHistory history={props.userData.history} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} />;
+      case 'search': return <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} />;
+      case 'ratings': return <div className="text-center py-10"><p className="text-text-secondary">Ratings history coming soon!</p></div>;
+      case 'favorites': return <ListGrid items={props.userData.favorites} onSelect={props.onSelectShow} />;
+      case 'comments': return <div className="text-center py-10"><p className="text-text-secondary">Comments history coming soon!</p></div>;
+      default: return null;
+    }
+  };
 
-    const formatTimestamp = (timestamp: string) => {
-        return new Date(timestamp).toLocaleString(undefined, {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-        });
-    };
-
-    return (
-        <div className="animate-fade-in">
-            <div className="mb-6 relative max-w-xs">
-                <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value as HistoryFilter)}
-                    className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                >
-                    <option value="all">All History</option>
-                    <option value="tv">TV Shows</option>
-                    <option value="movie">Movies</option>
-                </select>
-                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
-            </div>
-      
-            <section>
-                <div className="bg-card-gradient rounded-lg shadow-md">
-                    {filteredHistory.length > 0 ? (
-                        <div className="divide-y divide-bg-secondary">
-                            {filteredHistory.map(item => (
-                                <div key={item.logId} className="flex items-center p-3 hover:bg-bg-secondary/50 rounded-lg">
-                                    <img
-                                        onClick={() => onSelectShow(item.id, item.media_type)}
-                                        src={getImageUrl(item.poster_path, 'w92')}
-                                        alt={item.title}
-                                        className="w-10 h-15 rounded-md cursor-pointer"
-                                    />
-                                    <div className="ml-4 flex-grow cursor-pointer min-w-0" onClick={() => onSelectShow(item.id, item.media_type)}>
-                                        <p className="font-semibold text-text-primary truncate">{item.title}</p>
-                                        <p className="text-sm text-text-secondary">
-                                            {item.media_type === 'tv' ? `S${item.seasonNumber} E${item.episodeNumber}` : 'Movie'}
-                                        </p>
-                                    </div>
-                                    <div className="text-right flex-shrink-0 ml-4">
-                                        <p className="text-sm text-text-secondary">{formatTimestamp(item.timestamp).split(', ')[0]}</p>
-                                        <p className="text-xs text-text-secondary/80">{formatTimestamp(item.timestamp).split(', ')[1]}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => onDeleteHistoryItem(item.logId)}
-                                        className="ml-4 p-2 rounded-full text-text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                        aria-label="Delete history item"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="p-4 text-text-secondary text-center">No watch history for this filter.</p>
-                    )}
-                </div>
-            </section>
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6 border-b border-bg-secondary/50">
+        <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${activeTab === tab.id ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary hover:brightness-125'}`}
+            >{tab.label}</button>
+          ))}
         </div>
-    );
+      </div>
+      {renderContent()}
+    </div>
+  );
 };
 
 export default HistoryScreen;
