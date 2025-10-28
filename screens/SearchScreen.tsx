@@ -108,6 +108,7 @@ const ActionCard: React.FC<{
 interface SearchScreenProps {
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   onSelectPerson: (personId: number) => void;
+  onSelectUser: (userId: string) => void;
   searchHistory: SearchHistoryItem[];
   onUpdateSearchHistory: (query: string) => void;
   query: string;
@@ -119,12 +120,13 @@ interface SearchScreenProps {
   genres: Record<number, string>;
   userData: UserData;
   currentUser: { id: string, username: string, email: string } | null;
+  onToggleLikeList: (ownerId: string, listId: string, listName: string) => void;
 }
 
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList } = props;
 
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   
@@ -241,6 +243,25 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
       setDiscoveryTab(tab);
       setSelectedGenre(null);
   };
+
+  const handleLike = (list: PublicCustomList) => {
+      onToggleLikeList(list.user.id, list.id, list.name);
+      // Optimistically update UI
+      setCommunityListResults(prev => prev.map(l => {
+        if (l.id === list.id) {
+            const likes = l.likes || [];
+            if (!currentUser) return l;
+            const userIndex = likes.indexOf(currentUser.id);
+            if (userIndex > -1) {
+                likes.splice(userIndex, 1);
+            } else {
+                likes.push(currentUser.id);
+            }
+            return { ...l, likes };
+        }
+        return l;
+      }));
+  };
   
   // --- RENDER FUNCTIONS ---
   
@@ -326,19 +347,28 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         
         case 'communityLists': return communityListResults.length > 0 ? (
             <div className="space-y-4">
-                {communityListResults.map(list => (
-                    <div key={list.id} className="bg-bg-secondary p-4 rounded-lg">
-                        <h3 className="font-bold text-text-primary">{list.name}</h3>
-                        <p className="text-sm text-text-secondary">by {list.user.username} &bull; {list.items.length} items</p>
+                {communityListResults.map(list => {
+                  const hasLiked = currentUser && list.likes?.includes(currentUser.id);
+                  return (
+                    <div key={list.id} className="bg-bg-secondary p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                            <h3 className="font-bold text-text-primary">{list.name}</h3>
+                            <p className="text-sm text-text-secondary">by <span className="font-semibold cursor-pointer hover:underline" onClick={() => onSelectUser(list.user.id)}>{list.user.username}</span> &bull; {list.items.length} items</p>
+                        </div>
+                        <button onClick={() => handleLike(list)} className="flex items-center space-x-1.5 px-3 py-1.5 text-xs rounded-md transition-colors bg-bg-primary text-text-primary hover:brightness-125 font-semibold">
+                            <HeartIcon className={`w-4 h-4 ${hasLiked ? 'text-primary-accent' : 'text-text-secondary'}`} filled={hasLiked} />
+                            <span>{list.likes?.length || 0}</span>
+                        </button>
                     </div>
-                ))}
+                  );
+                })}
             </div>
         ) : <p className="text-center py-8 text-text-secondary">No matching public lists found.</p>;
         
         case 'users': return userResults.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {userResults.map(user => (
-                    <div key={user.id} className="text-center group cursor-pointer">
+                    <div key={user.id} className="text-center group cursor-pointer" onClick={() => onSelectUser(user.id)}>
                         <img src={user.profilePictureUrl || PLACEHOLDER_PROFILE} alt={user.username} className="w-24 h-24 mx-auto rounded-full object-cover shadow-lg bg-bg-secondary" />
                         <p className="mt-2 text-sm font-semibold text-text-primary">{user.username}</p>
                     </div>

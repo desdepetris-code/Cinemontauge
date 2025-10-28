@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, SeasonLogItem } from '../types';
-import { getMediaDetails } from '../services/tmdbService';
+import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface SeasonLogScreenProps {
@@ -43,17 +44,36 @@ const SeasonLogScreen: React.FC<SeasonLogScreenProps> = ({ userData, onSelectSho
 
                     if (watchedCount >= season.episode_count) {
                         const seasonHistory = userData.history.filter(h => h.id === details.id && h.seasonNumber === season.season_number);
-                        seasonHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                        seasonHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                        const userStartDate = seasonHistory.length > 0 ? seasonHistory[0].timestamp : null;
+                        const completionDate = seasonHistory.length > 0 ? seasonHistory[seasonHistory.length - 1].timestamp : new Date().toISOString();
                         
-                        const lastWatchedEpisode = seasonHistory.find(h => h.episodeNumber === season.episode_count) || seasonHistory[0];
+                        let premiereDate: string | null = null;
+                        let endDate: string | null = null;
+
+                        try {
+                            const seasonDetails = await getSeasonDetails(details.id, season.season_number);
+                            if (seasonDetails.episodes && seasonDetails.episodes.length > 0) {
+                                const airedEpisodes = seasonDetails.episodes.filter(e => e.air_date);
+                                airedEpisodes.sort((a,b) => new Date(a.air_date).getTime() - new Date(b.air_date).getTime());
+                                if(airedEpisodes.length > 0) {
+                                    premiereDate = airedEpisodes[0].air_date;
+                                    endDate = airedEpisodes[airedEpisodes.length - 1].air_date;
+                                }
+                            }
+                        } catch (e) { console.error(`Could not fetch season details for log for show ${details.id} season ${season.season_number}`, e) }
                         
                         completedSeasons.push({
                             showId: details.id,
                             showTitle: details.name || 'Unknown Show',
-                            posterPath: details.poster_path,
+                            posterPath: season.poster_path || details.poster_path,
                             seasonNumber: season.season_number,
                             seasonName: season.name,
-                            completionDate: lastWatchedEpisode ? lastWatchedEpisode.timestamp : new Date().toISOString(),
+                            completionDate: completionDate,
+                            userStartDate,
+                            premiereDate,
+                            endDate,
                         });
                     }
                 }
@@ -72,13 +92,25 @@ const SeasonLogScreen: React.FC<SeasonLogScreenProps> = ({ userData, onSelectSho
             <div className="space-y-4 animate-pulse">
                 {[...Array(5)].map((_, i) => (
                     <div key={i} className="flex items-center p-3 bg-bg-secondary/50 rounded-lg">
-                        <div className="w-12 h-18 bg-bg-secondary rounded-md"></div>
+                        <div className="w-24 h-36 bg-bg-secondary rounded-md"></div>
                         <div className="ml-4 flex-grow space-y-2">
-                            <div className="h-4 bg-bg-secondary rounded w-3/4"></div>
-                            <div className="h-3 bg-bg-secondary rounded w-1/2"></div>
+                            <div className="h-5 bg-bg-secondary rounded w-3/4"></div>
+                            <div className="h-4 bg-bg-secondary rounded w-1/2"></div>
+                            <div className="h-3 bg-bg-secondary rounded w-5/6 mt-4"></div>
+                            <div className="h-3 bg-bg-secondary rounded w-5/6"></div>
                         </div>
                     </div>
                 ))}
+            </div>
+        );
+    }
+
+    const DateInfo: React.FC<{label: string, value: string | null}> = ({label, value}) => {
+        if (!value) return null;
+        return (
+            <div>
+                <span className="font-semibold text-text-secondary/80">{label}:</span>
+                <span className="ml-1">{new Date(value).toLocaleDateString()}</span>
             </div>
         );
     }
@@ -92,14 +124,19 @@ const SeasonLogScreen: React.FC<SeasonLogScreenProps> = ({ userData, onSelectSho
                         <div 
                             key={`${item.showId}-${item.seasonNumber}`}
                             onClick={() => onSelectShow(item.showId, 'tv')}
-                            className="flex items-center p-3 cursor-pointer hover:bg-bg-secondary/50"
+                            className="flex items-start p-4 cursor-pointer hover:bg-bg-secondary/50 space-x-4"
                         >
-                            <img src={getImageUrl(item.posterPath, 'w92')} alt={item.showTitle} className="w-12 h-18 rounded-md"/>
-                            <div className="ml-4 flex-grow min-w-0">
-                                <p className="font-semibold text-text-primary truncate">{item.showTitle}</p>
-                                <p className="text-sm text-text-secondary">{item.seasonName}</p>
+                            <img src={getImageUrl(item.posterPath, 'w154')} alt={item.showTitle} className="w-24 rounded-md flex-shrink-0"/>
+                            <div className="flex-grow">
+                                <p className="font-bold text-lg text-text-primary">{item.showTitle}</p>
+                                <p className="font-semibold text-md text-text-secondary">{item.seasonName}</p>
+                                
+                                <div className="text-xs text-text-secondary mt-3 space-y-1">
+                                    <DateInfo label="Season Aired" value={item.premiereDate} />
+                                    <DateInfo label="You Started" value={item.userStartDate} />
+                                    <DateInfo label="You Finished" value={item.completionDate} />
+                                </div>
                             </div>
-                            <p className="text-sm text-text-secondary flex-shrink-0 ml-4">{new Date(item.completionDate).toLocaleDateString()}</p>
                         </div>
                     ))}
                 </div>

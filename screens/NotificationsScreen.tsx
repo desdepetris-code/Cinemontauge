@@ -26,9 +26,10 @@ interface NotificationsScreenProps {
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onSelectUser: (userId: string) => void;
 }
 
-const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications, onMarkAllRead, onMarkOneRead, onSelectShow }) => {
+const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications, onMarkAllRead, onMarkOneRead, onSelectShow, onSelectUser }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -52,32 +53,45 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map(notification => (
-            <div
-              key={notification.id}
-              onClick={() => {
+          {notifications.map(notification => {
+            let onClickAction = () => {};
+            if (notification.type === 'new_follower' && notification.followerInfo?.userId) {
+                onClickAction = () => onSelectUser(notification.followerInfo.userId);
+            } else if (notification.type === 'list_like' && notification.likerInfo?.userId) {
+                onClickAction = () => onSelectUser(notification.likerInfo.userId);
+            } else if (notification.mediaId && notification.mediaType) {
+                onClickAction = () => onSelectShow(notification.mediaId, notification.mediaType);
+            }
+
+            const finalOnClick = () => {
                 onMarkOneRead(notification.id);
-                onSelectShow(notification.mediaId, notification.mediaType);
-              }}
-              className={`flex items-start p-3 rounded-lg cursor-pointer transition-colors ${
-                notification.read ? 'bg-bg-secondary/50' : 'bg-bg-secondary'
-              }`}
-            >
-              <img
-                src={getImageUrl(notification.poster_path, 'w92')}
-                alt={notification.title}
-                className="w-12 h-auto rounded-md mr-4 flex-shrink-0"
-              />
-              <div className="flex-grow min-w-0">
-                <p className="font-semibold text-text-primary truncate">{notification.title}</p>
-                <p className="text-sm text-text-secondary">{notification.description}</p>
-                <p className="text-xs text-text-secondary/70 mt-1">{formatTimeAgo(notification.timestamp)}</p>
+                onClickAction();
+            }
+
+            return (
+              <div
+                key={notification.id}
+                onClick={finalOnClick}
+                className={`flex items-start p-3 rounded-lg cursor-pointer transition-colors ${
+                  notification.read ? 'bg-bg-secondary/50' : 'bg-bg-secondary'
+                }`}
+              >
+                <img
+                  src={getImageUrl(notification.poster_path, 'w92')}
+                  alt={notification.title}
+                  className="w-12 h-auto rounded-md mr-4 flex-shrink-0"
+                />
+                <div className="flex-grow min-w-0">
+                  <p className="font-semibold text-text-primary truncate">{notification.title}</p>
+                  <p className="text-sm text-text-secondary">{notification.description}</p>
+                  <p className="text-xs text-text-secondary/70 mt-1">{formatTimeAgo(notification.timestamp)}</p>
+                </div>
+                {!notification.read && (
+                  <div className="w-2.5 h-2.5 bg-primary-accent rounded-full self-center ml-3 flex-shrink-0"></div>
+                )}
               </div>
-              {!notification.read && (
-                <div className="w-2.5 h-2.5 bg-primary-accent rounded-full self-center ml-3 flex-shrink-0"></div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@ import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon } 
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
 import { clearApiCache } from '../utils/cacheUtils';
-import { DriveStatus, NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes } from '../types';
+import { DriveStatus, NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings } from '../types';
 import { GOOGLE_CLIENT_ID } from '../constants';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ThemeSettings from '../components/ThemeSettings';
@@ -63,6 +63,8 @@ interface SettingsProps {
     onRestoreFromDrive: () => void;
     notificationSettings: NotificationSettings;
     setNotificationSettings: React.Dispatch<React.SetStateAction<NotificationSettings>>;
+    privacySettings: PrivacySettings;
+    setPrivacySettings: React.Dispatch<React.SetStateAction<PrivacySettings>>;
     // State setters
     setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
     setWatchProgress: React.Dispatch<React.SetStateAction<WatchProgress>>;
@@ -73,10 +75,11 @@ interface SettingsProps {
     setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
     onLogout: () => void;
     onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
+    setCompleted: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 const Settings: React.FC<SettingsProps> = (props) => {
-  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword } = props;
+  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, setCompleted } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
   const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
@@ -101,6 +104,8 @@ const Settings: React.FC<SettingsProps> = (props) => {
                 movieReleases: false,
                 appAnnouncements: false,
                 sounds: false,
+                newFollowers: false,
+                listLikes: false,
             };
         }
          if (setting === 'masterEnabled' && newState.masterEnabled) {
@@ -111,6 +116,8 @@ const Settings: React.FC<SettingsProps> = (props) => {
                 movieReleases: true,
                 appAnnouncements: true,
                 sounds: true,
+                newFollowers: true,
+                listLikes: true,
             };
         }
         return newState;
@@ -214,19 +221,21 @@ const Settings: React.FC<SettingsProps> = (props) => {
   };
 
   const handleClearHistory = () => {
-    if (window.confirm('Are you sure you want to clear your entire watch history? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to clear your entire watch history? This will also remove all items from your "Completed" list. This cannot be undone.')) {
         setHistory([]);
-        alert('Watch history has been cleared.');
+        setCompleted([]);
+        alert('Watch history and completed list have been cleared.');
     }
   };
 
   const handleResetProgress = () => {
-    if (window.confirm('Are you sure you want to reset all your progress? Watch history will be cleared.')) {
+    if (window.confirm('Are you sure you want to reset all your progress? This will also clear your history and remove completed items.')) {
         setHistory([]);
         setWatchProgress({});
         setEpisodeRatings({});
         setFavoriteEpisodes({});
-        alert('All watch progress and history have been reset.');
+        setCompleted([]);
+        alert('All watch progress, history, and completed items have been reset.');
     }
   };
 
@@ -240,6 +249,8 @@ const Settings: React.FC<SettingsProps> = (props) => {
             movieReleases: true,
             appAnnouncements: true,
             sounds: true,
+            newFollowers: true,
+            listLikes: true,
         });
         alert('App settings have been reset to default.');
     }
@@ -348,6 +359,12 @@ const Settings: React.FC<SettingsProps> = (props) => {
               <SettingsRow title="Movie Releases & Updates" subtitle="News about movies on your lists (e.g., sequels)." disabled={!notificationSettings.masterEnabled}>
                   <ToggleSwitch enabled={notificationSettings.movieReleases} onChange={() => handleToggleNotification('movieReleases')} disabled={!notificationSettings.masterEnabled}/>
               </SettingsRow>
+              <SettingsRow title="New Followers" subtitle="Get an alert when someone follows you." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.newFollowers} onChange={() => handleToggleNotification('newFollowers')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
+              <SettingsRow title="List Likes" subtitle="Get an alert when someone likes your list." disabled={!notificationSettings.masterEnabled}>
+                  <ToggleSwitch enabled={notificationSettings.listLikes} onChange={() => handleToggleNotification('listLikes')} disabled={!notificationSettings.masterEnabled}/>
+              </SettingsRow>
               <SettingsRow title="App Announcements" subtitle="Receive updates and news about SceneIt." disabled={!notificationSettings.masterEnabled}>
                   <ToggleSwitch enabled={notificationSettings.appAnnouncements} onChange={() => handleToggleNotification('appAnnouncements')} disabled={!notificationSettings.masterEnabled}/>
               </SettingsRow>
@@ -358,7 +375,21 @@ const Settings: React.FC<SettingsProps> = (props) => {
         
           <ThemeSettings customThemes={props.customThemes} setCustomThemes={props.setCustomThemes} />
 
-          <SettingsCard title="Privacy & Data">
+          <SettingsCard title="Privacy Settings">
+              <SettingsRow title="Activity Visibility" subtitle="Control who can see your watch activity and comments.">
+                  <select
+                      value={privacySettings.activityVisibility}
+                      onChange={e => setPrivacySettings({ activityVisibility: e.target.value as 'public' | 'followers' | 'private' })}
+                      className="bg-bg-secondary text-text-primary rounded-md p-2 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  >
+                      <option value="public">Public</option>
+                      <option value="followers">Followers Only</option>
+                      <option value="private">Private</option>
+                  </select>
+              </SettingsRow>
+          </SettingsCard>
+
+          <SettingsCard title="Data Management">
               <SettingsRow title="Download Backup" subtitle="Save a JSON file of all your data to your device.">
                   <button onClick={handleExportData} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
                       <DownloadIcon className="h-4 w-4" />
@@ -384,7 +415,12 @@ const Settings: React.FC<SettingsProps> = (props) => {
                   </button>
                   {lastLocalBackup && <p className="text-xs text-text-secondary text-center mt-2">Last backup: {new Date(lastLocalBackup).toLocaleString()}</p>}
               </div>
-
+              <SettingsRow title="Force Data Refresh" subtitle="Clear and reload all data from TMDB.">
+                <button onClick={handleClearApiCache} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
+                    <ArrowPathIcon className="h-4 w-4" />
+                    <span>Refresh Now</span>
+                </button>
+              </SettingsRow>
               <SettingsRow title="Clear API Cache" subtitle="Frees up storage by removing temporary movie & show data.">
                   <button onClick={handleClearApiCache} className="flex items-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125">
                       <TrashIcon className="h-4 w-4" />

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings } from '../types';
+import React, { useState, useMemo } from 'react';
+import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings } from '../types';
 import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ChartBarIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
@@ -7,11 +7,14 @@ import Settings from './Settings';
 import SeasonLogScreen from '../components/SeasonLogScreen';
 import MyListsScreen from './MyListsScreen';
 import HistoryScreen from './HistoryScreen';
-import StatsScreen from './StatsScreen';
 import JournalWidget from '../components/profile/JournalWidget';
 import { useCalculatedStats } from '../hooks/useCalculatedStats';
 import OverviewStats from '../components/profile/OverviewStats';
 import StatsNarrative from '../components/StatsNarrative';
+// FIX: Add missing import for StatsScreen component.
+import StatsScreen from './StatsScreen';
+import FollowListModal from '../components/FollowListModal';
+import FriendsActivity from '../components/profile/FriendsActivity';
 
 interface User {
   id: string;
@@ -89,6 +92,17 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
     );
 };
 
+const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ enabled, onChange, disabled }) => (
+    <button
+        onClick={() => !disabled && onChange(!enabled)}
+        disabled={disabled}
+        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${enabled ? 'translate-x-5' : ''}`}/>
+    </button>
+);
+
+
 interface ProfileProps {
   userData: UserData;
   genres: Record<number, string>;
@@ -126,17 +140,31 @@ interface ProfileProps {
   setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
   onLogout: () => void;
   onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
+  onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
   currentUser: User | null;
   onAuthClick: () => void;
   profilePictureUrl: string | null;
   setProfilePictureUrl: (url: string | null) => void;
+  setCompleted: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
+  follows: Follows;
+  privacySettings: PrivacySettings;
+  setPrivacySettings: React.Dispatch<React.SetStateAction<PrivacySettings>>;
+  onSelectUser: (userId: string) => void;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted } = props;
+  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings } = props;
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
+  const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
   const stats = useCalculatedStats(userData);
+
+  const { followers, following } = useMemo(() => {
+    if (!currentUser) return { followers: [], following: [] };
+    const followingList = follows[currentUser.id] || [];
+    const followerList = Object.keys(follows).filter(userId => follows[userId].includes(currentUser.id));
+    return { followers: followerList, following: followingList };
+  }, [currentUser, follows]);
 
   // FIX: Changed type of `icon` to React.FC to allow direct rendering with props, avoiding React.cloneElement typing issues.
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
@@ -151,12 +179,26 @@ const Profile: React.FC<ProfileProps> = (props) => {
     { id: 'settings', label: 'Settings', icon: CogIcon },
   ];
 
+  const isPublic = privacySettings.activityVisibility !== 'private';
+
+  const handlePrivacyToggle = (newIsPublic: boolean) => {
+      setPrivacySettings({
+          activityVisibility: newIsPublic ? 'followers' : 'private'
+      });
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return (
         <div className="space-y-6">
             <StatsNarrative stats={stats} genres={genres} userData={userData} currentUser={currentUser} />
             <OverviewStats stats={stats} />
+            <FriendsActivity 
+              currentUser={currentUser}
+              follows={props.follows}
+              onSelectShow={onSelectShow}
+              onSelectUser={props.onSelectUser}
+            />
         </div>
       );
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
@@ -180,6 +222,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
   return (
     <div className="animate-fade-in max-w-6xl mx-auto px-4 pb-8">
       <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} onSave={setProfilePictureUrl} />
+      <FollowListModal {...followModalState} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} onSelectUser={onSelectUser}/>
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
           <linearGradient id="icon-gradient-accent" x1="0" y1="0" x2="1" y2="1">
@@ -203,6 +246,18 @@ const Profile: React.FC<ProfileProps> = (props) => {
                 <>
                     <h1 className="text-2xl font-bold text-text-primary">{currentUser.username}</h1>
                     <p className="text-text-secondary text-sm">Logged in as {currentUser.email}</p>
+                    <div className="mt-2 flex justify-center sm:justify-start items-center space-x-4">
+                       <button onClick={() => setFollowModalState({isOpen: true, title: 'Followers', userIds: followers})} className="text-sm">
+                           <strong className="text-text-primary">{followers.length}</strong> <span className="text-text-secondary">Followers</span>
+                       </button>
+                       <button onClick={() => setFollowModalState({isOpen: true, title: 'Following', userIds: following})} className="text-sm">
+                           <strong className="text-text-primary">{following.length}</strong> <span className="text-text-secondary">Following</span>
+                       </button>
+                    </div>
+                    <div className="mt-2 flex justify-center sm:justify-start items-center space-x-2">
+                        <ToggleSwitch enabled={isPublic} onChange={handlePrivacyToggle} />
+                        <span className="text-sm text-text-secondary">{isPublic ? 'Profile is Public' : 'Profile is Private'}</span>
+                    </div>
                     <div className="mt-2 flex justify-center sm:justify-start space-x-2">
                         <button onClick={() => setIsPicModalOpen(true)} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Change Picture</button>
                         <button onClick={onLogout} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Log Out</button>

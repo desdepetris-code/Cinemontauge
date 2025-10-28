@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { ImdbIcon, SimklIcon, TraktIcon } from '../components/ServiceIcons';
 import * as tmdbService from '../services/tmdbService';
 import { HistoryItem, TrackedItem, TraktToken, UserRatings, WatchProgress } from '../types';
 import * as traktService from '../services/traktService';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { firebaseConfig } from '../firebaseConfig'; // Import your firebase config
 
 const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
     <div className="mb-4">
@@ -244,6 +244,11 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void }> = ({ onImport }
     const [error, setError] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<string | null>(null);
     const [token, setToken] = useLocalStorage<TraktToken | null>('trakt_token', null);
+    
+    // This is the URL of your deployed Firebase Cloud Function.
+    // **IMPORTANT**: You must deploy your function and replace this with its URL.
+    const TRAKT_AUTH_FUNCTION_URL = `https://us-central1-${firebaseConfig.projectId}.cloudfunctions.net/traktAuth`;
+
 
     useEffect(() => {
         const validateAndRefreshToken = async () => {
@@ -254,7 +259,7 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void }> = ({ onImport }
                     setError(null);
                     setFeedback("Trakt session expired, refreshing...");
                     try {
-                        const refreshedToken = await traktService.refreshToken(token);
+                        const refreshedToken = await traktService.refreshToken(token, TRAKT_AUTH_FUNCTION_URL);
                         setToken(refreshedToken);
                         setFeedback("Session refreshed.");
                     } catch (e: any) {
@@ -284,7 +289,7 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void }> = ({ onImport }
             setIsLoading(true);
             setFeedback("Refreshing session...");
             try {
-                const refreshedToken = await traktService.refreshToken(currentToken);
+                const refreshedToken = await traktService.refreshToken(currentToken, TRAKT_AUTH_FUNCTION_URL);
                 setToken(refreshedToken);
                 currentToken = refreshedToken;
             } catch (e: any) {

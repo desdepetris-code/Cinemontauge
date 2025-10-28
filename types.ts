@@ -252,6 +252,7 @@ export interface CustomList {
   items: CustomListItem[];
   createdAt: string;
   isPublic?: boolean;
+  likes?: string[]; // Array of user IDs
 }
 
 export type UserRatings = Record<number, { rating: number; date: string }>; // mediaId -> { rating, date }
@@ -417,14 +418,24 @@ export interface WatchProviderResponse {
 // --- Notification Types ---
 export interface AppNotification {
   id: string;
-  type: 'new_season' | 'recommendation' | 'achievement_unlocked' | 'new_sequel' | 'status_change';
-  mediaId: number;
-  mediaType: 'tv' | 'movie';
+  type: 'new_season' | 'recommendation' | 'achievement_unlocked' | 'new_sequel' | 'status_change' | 'new_follower' | 'list_like';
+  mediaId?: number;
+  mediaType?: 'tv' | 'movie';
   title: string;
   description: string;
   timestamp: string;
   read: boolean;
-  poster_path: string | null;
+  poster_path?: string | null;
+  followerInfo?: {
+      userId: string;
+      username: string;
+  };
+  listId?: string;
+  listName?: string;
+  likerInfo?: {
+      userId: string;
+      username: string;
+  };
 }
 
 export interface NotificationSettings {
@@ -433,6 +444,8 @@ export interface NotificationSettings {
   movieReleases: boolean;
   appAnnouncements: boolean;
   sounds: boolean;
+  newFollowers: boolean;
+  listLikes: boolean;
 }
 
 // --- Google Drive Types ---
@@ -459,6 +472,10 @@ export interface SeasonLogItem {
   seasonNumber: number;
   seasonName: string;
   completionDate: string;
+  // New fields for descriptive log
+  premiereDate?: string | null;
+  endDate?: string | null;
+  userStartDate?: string | null;
 }
 
 // --- Live Watch Types ---
@@ -550,4 +567,11 @@ export interface TraktRating {
     type: 'movie' | 'show' | 'season' | 'episode';
     movie?: TraktMedia;
     show?: TraktMedia;
+}
+
+// --- Social & Privacy Types ---
+export type Follows = Record<string, string[]>; // userId -> followedUserId[]
+
+export interface PrivacySettings {
+  activityVisibility: 'public' | 'followers' | 'private';
 }

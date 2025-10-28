@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Header from './components/Header';
 import Dashboard from './screens/Dashboard';
 import ShowDetail from './components/ShowDetail';
 import { getGenres, getNewSeasons, clearMediaCache, getMediaDetails, getCollectionDetails, getSeasonDetails } from './services/tmdbService';
-import { TrackedItem, WatchProgress, JournalEntry, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, DriveStatus, FavoriteEpisodes, ProfileTab, ScreenName, UserAchievementStatus, NotificationSettings, CustomList, UserRatings, LiveWatchMediaInfo, CustomListItem, EpisodeRatings, SearchHistoryItem, Comment, Theme, ShowProgress, TraktToken } from './types';
+import { TrackedItem, WatchProgress, JournalEntry, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, DriveStatus, FavoriteEpisodes, ProfileTab, ScreenName, UserAchievementStatus, NotificationSettings, CustomList, UserRatings, LiveWatchMediaInfo, CustomListItem, EpisodeRatings, SearchHistoryItem, Comment, Theme, ShowProgress, TraktToken, Follows, PrivacySettings } from './types';
 import Profile from './screens/Profile';
 import { useTheme } from './hooks/useTheme';
 import * as googleDriveService from './services/googleDriveService';
@@ -20,6 +19,9 @@ import LiveWatchTracker from './components/LiveWatchTracker';
 import AddToListModal from './components/AddToListModal';
 import WelcomeModal from './components/WelcomeModal';
 import * as traktService from './services/traktService';
+import UserProfileModal from './components/UserProfileModal';
+// FIX: Added missing import for firebaseConfig to construct the Trakt auth function URL.
+import { firebaseConfig } from './firebaseConfig';
 
 
 const StorageWarningBanner: React.FC<{ onDismiss: () => void; onConnect: () => void; }> = ({ onDismiss, onConnect }) => (
@@ -43,12 +45,14 @@ interface MainAppProps {
     currentUser: User | null;
     onLogout: () => void;
     onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
+    onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
     onAuthClick: () => void;
 }
 
 const TraktCallbackHandler: React.FC = () => {
     const [status, setStatus] = useState('Authenticating with Trakt, please wait...');
     const [error, setError] = useState<string | null>(null);
+    const TRAKT_AUTH_FUNCTION_URL = `https://us-central1-${firebaseConfig.projectId}.cloudfunctions.net/traktAuth`;
 
     useEffect(() => {
         const handleCallback = async () => {
@@ -71,7 +75,8 @@ const TraktCallbackHandler: React.FC = () => {
             }
 
             try {
-                const token = await traktService.exchangeCodeForToken(code);
+                // FIX: Pass the TRAKT_AUTH_FUNCTION_URL as the second argument to exchangeCodeForToken.
+                const token = await traktService.exchangeCodeForToken(code, TRAKT_AUTH_FUNCTION_URL);
                 if (token) {
                     setStatus('Authentication successful! You can now import your data.');
                     sessionStorage.setItem('trakt_auth_complete', 'true');
@@ -88,7 +93,7 @@ const TraktCallbackHandler: React.FC = () => {
         };
 
         handleCallback();
-    }, []);
+    }, [TRAKT_AUTH_FUNCTION_URL]);
 
     // Render a more integrated loading page for the callback
     return (
@@ -109,7 +114,7 @@ const TraktCallbackHandler: React.FC = () => {
 
 
 
-const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpdatePassword, onAuthClick }) => {
+const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick }) => {
   const [customThemes, setCustomThemes] = useLocalStorage<Theme[]>('customThemes', []);
   const [activeTheme, setTheme] = useTheme(customThemes);
   
@@ -133,17 +138,23 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
   const [movieCollectionCache, setMovieCollectionCache] = useLocalStorage<Record<number, number>>(`movie_collection_cache_${userId}`, {});
   const [ratings, setRatings] = useLocalStorage<UserRatings>(`user_ratings_${userId}`, {});
   const [profilePictureUrl, setProfilePictureUrl] = useLocalStorage<string | null>(`profilePictureUrl_${userId}`, null);
+  // FIX: Added missing properties `newFollowers` and `listLikes` to the initial state to match the NotificationSettings type.
   const [notificationSettings, setNotificationSettings] = useLocalStorage<NotificationSettings>(`notification_settings_${userId}`, {
     masterEnabled: true,
     newEpisodes: true,
     movieReleases: true,
     appAnnouncements: true,
     sounds: true,
+    newFollowers: true,
+    listLikes: true,
   });
-  
+  const [follows, setFollows] = useLocalStorage<Follows>(`sceneit_follows`, {});
+  const [privacySettings, setPrivacySettings] = useLocalStorage<PrivacySettings>(`privacy_settings_${userId}`, { activityVisibility: 'followers' });
+
   const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
   const [selectedShow, setSelectedShow] = useState<{ id: number; media_type: 'tv' | 'movie' } | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<number | null>(null);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [initialProfileTab, setInitialProfileTab] = useState<ProfileTab>('overview');
   const [modalShow, setModalShow] = useState<{ id: number; media_type: 'tv' | 'movie' } | null>(null);
   const [addToListModalState, setAddToListModalState] = useState<{ isOpen: boolean; item: TmdbMedia | TrackedItem | null }>({ isOpen: false, item: null });
@@ -236,6 +247,10 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
     setSelectedPerson(personId);
     setSelectedShow(null);
     window.scrollTo(0, 0);
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setViewingUserId(userId);
   };
   
   const handleGoHome = () => {
@@ -435,6 +450,15 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
         }
     }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setFavorites]);
 
+    const removeMediaFromAllLists = useCallback((mediaIdToRemove: number) => {
+        setWatching(prev => prev.filter(i => i.id !== mediaIdToRemove));
+        setPlanToWatch(prev => prev.filter(i => i.id !== mediaIdToRemove));
+        setCompleted(prev => prev.filter(i => i.id !== mediaIdToRemove));
+        setOnHold(prev => prev.filter(i => i.id !== mediaIdToRemove));
+        setDropped(prev => prev.filter(i => i.id !== mediaIdToRemove));
+        setFavorites(prev => prev.filter(i => i.id !== mediaIdToRemove));
+    }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setFavorites]);
+
 
   const handleUpdateCustomList = useCallback((listId: string, item: TrackedItem, action: 'add' | 'remove') => {
     setCustomLists(prevLists => {
@@ -504,6 +528,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
         if (notification.type === 'new_season' && !notificationSettings.newEpisodes) return;
         if (notification.type === 'new_sequel' && !notificationSettings.movieReleases) return;
         if (notification.type === 'achievement_unlocked' && !notificationSettings.appAnnouncements) return;
+        if (notification.type === 'new_follower' && !notificationSettings.appAnnouncements) return; // Group with app announcements for now
 
 
         setNotifications(prev => {
@@ -607,9 +632,9 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
     const runBackgroundChecks = async () => {
         const lastCheck = localStorage.getItem('last_status_check');
         const now = Date.now();
-        const twelveHours = 12 * 60 * 60 * 1000;
+        const sixHours = 6 * 60 * 60 * 1000;
 
-        if (lastCheck && now - parseInt(lastCheck, 10) < twelveHours) {
+        if (lastCheck && now - parseInt(lastCheck, 10) < sixHours) {
             return;
         }
 
@@ -878,6 +903,69 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
         });
     };
 
+    const handleUnmarkSeasonWatched = async (showId: number, seasonNumber: number) => {
+        if (!window.confirm("Are you sure you want to unmark all watched episodes in this season? This action will also remove them from your watch history.")) {
+            return;
+        }
+        try {
+            setWatchProgress(prev => {
+                const newProgress = JSON.parse(JSON.stringify(prev));
+                if (newProgress[showId] && newProgress[showId][seasonNumber]) {
+                    Object.keys(newProgress[showId][seasonNumber]).forEach(epNum => {
+                        if (newProgress[showId][seasonNumber][epNum]) {
+                             newProgress[showId][seasonNumber][epNum].status = 0;
+                        }
+                    });
+                }
+                return newProgress;
+            });
+    
+            setHistory(prev => prev.filter(h => !(h.id === showId && h.seasonNumber === seasonNumber)));
+    
+            const item = completed.find(c => c.id === showId);
+            if (item) {
+                updateLists(item, 'completed', 'watching');
+            }
+        } catch (error) {
+            console.error(`Failed to unmark season ${seasonNumber} for show ${showId}:`, error);
+            alert('There was an error unmarking the season. Please try again.');
+        }
+    };
+
+    const handleMarkRemainingWatched = async (showId: number, seasonNumber: number, showInfo: TrackedItem) => {
+        try {
+            const seasonDetails = await getSeasonDetails(showId, seasonNumber);
+            const today = new Date().toISOString().split('T')[0];
+            const timestamp = new Date().toISOString();
+            const newHistoryItems: HistoryItem[] = [];
+    
+            setWatchProgress(prev => {
+                const newProgress = JSON.parse(JSON.stringify(prev));
+                if (!newProgress[showId]) newProgress[showId] = {};
+                if (!newProgress[showId][seasonNumber]) newProgress[showId][seasonNumber] = {};
+                
+                seasonDetails.episodes.forEach(episode => {
+                    const isWatched = prev[showId]?.[seasonNumber]?.[episode.episode_number]?.status === 2;
+                    if (!isWatched && episode.air_date && episode.air_date <= today) {
+                        newProgress[showId][seasonNumber][episode.episode_number] = { status: 2 };
+                        newHistoryItems.push({
+                            logId: `tv-${showId}-${seasonNumber}-${episode.episode_number}-${timestamp}-${Math.random()}`,
+                            id: showId, media_type: 'tv', title: showInfo.title, poster_path: showInfo.poster_path,
+                            timestamp, seasonNumber, episodeNumber: episode.episode_number
+                        });
+                    }
+                });
+                return newProgress;
+            });
+    
+            if (newHistoryItems.length > 0) {
+                setHistory(prev => [...newHistoryItems.reverse(), ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            }
+        } catch (error) {
+            console.error("Failed to mark remaining episodes as watched:", error);
+        }
+    };
+
   const handleSaveComment = useCallback((mediaKey: string, text: string) => {
     setComments(prev => {
         const existingCommentIndex = prev.findIndex(c => c.mediaKey === mediaKey);
@@ -960,42 +1048,59 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
     }));
   }, [setCustomImagePaths]);
 
-    const handleDeleteHistoryItem = (logId: string) => {
-        setHistory(prev => prev.filter(item => item.logId !== logId));
-    };
+    const handleDeleteHistoryItem = useCallback((logId: string) => {
+        const itemToDelete = history.find(item => item.logId === logId);
+        if (!itemToDelete) return;
     
-    const handleClearMediaHistory = useCallback((mediaIdToClear: number, mediaType: 'tv' | 'movie') => {
-        const allItems = [...watching, ...completed, ...planToWatch, ...onHold, ...dropped, ...favorites];
-        const item = allItems.find(i => i.id === mediaIdToClear);
-
-        const mediaTypeName = mediaType === 'tv' ? 'show' : 'movie';
-        const message = `Are you sure you want to clear all history for this ${mediaTypeName}? This will also reset its watch progress if it's a show. This action cannot be undone.`;
-
-        if (window.confirm(message)) {
-            // 1. Clear history entries
-            setHistory(prev => prev.filter(h => h.id !== mediaIdToClear));
-
-            if (mediaType === 'tv') {
-                // 2. Clear watch progress
+        const updatedHistory = history.filter(item => item.logId !== logId);
+        setHistory(updatedHistory);
+    
+        const hasRemainingHistory = updatedHistory.some(h => h.id === itemToDelete.id);
+    
+        if (!hasRemainingHistory) {
+            removeMediaFromAllLists(itemToDelete.id);
+            if (itemToDelete.media_type === 'tv') {
+                setWatchProgress(prev => {
+                    const newProgress = { ...prev };
+                    delete newProgress[itemToDelete.id];
+                    return newProgress;
+                });
+            }
+        } else if (itemToDelete.media_type === 'tv' && itemToDelete.seasonNumber && itemToDelete.episodeNumber) {
+            const otherWatchesForEpisode = updatedHistory.some(h => 
+                h.id === itemToDelete.id && 
+                h.seasonNumber === itemToDelete.seasonNumber && 
+                h.episodeNumber === itemToDelete.episodeNumber
+            );
+    
+            if (!otherWatchesForEpisode) {
                 setWatchProgress(prev => {
                     const newProgress = JSON.parse(JSON.stringify(prev));
-                    if (newProgress[mediaIdToClear]) {
-                        delete newProgress[mediaIdToClear];
+                    if (newProgress[itemToDelete.id]?.[itemToDelete.seasonNumber]?.[itemToDelete.episodeNumber]) {
+                        newProgress[itemToDelete.id][itemToDelete.seasonNumber][itemToDelete.episodeNumber].status = 0;
                     }
                     return newProgress;
                 });
-
-                // 3. Update lists if necessary
-                // If the show was on the 'completed' list, move it to 'watching' as it's no longer fully watched.
-                if (item && completed.some(c => c.id === mediaIdToClear)) {
-                    updateLists(item, 'completed', 'watching');
-                }
-            } else { // It's a movie
-                // For a movie, clearing history implies it is no longer completed. Remove from that list.
-                setCompleted(prev => prev.filter(c => c.id !== mediaIdToClear));
             }
         }
-    }, [watching, completed, planToWatch, onHold, dropped, favorites, setHistory, setWatchProgress, setCompleted, updateLists]);
+    }, [history, setHistory, setWatchProgress, removeMediaFromAllLists]);
+    
+    const handleClearMediaHistory = useCallback((mediaIdToClear: number, mediaType: 'tv' | 'movie') => {
+        const mediaTypeName = mediaType === 'tv' ? 'show' : 'movie';
+        const message = `Are you sure you want to clear all history for this ${mediaTypeName}? This will also reset its watch progress and remove it from all lists. This action cannot be undone.`;
+    
+        if (window.confirm(message)) {
+            setHistory(prev => prev.filter(h => h.id !== mediaIdToClear));
+            removeMediaFromAllLists(mediaIdToClear);
+            if (mediaType === 'tv') {
+                setWatchProgress(prev => {
+                    const newProgress = { ...prev };
+                    delete newProgress[mediaIdToClear];
+                    return newProgress;
+                });
+            }
+        }
+    }, [setHistory, setWatchProgress, removeMediaFromAllLists]);
 
 
   const handleImportCompleted = useCallback((historyItems: HistoryItem[], completedItems: TrackedItem[]) => {
@@ -1134,6 +1239,50 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
         });
     };
 
+    const handleFollowUser = useCallback((userToFollowId: string, userToFollowUsername: string) => {
+        if (!currentUser) {
+            onAuthClick();
+            return;
+        }
+        setFollows(prev => ({
+            ...prev,
+            [currentUser.id]: [...(prev[currentUser.id] || []).filter(id => id !== userToFollowId), userToFollowId]
+        }));
+    
+        const notificationsKey = `notifications_${userToFollowId}`;
+        try {
+            const otherUserNotifsStr = localStorage.getItem(notificationsKey);
+            const otherUserNotifs: AppNotification[] = otherUserNotifsStr ? JSON.parse(otherUserNotifsStr) : [];
+            
+            const newNotification: AppNotification = {
+                id: `follow-${currentUser.id}-${Date.now()}`,
+                type: 'new_follower',
+                title: 'You have a new follower!',
+                description: `${currentUser.username} is now following you.`,
+                timestamp: new Date().toISOString(),
+                read: false,
+                followerInfo: {
+                    userId: currentUser.id,
+                    username: currentUser.username,
+                }
+            };
+            const updatedNotifs = [newNotification, ...otherUserNotifs].slice(0, 50);
+            localStorage.setItem(notificationsKey, JSON.stringify(updatedNotifs));
+    
+        } catch (e) {
+            console.error("Could not add follower notification for other user", e);
+        }
+    }, [currentUser, onAuthClick, setFollows]);
+
+    const handleUnfollowUser = useCallback((userToUnfollowId: string) => {
+        if (!currentUser) return;
+        setFollows(prev => ({
+            ...prev,
+            [currentUser.id]: (prev[currentUser.id] || []).filter(id => id !== userToUnfollowId)
+        }));
+    }, [currentUser, setFollows]);
+
+
   const trackedLists = useMemo(() => ({ watching, planToWatch, completed, onHold, dropped }), [watching, planToWatch, completed, onHold, dropped]);
   
   const isLiveWatchMinimized = !!liveWatchMedia && (!selectedShow || selectedShow.id !== liveWatchMedia.id);
@@ -1178,6 +1327,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
           onRateItem={handleRateItem}
           onMarkAllWatched={handleMarkAllWatched}
           onMarkSeasonWatched={handleMarkSeasonWatched}
+          onUnmarkSeasonWatched={handleUnmarkSeasonWatched}
           onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched}
           favoriteEpisodes={favoriteEpisodes}
           onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
@@ -1190,6 +1340,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
           onAddWatchHistory={handleAddWatchHistory}
           onSaveComment={handleSaveComment}
           comments={comments}
+          onMarkRemainingWatched={handleMarkRemainingWatched}
         />
       );
     }
@@ -1242,6 +1393,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
           favorites={favorites}
           genres={genres}
           currentUser={currentUser}
+          onSelectUser={handleSelectUser}
         />;
       case 'progress':
         return <ProgressScreen
@@ -1294,10 +1446,16 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
           setCustomThemes={setCustomThemes}
           onLogout={onLogout}
           onUpdatePassword={onUpdatePassword}
+          onUpdateProfile={onUpdateProfile}
           currentUser={currentUser}
           onAuthClick={onAuthClick}
           profilePictureUrl={profilePictureUrl}
           setProfilePictureUrl={setProfilePictureUrl}
+          setCompleted={setCompleted}
+          follows={follows}
+          privacySettings={privacySettings}
+          setPrivacySettings={setPrivacySettings}
+          onSelectUser={handleSelectUser}
         />;
       default:
         return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} watchProgress={watchProgress} onToggleEpisode={() => {}} onSelectShowInModal={handleSelectShowInModal} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenAddToListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} />;
@@ -1342,6 +1500,18 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
         onCreateAndAddToList={handleCreateAndAddToList}
         onGoToDetails={handleSelectShowInModal}
       />
+
+      {viewingUserId && currentUser && (
+        <UserProfileModal
+          userId={viewingUserId}
+          currentUser={currentUser}
+          follows={follows[currentUser.id] || []}
+          onFollow={handleFollowUser}
+          onUnfollow={handleUnfollowUser}
+          onClose={() => setViewingUserId(null)}
+          onToggleLikeList={() => {}}
+        />
+      )}
       
       {modalShow && (
           <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto">
@@ -1366,6 +1536,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
                   onRateItem={handleRateItem}
                   onMarkAllWatched={handleMarkAllWatched}
                   onMarkSeasonWatched={handleMarkSeasonWatched}
+                  onUnmarkSeasonWatched={handleUnmarkSeasonWatched}
                   onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched}
                   favoriteEpisodes={favoriteEpisodes}
                   onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
@@ -1378,6 +1549,7 @@ const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpda
                   onAddWatchHistory={handleAddWatchHistory}
                   onSaveComment={handleSaveComment}
                   comments={comments}
+                  onMarkRemainingWatched={handleMarkRemainingWatched}
               />
           </div>
       )}

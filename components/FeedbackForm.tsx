@@ -10,12 +10,12 @@ const FeedbackForm: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message || !requestType) {
-      alert('Please fill out all required fields.');
+    if (!subject || !message) {
+      alert('Please fill out the Subject and Message fields.');
       return;
     }
     const mailtoSubject = `SceneIt: ${requestType} - ${subject}`;
-    const mailtoBody = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
+    const mailtoBody = `Name: ${name || 'Not provided'}\nEmail: ${email || 'Not provided'}\n\nMessage:\n${message}`;
     window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(mailtoSubject)}&body=${encodeURIComponent(mailtoBody)}`;
     setSubmitted(true);
   };
@@ -52,6 +52,9 @@ const FeedbackForm: React.FC = () => {
         <input type="text" placeholder="Name (Optional)" value={name} onChange={e => setName(e.target.value)} className={inputClass} />
         <input type="email" placeholder="Email (Optional)" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
       </div>
+      <p className="text-xs text-text-secondary text-center -mt-2 px-2">
+        Feedback is sent to <strong className="text-text-secondary/80">sceneit623@gmail.com</strong>. This will open your default email client.
+      </p>
       <div className="relative">
         <select value={requestType} onChange={e => setRequestType(e.target.value)} className={`${inputClass} appearance-none`}>
             <option>Feature Request</option>
@@ -63,7 +66,7 @@ const FeedbackForm: React.FC = () => {
             <option>Account Help</option>
         </select>
       </div>
-      <input type="text" placeholder="Subject (Optional)" value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} />
+      <input type="text" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} required />
       <textarea placeholder="Message" value={message} onChange={e => setMessage(e.target.value)} className={inputClass} rows={5} required></textarea>
       <button type="submit" className="w-full py-3 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity font-semibold">
         Submit Request

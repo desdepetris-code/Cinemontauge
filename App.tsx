@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import MainApp from './MainApp';
@@ -153,6 +152,30 @@ const App: React.FC = () => {
     const handleLogout = useCallback(() => {
         setCurrentUser(null);
     }, [setCurrentUser]);
+    
+    const handleUpdateProfile = useCallback(async ({ username, email }): Promise<string | null> => {
+        if (!currentUser) return "No user is currently logged in.";
+        
+        const users = getUsers();
+        const userIndex = users.findIndex(u => u.id === currentUser.id);
+        
+        if (userIndex === -1) return "Could not find your user account.";
+        
+        if (users.some(u => u.id !== currentUser.id && u.email.toLowerCase() === email.toLowerCase())) {
+            return "An account with this email already exists.";
+        }
+        if (users.some(u => u.id !== currentUser.id && u.username.toLowerCase() === username.toLowerCase())) {
+            return "This username is already taken.";
+        }
+        
+        const user = users[userIndex];
+        users[userIndex] = { ...user, username, email };
+        saveUsers(users);
+
+        setCurrentUser({ ...currentUser, username, email });
+        
+        return null;
+    }, [currentUser, setCurrentUser]);
 
     const handleUpdatePassword = useCallback(async ({ currentPassword, newPassword }): Promise<string | null> => {
         if (!currentUser) return "No user is currently logged in.";
@@ -233,6 +256,7 @@ const App: React.FC = () => {
                 currentUser={currentUser}
                 onLogout={handleLogout}
                 onUpdatePassword={handleUpdatePassword}
+                onUpdateProfile={handleUpdateProfile}
                 onAuthClick={() => setIsAuthModalOpen(true)}
             />
             <AuthModal

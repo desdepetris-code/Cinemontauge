@@ -45,6 +45,7 @@ interface ShowDetailProps {
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkAllWatched: (showId: number, showInfo: TrackedItem) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
+  onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
   favoriteEpisodes: FavoriteEpisodes;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
@@ -57,6 +58,7 @@ interface ShowDetailProps {
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string) => void;
   onSaveComment: (mediaKey: string, text: string) => void;
   comments: Comment[];
+  onMarkRemainingWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
 }
 
 type ShowDetailTab = 'seasonDescription' | 'overview' | 'cast' | 'moreInfo' | 'recommendations' | 'watch' | 'customize' | 'recentlyAired';
@@ -213,7 +215,7 @@ const validateMediaDetails = (data: Partial<TmdbMediaDetails> | null, mediaType:
 
 // --- MAIN COMPONENT ---
 const ShowDetail: React.FC<ShowDetailProps> = (props) => {
-    const { id, mediaType, isModal, onBack, watchProgress, history, onToggleEpisode, onSaveJournal, trackedLists, onUpdateLists, customImagePaths, onSetCustomImage, favorites, onToggleFavoriteShow, onSelectShow, onOpenCustomListModal, ratings, onRateItem, onMarkAllWatched, onMarkSeasonWatched, onMarkPreviousEpisodesWatched, favoriteEpisodes, onToggleFavoriteEpisode, onSelectPerson, onStartLiveWatch, onDeleteHistoryItem, onClearMediaHistory, episodeRatings, onRateEpisode, onAddWatchHistory, onSaveComment, comments } = props;
+    const { id, mediaType, isModal, onBack, watchProgress, history, onToggleEpisode, onSaveJournal, trackedLists, onUpdateLists, customImagePaths, onSetCustomImage, favorites, onToggleFavoriteShow, onSelectShow, onOpenCustomListModal, ratings, onRateItem, onMarkAllWatched, onMarkSeasonWatched, onUnmarkSeasonWatched, onMarkPreviousEpisodesWatched, favoriteEpisodes, onToggleFavoriteEpisode, onSelectPerson, onStartLiveWatch, onDeleteHistoryItem, onClearMediaHistory, episodeRatings, onRateEpisode, onAddWatchHistory, onSaveComment, comments, onMarkRemainingWatched } = props;
 
     // --- STATE MANAGEMENT ---
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -726,6 +728,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             }
         };
 
+        const handleMarkRemainingWatchedWrapper = (showId: number, seasonNumber: number) => {
+            if (trackedItem) {
+                onMarkRemainingWatched(showId, seasonNumber, trackedItem);
+            }
+        };
+
         switch (activeTab) {
             case 'recentlyAired': {
                 const ep = details.last_episode_to_air;
@@ -800,6 +808,19 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                                 
                                 const seasonPosterPath = season.poster_path || details.poster_path;
 
+                                const progressForSeason = watchProgress[id]?.[season.season_number] || {};
+                                const totalCount = season.episode_count;
+                                let watchedCount = 0;
+                                for (let i = 1; i <= totalCount; i++) {
+                                    if (progressForSeason[i]?.status === 2) {
+                                        watchedCount++;
+                                    }
+                                }
+
+                                const allWatched = totalCount > 0 && watchedCount >= totalCount;
+                                const noneWatched = watchedCount === 0;
+                                const partiallyWatched = !noneWatched && !allWatched;
+
                                 return (
                                      <>
                                         <div className="flex flex-col md:flex-row gap-6 mb-6">
@@ -820,17 +841,43 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                                                 ) : (
                                                     <p className="text-text-secondary italic">No description available for this season.</p>
                                                 )}
-                                                <div className="mt-4">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleMarkSeasonWatchedWrapper(id, season.season_number);
-                                                        }}
-                                                        className="flex items-center justify-center space-x-2 px-4 py-2 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125"
-                                                    >
-                                                        <CheckCircleIcon className="h-5 w-5" />
-                                                        <span>Mark Season Watched</span>
-                                                    </button>
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {noneWatched && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMarkSeasonWatchedWrapper(id, season.season_number);
+                                                            }}
+                                                            className="flex items-center justify-center space-x-2 px-3 py-1.5 text-xs rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 font-semibold"
+                                                        >
+                                                            <CheckCircleIcon className="h-4 w-4" />
+                                                            <span>Mark Season Watched</span>
+                                                        </button>
+                                                    )}
+                                                    {partiallyWatched && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMarkRemainingWatchedWrapper(id, season.season_number);
+                                                            }}
+                                                            className="flex items-center justify-center space-x-2 px-3 py-1.5 text-xs rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 font-semibold"
+                                                        >
+                                                            <CheckCircleIcon className="h-4 w-4" />
+                                                            <span>Mark Remaining Watched</span>
+                                                        </button>
+                                                    )}
+                                                    {!noneWatched && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                onUnmarkSeasonWatched(id, season.season_number);
+                                                            }}
+                                                            className="flex items-center justify-center space-x-2 px-3 py-1.5 text-xs rounded-md transition-colors bg-bg-secondary text-text-primary hover:bg-red-500/20 hover:text-red-400 font-semibold"
+                                                        >
+                                                            <XMarkIcon className="h-4 w-4" />
+                                                            <span>Unmark Season Watched</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

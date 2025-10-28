@@ -1,4 +1,3 @@
-
 import { TRAKT_API_KEY, TRAKT_CLIENT_SECRET, TRAKT_REDIRECT_URI, TRAKT_API_BASE_URL } from '../constants';
 import { TraktToken, TraktWatchedMovie, TraktWatchedShow, TraktWatchlistItem, TraktRating } from '../types';
 
@@ -11,27 +10,20 @@ export const redirectToTraktAuth = (): void => {
     window.location.href = authUrl;
 };
 
-export const exchangeCodeForToken = async (code: string): Promise<TraktToken> => {
+export const exchangeCodeForToken = async (code: string, functionUrl: string): Promise<TraktToken> => {
     try {
-        const url = `${TRAKT_API_BASE_URL.replace('https://', '/proxy/')}/oauth/token`;
-        const response = await fetch(url, {
+        const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                code: code,
-                client_id: TRAKT_API_KEY,
-                client_secret: TRAKT_CLIENT_SECRET, // SECURITY: Not for production client-side apps.
-                redirect_uri: TRAKT_REDIRECT_URI,
-                grant_type: 'authorization_code',
-            }),
+            body: JSON.stringify({ code }),
         });
         if (!response.ok) {
-            let errorBody = 'Unknown error';
+            let errorBody = 'Cloud function error';
             try {
                 const errorJson = await response.json();
-                errorBody = errorJson.error_description || response.statusText;
+                errorBody = errorJson.error || response.statusText;
             } catch (e) {
                 errorBody = response.statusText;
             }
@@ -45,32 +37,25 @@ export const exchangeCodeForToken = async (code: string): Promise<TraktToken> =>
         localStorage.setItem(TRAKT_TOKEN_KEY, JSON.stringify(token));
         return token;
     } catch (error) {
-        console.error("Error exchanging Trakt code for token:", error);
+        console.error("Error exchanging Trakt code for token via cloud function:", error);
         throw error;
     }
 };
 
-export const refreshToken = async (token: TraktToken): Promise<TraktToken> => {
+export const refreshToken = async (token: TraktToken, functionUrl: string): Promise<TraktToken> => {
     try {
-        const url = `${TRAKT_API_BASE_URL.replace('https://', '/proxy/')}/oauth/token`;
-        const response = await fetch(url, {
+        const response = await fetch(functionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                refresh_token: token.refresh_token,
-                client_id: TRAKT_API_KEY,
-                client_secret: TRAKT_CLIENT_SECRET,
-                redirect_uri: TRAKT_REDIRECT_URI,
-                grant_type: 'refresh_token',
-            }),
+            body: JSON.stringify({ refreshToken: token.refresh_token }),
         });
 
         if (!response.ok) {
             clearTraktToken(); // If refresh fails, token is invalid, clear it.
-            let errorBody = 'Unknown error';
+            let errorBody = 'Cloud function error';
             try {
                 const errorJson = await response.json();
-                errorBody = errorJson.error_description || response.statusText;
+                errorBody = errorJson.error || response.statusText;
             } catch (e) {
                 errorBody = response.statusText;
             }
@@ -86,7 +71,7 @@ export const refreshToken = async (token: TraktToken): Promise<TraktToken> => {
         return newToken;
 
     } catch (error) {
-        console.error("Error refreshing Trakt token:", error);
+        console.error("Error refreshing Trakt token via cloud function:", error);
         clearTraktToken();
         throw error;
     }
@@ -106,7 +91,8 @@ export const clearTraktToken = (): void => {
 // --- API FETCHING ---
 
 const fetchFromTrakt = async (endpoint: string, token: TraktToken) => {
-    const response = await fetch(`${TRAKT_API_BASE_URL}/${endpoint}`, {
+    const url = `${TRAKT_API_BASE_URL.replace('https://', '/proxy/')}/${endpoint}`;
+    const response = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token.access_token}`,
