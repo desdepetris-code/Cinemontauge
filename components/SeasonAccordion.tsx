@@ -88,22 +88,28 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [commentModalState, setCommentModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   
-  const { seasonProgressPercent, unwatchedCount } = useMemo(() => {
-    const totalInSeason = seasonDetails?.episodes?.length || season.episode_count;
-    if (totalInSeason === 0) return { seasonProgressPercent: 100, unwatchedCount: 0 };
-    
+  const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
     const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
-    let watchedCount = 0;
 
-    if (seasonDetails?.episodes) {
-        watchedCount = seasonDetails.episodes.filter(ep => progressForSeason[ep.episode_number]?.status === 2).length;
-    } else {
-        watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
+    if (!seasonDetails?.episodes) {
+      const totalInSeason = season.episode_count;
+      if (totalInSeason === 0) return { seasonProgressPercent: 100, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
+      const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
+      const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 100;
+      return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
+
+    const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= today);
+    const totalAired = airedEpisodes.length;
     
-    const percent = (watchedCount / totalInSeason) * 100;
-    const unwatched = Math.max(0, totalInSeason - watchedCount);
-    return { seasonProgressPercent: percent, unwatchedCount: unwatched };
+    if (totalAired === 0) return { seasonProgressPercent: 100, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
+    
+    const watchedCount = airedEpisodes.filter(ep => progressForSeason[ep.episode_number]?.status === 2).length;
+    
+    const percent = (watchedCount / totalAired) * 100;
+    const unwatched = totalAired - watchedCount;
+    return { seasonProgressPercent: percent, unwatchedCount: unwatched, totalAiredEpisodesInSeason: totalAired };
   }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number]);
 
 
@@ -122,7 +128,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   
   const handleMarkUnmarkSeason = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const isSeasonWatched = unwatchedCount === 0 && season.episode_count > 0;
     if (isSeasonWatched) {
         onUnmarkSeasonWatched(showId, season.season_number);
     } else {
@@ -130,7 +135,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
     }
   };
 
-  const isSeasonWatched = unwatchedCount === 0 && season.episode_count > 0;
+  const isSeasonWatched = unwatchedCount === 0 && totalAiredEpisodesInSeason > 0;
 
   const episodeMediaKey = commentModalState.episode ? `tv-${showId}-s${commentModalState.episode.season_number}-e${commentModalState.episode.episode_number}` : '';
   const initialCommentText = comments.find(c => c.mediaKey === episodeMediaKey)?.text;

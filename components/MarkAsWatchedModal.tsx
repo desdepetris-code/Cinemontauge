@@ -44,7 +44,7 @@ const MarkAsWatchedModal: React.FC<MarkAsWatchedModalProps> = ({ isOpen, onClose
         </button>
         <h2 className="text-xl font-bold text-text-primary mb-2">Log a Watch</h2>
         <p className="text-text-secondary mb-1 truncate">{mediaTitle}</p>
-        <p className="text-xs text-text-secondary/80 mb-4">You can log multiple watches for any movie or episode.</p>
+        <p className="text-xs text-text-secondary/80 mb-4">Log another watch for this item. Each entry is saved to your history, allowing you to track rewatches.</p>
         
         <label htmlFor="watch-date" className="block text-sm font-medium text-text-secondary mb-1">Date & Time:</label>
         <div className="grid grid-cols-2 gap-2">

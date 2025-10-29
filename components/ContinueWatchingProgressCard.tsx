@@ -31,39 +31,19 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     const [tvdbDetails, setTvdbDetails] = useState<TvdbShow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const nextEpisode = useMemo(() => {
-        if (!details || !details.seasons) {
-            return null;
-        }
-        
-        const progressForShow = watchProgress[item.id] || {};
-        const sortedSeasons = [...details.seasons]
-            .filter(s => s.season_number > 0)
-            .sort((a, b) => a.season_number - b.season_number);
-        
-        for (const season of sortedSeasons) {
-            for (let i = 1; i <= season.episode_count; i++) {
-                if (progressForShow[season.season_number]?.[i]?.status !== 2) {
-                    return { season: season.season_number, episode: i };
-                }
-            }
-        }
-        return null;
-    }, [details, watchProgress, item.id]);
-
     const seasonProgressPercent = useMemo(() => {
-        if (!details || !nextEpisode) {
+        if (!details || !nextEpisodeInfo) {
             return 0;
         }
         
-        const currentSeason = details.seasons?.find(s => s.season_number === nextEpisode.season);
+        const currentSeason = details.seasons?.find(s => s.season_number === nextEpisodeInfo.season_number);
         if (!currentSeason) {
             return 0;
         }
     
         const totalInSeason = currentSeason.episode_count;
         const progressForShow = watchProgress[item.id] || {};
-        const progressForSeason = progressForShow[nextEpisode.season] || {};
+        const progressForSeason = progressForShow[nextEpisodeInfo.season_number] || {};
     
         let watchedInSeason = 0;
         for (let i = 1; i <= totalInSeason; i++) {
@@ -73,7 +53,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         }
     
         return totalInSeason > 0 ? (watchedInSeason / totalInSeason) * 100 : 0;
-    }, [details, nextEpisode, watchProgress, item.id]);
+    }, [details, nextEpisodeInfo, watchProgress, item.id]);
 
 
     useEffect(() => {
@@ -94,29 +74,35 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                         .catch(e => console.error("Failed to get TVDB details", e));
                 }
 
-                // We need to re-calculate nextEpisode with the new details
                 const progressForShow = watchProgress[item.id] || {};
                 const sortedSeasons = [...(mediaDetails.seasons || [])]
                     .filter(s => s.season_number > 0)
                     .sort((a, b) => a.season_number - b.season_number);
                 
-                let foundNextEp = null;
+                const today = new Date().toISOString().split('T')[0];
+                let foundNextEpInfo: Episode | null = null;
+                let foundSeasonDetails: TmdbSeasonDetails | null = null;
+
                 for (const season of sortedSeasons) {
-                    for (let i = 1; i <= season.episode_count; i++) {
-                        if (progressForShow[season.season_number]?.[i]?.status !== 2) {
-                            foundNextEp = { season: season.season_number, episode: i };
+                    if (!isMounted) return;
+                    const seasonData = await getSeasonDetails(item.id, season.season_number).catch(() => null);
+                    if (!isMounted || !seasonData) continue;
+                    
+                    for (const ep of seasonData.episodes) {
+                        const hasAired = ep.air_date && ep.air_date <= today;
+                        const isWatched = progressForShow[ep.season_number]?.[ep.episode_number]?.status === 2;
+                        if (hasAired && !isWatched) {
+                            foundNextEpInfo = ep;
+                            foundSeasonDetails = seasonData;
                             break;
                         }
                     }
-                    if(foundNextEp) break;
+                    if (foundNextEpInfo) break;
                 }
-                
-                if (foundNextEp) {
-                    const seasonData = await getSeasonDetails(item.id, foundNextEp.season);
-                    if (!isMounted) return;
-                    setSeasonDetails(seasonData);
-                    const episode = seasonData.episodes.find(e => e.episode_number === foundNextEp.episode);
-                    if (isMounted) setNextEpisodeInfo(episode || null);
+
+                if (isMounted) {
+                    setSeasonDetails(foundSeasonDetails);
+                    setNextEpisodeInfo(foundNextEpInfo);
                 }
             } catch (error) {
                 console.error(`Failed to fetch details for ${item.title}`, error);
@@ -131,22 +117,18 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     }, [item.id, item.title, watchProgress]);
     
     const seasonPosterSrcs = useMemo(() => {
-        const nextSeasonNumber = nextEpisode?.season;
-        // Find the season object from the main details to get its poster
+        const nextSeasonNumber = nextEpisodeInfo?.season_number;
         const tmdbSeason = details?.seasons?.find(s => s.season_number === nextSeasonNumber);
 
-        // Prioritized list of image paths according to the specified hierarchy
         const paths = [
-            tmdbSeason?.poster_path,    // 1. TMDB season image
-            // 2. TVDB season image - not available without extra API calls, so skipped.
-            details?.poster_path,       // 3. TMDB show poster
-            tvdbDetails?.image,         // 4. TVDB show poster
-            item.poster_path            // 5. Fallback to the initial item poster from list
+            tmdbSeason?.poster_path,
+            details?.poster_path,
+            tvdbDetails?.image,
+            item.poster_path
         ];
 
-        // Convert paths to full URLs, filtering out any null/undefined entries
         return paths.map(p => getFullImageUrl(p, 'w342'));
-    }, [details, tvdbDetails, item.poster_path, nextEpisode]);
+    }, [details, tvdbDetails, item.poster_path, nextEpisodeInfo]);
     
     const episodeStillSrcs = useMemo(() => {
         const paths = [
@@ -179,12 +161,12 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         );
     }
     
-    if (!details) return null; // Or some error state
+    if (!details || !nextEpisodeInfo) return null;
 
     const handleMarkWatched = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (nextEpisode) {
-            onToggleEpisode(item.id, nextEpisode.season, nextEpisode.episode, 0, item);
+        if (nextEpisodeInfo) {
+            onToggleEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number, 0, item);
         }
     };
 
@@ -225,16 +207,16 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
 
             <div className="absolute bottom-0 left-0 right-0 p-4 pl-8 mt-auto">
                 <h3 className="font-bold text-white text-lg truncate [text-shadow:0_1px_3px_#000]">{item.title}</h3>
-                {nextEpisode && nextEpisodeInfo ? (
+                {nextEpisodeInfo ? (
                     <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
-                        {`S${nextEpisode.season} E${nextEpisode.episode}: ${nextEpisodeInfo.name}`}
+                        {`S${nextEpisodeInfo.season_number} E${nextEpisodeInfo.episode_number}: ${nextEpisodeInfo.name}`}
                     </p>
                 ) : (
                     <p className="text-sm text-green-400 font-semibold">All caught up!</p>
                 )}
             </div>
 
-            {nextEpisode && (
+            {nextEpisodeInfo && (
               <div
                 onClick={handleMarkWatched}
                 className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"

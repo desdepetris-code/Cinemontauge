@@ -41,7 +41,31 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details }) => {
 
     const runtimeLabel = details.media_type === 'tv' ? 'Avg. Episode Runtime' : 'Est. Runtime';
     const rating = details.vote_average ? `${details.vote_average.toFixed(1)} / 10 (${details.vote_count} votes)` : 'N/A';
-    const languageMap: Record<string, string> = { 'en': 'English', 'ja': 'Japanese', 'ko': 'Korean', 'es': 'Spanish', 'fr': 'French', 'de': 'German' };
+
+    const languageName = useMemo(() => {
+        if (!details.original_language) return null;
+        try {
+            // Use Intl.DisplayNames to get the full language name from its code.
+            const langName = new Intl.DisplayNames(['en'], { type: 'language' }).of(details.original_language);
+            return langName || details.original_language.toUpperCase();
+        } catch (e) {
+            // Fallback for invalid codes
+            return details.original_language.toUpperCase();
+        }
+    }, [details.original_language]);
+
+    const countryNames = useMemo(() => {
+        if (!details.origin_country || details.origin_country.length === 0) return null;
+        try {
+            // Use Intl.DisplayNames to get full country names from their codes.
+            const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+            return details.origin_country.map(code => regionNames.of(code) || code).join(', ');
+        } catch (e) {
+            // Fallback for invalid codes
+            return details.origin_country.join(', ');
+        }
+    }, [details.origin_country]);
+
 
     const formatCurrency = (amount?: number) => {
         if (!amount || amount === 0) return 'N/A';
@@ -63,8 +87,8 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details }) => {
                     </div>
                 } />}
                 <InfoRow label="Release Date" value={releaseDate ? new Date(releaseDate).toLocaleDateString() : 'N/A'} />
-                 <InfoRow label="Language" value={languageMap[details.original_language || ''] || details.original_language?.toUpperCase()} />
-                <InfoRow label="Country" value={details.origin_country?.join(', ')} />
+                 <InfoRow label="Language" value={languageName} />
+                <InfoRow label="Country of Origin" value={countryNames} />
                 <InfoRow label="Production" value={details.production_companies?.map(c => c.name).join(', ')} />
                 {details.media_type === 'tv' && <InfoRow label="Seasons" value={details.number_of_seasons} />}
                 {details.media_type === 'tv' && <InfoRow label="Episodes" value={details.number_of_episodes} />}

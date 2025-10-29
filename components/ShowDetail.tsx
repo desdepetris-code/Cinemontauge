@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache, getCollectionDetails } from '../services/tmdbService';
 import { getTvdbShowExtended } from '../services/tvdbService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, TvdbShow, WatchProviderResponse, TmdbCollection, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, TmdbMedia, EpisodeRatings, Comment } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, ChevronRightIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, QuestionMarkCircleIcon } from './Icons';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, ChevronRightIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, QuestionMarkCircleIcon, CalendarIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_BACKDROP_LARGE } from '../constants';
@@ -24,6 +24,7 @@ import HistoryModal from './HistoryModal';
 import CommentModal from './CommentModal';
 import FavoriteAnimation from './FavoriteAnimation';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
+import MarkAsWatchedModal from './MarkAsWatchedModal';
 
 // --- PROPS INTERFACE ---
 interface ShowDetailProps {
@@ -45,7 +46,7 @@ interface ShowDetailProps {
   onOpenCustomListModal: (item: TmdbMedia | TrackedItem) => void;
   ratings: UserRatings;
   onRateItem: (mediaId: number, rating: number) => void;
-  onMarkAllWatched: (showId: number, showInfo: TrackedItem) => void;
+  onMarkMediaAsWatched: (item: TmdbMedia | TrackedItem, date?: string) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
@@ -220,7 +221,7 @@ const validateMediaDetails = (data: Partial<TmdbMediaDetails> | null, mediaType:
 const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const {
     id, mediaType, isModal = false, onBack, watchProgress, history, onToggleEpisode, onSaveJournal, trackedLists, onUpdateLists,
-    customImagePaths, onSetCustomImage, favorites, onToggleFavoriteShow, onSelectShow, onOpenCustomListModal, ratings, onRateItem, onMarkAllWatched, onMarkSeasonWatched, onUnmarkSeasonWatched,
+    customImagePaths, onSetCustomImage, favorites, onToggleFavoriteShow, onSelectShow, onOpenCustomListModal, ratings, onRateItem, onMarkMediaAsWatched, onMarkSeasonWatched, onUnmarkSeasonWatched,
     onMarkPreviousEpisodesWatched, favoriteEpisodes, onToggleFavoriteEpisode, onSelectPerson, onStartLiveWatch, onDeleteHistoryItem, onClearMediaHistory, episodeRatings, onRateEpisode, onAddWatchHistory, onSaveComment, comments, onMarkRemainingWatched, genres
   } = props;
 
@@ -244,6 +245,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
   const [isAnimatingFavorite, setIsAnimatingFavorite] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'up' | 'down'>('up');
+  const [markAsWatchedModalOpen, setMarkAsWatchedModalOpen] = useState(false);
 
   // --- DERIVED STATE & MEMOIZED VALUES ---
   const customPosterPath = customImagePaths[id]?.poster_path;
@@ -478,6 +480,25 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         onToggleFavoriteShow(details as TrackedItem);
     }
   };
+
+  const handleSaveWatchedDate = (data: { date: string; note: string }) => {
+    if (details && details.media_type === 'movie') {
+        onAddWatchHistory(details as TrackedItem, undefined, undefined, data.date, data.note);
+    }
+    setMarkAsWatchedModalOpen(false);
+  };
+
+  const handleLiveWatchForMovie = () => {
+    if (!details || details.media_type !== 'movie') return;
+    const mediaInfo: LiveWatchMediaInfo = {
+        id: details.id,
+        media_type: 'movie',
+        title: details.title || details.name || 'Untitled',
+        poster_path: details.poster_path,
+        runtime: details.runtime || 90, // Use a fallback runtime
+    };
+    onStartLiveWatch(mediaInfo);
+  };
   
   const mediaKey = mediaType === 'movie' ? `movie-${id}` : `tv-${id}`;
   const existingComment = comments.find(c => c.mediaKey === mediaKey);
@@ -554,6 +575,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   // --- FINAL RENDER ---
   return (
     <>
+      <MarkAsWatchedModal
+        isOpen={markAsWatchedModalOpen}
+        onClose={() => setMarkAsWatchedModalOpen(false)}
+        mediaTitle={displayTitle || ''}
+        onSave={handleSaveWatchedDate}
+      />
       <JournalModal isOpen={journalModalState.isOpen} onClose={() => setJournalModalState({ isOpen: false })} onSave={(entry, s, e) => onSaveJournal(id, s, e, entry)} mediaDetails={details} initialSeason={journalModalState.season} initialEpisode={journalModalState.episode} watchProgress={watchProgress} />
       <ImageSelectorModal isOpen={imageSelectorModalOpen} onClose={() => setImageSelectorModalOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => onSetCustomImage(id, type, path)} />
       <RatingModal isOpen={ratingModalOpen} onClose={() => setRatingModalOpen(false)} onSave={(rating) => onRateItem(id, rating)} currentRating={userRating} mediaTitle={displayTitle || ''} />
@@ -675,18 +702,42 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <div className="h-12">
                     <StatusSelector currentStatus={currentStatus} onUpdateStatus={handleUpdateStatus} />
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                    <ActionButton icon={<HeartIcon filled={isFavorited} className="w-7 h-7" />} label={isFavorited ? 'Favorited' : 'Favorite'} onClick={handleToggleFavoriteShowWithAnimation} isActive={isFavorited} />
-                    <ActionButton icon={<StarIcon filled={userRating > 0} className="w-7 h-7" />} label={userRating ? `Rated ${userRating}/5` : 'Rate'} onClick={() => setRatingModalOpen(true)} isActive={userRating > 0} />
-                    <ActionButton icon={<BookOpenIcon className="w-7 h-7" />} label="Journal" onClick={() => handleOpenJournal()} />
-                    <ActionButton icon={<ListBulletIcon className="w-7 h-7" />} label="Add to..." onClick={() => onOpenCustomListModal(details)} />
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                    <ActionButton icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} label={existingComment ? 'View Comment' : 'Comment'} onClick={() => setIsCommentModalOpen(true)} isActive={!!existingComment}/>
-                    <ActionButton icon={<ClockIcon className="w-7 h-7" />} label="History" onClick={() => setIsHistoryModalOpen(true)} />
-                    <PageChangeRequest mediaTitle={displayTitle || ''} mediaId={id}/>
-                    <ActionButton icon={<ArrowPathIcon className="w-7 h-7" />} label="Refresh" onClick={handleRefreshData} />
-                </div>
+                {mediaType === 'movie' ? (
+                    <>
+                        <div className="grid grid-cols-4 gap-2">
+                            <ActionButton icon={<CheckCircleIcon className="w-7 h-7" />} label="Mark Watched" onClick={() => onMarkMediaAsWatched(details as TrackedItem)} />
+                            <ActionButton icon={<CalendarIcon className="w-7 h-7" />} label="Log Watch" onClick={() => setMarkAsWatchedModalOpen(true)} />
+                            <ActionButton icon={<PlayCircleIcon className="w-7 h-7" />} label="Live Watch" onClick={handleLiveWatchForMovie} />
+                            <ActionButton icon={<HeartIcon filled={isFavorited} className="w-7 h-7" />} label={isFavorited ? 'Favorited' : 'Favorite'} onClick={handleToggleFavoriteShowWithAnimation} isActive={isFavorited} />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                            <ActionButton icon={<StarIcon filled={userRating > 0} className="w-7 h-7" />} label={userRating ? `Rated ${userRating}/5` : 'Rate'} onClick={() => setRatingModalOpen(true)} isActive={userRating > 0} />
+                            <ActionButton icon={<BookOpenIcon className="w-7 h-7" />} label="Journal" onClick={() => handleOpenJournal()} />
+                            <ActionButton icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} label={existingComment ? 'View Comment' : 'Comment'} onClick={() => setIsCommentModalOpen(true)} isActive={!!existingComment}/>
+                            <ActionButton icon={<ListBulletIcon className="w-7 h-7" />} label="Add to..." onClick={() => onOpenCustomListModal(details)} />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                             <ActionButton icon={<ClockIcon className="w-7 h-7" />} label="History" onClick={() => setIsHistoryModalOpen(true)} />
+                            <PageChangeRequest mediaTitle={displayTitle || ''} mediaId={id}/>
+                            <ActionButton icon={<ArrowPathIcon className="w-7 h-7" />} label="Refresh" onClick={handleRefreshData} />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-4 gap-2">
+                            <ActionButton icon={<HeartIcon filled={isFavorited} className="w-7 h-7" />} label={isFavorited ? 'Favorited' : 'Favorite'} onClick={handleToggleFavoriteShowWithAnimation} isActive={isFavorited} />
+                            <ActionButton icon={<StarIcon filled={userRating > 0} className="w-7 h-7" />} label={userRating ? `Rated ${userRating}/5` : 'Rate'} onClick={() => setRatingModalOpen(true)} isActive={userRating > 0} />
+                            <ActionButton icon={<BookOpenIcon className="w-7 h-7" />} label="Journal" onClick={() => handleOpenJournal()} />
+                            <ActionButton icon={<ListBulletIcon className="w-7 h-7" />} label="Add to..." onClick={() => onOpenCustomListModal(details)} />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                            <ActionButton icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} label={existingComment ? 'View Comment' : 'Comment'} onClick={() => setIsCommentModalOpen(true)} isActive={!!existingComment}/>
+                            <ActionButton icon={<ClockIcon className="w-7 h-7" />} label="History" onClick={() => setIsHistoryModalOpen(true)} />
+                            <PageChangeRequest mediaTitle={displayTitle || ''} mediaId={id}/>
+                            <ActionButton icon={<ArrowPathIcon className="w-7 h-7" />} label="Refresh" onClick={handleRefreshData} />
+                        </div>
+                    </>
+                )}
             </div>
             
         </div>

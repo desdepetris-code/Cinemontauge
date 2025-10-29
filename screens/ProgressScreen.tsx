@@ -102,14 +102,14 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 Promise.all(movieDetailsPromises)
             ]);
 
-            const showsWithNextEp = showDetailsResults.map((details, index) => {
+            const enrichedShowDataPromises = showDetailsResults.map(async (details, index) => {
                 if (!details || !details.seasons) return null;
                 const item = showsToProcess[index];
+                
                 const seasonsForCalc = details.seasons.filter(s => s.season_number > 0);
                 const totalEpisodes = seasonsForCalc.reduce((acc, s) => acc + s.episode_count, 0);
-
-                let watchedCount = 0;
                 const progressForShow = watchProgress[item.id] || {};
+                let watchedCount = 0;
                 seasonsForCalc.forEach(s => { for (let i = 1; i <= s.episode_count; i++) if (progressForShow[s.season_number]?.[i]?.status === 2) watchedCount++; });
                 
                 if (totalEpisodes > 0 && watchedCount >= totalEpisodes) {
@@ -119,33 +119,40 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     return null;
                 }
 
-                let nextEpisodeLocation: { season: number; episode: number } | null = null;
-                for (const s of [...seasonsForCalc].sort((a,b) => a.season_number - b.season_number)) {
-                    for (let i = 1; i <= s.episode_count; i++) {
-                        if (progressForShow[s.season_number]?.[i]?.status !== 2) { nextEpisodeLocation = { season: s.season_number, episode: i }; break; }
+                let nextEpisodeInfo: Episode | null = null;
+                const sortedSeasons = [...seasonsForCalc].sort((a,b) => a.season_number - b.season_number);
+                const today = new Date().toISOString().split('T')[0];
+
+                for (const season of sortedSeasons) {
+                    const seasonDetails = await getSeasonDetails(details.id, season.season_number).catch(() => null);
+                    if (!seasonDetails) continue;
+
+                    for (const ep of seasonDetails.episodes) {
+                        const hasAired = ep.air_date && ep.air_date <= today;
+                        const isWatched = progressForShow[ep.season_number]?.[ep.episode_number]?.status === 2;
+                        if (hasAired && !isWatched) {
+                            nextEpisodeInfo = ep;
+                            break;
+                        }
                     }
-                    if (nextEpisodeLocation) break;
+                    if (nextEpisodeInfo) break;
                 }
                 
                 const showHistory = history.filter(h => h.id === item.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 const lastWatchedTimestamp = showHistory.length > 0 ? new Date(showHistory[0].timestamp).getTime() : 0;
                 
-                return { item, details, watchedCount, totalEpisodes, lastWatchedTimestamp, nextEpisodeLocation };
-            }).filter((item): item is NonNullable<typeof item> => item !== null);
-
-            const seasonDetailsPromises = showsWithNextEp.map(data => data.nextEpisodeLocation ? getSeasonDetails(data.item.id, data.nextEpisodeLocation.season).catch(() => null) : null);
-            const seasonDetailsResults = await Promise.all(seasonDetailsPromises);
-            
-            const finalEnrichedShows: EnrichedShowData[] = showsWithNextEp.map((data, index) => {
-                const seasonDetails = seasonDetailsResults[index];
-                const nextEpisodeInfo = seasonDetails?.episodes.find(e => e.episode_number === data.nextEpisodeLocation?.episode) || null;
-                return {
-                    ...data.item, details: data.details, nextEpisodeInfo, watchedCount: data.watchedCount, totalEpisodes: data.totalEpisodes,
-                    lastWatchedTimestamp: data.lastWatchedTimestamp, popularity: data.details.popularity || 0,
-                    status: watchingIds.has(data.item.id) ? 'watching' : 'onHold',
-                };
+                if (nextEpisodeInfo) {
+                    return {
+                        ...item, details, nextEpisodeInfo, watchedCount, totalEpisodes, lastWatchedTimestamp,
+                        popularity: details.popularity || 0,
+                        status: watchingIds.has(item.id) ? 'watching' : 'onHold',
+                    };
+                }
+                return null;
             });
-
+            
+            const finalEnrichedShows = (await Promise.all(enrichedShowDataPromises)).filter((item): item is EnrichedShowData => item !== null);
+            
             const finalEnrichedMovies: EnrichedMovieData[] = movieDetailsResults.map((details, index) => {
                 if (!details) return null;
                 const item = pausedMoviesInfo[index];
@@ -161,8 +168,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         };
 
         if (refreshKey > 0) processMedia();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watchProgress, history, refreshKey, pausedLiveSessions, watching, onHold]);
+    }, [watchProgress, history, refreshKey, pausedLiveSessions, watching, onHold, props.onUpdateLists]);
 
     const sortedMedia = useMemo(() => {
         const displayableMedia = enrichedMedia.filter(item => {
