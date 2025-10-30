@@ -1,5 +1,5 @@
 // services/googleDriveService.ts
-import { GOOGLE_CLIENT_ID, DRIVE_SCOPES, DRIVE_DISCOVERY_DOCS, DRIVE_APP_FOLDER, DRIVE_FILE_NAME } from '../constants';
+import { GOOGLE_CLIENT_ID, GOOGLE_API_KEY, DRIVE_SCOPES, DRIVE_DISCOVERY_DOCS, DRIVE_APP_FOLDER, DRIVE_FILE_NAME } from '../constants';
 import { DriveUser } from '../types';
 
 // gapi types are global after script load, so we need to declare them to satisfy TypeScript
@@ -31,18 +31,16 @@ export const initGoogleDriveClient = async (): Promise<void> => {
     if (isGapiReady) return;
     
     // Don't initialize if credentials are not provided
-    if (GOOGLE_CLIENT_ID.startsWith('YOUR_')) {
-        console.warn("Google Drive sync is disabled. Please provide a valid Client ID in constants.ts");
+    if (GOOGLE_CLIENT_ID.startsWith('YOUR_') || GOOGLE_API_KEY.startsWith('YOUR_')) {
+        console.warn("Google Drive sync is disabled. Please provide a valid Client ID and API Key in constants.ts");
         throw new Error("Google Drive client not configured.");
     }
 
     await loadGapiScript();
     
     await new Promise<void>((resolve, reject) => {
-        // The placeholder GOOGLE_API_KEY was causing the discovery document to fail loading.
-        // For OAuth flows accessing user data, the apiKey is not required for initialization,
-        // as the user's access token will authorize the API calls. Removing it resolves the error.
         gapi.client.init({
+            apiKey: GOOGLE_API_KEY,
             clientId: GOOGLE_CLIENT_ID,
             discoveryDocs: DRIVE_DISCOVERY_DOCS,
             scope: DRIVE_SCOPES,

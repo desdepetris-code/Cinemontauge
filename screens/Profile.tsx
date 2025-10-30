@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification } from '../types';
-import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, CalendarIcon, BellIcon, TvIcon } from '../components/Icons';
+import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, CalendarIcon, BellIcon, TvIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import Settings from './Settings';
@@ -210,6 +210,44 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
   const stats = useCalculatedStats(userData);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScrollability = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      const isScrollable = el.scrollWidth > el.clientWidth;
+      setCanScrollLeft(el.scrollLeft > 0);
+      setCanScrollRight(isScrollable && el.scrollLeft < el.scrollWidth - el.clientWidth - 1); // -1 for buffer
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      checkScrollability();
+      el.addEventListener('scroll', checkScrollability);
+      window.addEventListener('resize', checkScrollability);
+
+      return () => {
+        el.removeEventListener('scroll', checkScrollability);
+        window.removeEventListener('resize', checkScrollability);
+      };
+    }
+  }, [checkScrollability]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      const scrollAmount = el.clientWidth * 0.8; // Scroll 80% of the visible width
+      el.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
 
   const { followers, following } = useMemo(() => {
     if (!currentUser) return { followers: [], following: [] };
@@ -334,25 +372,48 @@ const Profile: React.FC<ProfileProps> = (props) => {
       </header>
 
       <div className="mb-6">
-        <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar border-b border-bg-secondary/50">
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center space-y-1 p-3 flex-shrink-0 w-24 rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-bg-secondary text-text-primary'
-                    : 'text-text-secondary hover:bg-bg-secondary/30'
-                }`}
-              >
-                <div className={`transition-all duration-300 ${activeTab === tab.id ? 'text-primary-accent' : ''}`}>
-                    <Icon className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-semibold">{tab.label}</span>
-              </button>
-            )})}
+        <div className="relative group">
+          {canScrollLeft && (
+            <button 
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Scroll left"
+            >
+              <ChevronLeftIcon className="w-6 h-6" />
+            </button>
+          )}
+          <div
+            ref={scrollContainerRef}
+            className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 border-b border-bg-secondary/50"
+          >
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-col items-center justify-center space-y-1 p-3 flex-shrink-0 w-24 rounded-lg transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-bg-secondary text-text-primary'
+                      : 'text-text-secondary hover:bg-bg-secondary/30'
+                  }`}
+                >
+                  <div className={`transition-all duration-300 ${activeTab === tab.id ? 'text-primary-accent' : ''}`}>
+                      <Icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold">{tab.label}</span>
+                </button>
+              )})}
+          </div>
+          {canScrollRight && (
+             <button 
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Scroll right"
+            >
+              <ChevronRightIcon className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </div>
       

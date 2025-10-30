@@ -12,7 +12,6 @@ import * as googleDriveService from './services/googleDriveService';
 import BottomTabNavigator, { TabName } from './navigation/BottomTabNavigator';
 import SearchScreen from './screens/SearchScreen';
 import ProgressScreen from './screens/ProgressScreen';
-import { useAchievements } from './hooks/useAchievements';
 import { playNotificationSound } from './utils/soundUtils';
 import Recommendations from './screens/Recommendations';
 import ActorDetail from './components/ActorDetail';
@@ -216,6 +215,134 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   useEffect(() => {
     confirmationService.updateSetting(notificationSettings.showWatchedConfirmation);
   }, [notificationSettings.showWatchedConfirmation]);
+  
+  // --- Google Drive Initialization ---
+  useEffect(() => {
+    const initDrive = async () => {
+      try {
+        await googleDriveService.initGoogleDriveClient();
+        setDriveStatus(prev => ({ ...prev, isGapiReady: true }));
+        
+        const authInstance = googleDriveService.getAuthInstance();
+        if (authInstance) {
+          const updateSigninStatus = (isSignedIn: boolean) => {
+            if (isSignedIn) {
+              const profile = authInstance.currentUser.get().getBasicProfile();
+              setDriveStatus(prev => ({
+                ...prev,
+                isSignedIn: true,
+                user: {
+                  name: profile.getName(),
+                  email: profile.getEmail(),
+                  imageUrl: profile.getImageUrl(),
+                },
+                error: null,
+              }));
+            } else {
+              setDriveStatus(prev => ({
+                ...prev,
+                isSignedIn: false,
+                user: null,
+              }));
+            }
+          };
+          authInstance.isSignedIn.listen(updateSigninStatus);
+          updateSigninStatus(authInstance.isSignedIn.get());
+        }
+      } catch (error) {
+        console.error("Google Drive initialization failed:", error);
+        setDriveStatus(prev => ({ ...prev, isGapiReady: false, error: "Could not connect to Google Drive." }));
+      }
+    };
+
+    initDrive();
+  }, []);
+
+  const handleDriveSignIn = async () => {
+    try {
+      await googleDriveService.signIn();
+    } catch (error) {
+      console.error("Google Drive sign-in failed:", error);
+      setDriveStatus(prev => ({ ...prev, error: "Sign-in failed." }));
+    }
+  };
+
+  const handleDriveSignOut = async () => {
+    try {
+      await googleDriveService.signOut();
+    } catch (error) {
+      console.error("Google Drive sign-out failed:", error);
+      setDriveStatus(prev => ({ ...prev, error: "Sign-out failed." }));
+    }
+  };
+
+  const handleBackupToDrive = async () => {
+    if (!driveStatus.isSignedIn) {
+      alert("Please sign in to Google Drive first.");
+      return;
+    }
+
+    if (!window.confirm("This will overwrite your previous backup on Google Drive with a snapshot of your current local data (for all users). Are you sure?")) {
+      return;
+    }
+    
+    setDriveStatus(prev => ({ ...prev, isSyncing: true, error: null }));
+
+    try {
+      const dataToBackup: { [key: string]: any } = {};
+      for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key) {
+              const value = localStorage.getItem(key);
+              if (value) {
+                  try { dataToBackup[key] = JSON.parse(value); } 
+                  catch { dataToBackup[key] = value; }
+              }
+          }
+      }
+
+      await googleDriveService.uploadData(dataToBackup);
+      const now = new Date().toISOString();
+      setDriveStatus(prev => ({ ...prev, lastSync: now, isSyncing: false }));
+      localStorage.setItem('drive_last_sync', now);
+      confirmationService.show("✅ Backup to Google Drive successful!");
+    } catch (error: any) {
+      console.error("Google Drive backup failed:", error);
+      setDriveStatus(prev => ({ ...prev, isSyncing: false, error: `Backup failed: ${error.message}` }));
+    }
+  };
+
+  const handleRestoreFromDrive = async () => {
+    if (!driveStatus.isSignedIn) {
+      alert("Please sign in to Google Drive first.");
+      return;
+    }
+
+    if (!window.confirm("DANGER: This will overwrite ALL your current local data (for all users) with the backup from Google Drive. This cannot be undone. Are you sure?")) {
+      return;
+    }
+
+    setDriveStatus(prev => ({ ...prev, isSyncing: true, error: null }));
+
+    try {
+      const data = await googleDriveService.downloadData();
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        localStorage.clear();
+        Object.keys(data).forEach(key => {
+            const value = (data as any)[key];
+            localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+        });
+
+        confirmationService.show("✅ Restore successful! The app will now reload to apply changes.");
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setDriveStatus(prev => ({ ...prev, isSyncing: false, error: "No backup found on Google Drive or data is invalid." }));
+      }
+    } catch (error: any) {
+      console.error("Google Drive restore failed:", error);
+      setDriveStatus(prev => ({ ...prev, isSyncing: false, error: `Restore failed: ${error.message}` }));
+    }
+  };
 
   // One-time data integrity check on startup to remove duplicates from lists
   useEffect(() => {
@@ -1361,7 +1488,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       case 'recommendations': return <Recommendations onSelectShow={handleSelectShow} userData={allUserData} onMarkShowAsWatched={handleMarkShowAsWatched} onOpenAddToListModal={handleOpenCustomListModal} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} />;
       case 'search': return <SearchScreen onSelectShow={handleSelectShow} onSelectPerson={handleSelectPerson} onSelectUser={handleSelectUser} searchHistory={searchHistory} onUpdateSearchHistory={handleUpdateSearchHistory} query={searchQuery} onQueryChange={setSearchQuery} onMarkShowAsWatched={handleMarkShowAsWatched} onOpenAddToListModal={handleOpenCustomListModal} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={handleToggleLikeList} timezone={timezone} />;
       case 'progress': return <ProgressScreen userData={allUserData} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onSelectShow={handleSelectShow} currentUser={currentUser} onAuthClick={onAuthClick} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} />;
-      case 'profile': return <Profile userData={allUserData} genres={genres} onSelectShow={handleSelectShow} driveStatus={driveStatus} onDriveSignIn={()=>{}} onDriveSignOut={()=>{}} onBackupToDrive={()=>{}} onRestoreFromDrive={()=>{}} onImportCompleted={handleImportCompleted} onTraktImportCompleted={handleTraktImportCompleted} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} setCustomLists={setCustomLists} initialTab={initialProfileTab} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteSearchHistoryItem={handleDeleteSearchHistoryItem} onClearSearchHistory={handleClearSearchHistory} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} customThemes={customThemes} setCustomThemes={setCustomThemes} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={handleSelectUser} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={handleRemoveDuplicateHistory} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} onMarkOneRead={handleMarkOneNotificationRead} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} />;
+      case 'profile': return <Profile userData={allUserData} genres={genres} onSelectShow={handleSelectShow} driveStatus={driveStatus} onDriveSignIn={handleDriveSignIn} onDriveSignOut={handleDriveSignOut} onBackupToDrive={handleBackupToDrive} onRestoreFromDrive={handleRestoreFromDrive} onImportCompleted={handleImportCompleted} onTraktImportCompleted={handleTraktImportCompleted} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} setCustomLists={setCustomLists} initialTab={initialProfileTab} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteSearchHistoryItem={handleDeleteSearchHistoryItem} onClearSearchHistory={handleClearSearchHistory} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} customThemes={customThemes} setCustomThemes={setCustomThemes} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={handleSelectUser} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={handleRemoveDuplicateHistory} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} onMarkOneRead={handleMarkOneNotificationRead} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} />;
       case 'calendar': return <CalendarScreen userData={allUserData} onSelectShow={handleSelectShow} timezone={timezone} />;
       default: return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShowInModal} watchProgress={watchProgress} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenCustomListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} />;
     }
