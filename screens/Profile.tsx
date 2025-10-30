@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification } from '../types';
-import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, CalendarIcon, BellIcon } from '../components/Icons';
+import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, CalendarIcon, BellIcon, TvIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import Settings from './Settings';
@@ -18,6 +18,9 @@ import FollowListModal from '../components/FollowListModal';
 import FriendsActivity from '../components/profile/FriendsActivity';
 import LibraryScreen from './LibraryScreen';
 import NotificationsScreen from './NotificationsScreen';
+import RecentActivityWidget from '../components/profile/RecentActivityWidget';
+import AchievementsWidget from '../components/profile/AchievementsWidget';
+import ListsWidget from '../components/profile/ListsWidget';
 
 interface User {
   id: string;
@@ -197,6 +200,8 @@ interface ProfileProps {
   notifications: AppNotification[];
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
+  autoHolidayThemesEnabled: boolean;
+  setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
@@ -220,11 +225,11 @@ const Profile: React.FC<ProfileProps> = (props) => {
     { id: 'lists', label: 'Custom Lists', icon: ListBulletIcon },
     { id: 'stats', label: 'Stats', icon: ChartPieIcon },
     { id: 'history', label: 'History', icon: ClockIcon },
-    { id: 'seasonLog', label: 'Season Log', icon: CalendarIcon },
+    { id: 'seasonLog', label: 'Season Log', icon: TvIcon },
     { id: 'journal', label: 'Journal', icon: BookOpenIcon },
     { id: 'achievements', label: 'Achievements', icon: BadgeIcon },
     { id: 'notifications', label: 'Notifications', icon: BellIcon },
-    { id: 'updates', label: 'Updates', icon: InformationCircleIcon },
+    { id: 'updates', label: 'Updates', icon: MegaphoneIcon },
     { id: 'imports', label: 'Import & Sync', icon: CloudArrowUpIcon },
     { id: 'settings', label: 'Settings', icon: CogIcon },
   ];
@@ -240,7 +245,8 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             <StatsNarrative stats={stats} genres={genres} userData={userData} currentUser={currentUser} />
             <OverviewStats stats={stats} />
             <FriendsActivity 
@@ -249,6 +255,13 @@ const Profile: React.FC<ProfileProps> = (props) => {
               onSelectShow={onSelectShow}
               onSelectUser={props.onSelectUser}
             />
+          </div>
+          <div className="lg:col-span-1 space-y-6">
+            <RecentActivityWidget history={userData.history} onSelectShow={onSelectShow} />
+            <AchievementsWidget userData={userData} onNavigate={() => setActiveTab('achievements')} />
+            <ListsWidget watching={userData.watching} planToWatch={userData.planToWatch} onNavigate={() => setActiveTab('lists')} />
+            <JournalWidget userData={userData} onSelectShow={onSelectShow} onNavigate={() => setActiveTab('journal')} />
+          </div>
         </div>
       );
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} />;
@@ -295,6 +308,9 @@ const Profile: React.FC<ProfileProps> = (props) => {
                        <button onClick={() => setFollowModalState({isOpen: true, title: 'Following', userIds: following})} className="text-sm">
                            <strong className="text-text-primary">{following.length}</strong> <span className="text-text-secondary">Following</span>
                        </button>
+                       <div className="text-sm">
+                            <strong className="text-text-primary">{stats.longestStreak}</strong> <span className="text-text-secondary">Day Streak 🔥</span>
+                        </div>
                     </div>
                     <div className="mt-2 flex justify-center sm:justify-start items-center space-x-2">
                         <ToggleSwitch enabled={isPublic} onChange={handlePrivacyToggle} />

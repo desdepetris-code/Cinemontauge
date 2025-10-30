@@ -17,7 +17,6 @@ interface EpisodeDetailModalProps {
   episode: Episode | null;
   showDetails: TmdbMediaDetails;
   seasonDetails: TmdbSeasonDetails;
-  tvdbShowPosterPath: string | null | undefined;
   isWatched: boolean;
   onToggleWatched: () => void;
   onOpenJournal: () => void;
@@ -36,7 +35,7 @@ interface EpisodeDetailModalProps {
 }
 
 const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
-  isOpen, onClose, episode, showDetails, seasonDetails, tvdbShowPosterPath, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onSaveComment, comments,
+  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onSaveComment, comments,
 }) => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
@@ -113,7 +112,6 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
       getImageUrl(episode.still_path, 'w500', 'still'),
       getImageUrl(seasonDetails.poster_path, 'w500', 'poster'),
       getImageUrl(showDetails.poster_path, 'w500', 'poster'),
-      getImageUrl(tvdbShowPosterPath, 'original'),
   ];
 
   return (

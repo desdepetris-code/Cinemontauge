@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { themes as builtInThemes } from '../themes';
+import { themes as builtInThemes, holidayThemes } from '../themes';
 import { Theme } from '../types';
 import { PlusIcon, TrashIcon } from './Icons';
 import CustomThemeModal from './CustomThemeModal';
+import { getNextHoliday } from '../hooks/useTheme';
 
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
     <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8">
@@ -16,15 +18,44 @@ const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({
     </div>
 );
 
+const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
+    <div 
+        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50' : ''} ${disabled ? 'opacity-50' : ''}`}
+        onClick={disabled ? undefined : onClick}
+    >
+        <div>
+            <h3 className={`font-semibold ${isDestructive ? '' : 'text-text-primary'}`}>{title}</h3>
+            <p className="text-sm text-text-secondary">{subtitle}</p>
+        </div>
+        <div className="flex-shrink-0 ml-4">
+            {children}
+        </div>
+    </div>
+);
+
+const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ enabled, onChange, disabled }) => (
+    <button
+        onClick={() => !disabled && onChange(!enabled)}
+        disabled={disabled}
+        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${enabled ? 'translate-x-5' : ''}`}/>
+    </button>
+);
+
 interface ThemeSettingsProps {
     customThemes: Theme[];
     setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
+    autoHolidayThemesEnabled: boolean;
+    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomThemes }) => {
-    const [activeTheme, setTheme] = useTheme(customThemes);
+const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomThemes, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled }) => {
+    const [activeTheme, setTheme] = useTheme(customThemes, autoHolidayThemesEnabled);
     const [isCustomThemeModalOpen, setIsCustomThemeModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'dark' | 'light' | 'custom'>('dark');
+    const [activeTab, setActiveTab] = useState<'dark' | 'light' | 'custom' | 'holiday'>('dark');
+    
+    const nextHoliday = getNextHoliday(new Date());
 
     const handleSaveCustomTheme = (newTheme: Theme) => {
         setCustomThemes(prev => [...prev, newTheme]);
@@ -48,6 +79,7 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
         let themesToRender: Theme[] = [];
         if (activeTab === 'dark') themesToRender = darkThemes;
         if (activeTab === 'light') themesToRender = lightThemes;
+        if (activeTab === 'holiday') themesToRender = holidayThemes;
         
         if (activeTab === 'custom') {
             return (
@@ -115,11 +147,22 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
                     <div className="flex p-1 bg-bg-secondary rounded-full">
                         <button onClick={() => setActiveTab('dark')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'dark' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Dark</button>
                         <button onClick={() => setActiveTab('light')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'light' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Light</button>
+                        <button onClick={() => setActiveTab('holiday')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'holiday' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Holiday</button>
                         <button onClick={() => setActiveTab('custom')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'custom' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Custom</button>
                     </div>
                 </div>
                 <div className="p-4">
                     {renderThemes()}
+                </div>
+                <div className="border-t border-bg-secondary/50">
+                    <SettingsRow title="Auto Apply Holiday Themes" subtitle="Switch to holiday themes automatically.">
+                        <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
+                    </SettingsRow>
+                    {nextHoliday && (
+                        <div className="p-4 text-sm text-text-secondary">
+                            Upcoming Holiday: <strong className="text-text-primary">{nextHoliday.name}</strong> on {nextHoliday.date.toLocaleDateString()}. Theme activates {nextHoliday.startDate.toLocaleDateString()}.
+                        </div>
+                    )}
                 </div>
             </SettingsCard>
         </>

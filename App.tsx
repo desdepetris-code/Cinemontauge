@@ -89,10 +89,14 @@ const migrateGuestData = (newUserId: string) => {
 
 
 const App: React.FC = () => {
-    const [customThemes] = useLocalStorage<Theme[]>('customThemes', []);
-    useTheme(customThemes);
-
     const [currentUser, setCurrentUser] = useLocalStorage<User | null>('currentUser', null);
+    const userId = currentUser ? currentUser.id : 'guest';
+
+    const [customThemes] = useLocalStorage<Theme[]>(`customThemes_${userId}`, []);
+    // FIX: Lift state up to ensure theme hook re-evaluates when setting changes.
+    const [autoHolidayThemesEnabled, setAutoHolidayThemesEnabled] = useLocalStorage<boolean>(`autoHolidayThemesEnabled_${userId}`, true);
+    useTheme(customThemes, autoHolidayThemesEnabled);
+
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [passwordResetState, setPasswordResetState] = useState<{ email: string; code: string; expiry: number } | null>(null);
 
@@ -247,8 +251,6 @@ const App: React.FC = () => {
         return null;
     }, [passwordResetState, handleLogin]);
 
-    const userId = currentUser ? currentUser.id : 'guest';
-
     return (
         <>
             <MainApp
@@ -261,6 +263,8 @@ const App: React.FC = () => {
                 onAuthClick={() => setIsAuthModalOpen(true)}
                 onForgotPasswordRequest={handleForgotPasswordRequest}
                 onForgotPasswordReset={handleForgotPasswordReset}
+                autoHolidayThemesEnabled={autoHolidayThemesEnabled}
+                setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled}
             />
             <AuthModal
                 isOpen={isAuthModalOpen}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserData, HistoryItem } from '../types';
 import { useCalculatedStats } from '../hooks/useCalculatedStats';
-import { ChevronDownIcon } from '../components/Icons';
+import { ChevronDownIcon, StarIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface StatsScreenProps {

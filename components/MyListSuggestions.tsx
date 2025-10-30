@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, TmdbMedia, TrackedItem } from '../types';
-import { discoverMedia } from '../services/tmdbService';
+import { discoverMedia, getMediaDetails } from '../services/tmdbService';
 import SuggestionCard from './SuggestionCard';
 
 interface MyListSuggestionsProps {
@@ -32,10 +32,30 @@ const MyListSuggestions: React.FC<MyListSuggestionsProps> = ({ userData, onSelec
                     discoverMedia('tv', { sortBy: 'popularity.desc' })
                 ]);
                 
-                const filteredMovies = movies.filter(item => !allUserMediaIds.has(item.id)).slice(0, 6);
-                const filteredTv = tv.filter(item => !allUserMediaIds.has(item.id)).slice(0, 6);
+                const allSuggestions = [...movies, ...tv];
+
+                const filteredSuggestions = allSuggestions
+                    .filter(item => !allUserMediaIds.has(item.id))
+                    .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+                    .slice(0, 12);
                 
-                setSuggestions([...filteredMovies, ...filteredTv]);
+                const enrichedSuggestions = await Promise.all(
+                    filteredSuggestions.map(async (item) => {
+                        if (!item.poster_path) {
+                            try {
+                                const details = await getMediaDetails(item.id, item.media_type);
+                                if (details.poster_path) {
+                                    return details;
+                                }
+                            } catch (e) {
+                                console.error(`Failed to get details for suggestion ${item.id}`, e);
+                            }
+                        }
+                        return item;
+                    })
+                );
+                
+                setSuggestions(enrichedSuggestions);
             } catch (error) {
                 console.error("Failed to fetch suggestions:", error);
             } finally {

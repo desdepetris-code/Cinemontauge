@@ -2,6 +2,8 @@ import React from 'react';
 import { TmdbMedia } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { PlusIcon } from './Icons';
+import FallbackImage from './FallbackImage';
+import { PLACEHOLDER_POSTER, TMDB_IMAGE_BASE_URL } from '../constants';
 
 interface SuggestionCardProps {
   item: TmdbMedia;
@@ -10,7 +12,7 @@ interface SuggestionCardProps {
 }
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({ item, onSelect, onAddClick }) => {
-    const posterSrc = getImageUrl(item.poster_path, 'w342');
+    const posterSrcs = [item.poster_path ? `${TMDB_IMAGE_BASE_URL}w342${item.poster_path}` : null];
     const title = item.title || item.name;
 
     const handleAdd = (e: React.MouseEvent) => {
@@ -23,9 +25,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({ item, onSelect, onAddCl
             onClick={() => onSelect(item.id, item.media_type)}
             className="cursor-pointer group relative transform hover:-translate-y-1 transition-transform duration-300"
         >
-            <img
-                src={posterSrc}
-                alt={title}
+            <FallbackImage
+                srcs={posterSrcs}
+                placeholder={PLACEHOLDER_POSTER}
+                alt={title || ''}
                 className="w-full aspect-[2/3] object-cover bg-bg-secondary rounded-lg shadow-lg group-hover:brightness-75 transition-all"
                 loading="lazy"
             />

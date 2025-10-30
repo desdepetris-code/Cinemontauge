@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { discoverMediaPaginated, searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser } from '../types';
-import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, UserIcon } from '../components/Icons';
+import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, SearchIcon } from '../components/Icons';
 import FallbackImage from '../components/FallbackImage';
-// FIX: Corrected the import name for TMDB_IMAGE_BASE_URL.
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER, PLACEHOLDER_PROFILE } from '../constants';
 import MarkAsWatchedModal from '../components/MarkAsWatchedModal';
-import GenreFilter from '../components/GenreFilter';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import { getImageUrl } from '../utils/imageUtils';
@@ -80,7 +78,6 @@ const ActionCard: React.FC<{
                         <FallbackImage 
                             srcs={posterSrcs}
                             placeholder={PLACEHOLDER_POSTER}
-                            noPlaceholder={true}
                             alt={`${title} poster`}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
@@ -125,16 +122,16 @@ interface SearchScreenProps {
   userData: UserData;
   currentUser: { id: string, username: string, email: string } | null;
   onToggleLikeList: (ownerId: string, listId: string, listName: string) => void;
+  timezone: string;
 }
 
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, onSelectUser, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList, timezone } = props;
 
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   
-  // --- Search State ---
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
   const [myListResults, setMyListResults] = useState<CustomList[]>([]);
@@ -144,16 +141,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Discovery State ---
-  const [discoveryTab, setDiscoveryTab] = useState<'tv' | 'movie'>('tv');
-  const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
-  const [discoveryItems, setDiscoveryItems] = useState<TmdbMedia[]>([]);
-  const [discoveryPage, setDiscoveryPage] = useState(1);
-  const [discoveryTotalPages, setDiscoveryTotalPages] = useState(1);
-  const [discoveryLoading, setDiscoveryLoading] = useState(true);
-  const [discoveryLoadingMore, setDiscoveryLoadingMore] = useState(false);
-
-  // --- Search Logic ---
   useEffect(() => {
     if (query.length < 1) {
         setMediaResults([]);
@@ -171,17 +158,14 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         setActiveTab('media');
         onUpdateSearchHistory(query);
 
-        // API Searches
         const mediaPromise = searchMediaPaginated(query, 1);
         const peoplePromise = searchPeoplePaginated(query, 1);
         
-        // Local Searches
         const lowerCaseQuery = query.toLowerCase();
         const myLists = userData.customLists.filter(list => list.name.toLowerCase().includes(lowerCaseQuery));
         const communityLists = searchPublicLists(query, currentUser?.id || null);
         const users = searchUsers(query, currentUser?.id || null);
         const genreArray = Object.entries(genres).map(([id, name]) => ({id: Number(id), name}));
-        // FIX: Explicitly cast g.name to string to avoid potential 'unknown' type inference issues.
         const matchingGenres = genreArray.filter(g => String(g.name).toLowerCase().includes(lowerCaseQuery));
 
         setMyListResults(myLists);
@@ -205,52 +189,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 }, [query, onUpdateSearchHistory, userData.customLists, genres, currentUser?.id]);
 
 
-  // --- Discovery Effects & Infinite Scroll ---
-  const discoveryObserver = useRef<IntersectionObserver>();
-  const lastDiscoveryElementRef = useCallback(node => {
-    if (discoveryLoading || discoveryLoadingMore) return;
-    if (discoveryObserver.current) discoveryObserver.current.disconnect();
-    discoveryObserver.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && discoveryPage < discoveryTotalPages) {
-        setDiscoveryPage(prevPage => prevPage + 1);
-      }
-    });
-    if (node) discoveryObserver.current.observe(node);
-  }, [discoveryLoading, discoveryLoadingMore, discoveryPage, discoveryTotalPages]);
-
-  useEffect(() => {
-    if (query.length > 0) return;
-    setDiscoveryItems([]);
-    setDiscoveryPage(1);
-    setDiscoveryTotalPages(1);
-    setDiscoveryLoading(true);
-    discoverMediaPaginated(discoveryTab, {sortBy: 'popularity.desc', genre: selectedGenre || undefined}, 1)
-      .then(data => {
-        setDiscoveryItems(data.results);
-        setDiscoveryTotalPages(data.total_pages);
-      })
-      .catch(e => console.error(`Failed to fetch discovery ${discoveryTab}`, e))
-      .finally(() => setDiscoveryLoading(false));
-  }, [discoveryTab, query, selectedGenre]);
-
-  useEffect(() => {
-    if (query.length > 0 || discoveryPage === 1) return;
-    setDiscoveryLoadingMore(true);
-    discoverMediaPaginated(discoveryTab, {sortBy: 'popularity.desc', genre: selectedGenre || undefined}, discoveryPage)
-      .then(data => setDiscoveryItems(prev => [...prev, ...data.results]))
-      .catch(e => console.error(`Failed to fetch more discovery ${discoveryTab}`, e))
-      .finally(() => setDiscoveryLoadingMore(false));
-  }, [discoveryPage, discoveryTab, query, selectedGenre]);
-
-  const handleRecentSearchClick = (recentQuery: string) => onQueryChange(recentQuery);
-  const handleDiscoveryTabChange = (tab: 'tv' | 'movie') => {
-      setDiscoveryTab(tab);
-      setSelectedGenre(null);
-  };
-
   const handleLike = (list: PublicCustomList) => {
       onToggleLikeList(list.user.id, list.id, list.name);
-      // Optimistically update UI
       setCommunityListResults(prev => prev.map(l => {
         if (l.id === list.id) {
             const likes = l.likes || [];
@@ -267,55 +207,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
       }));
   };
   
-  // --- RENDER FUNCTIONS ---
-  
-  const renderDiscovery = () => (
-    <>
-      {searchHistory.length > 0 && (
-          <div className="mb-8">
-              <h2 className="text-lg font-semibold text-text-secondary mb-3">Recent Searches</h2>
-              <div className="flex flex-wrap gap-2">
-                  {searchHistory.slice(0, 5).map(item => (
-                      <button key={item.timestamp} onClick={() => handleRecentSearchClick(item.query)} className="px-3 py-1.5 bg-bg-secondary text-text-secondary rounded-full text-sm hover:brightness-125 transition-colors">
-                          {item.query}
-                      </button>
-                  ))}
-              </div>
-          </div>
-      )}
-      <div className="flex p-1 bg-bg-secondary/50 rounded-lg mb-6">
-          <button onClick={() => handleDiscoveryTabChange('tv')} className={`w-full py-1.5 text-sm font-semibold rounded-md transition-all ${discoveryTab === 'tv' ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary'}`}>
-              Popular Shows
-          </button>
-          <button onClick={() => handleDiscoveryTabChange('movie')} className={`w-full py-1.5 text-sm font-semibold rounded-md transition-all ${discoveryTab === 'movie' ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary'}`}>
-              Popular Movies
-          </button>
-      </div>
-      
-      <GenreFilter genres={genres} selectedGenreId={selectedGenre} onSelectGenre={setSelectedGenre} />
-
-      {discoveryLoading ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
-            {[...Array(14)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div><div className="h-9 bg-bg-secondary rounded-md mt-2"></div></div>)}
-        </div>
-      ) : (
-        <>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4">
-                {discoveryItems.map((item, index) => {
-                    const isFavorite = favorites.some(fav => fav.id === item.id);
-                    const card = <ActionCard item={item} onSelect={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} isFavorite={isFavorite} />;
-                    if (discoveryItems.length === index + 1) {
-                        return <div ref={lastDiscoveryElementRef} key={item.id}>{card}</div>;
-                    }
-                    return <div key={item.id}>{card}</div>;
-                })}
-            </div>
-            {discoveryLoadingMore && <div className="text-center p-8">Loading more...</div>}
-        </>
-      )}
-    </>
-  );
-
   const renderSearchResults = () => {
     if (loading) return (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
@@ -334,7 +225,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         case 'people': return peopleResults.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {peopleResults.map(person => (
-                    // FIX: Pass person.id to onSelectPerson, which expects one argument.
                     <div key={person.id} className="text-center group cursor-pointer" onClick={() => onSelectPerson(person.id)}>
                         <img src={getImageUrl(person.profile_path, 'w185', 'profile')} alt={person.name} className="w-24 h-24 mx-auto rounded-full object-cover shadow-lg transition-transform group-hover:scale-110" />
                         <p className="mt-2 text-sm font-semibold text-text-primary">{person.name}</p>
@@ -397,7 +287,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   );
 
   return (
-    <div className="animate-fade-in px-6">
+    <div className="px-6">
         <header className="mb-4">
           <h1 className="text-3xl font-bold text-text-primary">Search</h1>
            <p className="mt-1 text-text-secondary">Find your next favorite show, movie, list, or user.</p>
@@ -413,8 +303,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             />
         </div>
         
-        {query.length > 2 ? (
-            <>
+        {query.length > 0 ? (
+            <div className="animate-fade-in">
               <div className="border-b border-bg-secondary/50 mb-6">
                   <div className="flex space-x-2 overflow-x-auto hide-scrollbar pb-2">
                       <TabButton tabId="media" label="Media" count={mediaResults.length} />
@@ -426,8 +316,14 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                   </div>
               </div>
               {renderSearchResults()}
-            </>
-        ) : renderDiscovery()}
+            </div>
+        ) : (
+            <div className="animate-fade-in text-center py-20">
+                <SearchIcon className="w-16 h-16 text-text-secondary/20 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-text-primary">Search for anything</h2>
+                <p className="mt-2 text-text-secondary">Find shows, movies, people, and public lists from other users.</p>
+            </div>
+        )}
     </div>
   );
 };

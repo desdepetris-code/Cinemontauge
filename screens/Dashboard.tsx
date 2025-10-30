@@ -13,6 +13,9 @@ import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
 import DateTimeDisplay from '../components/DateTimeDisplay';
 import PlanToWatch from '../components/PlanToWatch';
+import StatsWidget from '../components/StatsWidget';
+import { useCalculatedStats } from '../hooks/useCalculatedStats';
+import UpcomingCalendar from '../components/UpcomingCalendar';
 
 interface DashboardProps {
   userData: UserData;
@@ -33,6 +36,7 @@ interface DashboardProps {
   favorites: TrackedItem[];
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   timezone: string;
+  genres: Record<number, string>;
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -68,7 +72,7 @@ const fetchPopularAndTopRatedMovies = async (): Promise<TmdbMedia[]> => {
 
 const Dashboard: React.FC<DashboardProps> = ({
     userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
-    liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone
+    liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres
 }) => {
   // Cast TMDB_API_KEY to string to prevent TypeScript error on constant comparison.
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
@@ -126,6 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
       <DateTimeDisplay timezone={timezone} />
       <ShortcutNavigation onShortcutNavigate={onShortcutNavigate} />
+      <StatsWidget userData={userData} genres={genres} />
 
       {/* Live Watch Section */}
       <section className="px-6">
@@ -155,6 +160,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         onToggleEpisode={onToggleEpisode}
         pausedLiveSessions={pausedLiveSessions}
       />
+
+      {!isApiKeyMissing && (
+        <UpcomingCalendar
+            userData={userData}
+            onSelectShow={onSelectShow}
+            timezone={timezone}
+            onViewFullCalendar={() => onShortcutNavigate('calendar')}
+        />
+      )}
 
       <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} />
       

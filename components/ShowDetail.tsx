@@ -232,7 +232,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [seasonDetailsMap, setSeasonDetailsMap] = useState<Record<number, TmdbSeasonDetails>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ShowDetailTab>(mediaType === 'tv' ? 'seasons' : 'cast');
+  const [activeTab, setActiveTab] = useState<ShowDetailTab>(mediaType === 'tv' ? 'seasons' : 'moreInfo');
   const [expandedSeasons, setExpandedSeasons] = useState<Record<number, boolean>>({});
   const [journalModalState, setJournalModalState] = useState<{ isOpen: boolean; season?: number; episode?: Episode }>({ isOpen: false });
   const [imageSelectorModalOpen, setImageSelectorModalOpen] = useState(false);
@@ -522,14 +522,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       customPosterPath,
       ...sortedPosters.map(img => img.file_path),
       details.poster_path,
-      tvdbDetails?.image,
   ].filter((p): p is string => !!p).map(p => getImageUrl(p, 'w342'));
 
   const tabs: { id: ShowDetailTab; label: string; condition: boolean }[] = [
     { id: 'seasons', label: 'Seasons', condition: mediaType === 'tv' && !!details.seasons && details.seasons.length > 0 },
     { id: 'cast', label: 'Cast & Crew', condition: !!details.credits && (details.credits.cast.length > 0 || details.credits.crew.length > 0) },
     { id: 'watch', label: 'Where to Watch', condition: !!watchProviders && !!watchProviders.results.US },
-    { id: 'moreInfo', label: 'More Info', condition: true },
+    { id: 'moreInfo', label: mediaType === 'movie' ? 'Movie Info' : 'More Info', condition: true },
     { id: 'recommendations', label: 'Recommendations', condition: !!details.recommendations && details.recommendations.results.length > 0 },
     { id: 'customize', label: 'Customize', condition: !!details.images && (details.images.posters.length > 0 || details.images.backdrops.length > 0) },
   ];
@@ -553,7 +552,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     onOpenEpisodeDetail={handleOpenEpisodeDetail}
                     showDetails={details}
                     showPosterPath={details.poster_path}
-                    tvdbShowPosterPath={tvdbDetails?.image}
                     onMarkSeasonWatched={(showId, seasonNum) => onMarkSeasonWatched(showId, seasonNum, details as TrackedItem)}
                     onUnmarkSeasonWatched={onUnmarkSeasonWatched}
                     favoriteEpisodes={favoriteEpisodes}
@@ -609,7 +607,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             episode={episodeDetailModalState.episode}
             showDetails={details}
             seasonDetails={seasonDetailsMap[episodeDetailModalState.episode.season_number]}
-            tvdbShowPosterPath={tvdbDetails?.image}
             isWatched={watchProgress[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number]?.status === 2}
             onToggleWatched={() => onToggleEpisode(id, episodeDetailModalState.episode!.season_number, episodeDetailModalState.episode!.episode_number, watchProgress[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number]?.status || 0, details, episodeDetailModalState.episode.name)}
             onOpenJournal={() => handleOpenJournal(episodeDetailModalState.episode?.season_number, episodeDetailModalState.episode!)}

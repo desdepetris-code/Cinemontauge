@@ -22,7 +22,6 @@ interface SeasonAccordionProps {
   onOpenJournal: (season: number, episode: Episode) => void;
   onOpenEpisodeDetail: (episode: Episode) => void;
   showPosterPath: string | null | undefined;
-  tvdbShowPosterPath: string | null | undefined;
   onMarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   showDetails: TmdbMediaDetails;
@@ -71,7 +70,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   onOpenJournal,
   showDetails,
   showPosterPath,
-  tvdbShowPosterPath,
   favoriteEpisodes,
   onToggleFavoriteEpisode,
   onStartLiveWatch,
@@ -118,12 +116,11 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
     const paths = [
         season.poster_path,
         showPosterPath,
-        tvdbShowPosterPath,
     ];
     return paths
         .filter(p => !!p)
         .map(p => getImageUrl(p, 'w92'));
-  }, [season.poster_path, showPosterPath, tvdbShowPosterPath]);
+  }, [season.poster_path, showPosterPath]);
 
   const today = new Date().toISOString().split('T')[0];
   

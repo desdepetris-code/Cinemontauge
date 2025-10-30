@@ -1,3 +1,4 @@
+
 import { Theme } from './types';
 
 // --- DARK THEMES ---
@@ -463,4 +464,187 @@ export const themes: Theme[] = [
     powderBlue,
     cottonCandy,
     justWhite,
+];
+
+// --- HOLIDAY THEMES ---
+export const holidayThemes: Theme[] = [
+  {
+    id: 'holiday-halloween',
+    name: 'Spooky Halloween',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #1a202c, #000000)',
+      accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
+      cardGradient: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.5), rgba(10, 5, 2, 0.7))',
+      textColorPrimary: '#f3f4f6',
+      textColorSecondary: '#d97706',
+      accentPrimary: '#f97316',
+      accentSecondary: '#ea580c',
+      bgPrimary: '#1c1917',
+      bgSecondary: 'rgba(249, 115, 22, 0.1)',
+      bgBackdrop: 'rgba(28, 25, 23, 0.3)',
+      particleEffect: 'pumpkins',
+    }
+  },
+  {
+    id: 'holiday-christmas',
+    name: 'Winter Wonderland',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #0d3b66, #041d33)',
+      accentGradient: 'linear-gradient(to right, #ef4444, #b91c1c)',
+      cardGradient: 'linear-gradient(to bottom, rgba(13, 59, 102, 0.5), rgba(4, 29, 51, 0.7))',
+      textColorPrimary: '#e0f2fe',
+      textColorSecondary: '#7dd3fc',
+      accentPrimary: '#ef4444',
+      accentSecondary: '#b91c1c',
+      bgPrimary: '#041d33',
+      bgSecondary: 'rgba(239, 68, 68, 0.1)',
+      bgBackdrop: 'rgba(4, 29, 51, 0.3)',
+      particleEffect: 'snow',
+    }
+  },
+  {
+    id: 'holiday-valentines',
+    name: 'Sweetheart',
+    base: 'light',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom right, #fff1f2, #fce7f3)',
+      accentGradient: 'linear-gradient(to right, #f472b6, #ec4899)',
+      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(252, 231, 243, 0.8))',
+      textColorPrimary: '#831843',
+      textColorSecondary: '#9d174d',
+      accentPrimary: '#f472b6',
+      accentSecondary: '#ec4899',
+      bgPrimary: '#fff1f2',
+      bgSecondary: '#fce7f3',
+      bgBackdrop: 'rgba(253, 242, 248, 0.3)',
+      particleEffect: 'hearts',
+    }
+  },
+  {
+    id: 'holiday-new-years-eve',
+    name: "New Year's Eve",
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #171717, #000000)',
+      accentGradient: 'linear-gradient(to right, #fde047, #facc15)',
+      cardGradient: 'linear-gradient(to bottom, rgba(23, 23, 23, 0.5), rgba(10, 10, 10, 0.7))',
+      textColorPrimary: '#fefce8',
+      textColorSecondary: '#fde047',
+      accentPrimary: '#fde047',
+      accentSecondary: '#facc15',
+      bgPrimary: '#171717',
+      bgSecondary: 'rgba(250, 204, 21, 0.1)',
+      bgBackdrop: 'rgba(23, 23, 23, 0.3)',
+      particleEffect: 'fireworks',
+    }
+  },
+  {
+    id: 'holiday-new-year',
+    name: 'New Year Celebration',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #1e1b4b, #172554)',
+      accentGradient: 'linear-gradient(to right, #a78bfa, #c084fc)',
+      cardGradient: 'linear-gradient(to bottom, rgba(30, 27, 75, 0.5), rgba(23, 37, 84, 0.7))',
+      textColorPrimary: '#e0e7ff',
+      textColorSecondary: '#c7d2fe',
+      accentPrimary: '#a78bfa',
+      accentSecondary: '#c084fc',
+      bgPrimary: '#1e1b4b',
+      bgSecondary: 'rgba(167, 139, 250, 0.1)',
+      bgBackdrop: 'rgba(30, 27, 75, 0.3)',
+      particleEffect: 'confetti',
+    }
+  },
+  {
+    id: 'holiday-easter',
+    name: 'Pastel Easter',
+    base: 'light',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom right, #f0f9ff, #e0f2fe)',
+      accentGradient: 'linear-gradient(to right, #fbcfe8, #a5f3fc)',
+      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.8))',
+      textColorPrimary: '#075985',
+      textColorSecondary: '#155e75',
+      accentPrimary: '#fbcfe8',
+      accentSecondary: '#a5f3fc',
+      bgPrimary: '#f0f9ff',
+      bgSecondary: '#e0f2fe',
+      bgBackdrop: 'rgba(240, 249, 255, 0.3)',
+      particleEffect: 'sparkles',
+    }
+  },
+  {
+    id: 'holiday-mothers-day',
+    name: "Mother's Day",
+    base: 'light',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom right, #fdf4ff, #fae8ff)',
+      accentGradient: 'linear-gradient(to right, #f472b6, #e879f9)',
+      cardGradient: 'linear-gradient(to bottom, rgba(253, 244, 255, 0.8), rgba(250, 232, 255, 0.8))',
+      textColorPrimary: '#581c87',
+      textColorSecondary: '#701a75',
+      accentPrimary: '#f472b6',
+      accentSecondary: '#e879f9',
+      bgPrimary: '#fdf4ff',
+      bgSecondary: '#fae8ff',
+      bgBackdrop: 'rgba(253, 244, 255, 0.3)',
+      particleEffect: 'flowers',
+    }
+  },
+  {
+    id: 'holiday-fathers-day',
+    name: "Father's Day",
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #0a192f, #1e3a8a)',
+      accentGradient: 'linear-gradient(to right, #60a5fa, #3b82f6)',
+      cardGradient: 'linear-gradient(to bottom, rgba(10, 25, 47, 0.5), rgba(30, 58, 138, 0.7))',
+      textColorPrimary: '#dbeafe',
+      textColorSecondary: '#93c5fd',
+      accentPrimary: '#60a5fa',
+      accentSecondary: '#3b82f6',
+      bgPrimary: '#0a192f',
+      bgSecondary: 'rgba(96, 165, 250, 0.1)',
+      bgBackdrop: 'rgba(10, 25, 47, 0.3)',
+    }
+  },
+  {
+    id: 'holiday-independence-day',
+    name: 'Independence Day',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(135deg, #b91c1c 25%, #1e3a8a 25%, #1e3a8a 50%, #b91c1c 50%, #b91c1c 75%, #1e3a8a 75%, #1e3a8a 100%)',
+      accentGradient: 'linear-gradient(to right, #f9fafb, #d1d5db)',
+      cardGradient: 'linear-gradient(to bottom, rgba(30, 58, 138, 0.5), rgba(185, 28, 28, 0.7))',
+      textColorPrimary: '#f9fafb',
+      textColorSecondary: '#e5e7eb',
+      accentPrimary: '#f9fafb',
+      accentSecondary: '#d1d5db',
+      bgPrimary: '#111827',
+      bgSecondary: 'rgba(249, 250, 251, 0.1)',
+      bgBackdrop: 'rgba(17, 24, 39, 0.3)',
+      particleEffect: 'fireworks',
+    }
+  },
+  {
+    id: 'holiday-thanksgiving',
+    name: 'Autumn Harvest',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #422006, #2d0f00)',
+      accentGradient: 'linear-gradient(to right, #f97316, #d97706)',
+      cardGradient: 'linear-gradient(to bottom, rgba(66, 32, 6, 0.5), rgba(45, 15, 0, 0.7))',
+      textColorPrimary: '#ffedd5',
+      textColorSecondary: '#fed7aa',
+      accentPrimary: '#f97316',
+      accentSecondary: '#d97706',
+      bgPrimary: '#2d0f00',
+      bgSecondary: 'rgba(249, 115, 22, 0.1)',
+      bgBackdrop: 'rgba(45, 15, 0, 0.3)',
+      particleEffect: 'leaves',
+    }
+  },
 ];

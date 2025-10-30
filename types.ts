@@ -208,7 +208,7 @@ export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 
 // FIX: Added 'notifications' to ProfileTab to resolve type error in Profile.tsx.
 export type ProfileTab = 'overview' | 'library' | 'history' | 'stats' | 'imports' | 'achievements' | 'settings' | 'seasonLog' | 'favorites' | 'lists' | 'journal' | 'ratings' | 'searchHistory' | 'commentHistory' | 'updates' | 'notifications';
 
-export type ScreenName = 'home' | 'recommendations' | 'search' | 'progress' | 'profile' | 'history' | 'achievements';
+export type ScreenName = 'home' | 'recommendations' | 'search' | 'progress' | 'profile' | 'history' | 'achievements' | 'calendar';
 
 export type FavoriteEpisodes = Record<number, Record<number, Record<number, boolean>>>; // showId -> seasonNum -> episodeNum -> true
 export type EpisodeRatings = Record<number, Record<number, Record<number, number>>>; // showId -> seasonNum -> episodeNum -> rating
@@ -232,6 +232,7 @@ export interface Theme {
     patternBgSize?: string;
     patternBgColor?: string;
     patternBgPosition?: string;
+    particleEffect?: 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'bats' | 'flowers' | 'pumpkins';
   };
 }
 

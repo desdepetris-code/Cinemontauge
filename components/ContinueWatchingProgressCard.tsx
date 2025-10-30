@@ -123,27 +123,24 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         const paths = [
             tmdbSeason?.poster_path,
             details?.poster_path,
-            tvdbDetails?.image,
             item.poster_path
         ];
 
         return paths.map(p => getFullImageUrl(p, 'w342'));
-    }, [details, tvdbDetails, item.poster_path, nextEpisodeInfo]);
+    }, [details, item.poster_path, nextEpisodeInfo]);
     
     const episodeStillSrcs = useMemo(() => {
         const paths = [
             nextEpisodeInfo?.still_path,
             seasonDetails?.poster_path,
             details?.poster_path,
-            tvdbDetails?.image,
         ];
         return [
             getFullImageUrl(paths[0], 'w300'),
             getFullImageUrl(paths[1], 'w342'),
             getFullImageUrl(paths[2], 'w342'),
-            getFullImageUrl(paths[3], 'original')
         ];
-    }, [nextEpisodeInfo, seasonDetails, details, tvdbDetails]);
+    }, [nextEpisodeInfo, seasonDetails, details]);
 
     const episodeTag: EpisodeTag | null = useMemo(() => {
         if (!nextEpisodeInfo || !details) return null;

@@ -83,7 +83,6 @@ const ActionCard: React.FC<{
                         <FallbackImage 
                             srcs={posterSrcs}
                             placeholder={PLACEHOLDER_POSTER}
-                            noPlaceholder={true}
                             alt={`${title} poster`}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />

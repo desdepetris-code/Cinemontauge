@@ -62,7 +62,6 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect }) => {
         const paths = item.media_type === 'tv'
             ? [
                 details?.poster_path,
-                tvdbDetails?.image,
                 item.poster_path
               ]
             : [
@@ -71,7 +70,7 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect }) => {
               ];
         
         return paths.map(p => getFullImageUrl(p, 'w342'));
-    }, [details, tvdbDetails, item.media_type, item.poster_path]);
+    }, [details, item.media_type, item.poster_path]);
 
     const title = details?.title || details?.name || (item as TmdbMedia).title || (item as TmdbMedia).name || 'Untitled';
 

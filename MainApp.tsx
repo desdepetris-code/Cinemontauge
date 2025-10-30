@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Header from './components/Header';
@@ -20,10 +21,12 @@ import AddToListModal from './components/AddToListModal';
 import WelcomeModal from './components/WelcomeModal';
 import * as traktService from './services/traktService';
 import UserProfileModal from './components/UserProfileModal';
-// FIX: Added missing import for firebaseConfig to construct the Trakt auth function URL.
 import { firebaseConfig } from './firebaseConfig';
 import ConfirmationContainer from './components/ConfirmationContainer';
 import { confirmationService } from './services/confirmationService';
+import BackgroundParticleEffects from './components/BackgroundParticleEffects';
+import ThemeTransitionAnimation from './components/ThemeTransitionAnimation';
+import CalendarScreen from './screens/CalendarScreen';
 
 
 const StorageWarningBanner: React.FC<{ onDismiss: () => void; onConnect: () => void; }> = ({ onDismiss, onConnect }) => (
@@ -50,7 +53,9 @@ interface MainAppProps {
     onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
     onAuthClick: () => void;
     onForgotPasswordRequest: (email: string) => Promise<string | null>;
-    onForgotPasswordReset: (data: { code: string; newPassword: string }) => Promise<string | null>;
+    onForgotPasswordReset: (data: { code: string; newPassword: string; }) => Promise<string | null>;
+    autoHolidayThemesEnabled: boolean;
+    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const TraktCallbackHandler: React.FC = () => {
@@ -80,7 +85,6 @@ const TraktCallbackHandler: React.FC = () => {
             }
 
             try {
-                // FIX: Pass the TRAKT_AUTH_FUNCTION_URL as the second argument to exchangeCodeForToken.
                 const token = await traktService.exchangeCodeForToken(code, TRAKT_AUTH_FUNCTION_URL);
                 if (token) {
                     setStatus('Authentication successful! You can now import your data.');
@@ -100,7 +104,6 @@ const TraktCallbackHandler: React.FC = () => {
         handleCallback();
     }, [TRAKT_AUTH_FUNCTION_URL]);
 
-    // Render a more integrated loading page for the callback
     return (
         <div className="flex flex-col justify-center items-center h-screen bg-bg-primary text-text-primary text-center p-4">
             <h1 className="text-3xl font-bold mb-4">Connecting to Trakt...</h1>
@@ -118,10 +121,9 @@ const TraktCallbackHandler: React.FC = () => {
 };
 
 
-// FIX: Changed to a named export to resolve potential module resolution issues.
-export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick, onForgotPasswordRequest, onForgotPasswordReset }) => {
-  const [customThemes, setCustomThemes] = useLocalStorage<Theme[]>('customThemes', []);
-  const [activeTheme, setTheme] = useTheme(customThemes);
+export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick, onForgotPasswordRequest, onForgotPasswordReset, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled }) => {
+  const [customThemes, setCustomThemes] = useLocalStorage<Theme[]>(`customThemes_${userId}`, []);
+  const [activeTheme, setTheme, holidayInfo] = useTheme(customThemes, autoHolidayThemesEnabled);
   
   // State
   const [watching, setWatching] = useLocalStorage<TrackedItem[]>(`watching_list_${userId}`, []);
@@ -167,7 +169,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   const [addToListModalState, setAddToListModalState] = useState<{ isOpen: boolean; item: TmdbMedia | TrackedItem | null }>({ isOpen: false, item: null });
   const [searchQuery, setSearchQuery] = useState('');
   
-  // FIX: This state setter was used but not defined. It's used to force re-renders.
   const [refreshKey, setRefreshKey] = useState(0);
   const [genres, setGenres] = useState<Record<number, string>>({});
   
@@ -182,6 +183,19 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   const liveWatchPauseTimeRef = useRef<number | null>(null);
 
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  
+  // --- Theme Transition State ---
+  const [transitionEffect, setTransitionEffect] = useState<Theme['colors']['particleEffect'] | null>(null);
+  const prevThemeIdRef = useRef(activeTheme.id);
+
+  useEffect(() => {
+    if (prevThemeIdRef.current !== activeTheme.id) {
+        if (holidayInfo.isHoliday) {
+            setTransitionEffect(activeTheme.colors.particleEffect || null);
+        }
+        prevThemeIdRef.current = activeTheme.id;
+    }
+  }, [activeTheme.id, activeTheme.colors.particleEffect, holidayInfo.isHoliday]);
 
 
   // --- Google Drive State ---
@@ -216,7 +230,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         });
     };
 
-    // Clean up main lists
     setWatching(deDupeArrayById);
     setPlanToWatch(deDupeArrayById);
     setCompleted(deDupeArrayById);
@@ -224,14 +237,13 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     setDropped(deDupeArrayById);
     setFavorites(deDupeArrayById);
     
-    // Clean up custom lists
     setCustomLists(prevLists => 
         prevLists.map(list => ({
             ...list,
             items: deDupeArrayById(list.items),
         }))
     );
-  }, []); // Empty dependency array means this runs only once on mount
+  }, []); 
 
   useEffect(() => {
     if (!autoBackupEnabled) return;
@@ -241,14 +253,13 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     const oneDay = 24 * 60 * 60 * 1000;
 
     if (lastBackup && (now - parseInt(lastBackup, 10)) < oneDay) {
-        return; // Backup is recent enough
+        return; 
     }
     
     try {
         const backupData: { [key: string]: string } = {};
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            // Backup all keys except the backup itself and session-like data
             if (key && key !== 'sceneit_local_backup' && key !== 'auto_backup_last_timestamp') {
                 const value = localStorage.getItem(key);
                 if (value) {
@@ -269,8 +280,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   const allUserData: UserData = useMemo(() => ({
       watching, planToWatch, completed, onHold, dropped, favorites, watchProgress, history, customLists, ratings, episodeRatings, searchHistory, comments
   }), [watching, planToWatch, completed, onHold, dropped, favorites, watchProgress, history, customLists, ratings, episodeRatings, searchHistory, comments]);
-  const { achievements } = useAchievements(allUserData);
-
+  
   // --- Handlers
   const handleSelectShow = (id: number, media_type: 'tv' | 'movie') => {
     setSelectedShow({ id, media_type });
@@ -317,7 +327,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     if (tab !== 'search') {
       setSearchQuery('');
     }
-    if (tab === 'profile') { // When using bottom nav, always go to overview
+    if (tab === 'profile') { 
         setInitialProfileTab('overview');
     }
     window.scrollTo(0, 0);
@@ -348,7 +358,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
           const newEntry = { query, timestamp: new Date().toISOString() };
           const filtered = prev.filter(item => item.query.toLowerCase() !== query.toLowerCase());
           const updated = [newEntry, ...filtered];
-          return updated.slice(0, 20); // Keep last 20 searches
+          return updated.slice(0, 20); 
       });
   }, [setSearchHistory]);
 
@@ -371,12 +381,10 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
             dropped: setDropped,
         };
 
-        // Remove from all watch status lists
         Object.keys(setters).forEach(key => {
             setters[key](prev => prev.filter(i => i.id !== item.id));
         });
 
-        // Add to the new list
         if (newList && setters[newList]) {
             setters[newList](prev => [item, ...prev]);
         }
@@ -388,7 +396,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     let startSeconds = 0;
 
     if (pausedSession) {
-        // Simple resume, could add a confirmation dialog later
         startSeconds = pausedSession.elapsedSeconds;
     }
 
@@ -398,7 +405,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   
     const logId = `live-${mediaInfo.id}-${Date.now()}`;
     const startTime = new Date();
-    // The timestamp is the *finish* time.
     const finishTime = new Date(startTime.getTime() + (mediaInfo.runtime * 60000) - (startSeconds * 1000));
     
     const newHistoryItem: HistoryItem = {
@@ -414,14 +420,13 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     setHistory(prev => [newHistoryItem, ...prev]);
     setLiveWatchHistoryLogId(logId);
 
-    // Remove from paused sessions now that it's active
     setPausedLiveSessions(prevPaused => {
         const newPaused = { ...prevPaused };
         delete newPaused[mediaInfo.id];
         return newPaused;
     });
 
-    setLiveWatchMedia(mediaInfo); // Start everything by setting the media
+    setLiveWatchMedia(mediaInfo);
   };
   
   const handleCloseLiveWatch = useCallback(() => {
@@ -429,7 +434,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     liveWatchIntervalRef.current = null;
     liveWatchPauseTimeRef.current = null;
     
-    // Remove from paused sessions on stop
     if (liveWatchMedia) {
         setPausedLiveSessions(prevPaused => {
             const newPaused = { ...prevPaused };
@@ -445,7 +449,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   const handleLiveWatchTogglePause = useCallback(() => {
     setLiveWatchIsPaused(prev => {
         const isNowPausing = !prev;
-        if (isNowPausing) { // Pausing
+        if (isNowPausing) { 
             liveWatchPauseTimeRef.current = Date.now();
             if (liveWatchMedia) {
                 setPausedLiveSessions(prevPaused => ({
@@ -457,7 +461,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
                     }
                 }));
             }
-        } else { // Resuming
+        } else { 
             if (liveWatchPauseTimeRef.current && liveWatchHistoryLogId) {
                 const pausedDuration = Date.now() - liveWatchPauseTimeRef.current;
                 handleAdjustHistoryTimestamp(liveWatchHistoryLogId, pausedDuration);
@@ -496,7 +500,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
             if (episodeName) {
                 confirmationService.show(`✅ “${showInfo.title} – Season ${seasonNumber}, Episode ${episodeNumber} (‘${episodeName}’) has been marked as watched.”`);
             }
-        } else { // newStatus is 0 (un-marking)
+        } else { 
             setHistory(prev => prev.filter(item => 
                 !(item.id === showId && item.seasonNumber === seasonNumber && item.episodeNumber === episodeNumber)
             ));
@@ -539,18 +543,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     return cleanup;
   }, [liveWatchMedia, liveWatchIsPaused, handleCloseLiveWatch, handleToggleEpisode, updateLists]);
 
-
-    const removeMediaFromAllLists = useCallback((mediaIdToRemove: number) => {
-        setWatching(prev => prev.filter(i => i.id !== mediaIdToRemove));
-        setPlanToWatch(prev => prev.filter(i => i.id !== mediaIdToRemove));
-        setCompleted(prev => prev.filter(c => c.id !== mediaIdToRemove));
-        setOnHold(prev => prev.filter(i => i.id !== mediaIdToRemove));
-        setDropped(prev => prev.filter(i => i.id !== mediaIdToRemove));
-        setFavorites(prev => prev.filter(i => i.id !== mediaIdToRemove));
-    }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setFavorites]);
-
-
-  const handleUpdateCustomList = useCallback((listId: string, item: TrackedItem, action: 'add' | 'remove') => {
+    const handleUpdateCustomList = useCallback((listId: string, item: TrackedItem, action: 'add' | 'remove') => {
     setCustomLists(prevLists => {
         return prevLists.map(list => {
             if (list.id === listId) {
@@ -570,10 +563,8 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     });
   }, [setCustomLists]);
 
-  // --- Automatic list management on progress change ---
-    useEffect(() => {
+  useEffect(() => {
         const checkCompletion = async () => {
-            // Create a stable copy of the array to iterate over
             const watchingTvShows = [...watching.filter(item => item.media_type === 'tv')];
 
             for (const show of watchingTvShows) {
@@ -610,11 +601,9 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         checkCompletion();
     }, [watchProgress, watching, updateLists]);
     
-    // --- Notification Logic ---
     const addNotification = useCallback((notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
         if (!notificationSettings.masterEnabled) return;
         
-        // Check specific notification type settings
         if (notification.type === 'new_season' && !notificationSettings.newEpisodes) return;
         if (notification.type === 'new_sequel' && !notificationSettings.movieReleases) return;
         if (notification.type === 'achievement_unlocked' && !notificationSettings.appUpdates) return;
@@ -643,7 +632,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
                 playNotificationSound();
             }
 
-            return [newNotification, ...prev].slice(0, 50); // Keep max 50 notifications
+            return [newNotification, ...prev].slice(0, 50); 
         });
     }, [setNotifications, notificationSettings]);
 
@@ -655,17 +644,14 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }, [setNotifications]);
 
-    // --- Welcome Modal Logic ---
-    useEffect(() => {
-        const hasVisited = localStorage.getItem('sceneit_has_visited');
-        if (!hasVisited) {
-            setIsWelcomeModalOpen(true);
-            localStorage.setItem('sceneit_has_visited', 'true');
-        }
-    }, []); // Empty dependency array ensures this runs only once on mount
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('sceneit_has_visited');
+    if (!hasVisited) {
+        setIsWelcomeModalOpen(true);
+        localStorage.setItem('sceneit_has_visited', 'true');
+    }
+  }, []); 
 
-
-  // --- One-time initialization for new users ---
   useEffect(() => {
     const isInitialized = localStorage.getItem(`sceneit_initialized_${userId}`);
     if (!isInitialized) {
@@ -674,20 +660,17 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     }
   }, [userId]);
 
-  // --- Trakt Redirect Handler ---
   useEffect(() => {
-    // This effect runs when the app loads on the main path after a Trakt redirect
     if (sessionStorage.getItem('trakt_auth_complete') === 'true') {
         sessionStorage.removeItem('trakt_auth_complete');
         handleShortcutNavigate('profile', 'imports');
     }
-  }, []); // Empty dependency array, runs once on mount
+  }, []); 
 
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
   
-  // --- Storage Warning ---
    useEffect(() => {
         if (localStorage.getItem('sceneit_storage_critical') === 'true') {
             setShowStorageWarning(true);
@@ -695,145 +678,100 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     }, []);
 
     useEffect(() => {
-        const checkForNewSeasons = async () => {
-            try {
-                const showsWithNewSeasons = await getNewSeasons(false, timezone);
-                const watchingIds = new Set(watching.map(item => item.id));
+        const runBackgroundChecks = async () => {
+            const lastCheck = localStorage.getItem('last_status_check');
+            const now = Date.now();
+            const twoHours = 2 * 60 * 60 * 1000;
 
-                for (const details of showsWithNewSeasons) {
-                    if (watchingIds.has(details.id)) {
-                        const latestSeason = details.seasons
-                            ?.filter(s => s.season_number > 0)
-                            .sort((a, b) => b.season_number - a.season_number)[0];
-                        
-                        if (latestSeason) {
-                            addNotification({
-                                type: 'new_season',
-                                mediaId: details.id,
-                                mediaType: 'tv',
-                                title: details.name || 'Unknown Show',
-                                description: `${latestSeason.name} just premiered!`,
-                                poster_path: details.poster_path,
-                            });
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to check for new season notifications", error);
+            if (lastCheck && now - parseInt(lastCheck, 10) < twoHours) {
+                return;
             }
-        };
-        checkForNewSeasons();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watching, addNotification, timezone]);
-  
-  // --- Background Status Check for Notifications ---
-  useEffect(() => {
-    const runBackgroundChecks = async () => {
-        const lastCheck = localStorage.getItem('last_status_check');
-        const now = Date.now();
-        const twoHours = 2 * 60 * 60 * 1000;
 
-        if (lastCheck && now - parseInt(lastCheck, 10) < twoHours) {
-            return;
-        }
+            const itemsToCheck = [...watching, ...planToWatch];
+            
+            const showsToCheck = itemsToCheck.filter(item => item.media_type === 'tv');
+            const uniqueShowIds = Array.from(new Set(showsToCheck.map(s => s.id)));
+            const newStatusCache = { ...showStatusCache };
+            let statusCacheUpdated = false;
 
-        const itemsToCheck = [...watching, ...planToWatch];
-        
-        // --- TV Show Status Check ---
-        const showsToCheck = itemsToCheck.filter(item => item.media_type === 'tv');
-        const uniqueShowIds = Array.from(new Set(showsToCheck.map(s => s.id)));
-        const newStatusCache = { ...showStatusCache };
-        let statusCacheUpdated = false;
-
-        for (const showId of uniqueShowIds) {
-            try {
-                clearMediaCache(showId, 'tv'); 
-                const details = await getMediaDetails(showId, 'tv');
-                const newStatus = details.status;
-                const oldStatus = showStatusCache[showId];
-                
-                if (newStatus && oldStatus && newStatus !== oldStatus) {
+            for (const showId of uniqueShowIds) {
+                try {
+                    clearMediaCache(showId, 'tv'); 
+                    const details = await getMediaDetails(showId, 'tv');
                     const showInfo = showsToCheck.find(s => s.id === showId);
-                    if (showInfo) {
+                    if (!showInfo) continue;
+
+                    const newStatus = details.status;
+                    const oldStatus = showStatusCache[showId];
+                    if (newStatus && oldStatus && newStatus !== oldStatus) {
                         if (newStatus === 'Cancelled') {
-                            addNotification({
-                                type: 'status_change',
-                                mediaId: showId,
-                                mediaType: 'tv',
-                                title: `Status Update: ${showInfo.title}`,
-                                description: `Unfortunately, ${showInfo.title} has been officially cancelled.`,
-                                poster_path: showInfo.poster_path,
-                            });
+                            addNotification({ type: 'status_change', mediaId: showId, mediaType: 'tv', title: `Status Update: ${showInfo.title}`, description: `Unfortunately, ${showInfo.title} has been officially cancelled.`, poster_path: showInfo.poster_path });
                         } else if (newStatus === 'Returning Series' && oldStatus === 'Ended') {
-                             addNotification({
-                                type: 'new_season', 
-                                mediaId: showId,
-                                mediaType: 'tv',
-                                title: `${showInfo.title} Renewed!`,
-                                description: `${showInfo.title} has been renewed for a new season!`,
-                                poster_path: showInfo.poster_path,
-                            });
+                            addNotification({ type: 'new_season', mediaId: showId, mediaType: 'tv', title: `${showInfo.title} Renewed!`, description: `${showInfo.title} has been renewed for a new season!`, poster_path: showInfo.poster_path });
                         }
                     }
-                }
-                
-                if (newStatus && newStatus !== oldStatus) {
-                    newStatusCache[showId] = newStatus;
-                    statusCacheUpdated = true;
-                } else if (!oldStatus && newStatus) {
-                    newStatusCache[showId] = newStatus;
-                    statusCacheUpdated = true;
-                }
-            } catch (error) { console.error(`Failed to check status for show ID ${showId}`, error); }
-            await new Promise(resolve => setTimeout(resolve, 300)); 
-        }
-        if (statusCacheUpdated) setShowStatusCache(newStatusCache);
+                    if (newStatus && newStatus !== oldStatus) {
+                        newStatusCache[showId] = newStatus;
+                        statusCacheUpdated = true;
+                    } else if (!oldStatus && newStatus) {
+                        newStatusCache[showId] = newStatus;
+                        statusCacheUpdated = true;
+                    }
 
-        // --- Movie Sequel Check ---
-        const moviesToCheck = itemsToCheck.filter(item => item.media_type === 'movie');
-        const uniqueMovieIds = Array.from(new Set(moviesToCheck.map(m => m.id)));
-        const newCollectionCache = { ...movieCollectionCache };
-        let collectionCacheUpdated = false;
-
-        for (const movieId of uniqueMovieIds) {
-            try {
-                const details = await getMediaDetails(movieId, 'movie');
-                if (details.belongs_to_collection) {
-                    const collectionId = details.belongs_to_collection.id;
-                    const collectionDetails = await getCollectionDetails(collectionId);
-                    const newPartCount = collectionDetails.parts.length;
-                    const oldPartCount = movieCollectionCache[collectionId];
-
-                    if (oldPartCount !== undefined && newPartCount > oldPartCount) {
-                        const newestMovie = collectionDetails.parts.sort((a, b) => new Date(b.release_date || 0).getTime() - new Date(a.release_date || 0).getTime())[0];
-                        if (newestMovie) {
-                            addNotification({
-                                type: 'new_sequel',
-                                mediaId: newestMovie.id,
-                                mediaType: 'movie',
-                                title: `New in "${collectionDetails.name}"`,
-                                description: `${newestMovie.title || 'A new installment'} has been added to this collection.`,
-                                poster_path: newestMovie.poster_path,
-                            });
+                    const lastEp = details.last_episode_to_air;
+                    if (lastEp && lastEp.air_date) {
+                        const airDate = new Date(`${lastEp.air_date}T00:00:00Z`);
+                        const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+                        if (airDate >= fourteenDaysAgo && airDate <= new Date(now)) {
+                            const latestSeason = details.seasons?.find(s => s.season_number === lastEp.season_number);
+                            if (latestSeason && lastEp.episode_number === 1) { 
+                                addNotification({ type: 'new_season', mediaId: details.id, mediaType: 'tv', title: `Premiere: ${details.name}`, description: `${latestSeason.name} just premiered!`, poster_path: details.poster_path });
+                            }
                         }
                     }
-                    if (newPartCount !== oldPartCount) {
-                        newCollectionCache[collectionId] = newPartCount;
-                        collectionCacheUpdated = true;
+
+                } catch (error) { console.error(`Failed to check status for show ID ${showId}`, error); }
+                await new Promise(resolve => setTimeout(resolve, 300)); 
+            }
+            if (statusCacheUpdated) setShowStatusCache(newStatusCache);
+
+
+            const moviesToCheck = itemsToCheck.filter(item => item.media_type === 'movie');
+            const uniqueMovieIds = Array.from(new Set(moviesToCheck.map(m => m.id)));
+            const newCollectionCache = { ...movieCollectionCache };
+            let collectionCacheUpdated = false;
+
+            for (const movieId of uniqueMovieIds) {
+                try {
+                    const details = await getMediaDetails(movieId, 'movie');
+                    if (details.belongs_to_collection) {
+                        const collectionId = details.belongs_to_collection.id;
+                        const collectionDetails = await getCollectionDetails(collectionId);
+                        const newPartCount = collectionDetails.parts.length;
+                        const oldPartCount = movieCollectionCache[collectionId];
+
+                        if (oldPartCount !== undefined && newPartCount > oldPartCount) {
+                            const newestMovie = collectionDetails.parts.sort((a, b) => new Date(b.release_date || 0).getTime() - new Date(a.release_date || 0).getTime())[0];
+                            if (newestMovie) {
+                                addNotification({ type: 'new_sequel', mediaId: newestMovie.id, mediaType: 'movie', title: `New in "${collectionDetails.name}"`, description: `${newestMovie.title || 'A new installment'} has been added to this collection.`, poster_path: newestMovie.poster_path });
+                            }
+                        }
+                        if (newPartCount !== oldPartCount) {
+                            newCollectionCache[collectionId] = newPartCount;
+                            collectionCacheUpdated = true;
+                        }
                     }
-                }
-            } catch (error) { console.error(`Failed to check sequel status for movie ID ${movieId}`, error); }
-             await new Promise(resolve => setTimeout(resolve, 300));
-        }
-        if (collectionCacheUpdated) setMovieCollectionCache(newCollectionCache);
+                } catch (error) { console.error(`Failed to check sequel status for movie ID ${movieId}`, error); }
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            if (collectionCacheUpdated) setMovieCollectionCache(newCollectionCache);
 
-        localStorage.setItem('last_status_check', now.toString());
-    };
+            localStorage.setItem('last_status_check', now.toString());
+        };
 
-    const timer = setTimeout(runBackgroundChecks, 10000); // Run check 10s after app load
-    return () => clearTimeout(timer);
-  }, [watching, planToWatch, showStatusCache, setShowStatusCache, movieCollectionCache, setMovieCollectionCache, addNotification]);
-
+        const timer = setTimeout(runBackgroundChecks, 10000); 
+        return () => clearTimeout(timer);
+    }, [watching, planToWatch, showStatusCache, setShowStatusCache, movieCollectionCache, setMovieCollectionCache, addNotification]);
 
   const handleAddItemToList = useCallback((itemToAdd: TmdbMedia, list: WatchStatus) => {
     const trackedItem: TrackedItem = {
@@ -957,7 +895,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
 
       if (trackedItem.media_type === 'movie') {
           handleAddWatchHistory(trackedItem, undefined, undefined, date);
-          // FIX: Safely access 'release_date' which may not exist on TrackedItem, and format confirmation message correctly.
           const releaseYear = ('release_date' in itemToMark && itemToMark.release_date)?.substring(0, 4);
           confirmationService.show(`✅ “${trackedItem.title}${releaseYear ? ` (${releaseYear})` : ''} has been marked as watched.”`);
       } else {
@@ -1119,7 +1056,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
             newProgress[showId][seasonNumber][episodeNumber] = { ...epProgress, journal: entry };
         } else {
             delete newProgress[showId][seasonNumber][episodeNumber].journal;
-            // If the episode has no other data, remove it.
             if (Object.keys(newProgress[showId][seasonNumber][episodeNumber]).length === 0) {
                 delete newProgress[showId][seasonNumber][episodeNumber];
             }
@@ -1132,7 +1068,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       setComments(prev => {
           const existingIndex = prev.findIndex(c => c.mediaKey === mediaKey);
           if (text.trim() === '') {
-              // If text is empty, remove the comment
               return prev.filter(c => c.mediaKey !== mediaKey);
           }
           if (existingIndex > -1) {
@@ -1189,7 +1124,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
 
   const handleRateItem = useCallback((mediaId: number, rating: number) => {
       setRatings(prev => {
-          if (rating === 0) { // Un-rate
+          if (rating === 0) { 
               const newRatings = { ...prev };
               delete newRatings[mediaId];
               return newRatings;
@@ -1224,7 +1159,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   const handleAddToList = (listId: string, item: CustomListItem) => {
       setCustomLists(prev => prev.map(list => {
           if (list.id === listId) {
-              if (list.items.some(i => i.id === item.id)) return list; // Already exists
+              if (list.items.some(i => i.id === item.id)) return list; 
               return { ...list, items: [item, ...list.items] };
           }
           return list;
@@ -1302,7 +1237,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       ownerLists[listIndex] = { ...list, likes };
       localStorage.setItem(ownerListsKey, JSON.stringify(ownerLists));
       
-      // Force a re-render if the user is viewing their own profile or search
       if (activeScreen === 'profile' || activeScreen === 'search') {
           setRefreshKey(prev => prev + 1);
       }
@@ -1336,7 +1270,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       setCompleted(prev => [...prev, ...completedItems]);
       if (notificationSettings.importSyncCompleted) {
           addNotification({
-              type: 'recommendation', // Using a generic type for now
+              type: 'recommendation', 
               title: 'Import Complete',
               description: `Successfully imported ${completedItems.length} items from your file.`,
           });
@@ -1350,10 +1284,8 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     watchProgress: WatchProgress;
     ratings: UserRatings;
   }) => {
-    // Merge history
     setHistory(prev => [...prev, ...data.history].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
 
-    // Merge completed, planToWatch (deduplicating)
     const deDupe = (original: TrackedItem[], additions: TrackedItem[]) => {
         const existingIds = new Set(original.map(i => i.id));
         return [...original, ...additions.filter(i => !existingIds.has(i.id))];
@@ -1361,7 +1293,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     setCompleted(prev => deDupe(prev, data.completed));
     setPlanToWatch(prev => deDupe(prev, data.planToWatch));
     
-    // Merge watch progress
     setWatchProgress(prev => {
         const newProgress = JSON.parse(JSON.stringify(prev));
         for (const showId in data.watchProgress) {
@@ -1372,7 +1303,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
                      if (!newProgress[showId][seasonNum]) {
                          newProgress[showId][seasonNum] = data.watchProgress[showId][seasonNum];
                      } else {
-                         // User's existing data takes precedence
                          newProgress[showId][seasonNum] = {...data.watchProgress[showId][seasonNum], ...newProgress[showId][seasonNum]};
                      }
                 }
@@ -1381,7 +1311,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         return newProgress;
     });
 
-    // Merge ratings (Trakt ratings take precedence for simplicity)
     setRatings(prev => ({...prev, ...data.ratings}));
 
     if (notificationSettings.importSyncCompleted) {
@@ -1397,7 +1326,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       setHistory(prev => {
           if (prev.length < 2) return prev;
           const uniqueHistory: HistoryItem[] = [];
-          const seen = new Set<string>(); // "mediaId-season-episode"
+          const seen = new Set<string>(); 
           const sorted = [...prev].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
           sorted.forEach(item => {
@@ -1419,8 +1348,6 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
       });
   };
 
-
-  // Render
   if (window.location.pathname.startsWith('/auth/trakt/callback')) {
       return <TraktCallbackHandler />;
   }
@@ -1430,12 +1357,13 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     if (selectedShow) return <ShowDetail id={selectedShow.id} mediaType={selectedShow.media_type} onBack={handleBack} watchProgress={watchProgress} history={history} onToggleEpisode={handleToggleEpisode} onSaveJournal={handleSaveJournal} trackedLists={{watching, planToWatch, completed, onHold, dropped}} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={handleSetCustomImage} favorites={favorites} onToggleFavoriteShow={handleToggleFavoriteShow} onSelectShow={handleSelectShow} onOpenCustomListModal={handleOpenCustomListModal} ratings={ratings} onRateItem={handleRateItem} onMarkMediaAsWatched={handleMarkShowAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={handleMarkSeasonWatched} onUnmarkSeasonWatched={handleUnmarkSeasonWatched} onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onSelectPerson={handleSelectPerson} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onClearMediaHistory={handleClearMediaHistory} episodeRatings={episodeRatings} onRateEpisode={handleRateEpisode} onAddWatchHistory={handleAddWatchHistory} onSaveComment={handleSaveComment} comments={comments} onMarkRemainingWatched={handleMarkRemainingWatched} genres={genres} />;
 
     switch (activeScreen) {
-      case 'home': return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShowInModal} watchProgress={watchProgress} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenCustomListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} />;
+      case 'home': return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShowInModal} watchProgress={watchProgress} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenCustomListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} />;
       case 'recommendations': return <Recommendations onSelectShow={handleSelectShow} userData={allUserData} onMarkShowAsWatched={handleMarkShowAsWatched} onOpenAddToListModal={handleOpenCustomListModal} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} />;
-      case 'search': return <SearchScreen onSelectShow={handleSelectShow} onSelectPerson={handleSelectPerson} onSelectUser={handleSelectUser} searchHistory={searchHistory} onUpdateSearchHistory={handleUpdateSearchHistory} query={searchQuery} onQueryChange={setSearchQuery} onMarkShowAsWatched={handleMarkShowAsWatched} onOpenAddToListModal={handleOpenCustomListModal} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={handleToggleLikeList} />;
+      case 'search': return <SearchScreen onSelectShow={handleSelectShow} onSelectPerson={handleSelectPerson} onSelectUser={handleSelectUser} searchHistory={searchHistory} onUpdateSearchHistory={handleUpdateSearchHistory} query={searchQuery} onQueryChange={setSearchQuery} onMarkShowAsWatched={handleMarkShowAsWatched} onOpenAddToListModal={handleOpenCustomListModal} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={handleToggleLikeList} timezone={timezone} />;
       case 'progress': return <ProgressScreen userData={allUserData} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onSelectShow={handleSelectShow} currentUser={currentUser} onAuthClick={onAuthClick} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} />;
-      case 'profile': return <Profile userData={allUserData} genres={genres} onSelectShow={handleSelectShow} driveStatus={driveStatus} onDriveSignIn={()=>{}} onDriveSignOut={()=>{}} onBackupToDrive={()=>{}} onRestoreFromDrive={()=>{}} onImportCompleted={handleImportCompleted} onTraktImportCompleted={handleTraktImportCompleted} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} setCustomLists={setCustomLists} initialTab={initialProfileTab} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteSearchHistoryItem={handleDeleteSearchHistoryItem} onClearSearchHistory={handleClearSearchHistory} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} customThemes={customThemes} setCustomThemes={setCustomThemes} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={handleSelectUser} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={handleRemoveDuplicateHistory} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} onMarkOneRead={handleMarkOneNotificationRead} />;
-      default: return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShowInModal} watchProgress={watchProgress} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenCustomListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} />;
+      case 'profile': return <Profile userData={allUserData} genres={genres} onSelectShow={handleSelectShow} driveStatus={driveStatus} onDriveSignIn={()=>{}} onDriveSignOut={()=>{}} onBackupToDrive={()=>{}} onRestoreFromDrive={()=>{}} onImportCompleted={handleImportCompleted} onTraktImportCompleted={handleTraktImportCompleted} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} setCustomLists={setCustomLists} initialTab={initialProfileTab} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={handleDeleteHistoryItem} onDeleteSearchHistoryItem={handleDeleteSearchHistoryItem} onClearSearchHistory={handleClearSearchHistory} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} customThemes={customThemes} setCustomThemes={setCustomThemes} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={handleSelectUser} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={handleRemoveDuplicateHistory} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} onMarkOneRead={handleMarkOneNotificationRead} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} />;
+      case 'calendar': return <CalendarScreen userData={allUserData} onSelectShow={handleSelectShow} timezone={timezone} />;
+      default: return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShowInModal} watchProgress={watchProgress} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], watching.find(i => i.id === args[0])!, undefined)} onShortcutNavigate={handleShortcutNavigate} onOpenAddToListModal={handleOpenCustomListModal} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleCloseLiveWatch} onMarkShowAsWatched={handleMarkShowAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} />;
     }
   };
 
@@ -1455,12 +1383,17 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         query={searchQuery}
         onQueryChange={setSearchQuery}
         isOnSearchScreen={activeScreen === 'search'}
+        isHoliday={holidayInfo.isHoliday}
+        holidayName={holidayInfo.holidayName}
       />
+      
+      <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} />
+      {transitionEffect && <ThemeTransitionAnimation effect={transitionEffect} onAnimationEnd={() => setTransitionEffect(null)} />}
+      
       <main className={`pb-20 ${selectedShow ? '' : 'pt-6'}`}>
         {renderScreen()}
       </main>
 
-      {/* --- Global Modals --- */}
       {viewingUserId && <UserProfileModal userId={viewingUserId} currentUser={currentUser!} follows={follows[currentUser?.id || ''] || []} onFollow={handleFollow} onUnfollow={handleUnfollow} onClose={() => setViewingUserId(null)} onToggleLikeList={handleToggleLikeList} />}
       {modalShow && <ShowDetail isModal id={modalShow.id} mediaType={modalShow.media_type} onBack={handleCloseModal} watchProgress={watchProgress} history={history} onToggleEpisode={(...args) => handleToggleEpisode(args[0], args[1], args[2], args[3], allUserData.watching.find(i => i.id === args[0])!, undefined)} onSaveJournal={handleSaveJournal} trackedLists={{watching, planToWatch, completed, onHold, dropped}} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={handleSetCustomImage} favorites={favorites} onToggleFavoriteShow={handleToggleFavoriteShow} onSelectShow={handleSelectShowInModal} onOpenCustomListModal={handleOpenCustomListModal} ratings={ratings} onRateItem={handleRateItem} onMarkMediaAsWatched={handleMarkShowAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={(...args) => handleMarkSeasonWatched(args[0], args[1], args[2], '')} onUnmarkSeasonWatched={handleUnmarkSeasonWatched} onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onSelectPerson={handleSelectPerson} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onClearMediaHistory={handleClearMediaHistory} episodeRatings={episodeRatings} onRateEpisode={handleRateEpisode} onAddWatchHistory={handleAddWatchHistory} onSaveComment={handleSaveComment} comments={comments} onMarkRemainingWatched={handleMarkRemainingWatched} genres={genres} />}
       <AddToListModal isOpen={addToListModalState.isOpen} onClose={() => setAddToListModalState({ isOpen: false, item: null })} itemToAdd={addToListModalState.item} customLists={customLists} onAddToList={handleAddToList} onCreateAndAddToList={handleCreateAndAddToList} onGoToDetails={handleSelectShow} />

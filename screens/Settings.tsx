@@ -89,10 +89,12 @@ interface SettingsProps {
     timezone: string;
     setTimezone: (timezone: string) => void;
     onRemoveDuplicateHistory: () => void;
+    autoHolidayThemesEnabled: boolean;
+    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const Settings: React.FC<SettingsProps> = (props) => {
-  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory } = props;
+  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
   const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
@@ -326,7 +328,7 @@ const Settings: React.FC<SettingsProps> = (props) => {
               </SettingsRow>
           </SettingsCard>
 
-          <SettingsCard title="Preferences">
+          <SettingsCard title="Timezone">
               <TimezoneSettings timezone={timezone} setTimezone={setTimezone} />
           </SettingsCard>
 
@@ -411,7 +413,7 @@ const Settings: React.FC<SettingsProps> = (props) => {
               </SettingsRow>
           </SettingsCard>
         
-          <ThemeSettings customThemes={props.customThemes} setCustomThemes={props.setCustomThemes} />
+          <ThemeSettings customThemes={props.customThemes} setCustomThemes={props.setCustomThemes} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} />
 
           <SettingsCard title="Privacy Settings">
               <SettingsRow title="Activity Visibility" subtitle="Control who can see your watch activity and comments.">
