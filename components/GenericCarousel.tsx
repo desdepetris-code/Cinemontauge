@@ -6,6 +6,7 @@ import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { isNewRelease } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
+import RecommendationHint from './RecommendationHint';
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
@@ -20,7 +21,8 @@ const CarouselCard: React.FC<{
     onToggleFavoriteShow: (item: TrackedItem) => void;
     isFavorite: boolean;
     isCompleted: boolean;
-}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted }) => {
+    recommendationReason?: string;
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, recommendationReason }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const backdropSrcs = [
         getFullImageUrl(item.backdrop_path, 'w500'),
@@ -82,6 +84,7 @@ const CarouselCard: React.FC<{
                         />
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                         {recommendationReason && <RecommendationHint reason={recommendationReason} />}
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                     </div>
                     {isCompleted && (
@@ -119,9 +122,10 @@ interface GenericCarouselProps {
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   completed: TrackedItem[];
+  recommendationReason?: string;
 }
 
-const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed }) => {
+const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, recommendationReason }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -144,7 +148,7 @@ const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSel
         return (
              <div className="mb-8">
                 <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4">
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className="w-72 flex-shrink-0">
                              <div className="aspect-video bg-bg-secondary rounded-lg"></div>
@@ -163,7 +167,7 @@ const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSel
     return (
         <div className="mb-8">
             <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
-            <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4">
+            <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                 {media.map(item => {
                     const isFavorite = favorites.some(fav => fav.id === item.id);
                     const isCompleted = completed.some(c => c.id === item.id);
@@ -177,6 +181,7 @@ const GenericCarousel: React.FC<GenericCarouselProps> = ({ title, fetcher, onSel
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={isFavorite}
                             isCompleted={isCompleted}
+                            recommendationReason={recommendationReason}
                         />
                     );
                 })}

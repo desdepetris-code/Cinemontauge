@@ -15,7 +15,6 @@ interface ContinueWatchingProps {
 
 const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, watchProgress, history, onSelectShow, onToggleEpisode, pausedLiveSessions }) => {
     const continueWatchingItems = useMemo(() => {
-        // Helper to filter and map items
         const processList = (list: TrackedItem[]) => {
             return list.filter(item => {
                 if (item.media_type !== 'tv') return false;
@@ -33,32 +32,34 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
                 lastWatchedMap.set(historyItem.id, historyItem.timestamp);
             }
         }
-
+        
         const mapToTimestampedItem = (item: TrackedItem) => ({
             ...item,
             lastWatchedTimestamp: new Date(lastWatchedMap.get(item.id) || 0).getTime(),
         });
 
-        const watchingTvItems = inProgressWatching.map(mapToTimestampedItem);
-        const onHoldTvItems = inProgressOnHold.map(mapToTimestampedItem);
+        // FIX: Explicitly type `session` to resolve 'unknown' type error.
+        const pausedItems = Object.values(pausedLiveSessions).map((session: { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string; }) => ({
+            ...session.mediaInfo,
+            isPaused: true,
+            elapsedSeconds: session.elapsedSeconds,
+            lastWatchedTimestamp: new Date(session.pausedAt).getTime(),
+        }));
 
-        // Paused Movies
-        const movieItems = (Object.values(pausedLiveSessions) as { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }[])
-            .filter(session => session.mediaInfo.media_type === 'movie')
-            .map(session => ({
-                ...session.mediaInfo,
-                media_type: 'movie' as const,
-                elapsedSeconds: session.elapsedSeconds,
-                lastWatchedTimestamp: new Date(session.pausedAt).getTime(),
-            }));
+        const tvItems = [...inProgressWatching.map(mapToTimestampedItem), ...inProgressOnHold.map(mapToTimestampedItem)];
+        const tvItemsMap = new Map(tvItems.map(item => [item.id, item]));
+
+        pausedItems.forEach(pausedItem => {
+            if (pausedItem.media_type === 'tv') {
+                tvItemsMap.set(pausedItem.id, { ...tvItemsMap.get(pausedItem.id), ...pausedItem });
+            }
+        });
         
-        // Sort each category individually
-        watchingTvItems.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
-        onHoldTvItems.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
-        movieItems.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
-
-        // Combine: watching shows first, then paused movies and on-hold shows
-        const combined = [...watchingTvItems, ...movieItems, ...onHoldTvItems];
+        const combinedTvItems = Array.from(tvItemsMap.values());
+        const movieItems = pausedItems.filter(item => item.media_type === 'movie');
+        
+        const combined = [...combinedTvItems, ...movieItems];
+        combined.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
 
         return combined.slice(0, 10);
 
@@ -68,12 +69,12 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
         <div className="mb-8">
             <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">Continue Watching</h2>
             {continueWatchingItems.length > 0 ? (
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4">
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                     {continueWatchingItems.map(item => (
                         <div key={item.id} className="w-56 sm:w-64 flex-shrink-0">
                             {item.media_type === 'tv' ? (
                                 <ContinueWatchingProgressCard
-                                    item={item as TrackedItem} // It's a TrackedItem with extra props
+                                    item={item as any}
                                     watchProgress={watchProgress}
                                     onSelectShow={onSelectShow}
                                     onToggleEpisode={onToggleEpisode}

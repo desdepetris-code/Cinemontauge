@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Theme } from '../types';
-
-type ParticleEffect = Theme['colors']['particleEffect'];
+import { ParticleEffectName } from '../types';
 
 interface ThemeTransitionAnimationProps {
-  effect: ParticleEffect | null;
+  effect: ParticleEffectName | null;
   onAnimationEnd: () => void;
 }
 
@@ -18,6 +16,8 @@ const transitionParticleConfig = {
     bats: { content: '🦇', count: 40 },
     flowers: { content: ['🌸', '🌼', '🌷'], count: 40 },
     pumpkins: { content: '🎃', count: 30 },
+    ghosts: { content: '👻', count: 30 },
+    eggs: { content: '🥚', count: 40 },
 };
 
 const ThemeTransitionAnimation: React.FC<ThemeTransitionAnimationProps> = ({ effect, onAnimationEnd }) => {
@@ -25,7 +25,7 @@ const ThemeTransitionAnimation: React.FC<ThemeTransitionAnimationProps> = ({ eff
 
     const config = useMemo(() => {
         if (!effect) return null;
-        return transitionParticleConfig[effect];
+        return transitionParticleConfig[effect as keyof typeof transitionParticleConfig] || null;
     }, [effect]);
 
     useEffect(() => {
@@ -62,11 +62,11 @@ const ThemeTransitionAnimation: React.FC<ThemeTransitionAnimationProps> = ({ eff
     if (!config) return null;
 
     return (
-        <div className="fixed inset-0 pointer-events-none z-[101] overflow-hidden">
+        <div className="fixed inset-0 pointer-events-none z-[1] overflow-hidden">
             {particles.map(p => (
                 <span
                     key={p.id}
-                    className="particle down" // Reuse favorite animation class
+                    className="particle down"
                     style={p.style}
                 >
                     {p.content}

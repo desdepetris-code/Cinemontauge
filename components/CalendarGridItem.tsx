@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarItem } from './CalendarCard';
+import { CalendarItem } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { PLACEHOLDER_POSTER } from '../constants';
 import { TvIcon, FilmIcon } from './Icons';

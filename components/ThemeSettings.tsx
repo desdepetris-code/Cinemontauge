@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { themes as builtInThemes, holidayThemes } from '../themes';
-import { Theme } from '../types';
+import { Theme, ProfileTheme } from '../types';
 import { PlusIcon, TrashIcon } from './Icons';
 import CustomThemeModal from './CustomThemeModal';
 import { getNextHoliday } from '../hooks/useTheme';
+import ProfilePersonalizationModal from './ProfilePersonalizationModal';
 
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
     <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8">
@@ -48,11 +48,16 @@ interface ThemeSettingsProps {
     setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
     autoHolidayThemesEnabled: boolean;
     setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+    holidayAnimationsEnabled: boolean;
+    setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+    profileTheme: ProfileTheme | null;
+    setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
 }
 
-const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomThemes, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled }) => {
+const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomThemes, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme }) => {
     const [activeTheme, setTheme] = useTheme(customThemes, autoHolidayThemesEnabled);
     const [isCustomThemeModalOpen, setIsCustomThemeModalOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'dark' | 'light' | 'custom' | 'holiday'>('dark');
     
     const nextHoliday = getNextHoliday(new Date());
@@ -141,9 +146,20 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
                 onClose={() => setIsCustomThemeModalOpen(false)}
                 onSave={handleSaveCustomTheme}
             />
+            <ProfilePersonalizationModal
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+                onSave={setProfileTheme}
+                currentTheme={profileTheme}
+            />
             <SettingsCard title="Theme Customization">
-                <div className="p-4 border-b border-bg-secondary/50">
-                    <p className="text-text-secondary mb-3 font-semibold">Select a Theme</p>
+                <div className="p-4">
+                    <button onClick={() => setIsProfileModalOpen(true)} className="w-full text-center p-3 text-sm rounded-md font-semibold transition-colors bg-accent-gradient text-on-accent hover:opacity-90">
+                        Personalize Profile
+                    </button>
+                </div>
+                <div className="p-4 border-t border-b border-bg-secondary/50">
+                    <p className="text-text-secondary mb-3 font-semibold">Select an App Theme</p>
                     <div className="flex p-1 bg-bg-secondary rounded-full">
                         <button onClick={() => setActiveTab('dark')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'dark' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Dark</button>
                         <button onClick={() => setActiveTab('light')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'light' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Light</button>
@@ -157,6 +173,9 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
                 <div className="border-t border-bg-secondary/50">
                     <SettingsRow title="Auto Apply Holiday Themes" subtitle="Switch to holiday themes automatically.">
                         <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
+                    </SettingsRow>
+                    <SettingsRow title="Holiday Theme Animations" subtitle="Enable or disable animated holiday decorations.">
+                        <ToggleSwitch enabled={holidayAnimationsEnabled} onChange={setHolidayAnimationsEnabled} />
                     </SettingsRow>
                     {nextHoliday && (
                         <div className="p-4 text-sm text-text-secondary">

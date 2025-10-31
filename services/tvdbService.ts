@@ -1,5 +1,5 @@
 import { TVDB_API_KEY, TVDB_API_BASE_URL } from '../constants';
-import { TvdbToken, TvdbShow } from '../types';
+import { TvdbToken, TvdbShow, TvdbRelatedShow } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
 
 const TVDB_TOKEN_KEY = 'tvdb_token';
@@ -90,4 +90,17 @@ export const getTvdbShowExtended = async (tvdbId: number): Promise<TvdbShow> => 
     const data = await fetchFromTvdb<TvdbShow>(`series/${tvdbId}/extended`);
     setToCache(cacheKey, data, TVDB_CACHE_TTL);
     return data;
+};
+
+export const getTvdbRelatedShows = async (tvdbId: number): Promise<TvdbRelatedShow[]> => {
+    const cacheKey = `tvdb_relations_v1_${tvdbId}`;
+    const cachedData = getFromCache<TvdbRelatedShow[]>(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
+
+    const data = await fetchFromTvdb<{ relations: TvdbRelatedShow[] }>(`series/${tvdbId}/relations`);
+    const relations = data.relations || [];
+    setToCache(cacheKey, relations, TVDB_CACHE_TTL);
+    return relations;
 };

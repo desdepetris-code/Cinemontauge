@@ -35,13 +35,15 @@ const DateTimeDisplay: React.FC<DateTimeDisplayProps> = ({ timezone }) => {
   const formattedTime = new Intl.DateTimeFormat('en-US', timeOptions).format(currentDateTime);
 
   return (
-    <div className="text-center my-8 px-6 animate-fade-in">
-      <h2 className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
-        {formattedTime}
-      </h2>
-      <p className="text-lg text-text-secondary mt-1">
-        {formattedDate}
-      </p>
+    <div className="my-8 px-6">
+        <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center animate-fade-in">
+            <h2 className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
+                {formattedTime}
+            </h2>
+            <p className="text-lg text-text-secondary mt-1">
+                {formattedDate}
+            </p>
+        </div>
     </div>
   );
 };

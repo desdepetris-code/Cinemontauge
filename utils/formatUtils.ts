@@ -68,7 +68,8 @@ export const formatDateTime = (
     }
 };
 
-export const formatTime = (
+// FIX: Renamed function to avoid conflict and added a new formatTime for seconds.
+export const formatTimeFromDate = (
     date: string | Date,
     timezone: string
 ): string => {
@@ -84,3 +85,14 @@ export const formatTime = (
         return new Date(date).toLocaleTimeString();
     }
 }
+
+export const formatTime = (totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    const parts: string[] = [];
+    if (hours > 0) parts.push(String(hours).padStart(2, '0'));
+    parts.push(String(minutes).padStart(2, '0'));
+    parts.push(String(seconds).padStart(2, '0'));
+    return parts.join(':');
+};

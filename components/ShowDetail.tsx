@@ -25,6 +25,7 @@ import CommentModal from './CommentModal';
 import FavoriteAnimation from './FavoriteAnimation';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
+import { getShowStatus } from '../utils/statusUtils';
 
 // --- PROPS INTERFACE ---
 interface ShowDetailProps {
@@ -282,38 +283,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
   const showStatus = useMemo(() => {
     if (!details || details.media_type !== 'tv') return null;
-    const badgeClass = 'bg-red-800 text-white'; // Dark red with white font for all statuses
+    const statusText = getShowStatus(details);
+    if (!statusText) return null;
 
-    // Highest priority: API says it's ended/canceled
-    if (details.status === 'Ended' || details.status === 'Canceled') {
-        return { text: 'Status: Ended', color: badgeClass };
-    }
+    const badgeClass = 'bg-red-800 text-white'; // Keep consistent with existing styling on this page
 
-    const lastAiredEpisode = details.last_episode_to_air;
-    if (lastAiredEpisode) {
-        const lastSeasonInfo = details.seasons?.find(s => s.season_number === lastAiredEpisode.season_number);
-        // We don't have full season details here, so the tag utility has to be robust. It is.
-        const tag = getEpisodeTag(lastAiredEpisode, lastSeasonInfo, details, undefined);
-
-        // Per user request: if last aired episode is a series finale, it's "Ended"
-        if (tag?.text === 'Series Finale') {
-            return { text: 'Status: Ended', color: badgeClass };
-        }
-
-        // Per user request: if last aired episode is a season finale, it's "Ongoing/Off Season"
-        if (tag?.text === 'Season Finale') {
-            return { text: 'Status: Ongoing/Off Season', color: badgeClass };
-        }
-    }
-    
-    // If no finale tag on last episode, and it's a continuing series, it must be In Season
-    if (['Returning Series', 'In Production', 'Pilot'].includes(details.status || '')) {
-       return { text: 'Status: Ongoing/In Season', color: badgeClass };
-    }
-    
-    // Fallback for shows that are between seasons but not officially "Ended" yet
-    // and don't have a clear "Returning Series" status.
-    return { text: 'Status: Ongoing/Off Season', color: badgeClass };
+    return { text: `Status: ${statusText.replace('/', ' / ')}`, color: badgeClass };
   }, [details]);
   
     const runtimeDisplay = useMemo(() => {
@@ -570,7 +545,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       );
       case 'cast': return <CastAndCrew details={details} tvdbDetails={tvdbDetails} onSelectPerson={onSelectPerson} />;
       case 'watch': return <WhereToWatch providers={watchProviders} />;
-      case 'moreInfo': return <MoreInfo details={details} />;
+      case 'moreInfo': return <MoreInfo details={details} tvdbDetails={tvdbDetails} onSelectShow={onSelectShow} />;
       case 'recommendations': return <RecommendedMedia recommendations={details.recommendations!.results} onSelectShow={onSelectShow} />;
       case 'customize': return <CustomizeTab posterUrl={getImageUrl(customPosterPath || details.poster_path, 'w342')} backdropUrl={getImageUrl(customBackdropPath || details.backdrop_path, 'w780')} onOpenImageSelector={() => setImageSelectorModalOpen(true)} />;
       default: return null;

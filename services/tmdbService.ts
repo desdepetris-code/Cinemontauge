@@ -1,5 +1,5 @@
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
-import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson } from '../types';
+import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
 
 // --- Alias Map for Enhanced Search ---
@@ -162,6 +162,17 @@ export const findByImdbId = async (imdbId: string): Promise<TmdbFindResponse> =>
     return data;
 };
 
+export const findByTvdbId = async (tvdbId: number): Promise<TmdbFindResponse> => {
+    const cacheKey = `tmdb_find_tvdb_${tvdbId}`;
+    const cachedData = getFromCache<TmdbFindResponse>(cacheKey);
+    if (cachedData) {
+        return cachedData;
+    }
+    const data = await fetchFromTmdb<TmdbFindResponse>(`find/${tvdbId}?external_source=tvdb_id`);
+    setToCache(cacheKey, data, CACHE_TTL);
+    return data;
+};
+
 export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Promise<TmdbMediaDetails> => {
   const cacheKey = `tmdb_details_v4_${mediaType}_${id}`;
   const cachedData = getFromCache<TmdbMediaDetails>(cacheKey);
@@ -228,14 +239,28 @@ export const getGenres = async (): Promise<Record<number, string>> => {
 };
 
 export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_trending_${mediaType}`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+    
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`trending/${mediaType}/week`);
-    return data.results.map(item => ({...item, media_type: mediaType}));
+    const results = data.results.map(item => ({...item, media_type: mediaType}));
+    
+    setToCache(cacheKey, results, CACHE_TTL);
+    return results;
 }
 
 export const getNewReleases = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_new_releases_${mediaType}`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+
     const endpoint = mediaType === 'tv' ? 'tv/on_the_air' : 'movie/now_playing';
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(endpoint);
-    return data.results.map(item => ({...item, media_type: mediaType}));
+    const results = data.results.map(item => ({...item, media_type: mediaType}));
+    
+    setToCache(cacheKey, results, CACHE_TTL);
+    return results;
 };
 
 export const getPopularShowsAllTime = async (): Promise<TmdbMedia[]> => {
@@ -325,8 +350,12 @@ export const getNewSeasons = async (forceRefresh = false, timezone: string = 'Et
 
 export const discoverMedia = async (
     mediaType: 'tv' | 'movie', 
-    filters: { genre?: number | string; year?: number; sortBy?: string; vote_count_gte?: number }
+    filters: { genre?: number | string; year?: number; sortBy?: string; vote_count_gte?: number; vote_count_lte?: number }
 ): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_discover_${mediaType}_${JSON.stringify(filters)}`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if(cached) return cached;
+
     let endpoint = `discover/${mediaType}?sort_by=${filters.sortBy || 'popularity.desc'}`;
     if (filters.genre) {
         endpoint += `&with_genres=${filters.genre}`;
@@ -338,13 +367,22 @@ export const discoverMedia = async (
     if (filters.vote_count_gte) {
         endpoint += `&vote_count.gte=${filters.vote_count_gte}`;
     }
-    const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(endpoint);
-    return data.results.map(item => ({...item, media_type: mediaType}));
+    // FIX: Add support for vote_count_lte to resolve type error.
+    if (filters.vote_count_lte) {
+        endpoint += `&vote_count.lte=${filters.vote_count_lte}`;
+    }
+    // FIX: The discover endpoint does not return media_type, so we expect a partial TmdbMedia object.
+    const data = await fetchFromTmdb<{ results: Omit<TmdbMedia, 'media_type'>[] }>(endpoint);
+    // FIX: Explicitly typing the 'results' variable provides contextual typing to the map callback, preventing 'media_type' from being widened to 'string'.
+    const results: TmdbMedia[] = data.results.map((item) => ({...item, media_type: mediaType}));
+
+    setToCache(cacheKey, results, CACHE_TTL);
+    return results;
 };
 
 export const discoverMediaPaginated = async (
     mediaType: 'tv' | 'movie', 
-    filters: { genre?: number | string; year?: number; sortBy?: string; vote_count_gte?: number },
+    filters: { genre?: number | string; year?: number; sortBy?: string; vote_count_gte?: number; vote_count_lte?: number },
     page: number = 1
 ): Promise<{ results: TmdbMedia[], total_pages: number }> => {
     let endpoint = `discover/${mediaType}?sort_by=${filters.sortBy || 'popularity.desc'}&page=${page}`;
@@ -358,7 +396,12 @@ export const discoverMediaPaginated = async (
     if (filters.vote_count_gte) {
         endpoint += `&vote_count.gte=${filters.vote_count_gte}`;
     }
-    const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(endpoint);
+    // FIX: Add support for vote_count_lte to resolve type error.
+    if (filters.vote_count_lte) {
+        endpoint += `&vote_count.lte=${filters.vote_count_lte}`;
+    }
+    // FIX: The discover endpoint does not return media_type, so we expect a partial TmdbMedia object. This resolves the type error.
+    const data = await fetchFromTmdb<{ results: Omit<TmdbMedia, 'media_type'>[], total_pages: number }>(endpoint);
     return {
         results: data.results.map(item => ({...item, media_type: mediaType})),
         total_pages: data.total_pages
@@ -366,9 +409,18 @@ export const discoverMediaPaginated = async (
 };
 
 export const getUpcomingMovies = async (): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_upcoming_movies`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+    
     const endpoint = 'movie/upcoming';
-    const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(endpoint);
-    return data.results.map(item => ({...item, media_type: 'movie'}));
+    // FIX: The movie/upcoming endpoint does not return a `media_type`. We expect a partial TmdbMedia object from the API.
+    const data = await fetchFromTmdb<{ results: Omit<TmdbMedia, 'media_type'>[] }>(endpoint);
+    // FIX: Explicitly add the media_type to conform to the TmdbMedia type.
+    const results: TmdbMedia[] = data.results.map(item => ({...item, media_type: 'movie'}));
+
+    setToCache(cacheKey, results, CACHE_TTL);
+    return results;
 };
 
 export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): Promise<WatchProviderResponse> => {
@@ -404,4 +456,71 @@ export const getPersonDetails = async (personId: number): Promise<PersonDetails>
     const data = await fetchFromTmdb<PersonDetails>(endpoint);
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
+};
+
+export const getCalendarMedia = async (
+    mediaType: 'tv' | 'movie',
+    startDate: string,
+    endDate: string,
+): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_calendar_${mediaType}_${startDate}_${endDate}`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+
+    const dateFilterKey = mediaType === 'tv' ? 'air_date' : 'primary_release_date';
+    const sortKey = mediaType === 'movie' ? 'primary_release_date.asc' : 'popularity.desc';
+    const endpoint = `discover/${mediaType}?${dateFilterKey}.gte=${startDate}&${dateFilterKey}.lte=${endDate}&sort_by=${sortKey}`;
+    
+    const data = await fetchFromTmdb<{ results: Omit<TmdbMedia, 'media_type'>[] }>(endpoint);
+    
+    const results: TmdbMedia[] = data.results.map((item) => ({ ...item, media_type: mediaType }));
+
+    setToCache(cacheKey, results, CACHE_TTL);
+    return results;
+};
+
+export const getUpcomingCalendarItems = async (
+    mediaType: 'tv' | 'movie',
+    timezone: string,
+): Promise<CalendarItem[]> => {
+    const today = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: timezone }).format(new Date());
+    const cacheKey = `tmdb_upcoming_calendar_items_${mediaType}_${today}`;
+    const cached = getFromCache<CalendarItem[]>(cacheKey);
+    if (cached) return cached;
+    
+    let items: CalendarItem[] = [];
+
+    if (mediaType === 'movie') {
+        const movieRes = await fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/movie?primary_release_date.gte=${today}&sort_by=primary_release_date.asc`);
+        items = movieRes.results
+            .slice(0, 10)
+            .map(item => ({
+                id: item.id,
+                media_type: 'movie',
+                poster_path: item.poster_path,
+                title: item.title || 'Untitled',
+                date: item.release_date!,
+                episodeInfo: 'Movie Release',
+            }));
+    } else { // tv
+        const onTheAirRes = await fetchFromTmdb<{ results: TmdbMedia[] }>(`tv/on_the_air?language=en-US&page=1`);
+        const detailPromises = onTheAirRes.results.map(show => getMediaDetails(show.id, 'tv').catch(() => null));
+        const allDetails = await Promise.all(detailPromises);
+        
+        items = allDetails
+            .filter((details): details is TmdbMediaDetails => !!(details && details.next_episode_to_air?.air_date))
+            .map(details => ({
+                id: details!.id,
+                media_type: 'tv' as const,
+                poster_path: details!.poster_path,
+                title: details!.name || 'Untitled',
+                date: details!.next_episode_to_air!.air_date,
+                episodeInfo: `S${details!.next_episode_to_air!.season_number} E${details!.next_episode_to_air!.episode_number}: ${details!.next_episode_to_air!.name}`,
+            }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 10);
+    }
+    
+    setToCache(cacheKey, items, CACHE_TTL);
+    return items;
 };

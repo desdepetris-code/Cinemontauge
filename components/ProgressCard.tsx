@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TrackedItem, TmdbMediaDetails, Episode, LiveWatchMediaInfo } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { PlayIcon, CheckCircleIcon, HeartIcon } from './Icons';
 import BrandedImage from './BrandedImage';
+import { getShowStatus } from '../utils/statusUtils';
 
 // This type is based on what ProgressScreen prepares
 export interface EnrichedShowData extends TrackedItem {
@@ -27,6 +28,11 @@ interface ProgressCardProps {
 const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, onSelectShow, onToggleEpisode, onStartLiveWatch, onToggleFavoriteEpisode }) => {
     const { details, nextEpisodeInfo, watchedCount, totalEpisodes } = item;
     const progressPercent = totalEpisodes > 0 ? (watchedCount / totalEpisodes) * 100 : 0;
+
+    const showStatus = useMemo(() => {
+        if (!details) return null;
+        return getShowStatus(details);
+    }, [details]);
     
     const handleMarkWatched = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -63,7 +69,7 @@ const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, o
     return (
         <div className="bg-card-gradient rounded-lg shadow-md flex overflow-hidden h-48">
             <div className="w-32 flex-shrink-0 cursor-pointer" onClick={() => onSelectShow(item.id, 'tv')}>
-                <BrandedImage title={item.title}>
+                <BrandedImage title={item.title} status={showStatus}>
                     <img src={showPosterUrl} alt={item.title} className="w-full h-full object-cover" />
                 </BrandedImage>
             </div>

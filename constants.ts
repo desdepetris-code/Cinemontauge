@@ -46,19 +46,3 @@ export const PLACEHOLDER_BACKDROP = `data:image/svg+xml;base64,${btoa(backdropSv
 export const PLACEHOLDER_BACKDROP_LARGE = PLACEHOLDER_BACKDROP;
 export const PLACEHOLDER_STILL = PLACEHOLDER_BACKDROP;
 export const PLACEHOLDER_PROFILE = `data:image/svg+xml;base64,${btoa(profileSvg)}`;
-
-
-// --- Google Drive API ---
-// IMPORTANT: You must create your own project in Google Cloud Console,
-// enable the Google Drive API, and create credentials.
-// For more info: https://developers.google.com/drive/api/v3/quickstart/js
-
-// 1. Create an "OAuth 2.0 Client ID" for a "Web application" and paste the Client ID here.
-export const GOOGLE_CLIENT_ID = "821958016255-h37tfqahfhkge7navdh7h5uv43gkcsf8.apps.googleusercontent.com";
-// 2. Create an "API key" and paste it here. This is required for the client library to load the Drive API information.
-export const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY_HERE";
-
-export const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
-export const DRIVE_DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-export const DRIVE_APP_FOLDER = 'appDataFolder';
-export const DRIVE_FILE_NAME = 'sceneit_data.json';

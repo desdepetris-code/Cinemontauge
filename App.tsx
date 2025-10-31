@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-// FIX: Changed to a named import to resolve potential module resolution issues.
 import { MainApp } from './MainApp';
 import AuthModal from './components/AuthModal';
 import { UserData, WatchProgress, Theme } from './types';
@@ -93,7 +92,6 @@ const App: React.FC = () => {
     const userId = currentUser ? currentUser.id : 'guest';
 
     const [customThemes] = useLocalStorage<Theme[]>(`customThemes_${userId}`, []);
-    // FIX: Lift state up to ensure theme hook re-evaluates when setting changes.
     const [autoHolidayThemesEnabled, setAutoHolidayThemesEnabled] = useLocalStorage<boolean>(`autoHolidayThemesEnabled_${userId}`, true);
     useTheme(customThemes, autoHolidayThemesEnabled);
 

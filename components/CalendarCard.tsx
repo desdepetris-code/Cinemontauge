@@ -2,15 +2,7 @@ import React from 'react';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatDate } from '../utils/formatUtils';
 import { PLACEHOLDER_POSTER } from '../constants';
-
-export interface CalendarItem {
-    id: number;
-    media_type: 'tv' | 'movie';
-    poster_path: string | null;
-    title: string;
-    date: string; // ISO string
-    episodeInfo?: string;
-}
+import { CalendarItem } from '../types';
 
 interface CalendarCardProps {
     item: CalendarItem;
@@ -29,9 +21,13 @@ const CalendarCard: React.FC<CalendarCardProps> = ({ item, onSelect, timezone })
         >
             <img src={posterUrl} alt={item.title} className="w-full h-60 object-cover"/>
             <div className="p-3">
-                <p className="text-xs font-bold text-primary-accent">{formatDate(item.date, timezone, { month: 'short', day: 'numeric' })}</p>
+                <p className="text-xs font-bold text-primary-accent">
+                    {item.episodeInfo === 'Airing Soon'
+                        ? 'Airing Soon'
+                        : formatDate(item.date, timezone, { month: 'short', day: 'numeric' })}
+                </p>
                 <h4 className="font-bold text-sm text-text-primary truncate">{item.title}</h4>
-                {item.episodeInfo && <p className="text-xs text-text-secondary truncate">{item.episodeInfo}</p>}
+                {item.episodeInfo && item.episodeInfo !== 'Airing Soon' && <p className="text-xs text-text-secondary truncate">{item.episodeInfo}</p>}
             </div>
         </div>
     );

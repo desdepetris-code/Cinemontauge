@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
-import { TmdbMediaDetails } from '../types';
+import { TmdbMediaDetails, TvdbShow } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime } from '../utils/formatUtils';
+import RelatedShows from './RelatedShows';
 
 interface MoreInfoProps {
   details: TmdbMediaDetails | null;
+  tvdbDetails: TvdbShow | null;
+  onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
 }
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => {
@@ -17,7 +20,7 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
     );
 };
 
-const MoreInfo: React.FC<MoreInfoProps> = ({ details }) => {
+const MoreInfo: React.FC<MoreInfoProps> = ({ details, tvdbDetails, onSelectShow }) => {
     if (!details) return <p className="text-text-secondary">More information is not available.</p>;
 
     const releaseDate = details.media_type === 'tv' ? details.first_air_date : details.release_date;
@@ -73,30 +76,35 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details }) => {
     };
 
     return (
-        <div className="animate-fade-in bg-bg-secondary/50 rounded-lg">
-            <dl className="divide-y divide-bg-secondary">
-                <InfoRow label="Original Title" value={details.title || details.name} />
-                {details.tagline && <InfoRow label="Tagline" value={<i className="text-text-secondary">{details.tagline}</i>} />}
-                {details.media_type === 'tv' && <InfoRow label="Created By" value={details.created_by?.map(c => c.name).join(', ')} />}
-                <InfoRow label="Genres" value={details.genres?.map(g => g.name).join(', ')} />
-                 {details.media_type === 'tv' && details.networks?.length > 0 && <InfoRow label="Networks" value={
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
-                        {details.networks?.map(n => n.logo_path && (
-                            <img key={n.id} src={getImageUrl(n.logo_path, 'w92')} alt={n.name} title={n.name} className="h-5 max-w-[100px] object-contain" />
-                        ))}
-                    </div>
-                } />}
-                <InfoRow label="Release Date" value={releaseDate ? new Date(releaseDate).toLocaleDateString() : 'N/A'} />
-                 <InfoRow label="Language" value={languageName} />
-                <InfoRow label="Country of Origin" value={countryNames} />
-                <InfoRow label="Production" value={details.production_companies?.map(c => c.name).join(', ')} />
-                {details.media_type === 'tv' && <InfoRow label="Seasons" value={details.number_of_seasons} />}
-                {details.media_type === 'tv' && <InfoRow label="Episodes" value={details.number_of_episodes} />}
-                <InfoRow label={runtimeLabel} value={runtimeValue || 'N/A'} />
-                {details.media_type === 'movie' && <InfoRow label="Budget" value={formatCurrency(details.budget)} />}
-                {details.media_type === 'movie' && <InfoRow label="Revenue" value={formatCurrency(details.revenue)} />}
-                <InfoRow label="TMDB Rating" value={rating} />
-            </dl>
+        <div className="animate-fade-in">
+            <div className="bg-bg-secondary/50 rounded-lg">
+                <dl className="divide-y divide-bg-secondary">
+                    <InfoRow label="Original Title" value={details.title || details.name} />
+                    {details.tagline && <InfoRow label="Tagline" value={<i className="text-text-secondary">{details.tagline}</i>} />}
+                    {details.media_type === 'tv' && <InfoRow label="Created By" value={details.created_by?.map(c => c.name).join(', ')} />}
+                    <InfoRow label="Genres" value={details.genres?.map(g => g.name).join(', ')} />
+                    {details.media_type === 'tv' && details.networks?.length > 0 && <InfoRow label="Networks" value={
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
+                            {details.networks?.map(n => n.logo_path && (
+                                <img key={n.id} src={getImageUrl(n.logo_path, 'w92')} alt={n.name} title={n.name} className="h-5 max-w-[100px] object-contain" />
+                            ))}
+                        </div>
+                    } />}
+                    <InfoRow label="Release Date" value={releaseDate ? new Date(releaseDate).toLocaleDateString() : 'N/A'} />
+                    <InfoRow label="Language" value={languageName} />
+                    <InfoRow label="Country of Origin" value={countryNames} />
+                    <InfoRow label="Production" value={details.production_companies?.map(c => c.name).join(', ')} />
+                    {details.media_type === 'tv' && <InfoRow label="Seasons" value={details.number_of_seasons} />}
+                    {details.media_type === 'tv' && <InfoRow label="Episodes" value={details.number_of_episodes} />}
+                    <InfoRow label={runtimeLabel} value={runtimeValue || 'N/A'} />
+                    {details.media_type === 'movie' && <InfoRow label="Budget" value={formatCurrency(details.budget)} />}
+                    {details.media_type === 'movie' && <InfoRow label="Revenue" value={formatCurrency(details.revenue)} />}
+                    <InfoRow label="TMDB Rating" value={rating} />
+                </dl>
+            </div>
+            {details?.media_type === 'tv' && tvdbDetails?.id && (
+                <RelatedShows tvdbId={tvdbDetails.id} onSelectShow={onSelectShow} />
+            )}
         </div>
     );
 };

@@ -205,19 +205,21 @@ export interface HistoryItem {
 export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string }>;
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'favorites';
 
-// FIX: Added 'notifications' to ProfileTab to resolve type error in Profile.tsx.
-export type ProfileTab = 'overview' | 'library' | 'history' | 'stats' | 'imports' | 'achievements' | 'settings' | 'seasonLog' | 'favorites' | 'lists' | 'journal' | 'ratings' | 'searchHistory' | 'commentHistory' | 'updates' | 'notifications';
+export type ProfileTab = 'overview' | 'library' | 'history' | 'stats' | 'imports' | 'achievements' | 'settings' | 'seasonLog' | 'favorites' | 'lists' | 'journal' | 'ratings' | 'searchHistory' | 'commentHistory' | 'updates' | 'notifications' | 'activity';
 
-export type ScreenName = 'home' | 'recommendations' | 'search' | 'progress' | 'profile' | 'history' | 'achievements' | 'calendar';
+export type ScreenName = 'home' | 'search' | 'progress' | 'profile' | 'history' | 'achievements' | 'calendar' | 'activity';
 
 export type FavoriteEpisodes = Record<number, Record<number, Record<number, boolean>>>; // showId -> seasonNum -> episodeNum -> true
 export type EpisodeRatings = Record<number, Record<number, Record<number, number>>>; // showId -> seasonNum -> episodeNum -> rating
 
 // --- Theme Types ---
+export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'bats' | 'flowers' | 'pumpkins' | 'ghosts' | 'eggs';
+
 export interface Theme {
   id: string;
   name: string;
   base: 'light' | 'dark';
+  requiredLevel?: number;
   colors: {
     bgGradient: string;
     accentGradient: string;
@@ -232,8 +234,13 @@ export interface Theme {
     patternBgSize?: string;
     patternBgColor?: string;
     patternBgPosition?: string;
-    particleEffect?: 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'bats' | 'flowers' | 'pumpkins';
+    particleEffect?: ParticleEffectName[];
   };
+}
+
+export interface ProfileTheme {
+    backgroundImage: string | null;
+    fontFamily: string | null;
 }
 
 // --- Achievement Types ---
@@ -328,9 +335,7 @@ export interface Achievement {
   id: string;
   name: string;
   description: string;
-  // FIX: Add difficulty to Achievement interface to be used for sorting.
   difficulty: AchievementDifficulty;
-  // check function returns current progress and the goal to unlock
   check: (data: UserData, stats: CalculatedStats) => { progress: number; goal: number };
 }
 
@@ -343,7 +348,6 @@ export interface UserAchievementStatus extends Achievement {
 // --- TVDB Types ---
 export interface TvdbToken {
   token: string;
-  // TVDB tokens expire after 1 month. We'll refresh after 28 days just to be safe.
   expiry: number; 
 }
 
@@ -368,6 +372,14 @@ export interface TvdbShow {
         recordType: string;
         keepUpdated: boolean;
     };
+}
+
+export interface TvdbRelatedShow {
+  id: number;
+  name: string;
+  image: string;
+  typeName: string;
+  status: { name: string };
 }
 
 export interface TmdbFindResponse {
@@ -420,7 +432,7 @@ export interface WatchProviderResponse {
 // --- Notification Types ---
 export interface AppNotification {
   id: string;
-  type: 'new_season' | 'recommendation' | 'achievement_unlocked' | 'new_sequel' | 'status_change' | 'new_follower' | 'list_like';
+  type: 'new_season' | 'recommendation' | 'achievement_unlocked' | 'new_sequel' | 'status_change' | 'new_follower' | 'list_like' | 'release_reminder';
   mediaId?: number;
   mediaType?: 'tv' | 'movie';
   title: string;
@@ -452,22 +464,6 @@ export interface NotificationSettings {
   showWatchedConfirmation: boolean;
 }
 
-// --- Google Drive Types ---
-export interface DriveUser {
-  name: string;
-  email: string;
-  imageUrl: string;
-}
-
-export interface DriveStatus {
-  isGapiReady: boolean;
-  isSignedIn: boolean;
-  user: DriveUser | null;
-  lastSync: string | null;
-  isSyncing: boolean;
-  error: string | null;
-}
-
 // --- VIP & Season Log Types ---
 export interface SeasonLogItem {
   showId: number;
@@ -476,7 +472,6 @@ export interface SeasonLogItem {
   seasonNumber: number;
   seasonName: string;
   completionDate: string;
-  // New fields for descriptive log
   premiereDate?: string | null;
   endDate?: string | null;
   userStartDate?: string | null;
@@ -493,6 +488,17 @@ export interface LiveWatchMediaInfo {
   episodeNumber?: number;
   episodeTitle?: string;
 }
+
+// --- Calendar Types ---
+export interface CalendarItem {
+    id: number;
+    media_type: 'tv' | 'movie';
+    poster_path: string | null;
+    title: string;
+    date: string; // ISO string 'YYYY-MM-DD'
+    episodeInfo?: string;
+}
+
 
 // --- Episode Tag ---
 export interface EpisodeTag {
@@ -578,4 +584,32 @@ export type Follows = Record<string, string[]>; // userId -> followedUserId[]
 
 export interface PrivacySettings {
   activityVisibility: 'public' | 'followers' | 'private';
+}
+
+// --- Activity Feed Types ---
+export type ActivityType = 'WATCHED_EPISODE' | 'WATCHED_MOVIE' | 'RATED_ITEM' | 'CREATED_LIST';
+
+export interface Activity {
+  user: PublicUser;
+  timestamp: string;
+  type: ActivityType;
+  media?: TrackedItem;
+  listName?: string;
+  rating?: number;
+  episodeInfo?: string;
+}
+
+export interface FriendActivity {
+    user: PublicUser;
+    activities: Activity[];
+}
+
+export interface Reminder {
+  id: string; // e.g., 'rem-tv-123-2025-10-25'
+  mediaId: number;
+  mediaType: 'tv' | 'movie';
+  releaseDate: string; // ISO date string 'YYYY-MM-DD'
+  title: string;
+  poster_path: string | null;
+  episodeInfo?: string;
 }

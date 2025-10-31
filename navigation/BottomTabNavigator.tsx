@@ -1,10 +1,10 @@
 
 
 import React from 'react';
-import { HomeIcon, SparklesIcon, SearchNavIcon, BookOpenIcon, UserIcon } from '../components/Icons';
+import { HomeIcon, SearchNavIcon, BookOpenIcon, UserIcon, CalendarIcon } from '../components/Icons';
 import { ScreenName } from '../types';
 
-export type TabName = 'home' | 'recommendations' | 'search' | 'progress' | 'profile';
+export type TabName = 'home' | 'search' | 'calendar' | 'progress' | 'profile';
 
 interface BottomTabNavigatorProps {
   activeTab: ScreenName;
@@ -13,8 +13,8 @@ interface BottomTabNavigatorProps {
 
 const tabs: { name: TabName; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
   { name: 'home', label: 'Home', icon: HomeIcon },
-  { name: 'recommendations', label: 'Recs', icon: SparklesIcon },
   { name: 'search', label: 'Search', icon: SearchNavIcon },
+  { name: 'calendar', label: 'Calendar', icon: CalendarIcon },
   { name: 'progress', label: 'Progress', icon: BookOpenIcon },
   { name: 'profile', label: 'Profile', icon: UserIcon },
 ];

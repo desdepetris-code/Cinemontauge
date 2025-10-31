@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
-import { DriveStatus, NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData } from '../types';
-import { GOOGLE_CLIENT_ID } from '../constants';
+import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
@@ -63,16 +62,10 @@ interface User {
 
 interface SettingsProps {
     userData: UserData;
-    driveStatus: DriveStatus;
-    onDriveSignIn: () => void;
-    onDriveSignOut: () => void;
-    onBackupToDrive: () => void;
-    onRestoreFromDrive: () => void;
     notificationSettings: NotificationSettings;
     setNotificationSettings: React.Dispatch<React.SetStateAction<NotificationSettings>>;
     privacySettings: PrivacySettings;
     setPrivacySettings: React.Dispatch<React.SetStateAction<PrivacySettings>>;
-    // State setters
     setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
     setWatchProgress: React.Dispatch<React.SetStateAction<WatchProgress>>;
     setEpisodeRatings: React.Dispatch<React.SetStateAction<EpisodeRatings>>;
@@ -91,10 +84,17 @@ interface SettingsProps {
     onRemoveDuplicateHistory: () => void;
     autoHolidayThemesEnabled: boolean;
     setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+    holidayAnimationsEnabled: boolean;
+    setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+    profileTheme: ProfileTheme | null;
+    setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
+    textSize: number;
+    setTextSize: React.Dispatch<React.SetStateAction<number>>;
+    userLevel: number;
 }
 
 const Settings: React.FC<SettingsProps> = (props) => {
-  const { driveStatus, onDriveSignIn, onDriveSignOut, onBackupToDrive, onRestoreFromDrive, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled } = props;
+  const { notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
   const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
@@ -112,8 +112,8 @@ const Settings: React.FC<SettingsProps> = (props) => {
     setNotificationSettings(prev => {
         const newState = { ...prev, [setting]: !prev[setting] };
         if (setting === 'masterEnabled' && !newState.masterEnabled) {
-            // When master is turned off, disable all others
             return {
+                ...prev,
                 masterEnabled: false,
                 newEpisodes: false,
                 movieReleases: false,
@@ -122,12 +122,11 @@ const Settings: React.FC<SettingsProps> = (props) => {
                 listLikes: false,
                 appUpdates: false,
                 importSyncCompleted: false,
-                showWatchedConfirmation: false,
             };
         }
          if (setting === 'masterEnabled' && newState.masterEnabled) {
-            // When master is turned on, restore previous settings (or enable all)
             return {
+                ...prev,
                 masterEnabled: true,
                 newEpisodes: true,
                 movieReleases: true,
@@ -136,7 +135,6 @@ const Settings: React.FC<SettingsProps> = (props) => {
                 listLikes: true,
                 appUpdates: true,
                 importSyncCompleted: true,
-                showWatchedConfirmation: true,
             };
         }
         return newState;
@@ -157,7 +155,6 @@ const Settings: React.FC<SettingsProps> = (props) => {
             const item = localStorage.getItem(key);
             if (item) {
                 try {
-                    // Try to parse as JSON, if it fails, it's a plain string
                     dataToExport[key] = JSON.parse(item);
                 } catch (e) {
                     dataToExport[key] = item;
@@ -331,58 +328,20 @@ const Settings: React.FC<SettingsProps> = (props) => {
           <SettingsCard title="Timezone">
               <TimezoneSettings timezone={timezone} setTimezone={setTimezone} />
           </SettingsCard>
-
-          <SettingsCard title="Cloud Sync & Backup">
-              { !driveStatus.isGapiReady ? (
-                  <div className="p-4 text-text-secondary">Loading Google Drive client...</div>
-              ) : driveStatus.isSignedIn && driveStatus.user ? (
-                  <div>
-                      <div className="p-4 flex items-center space-x-4">
-                          <img src={driveStatus.user.imageUrl} alt="profile" className="w-12 h-12 rounded-full" />
-                          <div>
-                              <p className="font-semibold text-text-primary">{driveStatus.user.name}</p>
-                              <p className="text-sm text-text-secondary">{driveStatus.user.email}</p>
-                          </div>
-                      </div>
-                      {driveStatus.lastSync && (
-                          <div className="px-4 pb-2 text-xs text-text-secondary">
-                              Last backup: {new Date(driveStatus.lastSync).toLocaleString()}
-                          </div>
-                      )}
-                      <div className="p-4 border-t border-bg-secondary/50 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <button onClick={onBackupToDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
-                              <UploadIcon className="h-4 w-4" />
-                              <span>{driveStatus.isSyncing ? 'Please wait...' : 'Backup to Drive'}</span>
-                          </button>
-                          <button onClick={onRestoreFromDrive} disabled={driveStatus.isSyncing} className="flex items-center justify-center space-x-2 px-3 py-1.5 text-sm rounded-md transition-colors bg-bg-secondary text-text-primary hover:brightness-125 disabled:opacity-50">
-                              <DownloadIcon className="h-4 w-4" />
-                              <span>Restore from Drive</span>
-                          </button>
-                          <button onClick={onDriveSignOut} disabled={driveStatus.isSyncing} className="w-full px-3 py-1.5 text-sm rounded-md transition-colors bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-50">
-                              Disconnect
-                          </button>
-                      </div>
-                  </div>
-              ) : (
-                  <div className="p-4">
-                      <p className="text-text-secondary mb-4">
-                          Connect Google Drive to save a backup of your data to the cloud. You can restore this data on any device.
-                          <br/><strong className="text-text-secondary/80 text-xs">Note: Backup overwrites cloud data, and Restore overwrites local data.</strong>
-                      </p>
-                      <button
-                          onClick={onDriveSignIn}
-                          disabled={!driveStatus.isGapiReady || GOOGLE_CLIENT_ID.startsWith('YOUR_')}
-                          className="w-full flex items-center justify-center space-x-2 py-3 rounded-lg bg-white text-gray-700 font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                          <GoogleIcon />
-                          <span>Sign in with Google</span>
-                      </button>
-                      {driveStatus.error && <p className="text-red-500 text-sm mt-2 text-center">{driveStatus.error}</p>}
-                      {GOOGLE_CLIENT_ID.startsWith('YOUR_') && <p className="text-yellow-500 text-xs mt-2 text-center">Feature disabled. Admin needs to configure API keys.</p>}
-                  </div>
-              )}
-          </SettingsCard>
           
+          <SettingsCard title="Accessibility">
+              <SettingsRow title="Text Size" subtitle="Adjust the application's font size.">
+                  <div className="flex items-center space-x-2 bg-bg-primary p-1 rounded-lg">
+                      <button onClick={() => setTextSize(s => Math.max(0.8, s - 0.1))} className="px-3 py-1 text-lg font-bold rounded-md bg-bg-secondary text-text-primary hover:brightness-125">-</button>
+                      <button onClick={() => setTextSize(1)} className="px-3 py-1 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125">Reset</button>
+                      <button onClick={() => setTextSize(s => Math.min(1.5, s + 0.1))} className="px-3 py-1 text-lg font-bold rounded-md bg-bg-secondary text-text-primary hover:brightness-125">+</button>
+                  </div>
+              </SettingsRow>
+               <div className="text-center pb-2 text-sm text-text-secondary">
+                  Current Size: {Math.round(textSize * 100)}%
+              </div>
+          </SettingsCard>
+
           <SettingsCard title="Notifications & Preferences">
               <SettingsRow title="Enable All Notifications" subtitle="Master control for all app alerts.">
                   <ToggleSwitch enabled={notificationSettings.masterEnabled} onChange={() => handleToggleNotification('masterEnabled')} />
@@ -399,8 +358,8 @@ const Settings: React.FC<SettingsProps> = (props) => {
               <SettingsRow title="List Likes" subtitle="Get an alert when someone likes your list." disabled={!notificationSettings.masterEnabled}>
                   <ToggleSwitch enabled={notificationSettings.listLikes} onChange={() => handleToggleNotification('listLikes')} disabled={!notificationSettings.masterEnabled}/>
               </SettingsRow>
-              <SettingsRow title="Show watched confirmation banners" subtitle="Displays a confirmation when you mark something as watched." disabled={!notificationSettings.masterEnabled}>
-                  <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} disabled={!notificationSettings.masterEnabled}/>
+              <SettingsRow title="Show watched confirmation banners" subtitle="Displays a confirmation when you mark something as watched.">
+                  <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
               </SettingsRow>
               <SettingsRow title="App Updates & Announcements" subtitle="Receive news, changelogs, and announcements about SceneIt." disabled={!notificationSettings.masterEnabled}>
                   <ToggleSwitch enabled={notificationSettings.appUpdates} onChange={() => handleToggleNotification('appUpdates')} disabled={!notificationSettings.masterEnabled}/>
@@ -413,7 +372,17 @@ const Settings: React.FC<SettingsProps> = (props) => {
               </SettingsRow>
           </SettingsCard>
         
-          <ThemeSettings customThemes={props.customThemes} setCustomThemes={props.setCustomThemes} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} />
+          <ThemeSettings 
+            customThemes={props.customThemes} 
+            setCustomThemes={props.setCustomThemes} 
+            autoHolidayThemesEnabled={autoHolidayThemesEnabled} 
+            setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} 
+            holidayAnimationsEnabled={holidayAnimationsEnabled}
+            setHolidayAnimationsEnabled={setHolidayAnimationsEnabled}
+            profileTheme={profileTheme} 
+            setProfileTheme={setProfileTheme} 
+            userLevel={userLevel}
+          />
 
           <SettingsCard title="Privacy Settings">
               <SettingsRow title="Activity Visibility" subtitle="Control who can see your watch activity and comments.">

@@ -86,6 +86,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
 }) => {
   const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [commentModalState, setCommentModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
+  const [justWatchedEpisodeId, setJustWatchedEpisodeId] = useState<number | null>(null);
   
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -221,11 +222,17 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     const isLastEpisode = ep.episode_number === totalEpisodesInSeason;
                     const episodeMediaKey = `tv-${showId}-s${ep.season_number}-e${ep.episode_number}`;
                     const existingComment = comments.find(c => c.mediaKey === episodeMediaKey);
+                    const shouldAnimateWatch = justWatchedEpisodeId === ep.id;
 
                     const handleToggleWatched = (e: React.MouseEvent) => {
                         e.stopPropagation();
                         if (isFuture) return;
                         const currentlyWatched = epProgress?.status === 2;
+                        
+                        if (!currentlyWatched) {
+                            setJustWatchedEpisodeId(ep.id);
+                        }
+
                         if (!currentlyWatched && isLastEpisode) {
                             const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
                             let hasUnwatched = false;
@@ -288,7 +295,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                     </div>
                                     <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 mt-2 md:mt-0" onClick={(e) => e.stopPropagation()}>
                                         <ActionButton label={isWatched ? 'Watched' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
-                                            <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''}`} />
+                                            <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''} ${shouldAnimateWatch ? 'animate-bounce-in' : ''}`} />
                                         </ActionButton>
                                         <ActionButton label="Live" onClick={handleLiveWatch} disabled={isFuture}>
                                             <PlayCircleIcon className="h-5 w-5" />

@@ -5,6 +5,7 @@ import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER } from '../constants';
 import BrandedImage from './BrandedImage';
+import { getShowStatus } from '../utils/statusUtils';
 
 interface ShowCardProps {
   item: TrackedItem | TmdbMedia;
@@ -58,6 +59,11 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect }) => {
         };
     }, [item.id, item.media_type]);
 
+    const showStatus = useMemo(() => {
+        if (!details) return null;
+        return getShowStatus(details);
+    }, [details]);
+
     const posterSrcs = useMemo(() => {
         const paths = item.media_type === 'tv'
             ? [
@@ -84,7 +90,7 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect }) => {
             className="cursor-pointer group transform hover:-translate-y-2 transition-transform duration-300"
         >
             <div className="relative rounded-lg overflow-hidden shadow-lg">
-                <BrandedImage title={title}>
+                <BrandedImage title={title} status={item.media_type === 'tv' ? showStatus : null}>
                     <FallbackImage
                         srcs={posterSrcs}
                         placeholder={PLACEHOLDER_POSTER}

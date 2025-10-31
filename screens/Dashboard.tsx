@@ -4,18 +4,18 @@ import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
 import NewSeasons from '../components/NewSeasons';
-import NewReleases from '../components/NewReleases';
-import TrendingSection from '../components/TrendingSection';
-import GenericCarousel from '../components/GenericCarousel';
-import { discoverMedia, getUpcomingMovies } from '../services/tmdbService';
+import { getUpcomingMovies, discoverMedia } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
 import DateTimeDisplay from '../components/DateTimeDisplay';
 import PlanToWatch from '../components/PlanToWatch';
 import StatsWidget from '../components/StatsWidget';
-import { useCalculatedStats } from '../hooks/useCalculatedStats';
 import UpcomingCalendar from '../components/UpcomingCalendar';
+import RelatedRecommendations from '../components/RelatedRecommendations';
+import NewReleases from '../components/NewReleases';
+import TrendingSection from '../components/TrendingSection';
+import GenericCarousel from '../components/GenericCarousel';
 
 interface DashboardProps {
   userData: UserData;
@@ -48,27 +48,43 @@ const ApiKeyWarning: React.FC = () => (
     </div>
 );
 
-const fetchPopularAndTopRatedTV = async (): Promise<TmdbMedia[]> => {
-    const [popular, topRated] = await Promise.all([
-        discoverMedia('tv', { sortBy: 'popularity.desc' }),
-        discoverMedia('tv', { sortBy: 'vote_average.desc', vote_count_gte: 200 })
-    ]);
-    const combined = new Map<number, TmdbMedia>();
-    popular.forEach(item => combined.set(item.id, item));
-    topRated.forEach(item => combined.set(item.id, item));
-    return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+const DiscoverContent: React.FC<Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone'>> = 
+({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone }) => {
+    const fetchPopularAndTopRatedTV = async (): Promise<TmdbMedia[]> => {
+        const [popular, topRated] = await Promise.all([
+            discoverMedia('tv', { sortBy: 'popularity.desc' }),
+            discoverMedia('tv', { sortBy: 'vote_average.desc', vote_count_gte: 200 })
+        ]);
+        const combined = new Map<number, TmdbMedia>();
+        popular.forEach(item => combined.set(item.id, item));
+        topRated.forEach(item => combined.set(item.id, item));
+        return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    };
+
+    const fetchPopularAndTopRatedMovies = async (): Promise<TmdbMedia[]> => {
+        const [popular, topRated] = await Promise.all([
+            discoverMedia('movie', { sortBy: 'popularity.desc' }),
+            discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300 })
+        ]);
+        const combined = new Map<number, TmdbMedia>();
+        popular.forEach(item => combined.set(item.id, item));
+        topRated.forEach(item => combined.set(item.id, item));
+        return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    };
+
+    return (
+        <div className="space-y-8">
+          <NewReleases mediaType="movie" title="🍿 New Movie Releases" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} timezone={timezone} recommendationReason="Fresh from the big screen" />
+          <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="What everyone's talking about" />
+          <TrendingSection mediaType="movie" title="🔥 Trending Movies" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="Popular in theaters & streaming" />
+          <GenericCarousel title="📺 Popular & Top Rated TV Shows" fetcher={fetchPopularAndTopRatedTV} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="Critically acclaimed & fan favorites" />
+          <GenericCarousel title="🎬 Popular & Top Rated Movies" fetcher={fetchPopularAndTopRatedMovies} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="Blockbusters & award-winners" />
+          <GenericCarousel title="💥 Top Rated Action & Adventure" fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300, genre: '28|12' })} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="For fans of Action & Adventure" />
+          <GenericCarousel title="🎭 Binge-Worthy TV Dramas" fetcher={() => discoverMedia('tv', { sortBy: 'popularity.desc', genre: 18, vote_count_gte: 100 })} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} recommendationReason="For fans of Drama" />
+        </div>
+    );
 };
 
-const fetchPopularAndTopRatedMovies = async (): Promise<TmdbMedia[]> => {
-    const [popular, topRated] = await Promise.all([
-        discoverMedia('movie', { sortBy: 'popularity.desc' }),
-        discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300 })
-    ]);
-    const combined = new Map<number, TmdbMedia>();
-    popular.forEach(item => combined.set(item.id, item));
-    topRated.forEach(item => combined.set(item.id, item));
-    return Array.from(combined.values()).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
-};
 
 const Dashboard: React.FC<DashboardProps> = ({
     userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
@@ -125,6 +141,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     return Array.from(allItems.values());
   }, [userData]);
 
+  const latestWatchedItem = useMemo(() => {
+    return userData.history.find(h => !h.logId.startsWith('live-'));
+  }, [userData.history]);
+
   return (
     <div className="animate-fade-in space-y-8">
       <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
@@ -162,6 +182,23 @@ const Dashboard: React.FC<DashboardProps> = ({
       />
 
       {!isApiKeyMissing && (
+        <NewSeasons onSelectShow={onSelectShow} trackedShows={trackedShowsForNewSeasons} timezone={timezone} />
+      )}
+
+      {!isApiKeyMissing && latestWatchedItem && (
+        <RelatedRecommendations
+            seedItem={latestWatchedItem}
+            userData={userData}
+            onSelectShow={onSelectShow}
+            onOpenAddToListModal={onOpenAddToListModal}
+            onMarkShowAsWatched={onMarkShowAsWatched}
+            onToggleFavoriteShow={onToggleFavoriteShow}
+            favorites={favorites}
+            completed={userData.completed}
+        />
+      )}
+
+      {!isApiKeyMissing && (
         <UpcomingCalendar
             userData={userData}
             onSelectShow={onSelectShow}
@@ -172,25 +209,27 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} />
       
-      {/* Discovery Carousels */}
-      {isApiKeyMissing ? <ApiKeyWarning /> : (
-        <>
-            <NewSeasons onSelectShow={onSelectShow} trackedShows={trackedShowsForNewSeasons} timezone={timezone} />
-            <NewReleases mediaType="movie" title="🍿 New Movie Releases" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} timezone={timezone} />
-            <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <TrendingSection mediaType="movie" title="🔥 Trending Movies" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <GenericCarousel title="📺 Popular & Top Rated TV Shows" fetcher={fetchPopularAndTopRatedTV} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <GenericCarousel title="🎬 Popular & Top Rated Movies" fetcher={fetchPopularAndTopRatedMovies} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <GenericCarousel title="💥 Top Rated Action & Adventure" fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300, genre: '28|12' })} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <GenericCarousel title="🎭 Binge-Worthy TV Dramas" fetcher={() => discoverMedia('tv', { sortBy: 'popularity.desc', genre: 18, vote_count_gte: 100 })} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <GenericCarousel title="📅 Upcoming Movies" fetcher={getUpcomingMovies} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} />
-            <MyListSuggestions
-                userData={userData}
-                onSelectShow={onSelectShow}
-                onOpenAddToListModal={onOpenAddToListModal}
-            />
-        </>
+      {!isApiKeyMissing && (
+        <DiscoverContent 
+          onSelectShow={onSelectShow} 
+          onOpenAddToListModal={onOpenAddToListModal} 
+          onMarkShowAsWatched={onMarkShowAsWatched} 
+          onToggleFavoriteShow={onToggleFavoriteShow} 
+          favorites={favorites} 
+          userData={userData} 
+          timezone={timezone} 
+        />
       )}
+
+      {!isApiKeyMissing && (
+        <MyListSuggestions
+            userData={userData}
+            onSelectShow={onSelectShow}
+            onOpenAddToListModal={onOpenAddToListModal}
+        />
+      )}
+
+      {isApiKeyMissing && <ApiKeyWarning />}
     </div>
   );
 };

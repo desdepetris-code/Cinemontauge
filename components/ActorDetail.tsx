@@ -168,7 +168,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
             <div className="lg:col-span-2 space-y-6">
                  <div>
                     <h3 className="text-xl font-bold text-text-primary mb-2">Known For</h3>
-                    <div className="flex overflow-x-auto py-2 -mx-2 px-2 space-x-4">
+                    <div className="flex overflow-x-auto py-2 -mx-2 px-2 space-x-4 hide-scrollbar">
                         {knownFor.slice(0, 8).map(item => (
                             <div key={`${item.id}-${item.credit_id}`} className="w-32 flex-shrink-0">
                                 <FilmographyCard
@@ -259,7 +259,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                 </div>
                 {details.images?.profiles && details.images.profiles.length > 1 && (
                     <div className="mt-6">
-                        <div className="flex space-x-2 overflow-x-auto pb-2">
+                        <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
                             {details.images.profiles.slice(1, 11).map(p => (
                                 <img key={p.file_path} src={getImageUrl(p.file_path, 'w185')} alt="" className="h-24 w-auto rounded-md" />
                             ))}
@@ -270,7 +270,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
 
             <div className="container mx-auto px-4 mt-8">
                 <div className="border-b border-bg-secondary/50 mb-6">
-                    <div className="flex space-x-2 overflow-x-auto hide-scrollbar pb-2">
+                    <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
                         {tabs.map(tab => (
                              <button
                                 key={tab.id}

@@ -4,7 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { TrashIcon, ChevronDownIcon, StarIcon } from '../components/Icons';
 import { getMediaDetails } from '../services/tmdbService';
 import ListGrid from '../components/ListGrid';
-import { formatDate, formatDateTime, formatTime } from '../utils/formatUtils';
+import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 
 type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments';
 
@@ -89,7 +89,7 @@ const WatchHistory: React.FC<{
                   <div className="flex-grow min-w-0" onClick={() => onSelectShow(item.id, item.media_type)}>
                     <p className="font-semibold text-text-primary truncate cursor-pointer">{item.title}</p>
                     <p className="text-sm text-text-secondary cursor-pointer">{item.media_type === 'tv' ? `S${item.seasonNumber} E${item.episodeNumber}` : 'Movie'}</p>
-                    <p className="text-xs text-text-secondary/80 mt-1">{formatTime(item.timestamp, timezone)}</p>
+                    <p className="text-xs text-text-secondary/80 mt-1">{formatTimeFromDate(item.timestamp, timezone)}</p>
                     {item.note && <p className="text-xs text-text-secondary/80 mt-1 italic truncate" title={item.note}>Note: {item.note}</p>}
                   </div>
                   <button onClick={() => onDeleteHistoryItem(item.logId)} className="ml-auto p-2 rounded-full text-text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0" aria-label="Delete history item"><TrashIcon className="w-5 h-5" /></button>

@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { themes as builtInThemes, holidayThemes } from '../themes';
@@ -65,8 +64,7 @@ const holidays: HolidayDefinition[] = [
         themeId: 'holiday-easter',
         getPeriod: (year) => {
             const easterDate = getEaster(year);
-            const startDate = new Date(easterDate);
-            startDate.setDate(easterDate.getDate() - 14);
+            const startDate = new Date(year, 3, 1); // April 1st
             const endDate = new Date(easterDate);
             endDate.setHours(23, 59, 59);
             return { startDate, endDate };
@@ -111,9 +109,11 @@ const holidays: HolidayDefinition[] = [
         themeId: 'holiday-thanksgiving',
         getPeriod: (year) => {
             const thanksgivingDay = getNthDayOfMonth(4, 4, 10, year); // 4th Thursday in Nov
+            const startDate = new Date(thanksgivingDay);
+            startDate.setDate(thanksgivingDay.getDate() - 14);
             const endDate = new Date(thanksgivingDay);
             endDate.setHours(23, 59, 59);
-            return { startDate: new Date(year, 10, 1), endDate };
+            return { startDate, endDate };
         },
     },
     {
@@ -131,6 +131,16 @@ const getActiveHolidayTheme = (date: Date): { name: string; themeId: string } | 
             return { name: holiday.name, themeId: holiday.themeId };
         }
     }
+    // Also check for previous year's New Year's Eve theme if it's early January
+    const prevYear = year - 1;
+    const newYearsEvePrevYear = holidays.find(h => h.name === "New Year's Eve");
+    if (newYearsEvePrevYear) {
+        const { startDate, endDate } = newYearsEvePrevYear.getPeriod(prevYear);
+         if (date >= startDate && date <= endDate) {
+            return { name: newYearsEvePrevYear.name, themeId: newYearsEvePrevYear.themeId };
+        }
+    }
+    
     return null;
 };
 
@@ -215,6 +225,12 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
         document.body.style.backgroundPosition = '0 0';
     }
 
+    // Special class for Halloween theme
+    if (activeTheme.id === 'holiday-halloween') {
+        document.body.classList.add('halloween-theme-active');
+    } else {
+        document.body.classList.remove('halloween-theme-active');
+    }
 
   }, [activeTheme]);
 

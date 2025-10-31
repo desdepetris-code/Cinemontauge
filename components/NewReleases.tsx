@@ -7,6 +7,7 @@ import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { formatDate, isNewRelease } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
+import RecommendationHint from './RecommendationHint';
 
 // Helper function for image URLs
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
@@ -24,7 +25,8 @@ const NewReleaseCard: React.FC<{
     isFavorite: boolean;
     isCompleted: boolean;
     timezone: string;
-}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, timezone }) => {
+    recommendationReason?: string;
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, timezone, recommendationReason }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     
     const backdropSrcs = [
@@ -94,6 +96,7 @@ const NewReleaseCard: React.FC<{
                         />
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                         {recommendationReason && <RecommendationHint reason={recommendationReason} />}
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                          {releaseDate && <p className="text-xs text-white/80">{formatDate(releaseDate, timezone)}</p>}
                     </div>
@@ -134,9 +137,10 @@ interface NewReleasesProps {
   favorites: TrackedItem[];
   completed: TrackedItem[];
   timezone?: string;
+  recommendationReason?: string;
 }
 
-const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone = 'Etc/UTC' }) => {
+const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone = 'Etc/UTC', recommendationReason }) => {
     const [releases, setReleases] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -173,7 +177,7 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
         return (
              <div className="my-8">
                 <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4">
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
                     {[...Array(5)].map((_, i) => (
                          <div key={i} className="w-72 flex-shrink-0">
                              <div className="aspect-video bg-bg-secondary rounded-lg"></div>
@@ -192,7 +196,7 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
     return (
         <div className="my-8">
             <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
-            <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4">
+            <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                 {releases.map(item => {
                     const isFavorite = favorites.some(fav => fav.id === item.id);
                     const isCompleted = completed.some(c => c.id === item.id);
@@ -207,6 +211,7 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
                             isFavorite={isFavorite}
                             isCompleted={isCompleted}
                             timezone={timezone}
+                            recommendationReason={recommendationReason}
                         />
                     );
                 })}

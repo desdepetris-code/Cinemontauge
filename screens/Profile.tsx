@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { UserData, DriveStatus, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification } from '../types';
-import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, CalendarIcon, BellIcon, TvIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
+import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme } from '../types';
+import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, TvIcon, ChevronLeftIcon, ChevronRightIcon, UsersIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import Settings from './Settings';
@@ -11,7 +11,6 @@ import JournalWidget from '../components/profile/JournalWidget';
 import { useCalculatedStats } from '../hooks/useCalculatedStats';
 import OverviewStats from '../components/profile/OverviewStats';
 import StatsNarrative from '../components/StatsNarrative';
-// FIX: Add missing import for StatsScreen component.
 import StatsScreen from './StatsScreen';
 import UpdatesScreen from './UpdatesScreen';
 import FollowListModal from '../components/FollowListModal';
@@ -21,6 +20,7 @@ import NotificationsScreen from './NotificationsScreen';
 import RecentActivityWidget from '../components/profile/RecentActivityWidget';
 import AchievementsWidget from '../components/profile/AchievementsWidget';
 import ListsWidget from '../components/profile/ListsWidget';
+import ActivityScreen from './ActivityScreen';
 
 interface User {
   id: string;
@@ -69,17 +69,15 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
         if (url.includes('tenor.com/view/')) {
             setIsProcessingUrl(true);
             try {
-                // The platform provides a /proxy/ endpoint to bypass CORS
                 const proxyUrl = `/proxy/${url.replace(/^https?:\/\//, '')}`;
                 const response = await fetch(proxyUrl);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch Tenor page, status: ${response.status}`);
                 }
                 const html = await response.text();
-                // Use regex to find the content of the og:image meta tag
                 const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/);
                 if (ogImageMatch && ogImageMatch[1]) {
-                    onSave(ogImageMatch[1]); // Save the direct GIF URL
+                    onSave(ogImageMatch[1]);
                     onClose();
                 } else {
                     alert("Could not automatically find the direct GIF URL from Tenor. Please try to find and paste the direct GIF URL (ending in .gif). You can often do this by right-clicking the GIF and selecting 'Copy Image Address'.");
@@ -91,7 +89,6 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
                 setIsProcessingUrl(false);
             }
         } else {
-            // For all other URLs, save them directly
             onSave(url);
             onClose();
         }
@@ -149,11 +146,6 @@ interface ProfileProps {
   userData: UserData;
   genres: Record<number, string>;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
-  driveStatus: DriveStatus;
-  onDriveSignIn: () => void;
-  onDriveSignOut: () => void;
-  onBackupToDrive: () => void;
-  onRestoreFromDrive: () => void;
   onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
   onTraktImportCompleted: (data: {
     history: HistoryItem[];
@@ -202,10 +194,23 @@ interface ProfileProps {
   onMarkOneRead: (id: string) => void;
   autoHolidayThemesEnabled: boolean;
   setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  holidayAnimationsEnabled: boolean;
+  setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  profileTheme: ProfileTheme | null;
+  setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
+  textSize: number;
+  setTextSize: React.Dispatch<React.SetStateAction<number>>;
+  levelInfo: {
+      level: number;
+      xp: number;
+      xpForNextLevel: number;
+      xpProgress: number;
+      progressPercent: number;
+  };
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone } = props;
+  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo } = props;
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
@@ -240,7 +245,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const scroll = (direction: 'left' | 'right') => {
     const el = scrollContainerRef.current;
     if (el) {
-      const scrollAmount = el.clientWidth * 0.8; // Scroll 80% of the visible width
+      const scrollAmount = el.clientWidth * 0.8;
       el.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
@@ -256,11 +261,11 @@ const Profile: React.FC<ProfileProps> = (props) => {
     return { followers: followerList, following: followingList };
   }, [currentUser, follows]);
 
-  // FIX: Changed type of `icon` to React.FC to allow direct rendering with props, avoiding React.cloneElement typing issues.
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
     { id: 'overview', label: 'Overview', icon: Squares2X2Icon },
     { id: 'library', label: 'Library', icon: CollectionIcon },
     { id: 'lists', label: 'Custom Lists', icon: ListBulletIcon },
+    { id: 'activity', label: 'Activity', icon: UsersIcon },
     { id: 'stats', label: 'Stats', icon: ChartPieIcon },
     { id: 'history', label: 'History', icon: ClockIcon },
     { id: 'seasonLog', label: 'Season Log', icon: TvIcon },
@@ -288,7 +293,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
             <StatsNarrative stats={stats} genres={genres} userData={userData} currentUser={currentUser} />
             <OverviewStats stats={stats} />
             <FriendsActivity 
-              currentUser={currentUser}
+              currentUser={props.currentUser}
               follows={props.follows}
               onSelectShow={onSelectShow}
               onSelectUser={props.onSelectUser}
@@ -303,6 +308,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
         </div>
       );
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} />;
+      case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
       case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} />;
       case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} />;
@@ -312,7 +318,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'notifications': return <NotificationsScreen notifications={props.notifications} onMarkAllRead={props.onMarkAllRead} onMarkOneRead={props.onMarkOneRead} onSelectShow={props.onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'updates': return <UpdatesScreen />;
       case 'imports': return <ImportsScreen onImportCompleted={props.onImportCompleted} onTraktImportCompleted={onTraktImportCompleted} />;
-      case 'settings': return <Settings {...props} currentUser={currentUser} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} timezone={timezone} setTimezone={setTimezone} />;
+      case 'settings': return <Settings {...props} currentUser={currentUser} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} timezone={timezone} setTimezone={setTimezone} userLevel={levelInfo.level} />;
       default: return <StatsScreen userData={userData} genres={genres} />;
     }
   };
@@ -323,104 +329,122 @@ const Profile: React.FC<ProfileProps> = (props) => {
     </div>
   );
 
+  const wrapperStyle: React.CSSProperties = profileTheme?.backgroundImage ? {
+    backgroundImage: `url(${profileTheme.backgroundImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+  } : {};
+
   return (
-    <div className="animate-fade-in max-w-6xl mx-auto px-4 pb-8">
-      <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} onSave={setProfilePictureUrl} />
-      <FollowListModal {...followModalState} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} onSelectUser={onSelectUser}/>
-      
-      <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 p-4 bg-card-gradient rounded-lg">
-        <div className="relative group">
-            {currentUser ? (
-                <img src={profilePictureUrl || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#64748b"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>')}`} alt="Profile" className="w-20 h-20 rounded-full object-cover bg-bg-secondary border-2 border-primary-accent/30"/>
-            ) : defaultAvatar}
-        </div>
-        <div className="flex-grow text-center sm:text-left">
-            {currentUser ? (
-                <>
-                    <h1 className="text-2xl font-bold text-text-primary">{currentUser.username}</h1>
-                    <p className="text-text-secondary text-sm">Logged in as {currentUser.email}</p>
-                    <div className="mt-2 flex justify-center sm:justify-start items-center space-x-4">
-                       <button onClick={() => setFollowModalState({isOpen: true, title: 'Followers', userIds: followers})} className="text-sm">
-                           <strong className="text-text-primary">{followers.length}</strong> <span className="text-text-secondary">Followers</span>
-                       </button>
-                       <button onClick={() => setFollowModalState({isOpen: true, title: 'Following', userIds: following})} className="text-sm">
-                           <strong className="text-text-primary">{following.length}</strong> <span className="text-text-secondary">Following</span>
-                       </button>
-                       <div className="text-sm">
-                            <strong className="text-text-primary">{stats.longestStreak}</strong> <span className="text-text-secondary">Day Streak 🔥</span>
+    <div style={wrapperStyle} className="relative bg-bg-primary">
+      {profileTheme?.backgroundImage && <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>}
+      <div className="relative animate-fade-in max-w-6xl mx-auto px-4 pb-8" style={{ fontFamily: profileTheme?.fontFamily || 'inherit' }}>
+          <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} onSave={setProfilePictureUrl} />
+          <FollowListModal {...followModalState} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} onSelectUser={onSelectUser}/>
+          
+          <header className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 p-4 bg-card-gradient rounded-lg">
+            <div className="relative group">
+                {currentUser ? (
+                    <img src={profilePictureUrl || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#64748b"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>')}`} alt="Profile" className="w-20 h-20 rounded-full object-cover bg-bg-secondary border-2 border-primary-accent/30"/>
+                ) : defaultAvatar}
+            </div>
+            <div className="flex-grow text-center sm:text-left">
+                {currentUser ? (
+                    <>
+                        <h1 className="text-2xl font-bold text-text-primary">{currentUser.username}</h1>
+                        <p className="text-text-secondary text-sm">Logged in as {currentUser.email}</p>
+                        <div className="mt-2 w-full max-w-sm mx-auto sm:mx-0">
+                            <div className="flex justify-between items-center text-sm font-semibold">
+                                <span className="text-text-primary">Level {levelInfo.level}</span>
+                                <span className="text-text-secondary">{levelInfo.xpProgress} / {levelInfo.xpForNextLevel} XP</span>
+                            </div>
+                            <div className="w-full bg-bg-secondary rounded-full h-2.5 mt-1">
+                                <div className="bg-accent-gradient h-2.5 rounded-full" style={{ width: `${levelInfo.progressPercent}%` }}></div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="mt-2 flex justify-center sm:justify-start items-center space-x-2">
-                        <ToggleSwitch enabled={isPublic} onChange={handlePrivacyToggle} />
-                        <span className="text-sm text-text-secondary">{isPublic ? 'Profile is Public' : 'Profile is Private'}</span>
-                    </div>
-                    <div className="mt-2 flex justify-center sm:justify-start space-x-2">
-                        <button onClick={() => setIsPicModalOpen(true)} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Change Picture</button>
-                        <button onClick={onLogout} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Log Out</button>
-                    </div>
-                </>
-            ) : (
-                <>
-                    <h1 className="text-2xl font-bold text-text-primary">Guest User</h1>
-                    <p className="text-text-secondary text-sm">Log in to sync your data across devices.</p>
-                     <div className="mt-2 flex justify-center sm:justify-start space-x-2">
-                        <button onClick={onAuthClick} className="px-3 py-1 text-sm font-semibold rounded-full bg-accent-gradient text-on-accent hover:opacity-90">Login / Sign Up</button>
-                    </div>
-                </>
-            )}
-        </div>
-      </header>
+                        <div className="mt-2 flex justify-center sm:justify-start items-center space-x-4">
+                           <button onClick={() => setFollowModalState({isOpen: true, title: 'Followers', userIds: followers})} className="text-sm">
+                               <strong className="text-text-primary">{followers.length}</strong> <span className="text-text-secondary">Followers</span>
+                           </button>
+                           <button onClick={() => setFollowModalState({isOpen: true, title: 'Following', userIds: following})} className="text-sm">
+                               <strong className="text-text-primary">{following.length}</strong> <span className="text-text-secondary">Following</span>
+                           </button>
+                           <div className="text-sm">
+                                <strong className="text-text-primary">{stats.longestStreak}</strong> <span className="text-text-secondary">Day Streak 🔥</span>
+                            </div>
+                        </div>
+                        <div className="mt-2 flex justify-center sm:justify-start items-center space-x-2">
+                            <ToggleSwitch enabled={isPublic} onChange={handlePrivacyToggle} />
+                            <span className="text-sm text-text-secondary">{isPublic ? 'Profile is Public' : 'Profile is Private'}</span>
+                        </div>
+                        <div className="mt-2 flex justify-center sm:justify-start space-x-2">
+                            <button onClick={() => setIsPicModalOpen(true)} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Change Picture</button>
+                            <button onClick={onLogout} className="px-3 py-1 text-xs font-semibold rounded-full bg-bg-secondary text-text-primary hover:brightness-125">Log Out</button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <h1 className="text-2xl font-bold text-text-primary">Guest User</h1>
+                        <p className="text-text-secondary text-sm">Log in to sync your data across devices.</p>
+                         <div className="mt-2 flex justify-center sm:justify-start space-x-2">
+                            <button onClick={onAuthClick} className="px-3 py-1 text-sm font-semibold rounded-full bg-accent-gradient text-on-accent hover:opacity-90">Login / Sign Up</button>
+                        </div>
+                    </>
+                )}
+            </div>
+          </header>
 
-      <div className="mb-6">
-        <div className="relative group">
-          {canScrollLeft && (
-            <button 
-              onClick={() => scroll('left')}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Scroll left"
-            >
-              <ChevronLeftIcon className="w-6 h-6" />
-            </button>
-          )}
-          <div
-            ref={scrollContainerRef}
-            className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 border-b border-bg-secondary/50"
-          >
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-col items-center justify-center space-y-1 p-3 flex-shrink-0 w-24 rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-bg-secondary text-text-primary'
-                      : 'text-text-secondary hover:bg-bg-secondary/30'
-                  }`}
+          <div className="mb-6">
+            <div className="relative group">
+              {canScrollLeft && (
+                <button 
+                  onClick={() => scroll('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Scroll left"
                 >
-                  <div className={`transition-all duration-300 ${activeTab === tab.id ? 'text-primary-accent' : ''}`}>
-                      <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="text-xs font-semibold">{tab.label}</span>
+                  <ChevronLeftIcon className="w-6 h-6" />
                 </button>
-              )})}
+              )}
+              <div
+                ref={scrollContainerRef}
+                className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 border-b border-bg-secondary/50 hide-scrollbar"
+              >
+                  {tabs.map(tab => {
+                    const Icon = tab.icon;
+                    return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-col items-center justify-center space-y-1 p-3 flex-shrink-0 w-24 rounded-lg transition-colors ${
+                        activeTab === tab.id
+                          ? 'bg-bg-secondary text-text-primary'
+                          : 'text-text-secondary hover:bg-bg-secondary/30'
+                      }`}
+                    >
+                      <div className={`transition-all duration-300 ${activeTab === tab.id ? 'text-primary-accent' : ''}`}>
+                          <Icon className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-semibold">{tab.label}</span>
+                    </button>
+                  )})}
+              </div>
+              {canScrollRight && (
+                 <button 
+                  onClick={() => scroll('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRightIcon className="w-6 h-6" />
+                </button>
+              )}
+            </div>
           </div>
-          {canScrollRight && (
-             <button 
-              onClick={() => scroll('right')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full hidden md:block opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Scroll right"
-            >
-              <ChevronRightIcon className="w-6 h-6" />
-            </button>
-          )}
-        </div>
+          
+          <main>
+            {renderContent()}
+          </main>
       </div>
-      
-      <main>
-        {renderContent()}
-      </main>
-
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { PlayIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER } from '../constants';
 import BrandedImage from './BrandedImage';
+import { formatTime } from '../utils/formatUtils';
 
 interface ContinueWatchingMovieCardProps {
     mediaInfo: LiveWatchMediaInfo;
@@ -14,7 +15,9 @@ interface ContinueWatchingMovieCardProps {
 
 const ContinueWatchingMovieCard: React.FC<ContinueWatchingMovieCardProps> = ({ mediaInfo, elapsedSeconds, onSelectShow }) => {
     const posterUrl = getImageUrl(mediaInfo.poster_path, 'w342', 'poster');
-    const progressPercent = mediaInfo.runtime > 0 ? (elapsedSeconds / (mediaInfo.runtime * 60)) * 100 : 0;
+    const runtimeInSeconds = mediaInfo.runtime > 0 ? mediaInfo.runtime * 60 : 0;
+    const progressPercent = runtimeInSeconds > 0 ? (elapsedSeconds / runtimeInSeconds) * 100 : 0;
+    const remainingSeconds = Math.max(0, runtimeInSeconds - elapsedSeconds);
 
     return (
         <div 
@@ -40,7 +43,8 @@ const ContinueWatchingMovieCard: React.FC<ContinueWatchingMovieCardProps> = ({ m
             
             <div className="absolute bottom-0 left-0 right-0 p-4 pl-8 mt-auto">
                 <h3 className="font-bold text-white text-lg truncate [text-shadow:0_1px_3px_#000]">{mediaInfo.title}</h3>
-                <p className="text-sm text-white/80 [text-shadow:0_1px_3px_#000]">Paused</p>
+                <p className="text-sm text-amber-300 font-semibold [text-shadow:0_1px_3px_#000]">{formatTime(remainingSeconds)} remaining</p>
+                <p className="text-xs text-white/80 [text-shadow:0_1px_3px_#000]">{Math.round(progressPercent)}% watched</p>
             </div>
 
             <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">

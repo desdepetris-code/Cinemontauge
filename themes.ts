@@ -1,4 +1,3 @@
-
 import { Theme } from './types';
 
 // --- DARK THEMES ---
@@ -219,6 +218,42 @@ const slate: Theme = {
   },
 };
 
+const highContrastDark: Theme = {
+  id: 'high-contrast-dark',
+  name: 'High Contrast Dark',
+  base: 'dark',
+  colors: {
+    bgGradient: '#000000',
+    accentGradient: 'linear-gradient(to right, #FFFF00, #00FFFF)',
+    cardGradient: 'linear-gradient(to bottom, #111111, #000000)',
+    textColorPrimary: '#FFFFFF',
+    textColorSecondary: '#FFFF00',
+    accentPrimary: '#00FFFF',
+    accentSecondary: '#FFFF00',
+    bgPrimary: '#000000',
+    bgSecondary: '#222222',
+    bgBackdrop: 'rgba(0, 0, 0, 0.5)',
+  }
+};
+
+const tritanopiaFriendly: Theme = {
+  id: 'tritanopia-friendly',
+  name: 'Tritanopia Friendly',
+  base: 'dark',
+  colors: {
+    bgGradient: 'linear-gradient(to bottom, #0F172A, #020617)', // Dark blue
+    accentGradient: 'linear-gradient(to right, #F59E0B, #FB923C)', // Orange/Amber
+    cardGradient: 'linear-gradient(to bottom, rgba(30, 41, 59, 0.5), rgba(2, 6, 23, 0.7))',
+    textColorPrimary: '#F8FAFC', // Off-white
+    textColorSecondary: '#94A3B8', // Slate gray
+    accentPrimary: '#F59E0B', // Amber
+    accentSecondary: '#FB923C', // Orange
+    bgPrimary: '#020617',
+    bgSecondary: 'rgba(245, 158, 11, 0.1)', // Amber tint
+    bgBackdrop: 'rgba(2, 6, 23, 0.3)',
+  }
+};
+
 // --- LIGHT THEMES ---
 
 const originalLight: Theme = {
@@ -437,6 +472,24 @@ const justWhite: Theme = {
   },
 };
 
+const highContrastLight: Theme = {
+  id: 'high-contrast-light',
+  name: 'High Contrast Light',
+  base: 'light',
+  colors: {
+    bgGradient: '#FFFFFF',
+    accentGradient: 'linear-gradient(to right, #0000FF, #FF00FF)',
+    cardGradient: 'linear-gradient(to bottom, #FFFFFF, #EEEEEE)',
+    textColorPrimary: '#000000',
+    textColorSecondary: '#0000FF',
+    accentPrimary: '#0000FF',
+    accentSecondary: '#FF00FF',
+    bgPrimary: '#FFFFFF',
+    bgSecondary: '#DDDDDD',
+    bgBackdrop: 'rgba(255, 255, 255, 0.3)',
+  }
+};
+
 export const themes: Theme[] = [
     // Dark Themes
     originalDark,
@@ -451,6 +504,8 @@ export const themes: Theme[] = [
     monochromeNoir,
     justBlack,
     slate,
+    highContrastDark,
+    tritanopiaFriendly,
     // Light Themes
     originalLight,
     vintageSepia,
@@ -464,64 +519,11 @@ export const themes: Theme[] = [
     powderBlue,
     cottonCandy,
     justWhite,
+    highContrastLight,
 ];
 
 // --- HOLIDAY THEMES ---
 export const holidayThemes: Theme[] = [
-  {
-    id: 'holiday-halloween',
-    name: 'Spooky Halloween',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #1a202c, #000000)',
-      accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
-      cardGradient: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.5), rgba(10, 5, 2, 0.7))',
-      textColorPrimary: '#f3f4f6',
-      textColorSecondary: '#d97706',
-      accentPrimary: '#f97316',
-      accentSecondary: '#ea580c',
-      bgPrimary: '#1c1917',
-      bgSecondary: 'rgba(249, 115, 22, 0.1)',
-      bgBackdrop: 'rgba(28, 25, 23, 0.3)',
-      particleEffect: 'pumpkins',
-    }
-  },
-  {
-    id: 'holiday-christmas',
-    name: 'Winter Wonderland',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #0d3b66, #041d33)',
-      accentGradient: 'linear-gradient(to right, #ef4444, #b91c1c)',
-      cardGradient: 'linear-gradient(to bottom, rgba(13, 59, 102, 0.5), rgba(4, 29, 51, 0.7))',
-      textColorPrimary: '#e0f2fe',
-      textColorSecondary: '#7dd3fc',
-      accentPrimary: '#ef4444',
-      accentSecondary: '#b91c1c',
-      bgPrimary: '#041d33',
-      bgSecondary: 'rgba(239, 68, 68, 0.1)',
-      bgBackdrop: 'rgba(4, 29, 51, 0.3)',
-      particleEffect: 'snow',
-    }
-  },
-  {
-    id: 'holiday-valentines',
-    name: 'Sweetheart',
-    base: 'light',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom right, #fff1f2, #fce7f3)',
-      accentGradient: 'linear-gradient(to right, #f472b6, #ec4899)',
-      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(252, 231, 243, 0.8))',
-      textColorPrimary: '#831843',
-      textColorSecondary: '#9d174d',
-      accentPrimary: '#f472b6',
-      accentSecondary: '#ec4899',
-      bgPrimary: '#fff1f2',
-      bgSecondary: '#fce7f3',
-      bgBackdrop: 'rgba(253, 242, 248, 0.3)',
-      particleEffect: 'hearts',
-    }
-  },
   {
     id: 'holiday-new-years-eve',
     name: "New Year's Eve",
@@ -537,12 +539,12 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#171717',
       bgSecondary: 'rgba(250, 204, 21, 0.1)',
       bgBackdrop: 'rgba(23, 23, 23, 0.3)',
-      particleEffect: 'fireworks',
+      particleEffect: ['fireworks', 'confetti'],
     }
   },
   {
     id: 'holiday-new-year',
-    name: 'New Year Celebration',
+    name: 'New Year',
     base: 'dark',
     colors: {
       bgGradient: 'linear-gradient(to bottom, #1e1b4b, #172554)',
@@ -555,12 +557,30 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#1e1b4b',
       bgSecondary: 'rgba(167, 139, 250, 0.1)',
       bgBackdrop: 'rgba(30, 27, 75, 0.3)',
-      particleEffect: 'confetti',
+      particleEffect: ['confetti', 'sparkles'],
+    }
+  },
+  {
+    id: 'holiday-valentines',
+    name: "Valentine's Day",
+    base: 'light',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom right, #fff1f2, #fce7f3)',
+      accentGradient: 'linear-gradient(to right, #f472b6, #ec4899)',
+      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(252, 231, 243, 0.8))',
+      textColorPrimary: '#831843',
+      textColorSecondary: '#9d174d',
+      accentPrimary: '#f472b6',
+      accentSecondary: '#ec4899',
+      bgPrimary: '#fff1f2',
+      bgSecondary: '#fce7f3',
+      bgBackdrop: 'rgba(253, 242, 248, 0.3)',
+      particleEffect: ['hearts', 'flowers'],
     }
   },
   {
     id: 'holiday-easter',
-    name: 'Pastel Easter',
+    name: 'Easter',
     base: 'light',
     colors: {
       bgGradient: 'linear-gradient(to bottom right, #f0f9ff, #e0f2fe)',
@@ -573,7 +593,7 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#f0f9ff',
       bgSecondary: '#e0f2fe',
       bgBackdrop: 'rgba(240, 249, 255, 0.3)',
-      particleEffect: 'sparkles',
+      particleEffect: ['eggs', 'flowers'],
     }
   },
   {
@@ -591,7 +611,7 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#fdf4ff',
       bgSecondary: '#fae8ff',
       bgBackdrop: 'rgba(253, 244, 255, 0.3)',
-      particleEffect: 'flowers',
+      particleEffect: ['flowers', 'hearts'],
     }
   },
   {
@@ -599,21 +619,22 @@ export const holidayThemes: Theme[] = [
     name: "Father's Day",
     base: 'dark',
     colors: {
-      bgGradient: 'linear-gradient(to bottom, #0a192f, #1e3a8a)',
-      accentGradient: 'linear-gradient(to right, #60a5fa, #3b82f6)',
-      cardGradient: 'linear-gradient(to bottom, rgba(10, 25, 47, 0.5), rgba(30, 58, 138, 0.7))',
-      textColorPrimary: '#dbeafe',
-      textColorSecondary: '#93c5fd',
-      accentPrimary: '#60a5fa',
-      accentSecondary: '#3b82f6',
-      bgPrimary: '#0a192f',
-      bgSecondary: 'rgba(96, 165, 250, 0.1)',
-      bgBackdrop: 'rgba(10, 25, 47, 0.3)',
+      bgGradient: 'linear-gradient(to bottom, #064e3b, #042f2e)',
+      accentGradient: 'linear-gradient(to right, #ca8a04, #f59e0b)',
+      cardGradient: 'linear-gradient(to bottom, rgba(6, 78, 59, 0.5), rgba(4, 47, 46, 0.7))',
+      textColorPrimary: '#d1fae5',
+      textColorSecondary: '#a7f3d0',
+      accentPrimary: '#ca8a04',
+      accentSecondary: '#f59e0b',
+      bgPrimary: '#042f2e',
+      bgSecondary: 'rgba(202, 138, 4, 0.1)',
+      bgBackdrop: 'rgba(4, 47, 46, 0.3)',
+      particleEffect: ['confetti', 'sparkles'],
     }
   },
   {
     id: 'holiday-independence-day',
-    name: 'Independence Day',
+    name: "Independence Day",
     base: 'dark',
     colors: {
       bgGradient: 'linear-gradient(135deg, #b91c1c 25%, #1e3a8a 25%, #1e3a8a 50%, #b91c1c 50%, #b91c1c 75%, #1e3a8a 75%, #1e3a8a 100%)',
@@ -626,12 +647,30 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#111827',
       bgSecondary: 'rgba(249, 250, 251, 0.1)',
       bgBackdrop: 'rgba(17, 24, 39, 0.3)',
-      particleEffect: 'fireworks',
+      particleEffect: ['fireworks'],
+    }
+  },
+  {
+    id: 'holiday-halloween',
+    name: 'Halloween',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #1a202c, #000000)',
+      accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
+      cardGradient: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.5), rgba(10, 5, 2, 0.7))',
+      textColorPrimary: '#f3f4f6',
+      textColorSecondary: '#d97706',
+      accentPrimary: '#f97316',
+      accentSecondary: '#ea580c',
+      bgPrimary: '#1c1917',
+      bgSecondary: 'rgba(249, 115, 22, 0.1)',
+      bgBackdrop: 'rgba(28, 25, 23, 0.3)',
+      particleEffect: ['ghosts', 'pumpkins', 'bats'],
     }
   },
   {
     id: 'holiday-thanksgiving',
-    name: 'Autumn Harvest',
+    name: 'Thanksgiving',
     base: 'dark',
     colors: {
       bgGradient: 'linear-gradient(to bottom, #422006, #2d0f00)',
@@ -644,7 +683,25 @@ export const holidayThemes: Theme[] = [
       bgPrimary: '#2d0f00',
       bgSecondary: 'rgba(249, 115, 22, 0.1)',
       bgBackdrop: 'rgba(45, 15, 0, 0.3)',
-      particleEffect: 'leaves',
+      particleEffect: ['leaves'],
+    }
+  },
+  {
+    id: 'holiday-christmas',
+    name: 'Christmas',
+    base: 'dark',
+    colors: {
+      bgGradient: 'linear-gradient(to bottom, #042f2e, #064e3b)',
+      accentGradient: 'linear-gradient(to right, #ef4444, #b91c1c)',
+      cardGradient: 'linear-gradient(to bottom, rgba(4, 47, 46, 0.5), rgba(6, 78, 59, 0.7))',
+      textColorPrimary: '#e0f2fe',
+      textColorSecondary: '#7dd3fc',
+      accentPrimary: '#ef4444',
+      accentSecondary: '#b91c1c',
+      bgPrimary: '#064e3b',
+      bgSecondary: 'rgba(239, 68, 68, 0.1)',
+      bgBackdrop: 'rgba(4, 47, 46, 0.3)',
+      particleEffect: ['snow', 'sparkles'],
     }
   },
 ];

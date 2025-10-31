@@ -1,8 +1,29 @@
-
 import { UserData } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
+import { getFromCache, setToCache } from './cacheUtils';
+
+const CACHE_KEY = 'completed_seasons_count';
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
+const simpleHash = (data: any): number => {
+    const str = JSON.stringify(data);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
 
 export const getCompletedSeasonsCount = async (userData: UserData): Promise<number> => {
+    const dataHash = simpleHash({ progress: userData.watchProgress, completed: userData.completed, watching: userData.watching });
+    const cached = getFromCache<{ count: number; dataHash: number }>(CACHE_KEY);
+    
+    if (cached && cached.dataHash === dataHash) {
+        return cached.count;
+    }
+
     const tvShows = [...userData.watching, ...userData.completed].filter(item => item.media_type === 'tv');
     const uniqueTvShowIds = Array.from(new Set(tvShows.map(s => s.id)));
 
@@ -34,5 +55,6 @@ export const getCompletedSeasonsCount = async (userData: UserData): Promise<numb
         }
     }
     
+    setToCache(CACHE_KEY, { count: completedSeasons, dataHash }, CACHE_TTL);
     return completedSeasons;
 };
