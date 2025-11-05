@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem, Reminder, ReminderType } from '../types';
+import React, { useMemo } from 'react';
+import { UserData, ProfileTab, ScreenName, TmdbMedia, LiveWatchMediaInfo, TrackedItem, Reminder } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
 import NewSeasons from '../components/NewSeasons';
-import { getUpcomingMovies, discoverMedia } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
@@ -17,6 +16,7 @@ import TrendingSection from '../components/TrendingSection';
 import GenericCarousel from '../components/GenericCarousel';
 import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
+import { discoverMedia } from '../services/tmdbService';
 
 interface DashboardProps {
   userData: UserData;
@@ -26,7 +26,6 @@ interface DashboardProps {
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   onShortcutNavigate: (screen: ScreenName, profileTab?: ProfileTab) => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
-  setCustomLists: React.Dispatch<React.SetStateAction<CustomList[]>>;
   liveWatchMedia: LiveWatchMediaInfo | null;
   liveWatchElapsedSeconds: number;
   liveWatchIsPaused: boolean;
@@ -69,16 +68,6 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 
     return (
         <div className="space-y-8">
-          <UpcomingPremieresCarousel
-            title="📺 Upcoming TV Premieres"
-            onSelectShow={onSelectShow}
-            onOpenAddToListModal={onOpenAddToListModal}
-            onMarkShowAsWatched={onMarkShowAsWatched}
-            completed={userData.completed}
-            reminders={reminders}
-            onToggleReminder={onToggleReminder}
-            onViewMore={() => onShortcutNavigate('calendar')}
-          />
           <NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} />
           <NewlyPopularEpisodes onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('allNewlyPopularEpisodes')} />
           <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} onViewMore={() => onShortcutNavigate('allTrendingTV')} />
@@ -106,38 +95,17 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 
 
 const Dashboard: React.FC<DashboardProps> = ({
-    userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
+    userData, onSelectShow, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal,
     liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat,
     reminders, onToggleReminder
 }) => {
-  // Cast TMDB_API_KEY to string to prevent TypeScript error on constant comparison.
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
 
   const trackedShowsForNewSeasons = useMemo(() => {
-    const allItems = new Map<number, TrackedItem>();
-
-    // From watching and on-hold lists (for progress/continue watching)
-    [...userData.watching, ...userData.onHold].forEach(item => {
-        if (item.media_type === 'tv' && !allItems.has(item.id)) {
-            allItems.set(item.id, item);
-        }
-    });
-
-    // From custom lists
-    userData.customLists.forEach(list => {
-        list.items.forEach(item => {
-            if (item.media_type === 'tv' && !allItems.has(item.id)) {
-                // We need a full TrackedItem, but CustomListItem is a subset. It's compatible enough.
-                allItems.set(item.id, item as TrackedItem);
-            }
-        });
-    });
-
-    return Array.from(allItems.values());
-  }, [userData.watching, userData.onHold, userData.customLists]);
+    return [...userData.watching, ...userData.onHold].filter(item => item.media_type === 'tv');
+  }, [userData.watching, userData.onHold]);
 
   const recommendationSeedItems = useMemo(() => {
-    // Items that have progress and are in the 'watching' list
     return [...userData.watching].filter(item => {
         const progress = userData.watchProgress[item.id];
         return progress && Object.keys(progress).length > 0 && !userData.onHold.some(onHoldItem => onHoldItem.id === item.id);
@@ -173,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <ContinueWatching
         watching={userData.watching}
         onHold={userData.onHold}
-        watchProgress={watchProgress}
+        watchProgress={userData.watchProgress}
         history={userData.history}
         onSelectShow={onSelectShow}
         onToggleEpisode={onToggleEpisode}
@@ -181,22 +149,32 @@ const Dashboard: React.FC<DashboardProps> = ({
       />
 
       {!isApiKeyMissing && (
-        trackedShowsForNewSeasons.length > 0 ? (
-            <NewSeasons 
-                title="New Seasons From Your Lists" 
-                onSelectShow={onSelectShow} 
-                trackedShows={trackedShowsForNewSeasons} 
-                watchProgress={userData.watchProgress} 
-                timezone={timezone} 
-            />
-        ) : (
-            <div className="px-6">
-                <h2 className="text-2xl font-bold text-text-primary mb-4">New Seasons From Your Lists</h2>
-                <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center">
-                    <p className="text-text-secondary">This section is personalized! Add TV shows to your "Watching" list or custom lists to see upcoming seasons here.</p>
-                </div>
-            </div>
-        )
+        <UpcomingPremieresCarousel
+          onSelectShow={onSelectShow}
+          reminders={reminders}
+          onToggleReminder={onToggleReminder}
+          timezone={timezone}
+        />
+      )}
+
+      {!isApiKeyMissing && trackedShowsForNewSeasons.length > 0 && (
+        <NewSeasons 
+            title="New Seasons From Your Lists" 
+            onSelectShow={onSelectShow} 
+            trackedShows={trackedShowsForNewSeasons} 
+            watchProgress={userData.watchProgress} 
+            timezone={timezone} 
+        />
+      )}
+      
+      {!isApiKeyMissing && (
+        <NewSeasons 
+            title="New Seasons & Premieres" 
+            onSelectShow={onSelectShow} 
+            trackedShows={[]} 
+            watchProgress={{}} 
+            timezone={timezone} 
+        />
       )}
 
       {!isApiKeyMissing && recommendationSeedItems.length > 0 && (

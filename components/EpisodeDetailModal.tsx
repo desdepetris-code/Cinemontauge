@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment, HistoryItem } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, ClockIcon } from './Icons';
 import { LiveWatchMediaInfo } from '../types';
 import { formatRuntime, isNewRelease, formatDate } from '../utils/formatUtils';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
@@ -11,6 +11,8 @@ import MarkAsWatchedModal from './MarkAsWatchedModal';
 import CommentModal from './CommentModal';
 import { getEpisodeDetails } from '../services/tmdbService';
 import EpisodeCastAndCrew from './EpisodeCastAndCrew';
+import { UserScoreDisplay } from './ShowDetail';
+import HistoryModal from './HistoryModal';
 
 interface User {
   id: string;
@@ -43,10 +45,12 @@ interface EpisodeDetailModalProps {
   currentUser: User | null;
   timezone: string;
   onSelectPerson: (personId: number) => void;
+  history: HistoryItem[];
+  onDeleteHistoryItem: (item: HistoryItem) => void;
 }
 
 const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
-  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onSaveComment, comments, episodeNotes = {}, currentUser, timezone, onSelectPerson
+  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onSaveComment, comments, episodeNotes = {}, currentUser, timezone, onSelectPerson, history, onDeleteHistoryItem
 }) => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
@@ -54,6 +58,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [episodeCredits, setEpisodeCredits] = useState<Episode['credits'] | null>(null);
   const [isLoadingCredits, setIsLoadingCredits] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const minSwipeDistance = 50;
   
   useEffect(() => {
@@ -78,6 +83,14 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   }, [isOpen, episode, showDetails.id]);
 
   if (!isOpen || !episode) return null;
+  
+  const trackedItem: TrackedItem = {
+      id: showDetails.id,
+      title: showDetails.name || showDetails.title || 'Untitled',
+      media_type: 'tv',
+      poster_path: showDetails.poster_path,
+      genre_ids: showDetails.genres?.map(g => g.id) || [],
+  };
 
   const episodeNote = episodeNotes[showDetails.id]?.[episode.season_number]?.[episode.episode_number];
 
@@ -127,13 +140,6 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   
   const handleSaveLogWatch = (data: { date: string, note: string }) => {
     if (!episode) return;
-    const trackedItem: TrackedItem = {
-        id: showDetails.id,
-        title: showDetails.name || 'Untitled',
-        media_type: 'tv',
-        poster_path: showDetails.poster_path,
-        genre_ids: showDetails.genres.map(g => g.id),
-    };
     onAddWatchHistory(trackedItem, episode.season_number, episode.episode_number, data.date, data.note, episode.name);
   };
 
@@ -150,8 +156,25 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
       getImageUrl(showDetails.poster_path, 'w500', 'poster'),
   ];
 
+  const episodeHistory = useMemo(() => {
+    if (!episode) return [];
+    return history.filter(h => 
+        h.id === showDetails.id && 
+        h.seasonNumber === episode.season_number && 
+        h.episodeNumber === episode.episode_number
+    );
+  }, [history, episode, showDetails.id]);
+
   return (
     <>
+      <HistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        history={episodeHistory}
+        mediaTitle={`S${episode.season_number} E${episode.episode_number}: ${episode.name}`}
+        onDeleteHistoryItem={onDeleteHistoryItem}
+        mediaDetails={null}
+      />
       <MarkAsWatchedModal
         isOpen={isLogWatchModalOpen}
         onClose={() => setIsLogWatchModalOpen(false)}
@@ -286,6 +309,13 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               >
                   <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
                   <span>{existingComment ? 'Edit Comment' : 'Add Comment'}</span>
+              </button>
+              <button
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125`}
+              >
+                  <ClockIcon className="w-5 h-5"/>
+                  <span>History</span>
               </button>
           </div>
         </div>

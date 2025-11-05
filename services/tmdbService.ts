@@ -196,10 +196,34 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
 
 export const getSeasonDetails = async (tvId: number, seasonNumber: number): Promise<TmdbSeasonDetails> => {
   const cacheKey = `tmdb_season_${tvId}_${seasonNumber}`;
-  const cachedData = getFromCache<TmdbSeasonDetails>(cacheKey);
+  let cachedData = getFromCache<TmdbSeasonDetails>(cacheKey);
+
+  if (cachedData) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setUTCDate(today.getUTCDate() - 3);
+
+    const needsRefresh = cachedData.episodes.some(ep => {
+      if (!ep.still_path && ep.air_date) {
+        const airDate = new Date(ep.air_date); // Parses YYYY-MM-DD as UTC midnight
+        return airDate >= threeDaysAgo && airDate <= today;
+      }
+      return false;
+    });
+
+    if (needsRefresh) {
+      console.log(`Refreshing season ${seasonNumber} for show ${tvId} to get updated episode images.`);
+      localStorage.removeItem(cacheKey);
+      cachedData = null;
+    }
+  }
+
   if(cachedData) {
       return cachedData;
   }
+  
   // Note: Added include_image_language to prioritize English images for episode stills.
   const data = await fetchFromTmdb<TmdbSeasonDetails>(`tv/${tvId}/season/${seasonNumber}?include_image_language=en,null`);
   // Inject season_number into each episode

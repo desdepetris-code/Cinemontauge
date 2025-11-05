@@ -51,6 +51,7 @@ export interface Season {
   overview: string;
   poster_path: string;
   season_number: number;
+  vote_average?: number;
 }
 
 export interface Episode {
@@ -67,6 +68,8 @@ export interface Episode {
     crew: CrewMember[];
     guest_stars: CastMember[];
   };
+  vote_average?: number;
+  vote_count?: number;
 }
 
 export interface CastMember {
@@ -242,6 +245,8 @@ export interface TmdbSeasonDetails {
   id: number;
   poster_path: string;
   season_number: number;
+  vote_average?: number;
+  vote_count?: number;
 }
 
 export interface EpisodeProgress {
@@ -345,6 +350,8 @@ export interface Comment {
     mediaKey: string; // e.g., 'movie-123' or 'tv-456-s1-e2'
     text: string;
     timestamp: string;
+    parentId?: string; // For replies
+    likes?: string[]; // Array of user IDs
 }
 
 export interface UserData {

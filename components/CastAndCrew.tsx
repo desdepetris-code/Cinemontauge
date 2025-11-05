@@ -90,7 +90,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
 
     // Group all crew members by their department
     const groupedCrew = crew.reduce((acc, person) => {
-        const department = 'department' in person ? person.department : (person.jobs?.[0]?.department || 'Other');
+        const department = 'department' in person ? person.department : 'Other';
         if (!acc[department]) {
             acc[department] = new Map<number, AnyPerson>();
         }
@@ -125,9 +125,8 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
 
   const movieCast = useMemo(() => !isTv ? details?.credits?.cast || [] : [], [details, isTv]);
 
-  // FIX: Explicitly type 'people' as 'any' in reduce to prevent TypeScript from inferring it as 'unknown'
-  // due to the useMemo hook returning a union type that includes an empty object.
-  const totalCrewCount = useMemo(() => Object.values(crewByDept).reduce((acc, people: any) => acc + people.length, 0), [crewByDept]);
+  // FIX: Explicitly type the accumulator in the reduce function to resolve a TypeScript type inference issue.
+  const totalCrewCount = useMemo(() => Object.values(crewByDept).reduce((acc: number, people) => acc + (people as AnyPerson[]).length, 0), [crewByDept]);
 
   const castToShow = showFullCast ? (isTv ? guestStars : movieCast) : (isTv ? guestStars.slice(0, 10) : movieCast.slice(0, 20));
   const fullCastCount = isTv ? guestStars.length : movieCast.length;
@@ -183,7 +182,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ details, onSelectPerson }) =>
             {activeTab === 'crew' && (
                 <div className="space-y-6">
                     {Object.entries(crewByDept).map(([department, people]) => (
-                        <CrewSection key={department} title={department} people={people} onSelectPerson={onSelectPerson} />
+                        <CrewSection key={department} title={department} people={people as (AggregateCrewMember | CrewMember)[]} onSelectPerson={onSelectPerson} />
                     ))}
                 </div>
             )}

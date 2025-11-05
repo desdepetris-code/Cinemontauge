@@ -1,4 +1,5 @@
 import { TmdbMediaDetails } from '../types';
+import { getEpisodeTag } from './episodeTagUtils';
 
 export const getShowStatus = (details: TmdbMediaDetails): { text: string; date?: string } | null => {
     if (details.media_type !== 'tv' || !details.status) return null;
@@ -24,6 +25,13 @@ export const getShowStatus = (details: TmdbMediaDetails): { text: string; date?:
         const nextAirDate = new Date(nextEp.air_date); // YYYY-MM-DD is parsed as UTC midnight
         
         if (nextAirDate >= todayUTC) {
+            // If the upcoming episode is a finale, the show is considered "On Hiatus" until the next season is announced.
+            const seasonForNextEp = details.seasons?.find(s => s.season_number === nextEp.season_number);
+            const tag = getEpisodeTag(nextEp, seasonForNextEp, details, undefined);
+            if (tag && (tag.text === 'Season Finale' || tag.text === 'Series Finale')) {
+                return { text: 'On Hiatus', date: nextEp.air_date };
+            }
+
             // Check for mid-season break (more than 2 weeks between episodes)
             if (lastEp?.air_date) {
                 const lastAirDate = new Date(lastEp.air_date);
@@ -47,13 +55,14 @@ export const getShowStatus = (details: TmdbMediaDetails): { text: string; date?:
     
     // --- Logic for shows without a scheduled next episode ---
     if (details.status === 'Returning Series') {
-        // Use getRenewalStatus to see if we can infer a future season
         const renewalInfo = getRenewalStatus(details);
-        if (renewalInfo) {
-            // It's confirmed for a future season, even if no date is set
-            return { text: 'Upcoming', date: renewalInfo.date }; 
+        // If it's renewed but has NO specific air date, it's on hiatus.
+        if (renewalInfo && !renewalInfo.date && !details.next_episode_to_air) {
+            return { text: 'On Hiatus' };
         }
-        // It's a returning series, but we have no info on the next season
+        if (renewalInfo && renewalInfo.date) {
+            return { text: 'Upcoming', date: renewalInfo.date };
+        }
         return { text: 'On Hiatus' };
     }
     
@@ -89,7 +98,7 @@ export const getRenewalStatus = (details: TmdbMediaDetails): { text: string; dat
     }
     
     // Infer from 'Returning Series' status
-    if (details.status === 'Returning Series' && !details.next_episode_to_air && lastSeasonInArray?.season_number === lastAiredSeasonNumber) {
+    if (details.status === 'Returning Series' && !details.next_episode_to_air && lastAiredSeasonNumber !== undefined && lastSeasonInArray?.season_number === lastAiredSeasonNumber) {
         return { text: `Renewed for Season ${lastAiredSeasonNumber + 1}` };
     }
     
