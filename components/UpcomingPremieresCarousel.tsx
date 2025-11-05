@@ -23,7 +23,7 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = ({ o
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 const startDate = tomorrow.toISOString().split('T')[0];
                 
-                const data = await getUpcomingTvPremieres(1, startDate);
+                const data = await getUpcomingTvPremieres(1, { startDateOverride: startDate, sortBy: 'popularity.desc' });
                 setPremieres(data.results.slice(0, 10));
             } catch (error) {
                 console.error("Failed to fetch upcoming premieres", error);
@@ -54,7 +54,7 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = ({ o
     return (
         <section className="my-8 px-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-text-primary">Upcoming TV Premieres</h2>
+                <h2 className="text-2xl font-bold text-text-primary">Popular Upcoming Premieres</h2>
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto space-x-4 pb-4 -mx-2 px-2 hide-scrollbar">

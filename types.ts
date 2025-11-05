@@ -746,4 +746,5 @@ export interface Reminder {
 export interface NewlyPopularEpisode {
   showInfo: TrackedItem;
   episode: Episode;
+  showDetails: TmdbMediaDetails;
 }
