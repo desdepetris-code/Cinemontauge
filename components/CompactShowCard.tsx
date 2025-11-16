@@ -26,7 +26,6 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
         return () => { isMounted = false; };
     }, [item.id, item.media_type]);
     
-    // FIX: Extract the 'text' property from the status object to pass a string to the 'BrandedImage' component.
     const showStatusText = useMemo(() => {
       if (!details) return null;
       return getShowStatus(details)?.text ?? null;

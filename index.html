@@ -222,6 +222,48 @@
       .view-more-button:hover {
         filter: brightness(1.2) saturate(1.2);
       }
+      
+      /* TikTok Style Date Badge for History */
+      .date-badge {
+        background-color: var(--color-accent-primary);
+        color: var(--on-accent);
+        padding: 6px 8px;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 52px;
+        font-weight: bold;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .date-badge .day {
+        display: block;
+        font-size: 18px;
+        line-height: 1;
+      }
+      .date-badge .month {
+        display: block;
+        font-size: 12px;
+        line-height: 1;
+        margin-top: 4px;
+        text-transform: uppercase;
+      }
+      .date-badge .year {
+        display: block;
+        font-size: 10px;
+        line-height: 1;
+        margin-top: 3px;
+        font-weight: 600;
+        color: inherit;
+        opacity: 0.8;
+      }
+      .full-date {
+        color: var(--text-color-secondary);
+        opacity: 0.9;
+        font-size: 12px;
+      }
     </style>
   <script type="importmap">
 {

@@ -23,45 +23,49 @@ const WatchHistory: React.FC<{
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
 
-  const filteredAndGroupedHistory = useMemo(() => {
+  const sortedHistory = useMemo(() => {
     let items = history;
-    if (filter !== 'all') items = items.filter(item => item.media_type === filter);
+    if (filter !== 'all') {
+      items = items.filter(item => item.media_type === filter);
+    }
 
     const now = new Date();
     if (dateFilter !== 'all') {
       items = items.filter(item => {
         const itemDate = new Date(item.timestamp);
-        if (dateFilter === 'today') return itemDate.toDateString() === now.toDateString();
+        if (dateFilter === 'today') {
+          return itemDate.toDateString() === now.toDateString();
+        }
         if (dateFilter === 'week') {
-          const oneWeekAgo = new Date(); oneWeekAgo.setDate(now.getDate() - 7);
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(now.getDate() - 7);
           return itemDate >= oneWeekAgo;
         }
         if (dateFilter === 'month') {
-          const oneMonthAgo = new Date(); oneMonthAgo.setMonth(now.getMonth() - 1);
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(now.getMonth() - 1);
           return itemDate >= oneMonthAgo;
         }
         return true;
       });
     }
-    
-    const grouped: Record<string, HistoryItem[]> = {};
-    items.forEach(item => {
-        const dateKey = new Date(item.timestamp).toDateString();
-        if (!grouped[dateKey]) {
-            grouped[dateKey] = [];
-        }
-        grouped[dateKey].push(item);
-    });
-    
-    const sortedGroupKeys = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    
-    const sortedGrouped: Record<string, HistoryItem[]> = {};
-    sortedGroupKeys.forEach(key => {
-        sortedGrouped[key] = grouped[key];
-    });
-
-    return sortedGrouped;
+    // The history from props should already be sorted, but let's be safe.
+    return [...items].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [history, filter, dateFilter]);
+
+  const formatHistoryDate = (dateString: string, timezone: string) => {
+    const date = new Date(dateString);
+    const currentYear = new Date().getFullYear();
+    const itemYear = date.getFullYear();
+
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const year = currentYear === itemYear ? null : itemYear;
+    
+    const fullWithTime = formatDateTime(dateString, timezone);
+
+    return { day, month, year, fullWithTime };
+  };
 
   return (
     <div>
@@ -85,47 +89,50 @@ const WatchHistory: React.FC<{
         </div>
       </div>
       <section>
-        {Object.keys(filteredAndGroupedHistory).length > 0 ? (
-          <div className="space-y-6">
-            {Object.entries(filteredAndGroupedHistory).map(([date, items]) => (
-              <div key={date}>
-                <h3 className="font-bold text-text-primary mb-2">{formatDate(date, timezone, { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
-                <ul className="divide-y divide-bg-secondary/50 bg-card-gradient rounded-lg shadow-md">
-                  {/* FIX: Cast `items` to `HistoryItem[]` to resolve a type inference issue where it was being treated as `unknown`. */}
-                  {(items as HistoryItem[]).map(item => (
-                    <li key={item.logId} className="p-4 flex items-start space-x-6 group">
-                      <img 
-                        src={getImageUrl(item.poster_path, 'w342')} 
+        {sortedHistory.length > 0 ? (
+          <div className="space-y-4">
+            {sortedHistory.map(item => {
+              const { day, month, year, fullWithTime } = formatHistoryDate(item.timestamp, timezone);
+              return (
+                <div key={item.logId} className="history-item p-3 bg-card-gradient rounded-lg shadow-md flex items-center space-x-4 group">
+                    <img 
+                        src={getImageUrl(item.poster_path, 'w154')} 
                         alt={item.title} 
-                        className="w-32 h-48 object-cover rounded-lg flex-shrink-0 cursor-pointer shadow-lg"
+                        className="w-24 h-36 object-contain bg-slate-900 rounded-md flex-shrink-0 cursor-pointer shadow-lg"
                         onClick={() => onSelectShow(item.id, item.media_type)}
-                      />
-                      <div 
-                        className="flex-grow min-w-0 cursor-pointer pt-2"
+                    />
+                    <div 
+                        className="flex-grow min-w-0 cursor-pointer flex flex-col justify-center"
                         onClick={() => onSelectShow(item.id, item.media_type)}
-                      >
-                        <p className="font-bold text-xl text-text-primary">{item.title}</p>
+                    >
+                        <p className="font-bold text-lg text-text-primary">{item.title}</p>
                         {item.media_type === 'tv' ? (
-                          <p className="text-base text-text-secondary truncate mt-1">
-                            S{item.seasonNumber} E{item.episodeNumber}{item.episodeTitle ? `: ${item.episodeTitle}` : ''}
-                          </p>
+                        <>
+                            <p className="text-sm font-semibold text-text-secondary">
+                                Season {item.seasonNumber}: Episode {item.episodeNumber}
+                            </p>
+                            {item.episodeTitle && <p className="text-sm text-text-secondary italic">"{item.episodeTitle}"</p>}
+                        </>
                         ) : (
-                          <p className="text-base text-text-secondary mt-1">Movie</p>
+                        <p className="text-sm font-semibold text-text-secondary">Movie</p>
                         )}
-                        <p className="text-sm text-text-secondary/80 mt-2">{formatTimeFromDate(item.timestamp, timezone)}</p>
-                      </div>
-                      <button
+                        <p className="full-date mt-2">{fullWithTime}</p>
+                    </div>
+                    <div className="date-badge ml-auto">
+                        <span className="day">{day}</span>
+                        <span className="month">{month}</span>
+                        {year && <span className="year">{year}</span>}
+                    </div>
+                    <button
                         onClick={() => onDeleteHistoryItem(item)}
                         className="p-2 rounded-full text-text-secondary/70 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                         aria-label="Delete from history"
-                      >
-                        <TrashIcon className="w-6 h-6" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+                    >
+                        <TrashIcon className="w-5 h-5" />
+                    </button>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-20 bg-bg-secondary/30 rounded-lg">

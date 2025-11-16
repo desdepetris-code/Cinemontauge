@@ -576,9 +576,19 @@ export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> 
   const popularShows = await discoverMedia('tv', { sortBy: 'popularity.desc' });
   const combinedShows = [...trendingShows, ...popularShows];
   const uniqueShows = Array.from(new Map(combinedShows.map(item => [item.id, item])).values());
-  
-  const detailPromises = uniqueShows.slice(0, 30).map(show => getMediaDetails(show.id, 'tv').catch(() => null));
-  const showDetailsList = await Promise.all(detailPromises);
+
+  const showDetailsList: (TmdbMediaDetails | null)[] = [];
+  const showsToFetch = uniqueShows.slice(0, 30);
+  const batchSize = 10;
+  for (let i = 0; i < showsToFetch.length; i += batchSize) {
+      const batch = showsToFetch.slice(i, i + batchSize);
+      const detailPromises = batch.map(show => getMediaDetails(show.id, 'tv').catch(() => null));
+      const batchResults = await Promise.all(detailPromises);
+      showDetailsList.push(...batchResults);
+      if (i + batchSize < showsToFetch.length) {
+          await new Promise(res => setTimeout(res, 400)); // wait between batches
+      }
+  }
   
   const oneMonthAgo = new Date();
   oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);

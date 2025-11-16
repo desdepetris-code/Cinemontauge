@@ -39,7 +39,6 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
             lastWatchedTimestamp: new Date(lastWatchedMap.get(item.id) || 0).getTime(),
         });
 
-        // FIX: Explicitly type `session` to resolve 'unknown' type error.
         const pausedItems = Object.values(pausedLiveSessions).map((session: { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string; }) => ({
             ...session.mediaInfo,
             isPaused: true,
@@ -55,51 +54,45 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
                 tvItemsMap.set(pausedItem.id, { ...tvItemsMap.get(pausedItem.id), ...pausedItem });
             }
         });
-        
-        const combinedTvItems = Array.from(tvItemsMap.values());
-        const movieItems = pausedItems.filter(item => item.media_type === 'movie');
-        
-        const combined = [...combinedTvItems, ...movieItems];
-        combined.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
 
-        return combined.slice(0, 10);
+        const pausedMovies = pausedItems.filter(item => item.media_type === 'movie');
 
+        const allItems = [...Array.from(tvItemsMap.values()), ...pausedMovies];
+
+        return allItems.sort((a, b) => b.lastWatchedTimestamp - a.lastWatchedTimestamp);
+        
     }, [watching, onHold, watchProgress, history, pausedLiveSessions]);
 
+    if (continueWatchingItems.length === 0) {
+        return null;
+    }
+
     return (
-        <div className="mb-8">
+        <div className="my-8">
             <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">Continue Watching</h2>
-            {continueWatchingItems.length > 0 ? (
-                <Carousel>
-                    <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
-                        {continueWatchingItems.map(item => (
-                            <div key={item.id} className="w-56 sm:w-64 flex-shrink-0">
-                                {item.media_type === 'tv' ? (
-                                    <ContinueWatchingProgressCard
-                                        item={item as any}
-                                        watchProgress={watchProgress}
-                                        onSelectShow={onSelectShow}
-                                        onToggleEpisode={onToggleEpisode}
-                                    />
-                                ) : (
-                                    <ContinueWatchingMovieCard
-                                        mediaInfo={item as LiveWatchMediaInfo}
-                                        elapsedSeconds={(item as any).elapsedSeconds}
-                                        onSelectShow={onSelectShow}
-                                    />
-                                )}
-                            </div>
-                        ))}
-                         <div className="w-4 flex-shrink-0"></div>
-                    </div>
-                </Carousel>
-            ) : (
-                <div className="px-6">
-                    <div className="text-center py-10 bg-bg-secondary/30 rounded-lg">
-                        <p className="text-text-secondary">Start watching a TV show to see your progress here!</p>
-                    </div>
+            <Carousel>
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
+                    {continueWatchingItems.map(item => (
+                        <div key={item.id} className="w-72 flex-shrink-0">
+                            {item.media_type === 'tv' ? (
+                                <ContinueWatchingProgressCard
+                                    item={item as (TrackedItem & { isPaused?: boolean; elapsedSeconds?: number; seasonNumber?: number; episodeNumber?: number; episodeTitle?: string; runtime?: number; })}
+                                    watchProgress={watchProgress}
+                                    onSelectShow={onSelectShow}
+                                    onToggleEpisode={onToggleEpisode}
+                                />
+                            ) : (
+                                <ContinueWatchingMovieCard
+                                    mediaInfo={item as LiveWatchMediaInfo}
+                                    elapsedSeconds={item.elapsedSeconds || 0}
+                                    onSelectShow={onSelectShow}
+                                />
+                            )}
+                        </div>
+                    ))}
+                    <div className="w-4 flex-shrink-0"></div>
                 </div>
-            )}
+            </Carousel>
         </div>
     );
 };

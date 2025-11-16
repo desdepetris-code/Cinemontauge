@@ -292,6 +292,54 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [trackedLists, id]);
   const userRating = ratings[id]?.rating || 0;
   
+  const contentRating = useMemo(() => {
+    if (!details) return null;
+
+    // --- Handle Movies ---
+    if (details.media_type === 'movie') {
+      const usReleaseInfo = details.release_dates?.results.find(
+        (r) => r.iso_3166_1 === 'US'
+      );
+
+      if (usReleaseInfo?.release_dates) {
+        // Find the first non-empty certification string.
+        // We iterate once and check for priorities.
+        let theatricalCert: string | null = null;
+        let anyCert: string | null = null;
+
+        for (const release of usReleaseInfo.release_dates) {
+          const cert = release.certification;
+          if (cert && cert.trim() !== '') {
+            // Store the first valid one we find of any type as a fallback
+            if (!anyCert) {
+              anyCert = cert;
+            }
+            // If it's theatrical (type 2 or 3), it's our top priority. Store it and stop looking.
+            if (release.type === 3 || release.type === 2) {
+              theatricalCert = cert;
+              break; 
+            }
+          }
+        }
+        
+        return theatricalCert || anyCert;
+      }
+    } 
+    
+    // --- Handle TV Shows ---
+    else if (details.media_type === 'tv') {
+      const usRatingInfo = details.content_ratings?.results.find(
+        (r) => r.iso_3166_1 === 'US'
+      );
+
+      if (usRatingInfo?.rating && usRatingInfo.rating.trim() !== '') {
+        return usRatingInfo.rating;
+      }
+    }
+
+    return null;
+  }, [details]);
+
   const nextEpisodeToWatch = useMemo(() => {
     if (mediaType !== 'tv' || !details || !details.seasons) return null;
     const progressForShow = watchProgress[id] || {};
@@ -789,6 +837,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <div className="flex items-center justify-center sm:justify-start mt-2 gap-4">
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-sm text-text-secondary">
                         <span>{details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4)}</span>
+                        {contentRating && (
+                            <>
+                                <span className="text-text-secondary/50">&bull;</span>
+                                <span className="border border-text-secondary/50 px-1.5 rounded-sm text-xs font-semibold">{contentRating}</span>
+                            </>
+                        )}
                         <span className="text-text-secondary/50">&bull;</span>
                         <span>{details.genres?.map(g => g.name).join(', ')}</span>
                         {runtimeDisplay && <>

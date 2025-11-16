@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem, Reminder, ReminderType } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
@@ -17,6 +17,7 @@ import TrendingSection from '../components/TrendingSection';
 import GenericCarousel from '../components/GenericCarousel';
 import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
+import { getEnrichedMediaFromBackend } from '../services/backendService';
 
 interface DashboardProps {
   userData: UserData;
@@ -120,6 +121,39 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Cast TMDB_API_KEY to string to prevent TypeScript error on constant comparison.
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
 
+  const [backendMovies, setBackendMovies] = useState<TmdbMedia[]>([]);
+  const [backendShows, setBackendShows] = useState<TmdbMedia[]>([]);
+  const [backendLoading, setBackendLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBackendData = async () => {
+        if (isApiKeyMissing) {
+            setBackendLoading(false);
+            return;
+        }
+        try {
+            const { movies, shows } = await getEnrichedMediaFromBackend();
+            setBackendMovies(movies);
+            setBackendShows(shows);
+        } catch (e) {
+            console.error("Failed to load data from custom backend", e);
+        } finally {
+            setBackendLoading(false);
+        }
+    };
+    fetchBackendData();
+  }, [isApiKeyMissing]);
+  
+  const backendCarouselProps = useMemo(() => ({
+    onSelectShow: onSelectShow,
+    onOpenAddToListModal: onOpenAddToListModal,
+    onMarkShowAsWatched: onMarkShowAsWatched,
+    onToggleFavoriteShow: onToggleFavoriteShow,
+    favorites: favorites,
+    completed: userData.completed,
+    onUpdateLists: onUpdateLists,
+  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData.completed, onUpdateLists]);
+
   const trackedShowsForNewSeasons = useMemo(() => {
     const allItems = new Map<number, TrackedItem>();
 
@@ -157,6 +191,31 @@ const Dashboard: React.FC<DashboardProps> = ({
       <DateTimeDisplay timezone={timezone} timeFormat={timeFormat} />
       <ShortcutNavigation onShortcutNavigate={onShortcutNavigate} />
       <StatsWidget userData={userData} genres={genres} />
+
+      {/* New Backend Content */}
+      {backendLoading && (
+        <div className="px-6 mb-8">
+            <div className="h-8 w-1/2 bg-bg-secondary rounded-md mb-4 animate-pulse"></div>
+            <div className="flex space-x-4 overflow-x-hidden">
+                {[...Array(5)].map((_, i) => <div key={i} className="w-72 h-48 bg-bg-secondary rounded-lg flex-shrink-0 animate-pulse"></div>)}
+            </div>
+        </div>
+      )}
+      {!backendLoading && backendMovies.length > 0 && (
+          <GenericCarousel 
+              title="Featured Movies"
+              fetcher={() => Promise.resolve(backendMovies)}
+              {...backendCarouselProps}
+          />
+      )}
+      {!backendLoading && backendShows.length > 0 && (
+          <GenericCarousel 
+              title="Featured TV Shows"
+              fetcher={() => Promise.resolve(backendShows)}
+              {...backendCarouselProps}
+          />
+      )}
+      {/* End new Backend Content */}
 
       {/* Live Watch Section */}
       <section className="px-6">

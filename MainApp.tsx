@@ -35,6 +35,7 @@ import AllMediaScreen from './screens/AllMediaScreen';
 import AllNewlyPopularEpisodesScreen from './screens/AllNewlyPopularEpisodesScreen';
 import { getAchievementImage } from './utils/achievementImages';
 import { allAchievements } from './achievements';
+import { getAllUsers } from './utils/userUtils';
 
 interface User {
   id: string;
@@ -418,6 +419,9 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   }, [reminders, addNotification]);
 
   const handleSelectShow = (id: number, media_type: 'tv' | 'movie') => {
+    if (searchQuery) {
+        handleUpdateSearchHistory(searchQuery);
+    }
     setSelectedShow({ id, media_type });
     setSelectedPerson(null);
     setSearchQuery('');
@@ -433,6 +437,9 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   };
 
   const handleSelectPerson = (personId: number) => {
+    if (searchQuery) {
+        handleUpdateSearchHistory(searchQuery);
+    }
     setSelectedPerson(personId);
     setSelectedShow(null);
     window.scrollTo(0, 0);
@@ -637,11 +644,12 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         if (!wasWatched) {
             let episodePosterPath = showInfo.poster_path;
             try {
-                // Fetch season details to get the specific episode's still image
                 const seasonDetails = await getSeasonDetails(showId, seasonNumber);
                 const episode = seasonDetails.episodes.find(e => e.episode_number === episodeNumber);
                 if (episode && episode.still_path) {
                     episodePosterPath = episode.still_path;
+                } else if (seasonDetails && seasonDetails.poster_path) {
+                    episodePosterPath = seasonDetails.poster_path;
                 }
             } catch (error) {
                 console.error(`Could not fetch episode details for history image for S${seasonNumber}E${episodeNumber}. Falling back to show poster.`, error);
@@ -937,14 +945,30 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
         updateLists(trackedItem, null, list);
     }, [updateLists]);
 
-  const handleAddWatchHistory = useCallback((item: TrackedItem, seasonNumber?: number, episodeNumber?: number, timestamp?: string, note?: string, episodeName?: string) => {
+  const handleAddWatchHistory = useCallback(async (item: TrackedItem, seasonNumber?: number, episodeNumber?: number, timestamp?: string, note?: string, episodeName?: string) => {
         const newTimestamp = timestamp || new Date().toISOString();
+        
+        let finalPosterPath = item.poster_path;
+        if (item.media_type === 'tv' && seasonNumber && episodeNumber) {
+            try {
+                const seasonDetails = await getSeasonDetails(item.id, seasonNumber);
+                const episode = seasonDetails.episodes.find(e => e.episode_number === episodeNumber);
+                if (episode && episode.still_path) {
+                    finalPosterPath = episode.still_path;
+                } else if (seasonDetails && seasonDetails.poster_path) {
+                    finalPosterPath = seasonDetails.poster_path;
+                }
+            } catch (error) {
+                console.error(`Could not fetch episode details for history image.`, error);
+            }
+        }
+
         const historyEntry: HistoryItem = {
             logId: `log-${item.id}-${new Date(newTimestamp).getTime()}-${Math.random().toString(36).substring(2, 9)}`,
             id: item.id,
             media_type: item.media_type,
             title: item.title,
-            poster_path: item.poster_path,
+            poster_path: finalPosterPath,
             timestamp: newTimestamp,
             seasonNumber: seasonNumber,
             episodeNumber: episodeNumber,
@@ -1021,7 +1045,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
     
             const newHistoryEntries: HistoryItem[] = episodesToUpdate.map(ep => ({
                 logId: `tv-${showId}-${seasonNumber}-${ep.episode_number}-${Date.now()}-${Math.random()}`,
-                id: showId, media_type: 'tv', title: showInfo.title, poster_path: ep.still_path || showInfo.poster_path,
+                id: showId, media_type: 'tv', title: showInfo.title, poster_path: ep.still_path || seasonDetails.poster_path || showInfo.poster_path,
                 timestamp: new Date().toISOString(), seasonNumber, episodeNumber: ep.episode_number,
                 episodeTitle: ep.name
             }));
@@ -1117,12 +1141,15 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
                 });
     
                 const timestamp = new Date().toISOString();
-                const newHistoryEntries: HistoryItem[] = allEpisodesToUpdate.map(({ep, seasonNumber}) => ({
-                    logId: `tv-${showId}-${seasonNumber}-${ep.episode_number}-${Date.now()}-${Math.random()}`,
-                    id: showId, media_type: 'tv', title: showInfo.title, poster_path: ep.still_path || showInfo.poster_path,
-                    timestamp, seasonNumber, episodeNumber: ep.episode_number,
-                    episodeTitle: ep.name
-                }));
+                const newHistoryEntries: HistoryItem[] = allEpisodesToUpdate.map(({ep, seasonNumber}) => {
+                    const seasonDetailForEp = allSeasonDetails.find(sd => sd && sd.season_number === seasonNumber);
+                    return {
+                        logId: `tv-${showId}-${seasonNumber}-${ep.episode_number}-${Date.now()}-${Math.random()}`,
+                        id: showId, media_type: 'tv', title: showInfo.title, poster_path: ep.still_path || seasonDetailForEp?.poster_path || showInfo.poster_path,
+                        timestamp, seasonNumber, episodeNumber: ep.episode_number,
+                        episodeTitle: ep.name
+                    };
+                });
     
                 setHistory(prev => [...prev, ...newHistoryEntries].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
                 updateLists(showInfo, null, 'completed');
@@ -1306,7 +1333,7 @@ export const MainApp: React.FC<MainAppProps> = ({ userId, currentUser, onLogout,
   };
 
   const screenContent = () => {
-    if (selectedShow) return <ShowDetail id={selectedShow.id} mediaType={selectedShow.media_type} onBack={handleBack} watchProgress={watchProgress} history={history} onToggleEpisode={handleToggleEpisode} onSaveJournal={(showId, s, e, entry) => {setWatchProgress(prev => { const newProgress = JSON.parse(JSON.stringify(prev)); if(!newProgress[showId]) newProgress[showId] = {}; if(!newProgress[showId][s]) newProgress[showId][s] = {}; if(!newProgress[showId][s][e]) newProgress[showId][s][e] = {status: 0}; newProgress[showId][s][e].journal = entry || undefined; return newProgress; }); if(entry) { setUserXp(xp => xp + XP_CONFIG.journal); confirmationService.show('Journal entry saved. +5 XP!'); }}} trackedLists={{ watching, planToWatch, completed, onHold, dropped }} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={(mediaId, type, path) => setCustomImagePaths(prev => ({ ...prev, [mediaId]: { ...prev[mediaId], [type === 'poster' ? 'poster_path' : 'backdrop_path']: path } }))} favorites={favorites} onToggleFavoriteShow={(item) => {setFavorites(prev => prev.some(i => i.id === item.id) ? prev.filter(i => i.id !== item.id) : [item, ...prev]);}} onSelectShow={handleSelectShow} onOpenCustomListModal={(item) => setAddToListModalState({isOpen: true, item: item})} ratings={ratings} onRateItem={(mediaId, rating) => {setRatings(prev => ({ ...prev, [mediaId]: {rating, date: new Date().toISOString()}})); const item = allTrackedItems.find(i => i.id === mediaId); if(item) { confirmationService.show(`Rated "${item.title}" ${rating} stars.`); setUserXp(xp => xp + XP_CONFIG.journal);}}} onMarkMediaAsWatched={handleMarkShowAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={handleMarkSeasonWatched} onUnmarkSeasonWatched={handleUnmarkSeasonWatched} onMarkPreviousEpisodesWatched={(showId, seasonNumber, lastEpisodeNumber) => { setWatchProgress(prev => { const newProgress = JSON.parse(JSON.stringify(prev)); if(!newProgress[showId]) newProgress[showId]={}; if(!newProgress[showId][seasonNumber]) newProgress[showId][seasonNumber]={}; for(let i=1; i<lastEpisodeNumber; i++) { if(!newProgress[showId][seasonNumber][i] || newProgress[showId][seasonNumber][i].status !== 2) { newProgress[showId][seasonNumber][i] = {status: 2}; } } return newProgress; });}} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={(showId, s, e) => { setFavoriteEpisodes(prev => { const newFavs = JSON.parse(JSON.stringify(prev)); if(!newFavs[showId]) newFavs[showId] = {}; if(!newFavs[showId][s]) newFavs[showId][s] = {}; newFavs[showId][s][e] = !newFavs[showId][s][e]; return newFavs; });}} onSelectPerson={handleSelectPerson} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onClearMediaHistory={handleClearMediaHistory} episodeRatings={episodeRatings} onRateEpisode={(showId,s,e,rating)=>{setEpisodeRatings(p=>{const n=JSON.parse(JSON.stringify(p));if(!n[showId])n[showId]={};if(!n[showId][s])n[showId][s]={};n[showId][s][e]=rating;return n;});}} onAddWatchHistory={handleAddWatchHistory} onSaveComment={(key,text)=>{setComments(p=>{const existing=p.find(c=>c.mediaKey===key);if(existing){if(!text.trim()){return p.filter(c=>c.mediaKey!==key);}return p.map(c=>c.mediaKey===key?{...c,text}:c);}else if(text.trim()){return [...p,{id:`comm-${Date.now()}`,mediaKey:key,text,timestamp:new Date().toISOString()}];}return p;});}} comments={comments} onMarkRemainingWatched={(showId, seasonNumber, showInfo) => { getSeasonDetails(showId, seasonNumber).then(sd => { const today = new Date().toISOString().split('T')[0]; const epsToMark = sd.episodes.filter(ep => ep.air_date && ep.air_date <= today && watchProgress[showId]?.[seasonNumber]?.[ep.episode_number]?.status !== 2); if(epsToMark.length > 0 && window.confirm(`Mark the remaining ${epsToMark.length} aired episode(s) in this season as watched?`)) { epsToMark.forEach(ep => handleToggleEpisode(showId, seasonNumber, ep.episode_number, 0, showInfo, ep.name)); } }); }} genres={genres} onMarkAllWatched={handleMarkAllWatched} onUnmarkAllWatched={handleUnmarkAllWatched} onSaveNote={handleSaveNote} mediaNotes={mediaNotes} episodeNotes={episodeNotes} onSaveEpisodeNote={handleSaveEpisodeNote} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={handleRateSeason} customLists={customLists} />;
+    if (selectedShow) return <ShowDetail id={selectedShow.id} mediaType={selectedShow.media_type} onBack={handleBack} watchProgress={watchProgress} history={history} onToggleEpisode={handleToggleEpisode} onSaveJournal={(showId, s, e, entry) => {setWatchProgress(prev => { const newProgress = JSON.parse(JSON.stringify(prev)); if(!newProgress[showId]) newProgress[showId] = {}; if(!newProgress[showId][s]) newProgress[showId][s] = {}; if(!newProgress[showId][s][e]) newProgress[showId][s][e] = {status: 0}; newProgress[showId][s][e].journal = entry || undefined; return newProgress; }); if(entry) { setUserXp(xp => xp + XP_CONFIG.journal); confirmationService.show('Journal entry saved. +5 XP!'); }}} trackedLists={{ watching, planToWatch, completed, onHold, dropped }} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={(mediaId, type, path) => setCustomImagePaths(prev => ({ ...prev, [mediaId]: { ...prev[mediaId], [type === 'poster' ? 'poster_path' : 'backdrop_path']: path } }))} favorites={favorites} onToggleFavoriteShow={(item) => {setFavorites(prev => prev.some(i => i.id === item.id) ? prev.filter(i => i.id !== item.id) : [item, ...prev]);}} onSelectShow={handleSelectShow} onOpenCustomListModal={(item) => setAddToListModalState({isOpen: true, item: item})} ratings={ratings} onRateItem={(mediaId, rating) => {setRatings(prev => ({ ...prev, [mediaId]: {rating, date: new Date().toISOString()}})); const item = allTrackedItems.find(i => i.id === mediaId); if(item) { confirmationService.show(`Rated "${item.title}" ${rating} stars.`); setUserXp(xp => xp + XP_CONFIG.journal);}}} onMarkMediaAsWatched={handleMarkShowAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={handleMarkSeasonWatched} onUnmarkSeasonWatched={handleUnmarkSeasonWatched} onMarkPreviousEpisodesWatched={(showId, seasonNumber, lastEpisodeNumber) => { setWatchProgress(prev => { const newProgress = JSON.parse(JSON.stringify(prev)); if(!newProgress[showId])newProgress[showId]={}; if(!newProgress[showId][seasonNumber])newProgress[showId][seasonNumber]={}; for(let i=1; i<lastEpisodeNumber; i++) { if(!newProgress[showId][seasonNumber][i] || newProgress[showId][seasonNumber][i].status !== 2) { newProgress[showId][seasonNumber][i] = {status: 2}; } } return newProgress; });}} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={(showId, s, e) => { setFavoriteEpisodes(prev => { const newFavs = JSON.parse(JSON.stringify(prev)); if(!newFavs[showId]) newFavs[showId] = {}; if(!newFavs[showId][s]) newFavs[showId][s] = {}; newFavs[showId][s][e] = !newFavs[showId][s][e]; return newFavs; });}} onSelectPerson={handleSelectPerson} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onClearMediaHistory={handleClearMediaHistory} episodeRatings={episodeRatings} onRateEpisode={(showId,s,e,rating)=>{setEpisodeRatings(p=>{const n=JSON.parse(JSON.stringify(p));if(!n[showId])n[showId]={};if(!n[showId][s])n[showId][s]={};n[showId][s][e]=rating;return n;});}} onAddWatchHistory={handleAddWatchHistory} onSaveComment={(commentData) => { setComments(prev => [...prev, { ...commentData, id: `comm-${Date.now()}`, timestamp: new Date().toISOString(), user: { id: currentUser!.id, username: currentUser!.username, profilePictureUrl }, parentId: commentData.parentId, likes: [], isSpoiler: commentData.isSpoiler }]) }} comments={comments} onToggleLikeComment={(commentId) => { setComments(p => p.map(c => c.id === commentId ? { ...c, likes: c.likes.includes(currentUser!.id) ? c.likes.filter(id => id !== currentUser!.id) : [...c.likes, currentUser!.id] } : c)) }} onDeleteComment={(commentId) => { setComments(p => p.filter(c => c.id !== commentId && c.parentId !== commentId)) }} onMarkRemainingWatched={(showId, seasonNumber, showInfo) => { getSeasonDetails(showId, seasonNumber).then(sd => { const today = new Date().toISOString().split('T')[0]; const epsToMark = sd.episodes.filter(ep => ep.air_date && ep.air_date <= today && watchProgress[showId]?.[seasonNumber]?.[ep.episode_number]?.status !== 2); if(epsToMark.length > 0 && window.confirm(`Mark the remaining ${epsToMark.length} aired episode(s) in this season as watched?`)) { epsToMark.forEach(ep => handleToggleEpisode(showId, seasonNumber, ep.episode_number, 0, showInfo, ep.name)); } }); }} genres={genres} onMarkAllWatched={handleMarkAllWatched} onUnmarkAllWatched={handleUnmarkAllWatched} onSaveNote={handleSaveNote} mediaNotes={mediaNotes} episodeNotes={episodeNotes} onSaveEpisodeNote={handleSaveEpisodeNote} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={handleRateSeason} customLists={customLists} currentUser={currentUser} allUsers={getAllUsers().map(u => ({id: u.id, username: u.username, profilePictureUrl: null}))} />;
     if (selectedPerson) return <ActorDetail personId={selectedPerson} onBack={handleBack} userData={allUserData} onSelectShow={handleSelectShow} onToggleFavoriteShow={(item) => setFavorites(prev => prev.some(i => i.id === item.id) ? prev.filter(i => i.id !== item.id) : [item, ...prev])} onRateItem={(mediaId, rating) => setRatings(prev => ({ ...prev, [mediaId]: {rating, date: new Date().toISOString()}}))} ratings={ratings} favorites={favorites} />;
 
     switch (activeScreen) {

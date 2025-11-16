@@ -23,7 +23,6 @@ export interface TmdbMedia {
   overview?: string;
   popularity?: number;
   rating?: number; // For rated items
-  // FIX: Add optional vote_average property to allow sorting by rating in search results.
   vote_average?: number;
 }
 
@@ -160,7 +159,6 @@ export interface TmdbMediaDetails extends TmdbMedia {
   tagline?: string;
   budget?: number;
   revenue?: number;
-  // FIX: Add homepage property to support its usage in ShowDetail.tsx.
   homepage?: string;
   release_dates?: {
     results: {
@@ -332,7 +330,6 @@ export interface UserData {
     customLists: CustomList[];
     ratings: UserRatings;
     episodeRatings: EpisodeRatings;
-    // FIX: Add favoriteEpisodes to UserData interface to allow achievement checks.
     favoriteEpisodes: FavoriteEpisodes;
     searchHistory: SearchHistoryItem[];
     comments: Comment[];
