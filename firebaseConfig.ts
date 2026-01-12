@@ -5,9 +5,9 @@
 // for this app's current functionality.
 export const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
-  authDomain: "sceneit-tracker.firebaseapp.com",
-  projectId: "sceneit-tracker",
-  storageBucket: "sceneit-tracker.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  authDomain: "cinemontauge.firebaseapp.com",
+  projectId: "cinemontauge",
+  storageBucket: "cinemontauge.appspot.com",
+  messagingSenderId: "655471942412",
   appId: "YOUR_APP_ID"
 };
