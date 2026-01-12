@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { EnvelopeIcon, XMarkIcon } from './Icons';
+import { EnvelopeIcon, XMarkIcon, SearchNavIcon } from './Icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -20,7 +20,7 @@ const InputField: React.FC<{ type: string, placeholder: string, value: string, o
         onChange={(e) => onChange(e.target.value)}
         required
         readOnly={readOnly}
-        className={`w-full pl-10 pr-4 py-3 bg-bg-secondary/80 text-black placeholder-black/60 rounded-lg border border-transparent focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all ${readOnly ? 'cursor-not-allowed' : ''}`}
+        className={`w-full pl-10 pr-4 py-3 bg-bg-secondary/80 text-text-primary placeholder-text-secondary/60 rounded-lg border border-white/5 focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all ${readOnly ? 'cursor-not-allowed opacity-50' : ''}`}
       />
       <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary/70">
         {icon}
@@ -29,7 +29,7 @@ const InputField: React.FC<{ type: string, placeholder: string, value: string, o
 );
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignup, onForgotPasswordRequest, onForgotPasswordReset }) => {
-  const [view, setView] = useState<'login' | 'signup' | 'forgot_email' | 'forgot_code'>('login');
+  const [view, setView] = useState<'login' | 'signup' | 'forgot_email' | 'forgot_code' | 'find_account'>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -39,7 +39,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
-
+  const [lookupValue, setLookupValue] = useState('');
 
   const resetForm = () => {
     setError(null);
@@ -49,6 +49,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
     setPassword('');
     setConfirmPassword('');
     setResetCode('');
+    setLookupValue('');
   };
 
   useEffect(() => {
@@ -75,10 +76,43 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
 
   if (!isOpen) return null;
 
+  const handleFindAccount = () => {
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+
+    const usersJson = localStorage.getItem('sceneit_users');
+    const users = usersJson ? JSON.parse(usersJson) : [];
+    const lowerLookup = lookupValue.toLowerCase().trim();
+
+    const foundUser = users.find((u: any) => 
+        u.email.toLowerCase() === lowerLookup || 
+        u.username.toLowerCase() === lowerLookup
+    );
+
+    setTimeout(() => {
+        if (foundUser) {
+            const obscuredEmail = foundUser.email.replace(/(.{2})(.*)(?=@)/, (gp1: string, gp2: string, gp3: string) => {
+                return gp2 + "*".repeat(gp3.length);
+            });
+            setInfo(`Success! We found an account for "${foundUser.username}". A recovery link has been simulated to ${obscuredEmail}.`);
+        } else {
+            setError("We couldn't find an account matching that information. Please check your spelling or sign up for a new account.");
+        }
+        setLoading(false);
+    }, 800);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfo(null);
+
+    if (view === 'find_account') {
+        handleFindAccount();
+        return;
+    }
+
     setLoading(true);
     let authError: string | null = null;
 
@@ -104,9 +138,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
             return;
         }
         authError = await onForgotPasswordReset({ code: resetCode, newPassword: password });
-        if (!authError) {
-            // Success, modal will be closed by parent
-        }
     }
 
     if (authError) {
@@ -126,41 +157,67 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
             return (
                 <>
                     <InputField type="email" placeholder="Email" value={email} onChange={setEmail} icon={<EnvelopeIcon />} />
-                    <InputField type="password" placeholder="Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
-                    <div className="flex items-center justify-between pt-2">
+                    <InputField type="password" placeholder="Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
+                    <div className="flex flex-col space-y-3 pt-2">
                         <label className="flex items-center text-sm text-text-secondary cursor-pointer">
                             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-bg-secondary text-primary-accent focus:ring-primary-accent" />
                             <span className="ml-2">Remember me</span>
                         </label>
-                        <button type="button" onClick={() => setView('forgot_email')} className="text-sm font-semibold text-primary-accent hover:underline">Forgot Password?</button>
+                        <div className="flex justify-between items-center text-xs">
+                            <button type="button" onClick={() => setView('forgot_email')} className="font-semibold text-primary-accent hover:underline">Forgot Password?</button>
+                            <button type="button" onClick={() => setView('find_account')} className="font-semibold text-primary-accent hover:underline">Can't find account?</button>
+                        </div>
                     </div>
                 </>
             );
         case 'signup':
             return (
                 <>
-                    <InputField type="text" placeholder="Username" value={username} onChange={setUsername} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a5.5 5.5 0 0 1 5.5 5.5c0 1.57-.67 3-1.69 3.96-1.01.96-2.43 1.54-3.81 1.54s-2.8-.58-3.81-1.54C7.17 11 6.5 9.57 6.5 8a5.5 5.5 0 0 1 5.5-5.5zM12 15c-3.31 0-10 1.67-10 5v3h20v-3c0-3.33-6.69-5-10-5z"></path></svg>} />
+                    <InputField type="text" placeholder="Username" value={username} onChange={setUsername} icon={<SearchNavIcon className="w-5 h-5" />} />
                     <InputField type="email" placeholder="Email" value={email} onChange={setEmail} icon={<EnvelopeIcon />} />
-                    <InputField type="password" placeholder="Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
-                    <InputField type="password" placeholder="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
+                    <InputField type="password" placeholder="Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
+                    <InputField type="password" placeholder="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
                 </>
             );
         case 'forgot_email':
-            return <InputField type="email" placeholder="Enter your account email" value={email} onChange={setEmail} icon={<EnvelopeIcon />} />;
+            return (
+                <div className="space-y-4">
+                    <p className="text-sm text-text-secondary text-center">Enter your email to receive a password reset code.</p>
+                    <InputField type="email" placeholder="Enter your account email" value={email} onChange={setEmail} icon={<EnvelopeIcon />} />
+                </div>
+            );
+        case 'find_account':
+            return (
+                <div className="space-y-4">
+                    <p className="text-sm text-text-secondary text-center">Lost track of your account? Enter your username or any email you might have used.</p>
+                    <InputField type="text" placeholder="Username or Email" value={lookupValue} onChange={setLookupValue} icon={<SearchNavIcon className="w-5 h-5" />} />
+                </div>
+            );
         case 'forgot_code':
             return (
                 <>
                     <InputField type="email" placeholder="Email" value={email} onChange={() => {}} icon={<EnvelopeIcon />} readOnly />
-                    <InputField type="text" placeholder="6-Digit Reset Code" value={resetCode} onChange={setResetCode} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"></path></svg>} />
-                    <InputField type="password" placeholder="New Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
-                    <InputField type="password" placeholder="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
+                    <InputField type="text" placeholder="6-Digit Reset Code" value={resetCode} onChange={setResetCode} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"></path></svg>} />
+                    <InputField type="password" placeholder="New Password" value={password} onChange={setPassword} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"></path></svg>} />
                 </>
             );
     }
   };
 
-  const titles = { login: 'Welcome Back', signup: 'Create Account', forgot_email: 'Forgot Password', forgot_code: 'Reset Password' };
-  const buttonTexts = { login: 'Log In', signup: 'Sign Up', forgot_email: 'Send Reset Code', forgot_code: 'Reset Password' };
+  const titles = { 
+    login: 'Welcome Back', 
+    signup: 'Create Account', 
+    forgot_email: 'Forgot Password', 
+    forgot_code: 'Reset Password',
+    find_account: 'Find Account'
+  };
+  const buttonTexts = { 
+    login: 'Log In', 
+    signup: 'Sign Up', 
+    forgot_email: 'Send Reset Code', 
+    forgot_code: 'Reset Password',
+    find_account: 'Locate Account'
+  };
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -180,18 +237,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onSignu
             {renderContent()}
 
             <button type="submit" disabled={loading} className="w-full py-3 mt-4 rounded-lg bg-accent-gradient text-on-accent font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
-              {loading ? 'Loading...' : buttonTexts[view]}
+              {loading ? 'Searching...' : buttonTexts[view]}
             </button>
           </form>
         </div>
         <p className="text-center text-sm text-text-secondary mt-6">
           {view === 'login' && "Don't have an account?"}
           {view === 'signup' && "Already have an account?"}
-          {(view === 'forgot_email' || view === 'forgot_code') && "Remember your password?"}
-          <button onClick={() => handleSwitchView(view === 'login' ? 'signup' : 'login')} className="font-semibold text-primary-accent hover:underline ml-2">
+          {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Ready to sign in?"}
+          <button onClick={() => {
+              if (view === 'login') handleSwitchView('signup');
+              else if (view === 'signup') handleSwitchView('login');
+              else handleSwitchView('login');
+          }} className="font-semibold text-primary-accent hover:underline ml-2">
             {view === 'login' && 'Sign Up'}
             {view === 'signup' && 'Log In'}
-            {(view === 'forgot_email' || view === 'forgot_code') && "Log In"}
+            {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Log In"}
           </button>
         </p>
       </div>

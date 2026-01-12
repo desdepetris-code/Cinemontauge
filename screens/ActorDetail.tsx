@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getPersonDetails } from '../services/tmdbService';
 import { PersonDetails, UserData, TrackedItem, UserRatings, HistoryItem, TmdbMedia, PersonCredit, TmdbMediaDetails } from '../types';
-import { ChevronLeftIcon } from './Icons';
+import { ChevronLeftIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
-import FilmographyCard from './FilmographyCard';
-import RatingModal from './RatingModal';
-import HistoryModal from './HistoryModal';
+import FilmographyCard from '../components/FilmographyCard';
+import RatingModal from '../components/RatingModal';
+import HistoryModal from '../components/HistoryModal';
 
 // --- PROPS INTERFACE ---
 interface ActorDetailProps {
@@ -77,14 +78,13 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         const ids = new Set<number>();
         [...userData.watching, ...userData.completed].forEach(i => ids.add(i.id));
         return ids;
-    }, [userData.watching, ...userData.completed]);
+    }, [userData.watching, userData.completed]);
 
     const filmography = useMemo(() => {
         const castCredits = details?.combined_credits?.cast || [];
         const uniqueCredits = Array.from(
             new Map(castCredits.map(item => [item.id, item])).values()
         );
-        // FIX: Explicitly type `item`, `a`, and `b` to resolve type inference issue where they were treated as `unknown`.
         return uniqueCredits
             .filter((item: PersonCredit) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
             .sort((a: PersonCredit, b: PersonCredit) => (b.popularity || 0) - (a.popularity || 0));
@@ -198,7 +198,6 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                         <FilmographyCard
                             item={item}
                             isFavorite={favorites.some(f => f.id === item.id)}
-                            // FIX: Access the `rating` property from the rating object.
                             userRating={ratings[item.id]?.rating || 0}
                             onSelect={() => onSelectShow(item.id, item.media_type)}
                             onToggleFavorite={() => handleToggleFavorite(item)}
@@ -240,9 +239,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
 
     return (
         <>
-            {/* FIX: Access the `rating` property from the rating object for `currentRating`. */}
             <RatingModal isOpen={ratingModalState.isOpen} onClose={() => setRatingModalState({ isOpen: false, media: null })} onSave={handleRate} currentRating={ratingModalState.media ? ratings[ratingModalState.media.id]?.rating || 0 : 0} mediaTitle={ratingModalState.media?.title || ratingModalState.media?.name || ''} />
-            {/* FIX: Added missing props to HistoryModal. Deletion is not supported here, so they are omitted, relying on optional props. */}
             <HistoryModal isOpen={historyModalState.isOpen} onClose={() => setHistoryModalState({ isOpen: false, media: null })} history={historyForModal} mediaTitle={historyModalState.media?.title || historyModalState.media?.name || ''} mediaDetails={historyModalState.media as TmdbMediaDetails} />
 
             <div className="relative mb-8">
@@ -259,7 +256,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                 </div>
                 {details.images?.profiles && details.images.profiles.length > 1 && (
                     <div className="mt-6">
-                        <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
+                        <div className="flex space-x-2 overflow-x-auto hide-scrollbar">
                             {details.images.profiles.slice(1, 11).map(p => (
                                 <img key={p.file_path} src={getImageUrl(p.file_path, 'w185')} alt="" className="h-24 w-auto rounded-md" />
                             ))}
