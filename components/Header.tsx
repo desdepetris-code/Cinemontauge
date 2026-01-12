@@ -20,26 +20,24 @@ interface HeaderProps {
   query: string;
   onQueryChange: (query: string) => void;
   isOnSearchScreen?: boolean;
-  isHoliday: boolean;
-  holidayName: string | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onGoHome, onMarkShowAsWatched, query, onQueryChange, isOnSearchScreen, isHoliday, holidayName }) => {
-  const iconDataUri = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDEyOCAxMjgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkMSIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNGRUYwOEEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNGREUwNDciLz48L2xpbmVhckdyYWRpZW50PjxmaWx0ZXIgaWQ9Imdsb3ciPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjMiIHJlc3VsdD0iYmx1ciIvPjxmZU1lcmdlPjxmZU1lcmdlTm9kZSBpbj0iYmx1ciIvPjxmZU1lcmdlTm9kZSBpbj0iU291cmNlR3JhcGhpYyIvPjwvZmVNZXJnZT48L2ZpbHRlcj48L2RlZnM+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTA4IiBoZWlnaHQ9IjEwOCIgcng9IjI4IiBmaWxsPSIjMTExODI3Ii8+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjI0IiBmaWxsPSIjMDAwMDAwIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMzIsIDMyKSBzY2FsZSgwLjgpIj48cmVjdCB4PSI0IiB5PSI0IiB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHJ4PSI0IiBmaWx0ZXI9InVybCgjZ2xvdykiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNncmFkMSkiIHN0cm9rZS13aWR0aD0iNiIgb3BhY2l0eT0iMC41Ii8+PHJlY3QgeD0iMTEyIiB5PSIxMiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiByeD0iNCIgZmlsdGVyPSJ1cmwoI2dsb3cpIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ3JhZDEpIiBzdHJva2Utd2lkdGg9IjYiLz48cGF0aCBkPSJNMzQgMjggTDUwIDQwIEwzNCA1MiBaIiBmaWxsPSIjRkZGMThBIi8+PC9nPjwvc3ZnPg==";
+const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onGoHome, onMarkShowAsWatched, query, onQueryChange, isOnSearchScreen }) => {
+  const bannerIconDataUri = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMjAwIDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjAiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNlZjQ0NDQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM3ZjFkMWQiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjgwIiByeD0iMTIiIGZpbGw9IiMwMDAiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMCwgMTApIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0idXJsKCNnKSIvPjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjE2MCIgaGVpZ2h0PSI0MCIgcng9IjQiIGZpbGw9IiMwMDAiIG9wYWNpdHk9IjAuNyIvPjxwYXRoIGQ9Ik04OCAyNWwyNCA3LjUtMjQgNy41VjI1eiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik00IDRoOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bS0xNzYgNDhoOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6bTIwIDBIOHY0SDR6IiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjUiLz48L2c+PC9zdmc+";
+  
   return (
-    <header className="sticky top-0 z-30 py-2 px-6 bg-backdrop backdrop-blur-md shadow-lg">
+    <header className="sticky top-0 z-30 py-2 px-6 bg-backdrop backdrop-blur-md shadow-lg border-b border-white/5">
       <div className="container mx-auto flex justify-between items-center gap-4">
         <div 
           onClick={onGoHome}
-          className="flex flex-col items-center flex-shrink-0 cursor-pointer"
+          className="flex flex-col items-center cursor-pointer group flex-shrink-0"
         >
-            <img src={iconDataUri} alt="cinemontauge Logo" className="h-8 w-8" />
-            <h1 className="text-xs font-bold bg-accent-gradient bg-clip-text text-transparent -mt-1 uppercase tracking-tighter">cinemontauge</h1>
+            <img src={bannerIconDataUri} alt="Banner" className="h-8 w-auto transition-transform duration-500 group-hover:scale-105" />
+            <h1 className="text-[10px] font-black text-text-primary uppercase tracking-[0.3em] mt-1 group-hover:text-primary-accent transition-colors">CineMontauge</h1>
         </div>
 
-        <div className="flex-1 flex justify-center items-center">
-            <div className="min-w-0 w-72 md:w-96">
-               {!isOnSearchScreen && (
+        <div className="flex-1 flex justify-center items-center max-w-xl">
+            {!isOnSearchScreen && (
                 <SearchBar 
                     onSelectResult={onSelectShow} 
                     onMarkShowAsWatched={onMarkShowAsWatched} 
@@ -47,30 +45,24 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
                     onChange={onQueryChange}
                     dropdownWider
                 />
-               )}
-            </div>
+            )}
         </div>
-        <div className="w-48 flex items-center justify-end">
+        
+        <div className="flex items-center justify-end w-32 md:w-48 flex-shrink-0">
           {currentUser ? (
             <button
               onClick={onGoToProfile}
-              className="flex items-center space-x-2 rounded-full p-1 pr-4 hover:bg-bg-secondary transition-colors group"
-              title="Go to Profile"
+              className="flex items-center space-x-2 rounded-full p-1 transition-all hover:bg-white/5 group"
             >
               <img
                 src={profilePictureUrl || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#64748b"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>')}`}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover bg-bg-secondary border-2 border-transparent group-hover:border-primary-accent transition-colors"
+                className="w-8 h-8 rounded-full object-cover bg-bg-secondary border border-transparent group-hover:border-primary-accent"
               />
-              <span className="text-sm font-semibold text-text-primary truncate max-w-[100px]">{currentUser.username}</span>
+              <span className="hidden md:block text-[10px] font-bold text-text-primary uppercase tracking-widest truncate max-w-[80px]">{currentUser.username}</span>
             </button>
           ) : (
-            <button
-              onClick={onAuthClick}
-              className="px-4 py-2 text-sm font-semibold rounded-full bg-accent-gradient text-on-accent hover:opacity-90 transition-opacity whitespace-nowrap"
-            >
-              Login / Sign Up
-            </button>
+            <button onClick={onAuthClick} className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-full bg-accent-gradient text-on-accent hover:opacity-90">Login</button>
           )}
         </div>
       </div>

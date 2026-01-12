@@ -1,40 +1,24 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache, getCollectionDetails, getShowAggregateCredits } from '../services/tmdbService';
-import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, TmdbCollection, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, TmdbMedia, EpisodeRatings, Comment, SeasonRatings, CastMember, CrewMember, UserData, PublicUser } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, ChevronRightIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, QuestionMarkCircleIcon, CalendarIcon, PencilSquareIcon, BadgeIcon } from './Icons';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache } from '../services/tmdbService';
+import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, CastMember, CrewMember, PublicUser, Reminder, ReminderType } from '../types';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, CalendarIcon, PencilSquareIcon, BellIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_BACKDROP_LARGE } from '../constants';
 import SeasonAccordion from './SeasonAccordion';
-import JournalModal from './JournalModal';
-import ImageSelectorModal from './ImageSelectorModal';
-import CastAndCrew from './CastAndCrew';
-import MoreInfo from './MoreInfo';
-import RecommendedMedia from './RecommendedMedia';
-import CustomizeTab from './CustomizeTab';
-import WhereToWatch from './WhereToWatch';
-import MovieCollection from './MovieCollection';
-import PageChangeRequest from './PageChangeRequest';
-import RatingModal from './RatingModal';
-import EpisodeDetailModal from './EpisodeDetailModal';
-import { formatRuntime, isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
+import { formatRuntime, isNewRelease } from '../utils/formatUtils';
 import NextUpWidget from './NextUpWidget';
 import HistoryModal from './HistoryModal';
-import FavoriteAnimation from './FavoriteAnimation';
-import { getEpisodeTag } from '../utils/episodeTagUtils';
-import MarkAsWatchedModal from './MarkAsWatchedModal';
-import { getShowStatus, getRenewalStatus } from '../utils/statusUtils';
-import NotesModal from './NotesModal';
+import RatingModal from './RatingModal';
+import EpisodeDetailModal from './EpisodeDetailModal';
 import OverallProgress from './OverallProgress';
 import ScoreStar from './ScoreStar';
-import ShowAchievementsTab from './ShowAchievementsTab';
-import CommentsTab from './CommentsTab';
+import { getShowStatus } from '../utils/statusUtils';
 
-// --- PROPS INTERFACE ---
 interface ShowDetailProps {
   id: number;
   mediaType: 'tv' | 'movie';
-  isModal?: boolean;
   onBack: () => void;
   watchProgress: WatchProgress;
   history: HistoryItem[];
@@ -47,10 +31,10 @@ interface ShowDetailProps {
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
-  onOpenCustomListModal: (item: TmdbMedia | TrackedItem) => void;
+  onOpenCustomListModal: (item: any) => void;
   ratings: UserRatings;
   onRateItem: (mediaId: number, rating: number) => void;
-  onMarkMediaAsWatched: (item: TmdbMedia | TrackedItem, date?: string) => void;
+  onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
@@ -64,11 +48,8 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string) => void;
-  onSaveComment: (commentData: { mediaKey: string; text: string; parentId: string | null; isSpoiler: boolean; }) => void;
+  onSaveComment: (commentData: any) => void;
   comments: Comment[];
-  onToggleLikeComment: (commentId: string) => void;
-  onDeleteComment: (commentId: string) => void;
-  onMarkRemainingWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   genres: Record<number, string>;
   onMarkAllWatched: (showId: number, showInfo: TrackedItem) => void;
   onUnmarkAllWatched: (showId: number) => void;
@@ -80,947 +61,98 @@ interface ShowDetailProps {
   seasonRatings: SeasonRatings;
   onRateSeason: (showId: number, seasonNumber: number, rating: number) => void;
   customLists: CustomList[];
-  currentUser: { id: string; username: string; email: string; } | null;
+  currentUser: any;
   allUsers: PublicUser[];
+  reminders: Reminder[];
+  onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
 }
 
-type ShowDetailTab = 'seasons' | 'cast' | 'moreInfo' | 'watch' | 'customize' | 'recommendations' | 'achievements' | 'comments';
-
-type AggregateCredits = {
-  mainCast: CastMember[];
-  guestStars: CastMember[];
-  crew: CrewMember[];
-};
-
-
-// --- LOCAL COMPONENTS ---
-const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void; disabled?: boolean; isActive?: boolean; isDestructive?: boolean; }> = ({ icon, label, onClick, disabled, isActive, isDestructive }) => (
-    <button
-        onClick={onClick}
-        disabled={disabled}
-        className={`flex flex-col items-center justify-center space-y-1 w-full h-full p-2 rounded-lg border transition-all ${disabled ? 'text-text-secondary/50 cursor-not-allowed bg-bg-secondary/30 border-bg-secondary' : isDestructive ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20' : (isActive ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' : 'bg-bg-secondary border border-bg-secondary/80 text-text-primary hover:border-primary-accent hover:bg-bg-secondary/70')}`}
-    >
-        {icon}
-        <span className="text-xs font-semibold text-center">{label}</span>
-    </button>
-);
-
-const StatusSelector: React.FC<{ currentStatus: WatchStatus | null; onUpdateStatus: (newStatus: WatchStatus | null) => void;}> = ({ currentStatus, onUpdateStatus }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    
-    const statuses: { id: WatchStatus, label: string }[] = [
-        { id: 'watching', label: 'Watching' },
-        { id: 'planToWatch', label: 'Plan to Watch' },
-        { id: 'completed', label: 'Completed' },
-        { id: 'onHold', label: 'On Hold' },
-        { id: 'dropped', label: 'Dropped' },
-    ];
-    
-    const currentLabel = statuses.find(s => s.id === currentStatus)?.label || "Add to Library";
-    
-    const handleSelect = (status: WatchStatus | null) => {
-        onUpdateStatus(status);
-        setIsOpen(false);
-    }
-    
-    return (
-        <div className="relative w-full h-full">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-                className={`flex items-center justify-center space-x-2 w-full h-full px-4 py-2 rounded-lg border transition-all text-sm font-semibold ${currentStatus ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' : 'bg-bg-secondary border border-bg-secondary/80 text-text-primary hover:border-primary-accent'}`}
-            >
-                <span>{currentLabel}</span>
-                <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isOpen && (
-                <div 
-                    className="absolute bottom-full left-0 w-full mb-2 bg-bg-primary border border-bg-secondary rounded-lg shadow-2xl z-10"
-                >
-                    <ul className="py-1">
-                        {statuses.map(status => (
-                            <li key={status.id}>
-                                <button
-                                    onClick={() => handleSelect(status.id)}
-                                    className={`w-full text-left px-4 py-2 text-sm ${currentStatus === status.id ? 'font-bold text-primary-accent bg-bg-secondary' : 'text-text-primary hover:bg-bg-secondary'}`}
-                                >
-                                    {status.label}
-                                </button>
-                            </li>
-                        ))}
-                        {currentStatus && (
-                            <>
-                                <div className="my-1 border-t border-bg-secondary"></div>
-                                <li>
-                                    <button onClick={() => handleSelect(null)} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10">
-                                        Remove from Library
-                                    </button>
-                                </li>
-                            </>
-                        )}
-                    </ul>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// --- SKELETON LOADER ---
-const ShowDetailSkeleton: React.FC = () => (
-    <div className="animate-pulse">
-        <div className="w-full h-60 sm:h-80 md:h-96 bg-bg-secondary rounded-lg"></div>
-        <div className="container mx-auto px-4 -mt-20">
-            <div className="flex flex-col items-end">
-                <div className="w-32 h-48 sm:w-48 sm:h-72 bg-bg-secondary rounded-lg shadow-lg flex-shrink-0 border-4 border-bg-primary"></div>
-                <div className="sm:ml-6 mt-4 sm:mt-0 w-full">
-                    <div className="h-8 bg-bg-secondary rounded w-3/4"></div>
-                    <div className="h-4 bg-bg-secondary rounded w-1/2 mt-2"></div>
-                </div>
-            </div>
-        </div>
-        <div className="container mx-auto px-4 mt-8 space-y-4">
-            <div className="h-10 bg-bg-secondary rounded w-full"></div>
-            <div className="h-40 bg-bg-secondary rounded w-full"></div>
-            <div className="h-40 bg-bg-secondary rounded w-full"></div>
-        </div>
-    </div>
-);
-
-const validateMediaDetails = (data: Partial<TmdbMediaDetails> | null, mediaType: 'tv' | 'movie'): TmdbMediaDetails => {
-    const safeData = data || {};
-    const title = safeData.title || safeData.name || "Untitled";
-    
-    return {
-        id: safeData.id || 0,
-        media_type: mediaType,
-        poster_path: safeData.poster_path || null,
-        title: title,
-        name: title,
-        backdrop_path: safeData.backdrop_path || null,
-        release_date: safeData.release_date,
-        first_air_date: safeData.first_air_date,
-        genre_ids: safeData.genre_ids,
-        overview: safeData.overview || "No description available.",
-        popularity: safeData.popularity,
-        rating: safeData.rating,
-        genres: (Array.isArray(safeData.genres) ? safeData.genres : []).filter(Boolean),
-        number_of_seasons: safeData.number_of_seasons,
-        number_of_episodes: safeData.number_of_episodes,
-        seasons: (Array.isArray(safeData.seasons) ? safeData.seasons : []).filter(Boolean),
-        runtime: safeData.runtime,
-        episode_run_time: safeData.episode_run_time,
-        status: safeData.status,
-        images: {
-            backdrops: (Array.isArray(safeData.images?.backdrops) ? safeData.images.backdrops : []).filter(Boolean),
-            posters: (Array.isArray(safeData.images?.posters) ? safeData.images.posters : []).filter(Boolean),
-        },
-        external_ids: safeData.external_ids,
-        vote_average: safeData.vote_average ?? 0,
-        vote_count: safeData.vote_count ?? 0,
-        credits: {
-            cast: (Array.isArray(safeData.credits?.cast) ? safeData.credits.cast : []).filter(Boolean),
-            crew: (Array.isArray(safeData.credits?.crew) ? safeData.credits.crew : []).filter(Boolean),
-        },
-        recommendations: {
-            results: (Array.isArray(safeData.recommendations?.results) ? safeData.recommendations.results : []).filter(Boolean),
-        },
-        videos: {
-            results: (Array.isArray(safeData.videos?.results) ? safeData.videos.results : []).filter(Boolean),
-        },
-        belongs_to_collection: safeData.belongs_to_collection ?? null,
-        last_episode_to_air: safeData.last_episode_to_air,
-        next_episode_to_air: safeData.next_episode_to_air,
-        production_companies: safeData.production_companies,
-        origin_country: safeData.origin_country,
-        original_language: safeData.original_language,
-        tagline: safeData.tagline,
-        budget: safeData.budget,
-        revenue: safeData.revenue,
-        // FIX: Add homepage property to align with the TmdbMediaDetails type.
-        homepage: safeData.homepage
-    };
-};
-
-
-// --- MAIN COMPONENT ---
 const ShowDetail: React.FC<ShowDetailProps> = (props) => {
-  const {
-    id, mediaType, isModal = false, onBack, watchProgress, history, onToggleEpisode, onSaveJournal, trackedLists, onUpdateLists,
-    customImagePaths, onSetCustomImage, favorites, onToggleFavoriteShow, onSelectShow, onOpenCustomListModal, ratings, onRateItem, onMarkMediaAsWatched, onUnmarkMovieWatched, onMarkSeasonWatched, onUnmarkSeasonWatched,
-    onMarkPreviousEpisodesWatched, favoriteEpisodes, onToggleFavoriteEpisode, onSelectPerson, onStartLiveWatch, onDeleteHistoryItem, onClearMediaHistory, episodeRatings, onRateEpisode, onAddWatchHistory, onSaveComment, comments, onMarkRemainingWatched, genres, onMarkAllWatched, onUnmarkAllWatched, showRatings,
-    onSaveNote, mediaNotes, episodeNotes, onSaveEpisodeNote, seasonRatings, onRateSeason, customLists, currentUser, allUsers, onToggleLikeComment, onDeleteComment
-  } = props;
-
-  // --- STATE MANAGEMENT ---
+  const { id, mediaType, onBack, watchProgress, trackedLists, onUpdateLists, favorites, ratings, onRateItem, onSelectShow, showRatings, onToggleReminder, reminders } = props;
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
-  const [seasonDetailsMap, setSeasonDetailsMap] = useState<Record<number, TmdbSeasonDetails>>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ShowDetailTab>(mediaType === 'tv' ? 'seasons' : 'moreInfo');
-  const [expandedSeasons, setExpandedSeasons] = useState<Record<number, boolean>>({});
-  const [journalModalState, setJournalModalState] = useState<{ isOpen: boolean; season?: number; episode?: Episode }>({ isOpen: false });
-  const [imageSelectorModalState, setImageSelectorModalState] = useState<{isOpen: boolean, initialTab?: 'posters' | 'backdrops'}>({ isOpen: false });
-  const [watchProviders, setWatchProviders] = useState<WatchProviderResponse | null>(null);
-  const [collectionDetails, setCollectionDetails] = useState<TmdbCollection | null>(null);
-  const [ratingModalOpen, setRatingModalOpen] = useState(false);
-  const [episodeDetailModalState, setEpisodeDetailModalState] = useState<{isOpen: boolean, episode: Episode | null}>({isOpen: false, episode: null});
-  const [episodeRatingModalState, setEpisodeRatingModalState] = useState<{isOpen: boolean, episode: Episode | null}>({isOpen: false, episode: null});
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
-  const [isAnimatingFavorite, setIsAnimatingFavorite] = useState(false);
-  const [animationDirection, setAnimationDirection] = useState<'up' | 'down'>('up');
-  const [markAsWatchedModalOpen, setMarkAsWatchedModalOpen] = useState(false);
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
-  const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
-  const [aggregateCredits, setAggregateCredits] = useState<AggregateCredits | null>(null);
-  const [isAggregateCreditsLoading, setIsAggregateCreditsLoading] = useState(false);
-  const [activeCommentThread, setActiveCommentThread] = useState<string>(`general`);
+  const [activeTab, setActiveTab] = useState<'seasons' | 'info'>('seasons');
 
-
-  // --- DERIVED STATE & MEMOIZED VALUES ---
-  const customPosterPath = customImagePaths[id]?.poster_path;
-  const customBackdropPath = customImagePaths[id]?.backdrop_path;
-  const isFavorited = favorites.some(fav => fav.id === id);
-  const currentStatus = useMemo(() => {
-    for (const listName in trackedLists) {
-        if (trackedLists[listName as WatchStatus].some(item => item.id === id)) {
-            return listName as WatchStatus;
-        }
-    }
-    return null;
-  }, [trackedLists, id]);
-  const userRating = ratings[id]?.rating || 0;
-  
-  const contentRating = useMemo(() => {
-    if (!details) return null;
-
-    // --- Handle Movies ---
-    if (details.media_type === 'movie') {
-      const usReleaseInfo = details.release_dates?.results.find(
-        (r) => r.iso_3166_1 === 'US'
-      );
-
-      if (usReleaseInfo?.release_dates) {
-        // Find the first non-empty certification string.
-        // We iterate once and check for priorities.
-        let theatricalCert: string | null = null;
-        let anyCert: string | null = null;
-
-        for (const release of usReleaseInfo.release_dates) {
-          const cert = release.certification;
-          if (cert && cert.trim() !== '') {
-            // Store the first valid one we find of any type as a fallback
-            if (!anyCert) {
-              anyCert = cert;
-            }
-            // If it's theatrical (type 2 or 3), it's our top priority. Store it and stop looking.
-            if (release.type === 3 || release.type === 2) {
-              theatricalCert = cert;
-              break; 
-            }
-          }
-        }
-        
-        return theatricalCert || anyCert;
-      }
-    } 
-    
-    // --- Handle TV Shows ---
-    else if (details.media_type === 'tv') {
-      const usRatingInfo = details.content_ratings?.results.find(
-        (r) => r.iso_3166_1 === 'US'
-      );
-
-      if (usRatingInfo?.rating && usRatingInfo.rating.trim() !== '') {
-        return usRatingInfo.rating;
-      }
-    }
-
-    return null;
-  }, [details]);
-
-  const nextEpisodeToWatch = useMemo(() => {
-    if (mediaType !== 'tv' || !details || !details.seasons) return null;
-    const progressForShow = watchProgress[id] || {};
-    const sortedSeasons = [...details.seasons].filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
-    for (const season of sortedSeasons) {
-      for (let i = 1; i <= season.episode_count; i++) {
-        if (progressForShow[season.season_number]?.[i]?.status !== 2) {
-          return { seasonNumber: season.season_number, episodeNumber: i };
-        }
-      }
-    }
-    return null;
-  }, [mediaType, details, watchProgress, id]);
-  
-  const sortedPosters = useMemo(() => 
-      details?.images?.posters ? [...details.images.posters].sort((a,b) => b.vote_average - a.vote_average) : [],
-  [details?.images?.posters]);
-
-  const showStatusInfo = useMemo(() => {
-    if (!details || details.media_type !== 'tv') return null;
-    const statusResult = getShowStatus(details);
-    if (!statusResult) return null;
-
-    let badgeClass = 'bg-gray-700 text-gray-200'; // Default
-    if (statusResult.text.includes('Ended')) badgeClass = 'bg-black text-white';
-    else if (statusResult.text.includes('Canceled')) badgeClass = 'bg-blue-800 text-blue-200';
-    else if (statusResult.text.includes('In Season')) badgeClass = 'bg-red-700 text-red-100';
-    else if (statusResult.text.includes('On Hiatus')) badgeClass = 'bg-purple-800 text-purple-200';
-    else if (statusResult.text.includes('Upcoming')) badgeClass = 'bg-teal-700 text-teal-100';
-
-    return { text: statusResult.text, date: statusResult.date, color: badgeClass };
-  }, [details]);
-  
-  const renewalStatusInfo = useMemo(() => {
-    if (!details || details.media_type !== 'tv') return null;
-    return getRenewalStatus(details);
-  }, [details]);
-  
-    const runtimeDisplay = useMemo(() => {
-        if (mediaType === 'movie') {
-            return formatRuntime(details?.runtime);
-        }
-        if (mediaType === 'tv') {
-            const runtimes = (details?.episode_run_time || []).filter(t => t > 0);
-            if (runtimes.length === 0) return null;
-            if (runtimes.length === 1) return formatRuntime(runtimes[0]);
-            const min = Math.min(...runtimes);
-            const max = Math.max(...runtimes);
-            if (min === max) return formatRuntime(min);
-            return `${formatRuntime(min)} - ${formatRuntime(max)}`;
-        }
-        return null;
-    }, [details, mediaType]);
-
-  const userDataForAchievements = useMemo((): UserData => ({
-    watching: trackedLists.watching,
-    planToWatch: trackedLists.planToWatch,
-    completed: trackedLists.completed,
-    onHold: trackedLists.onHold,
-    dropped: trackedLists.dropped,
-    favorites,
-    watchProgress,
-    history,
-    customLists,
-    ratings,
-    episodeRatings,
-    favoriteEpisodes,
-    searchHistory: [], // Not needed for show-specific achievements
-    comments,
-    mediaNotes: mediaNotes ? { [id]: mediaNotes[id] } : {},
-    episodeNotes,
-    seasonRatings,
-  }), [
-    trackedLists, favorites, watchProgress, history, customLists, ratings, episodeRatings, favoriteEpisodes, comments, mediaNotes, episodeNotes, seasonRatings, id
-  ]);
-
-  // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
     setLoading(true);
-    setError(null);
-    setRecentEpisodeCount(0);
     try {
-        const [tmdbData, providersData] = await Promise.all([
-            getMediaDetails(id, mediaType),
-            getWatchProviders(id, mediaType).catch(() => null)
-        ]);
-        
-        const validatedDetails = validateMediaDetails(tmdbData, mediaType);
-        setDetails(validatedDetails);
-        setWatchProviders(providersData);
-
-        if (mediaType === 'tv') {
-            const heuristicCount = getRecentEpisodeCount(validatedDetails);
-            if (heuristicCount > 0 && validatedDetails.last_episode_to_air) {
-                getSeasonDetails(validatedDetails.id, validatedDetails.last_episode_to_air.season_number)
-                    .then(seasonData => {
-                        const accurateCount = getRecentEpisodeCount(validatedDetails, seasonData);
-                        setRecentEpisodeCount(accurateCount);
-                    })
-                    .catch(e => {
-                        console.error("Failed to get accurate episode count, using heuristic.", e);
-                        setRecentEpisodeCount(heuristicCount);
-                    });
-            } else {
-                setRecentEpisodeCount(0);
-            }
-        }
-        if (mediaType === 'movie' && validatedDetails.belongs_to_collection) {
-            getCollectionDetails(validatedDetails.belongs_to_collection.id)
-                .then(setCollectionDetails)
-                .catch(e => console.error("Failed to fetch collection details", e));
-        }
-        
-    } catch (e: any) {
+      const data = await getMediaDetails(id, mediaType);
+      setDetails(data);
+    } catch (e) {
       console.error(e);
-      setError(e.message || 'Failed to load details.');
     } finally {
       setLoading(false);
     }
   }, [id, mediaType]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const fetchSeasonDetails = useCallback(async (seasonNumber: number) => {
-    if (mediaType !== 'tv' || seasonDetailsMap[seasonNumber]) return;
-    try {
-        const data = await getSeasonDetails(id, seasonNumber);
-        setSeasonDetailsMap(prev => ({ ...prev, [seasonNumber]: data }));
-    } catch (error) {
-        console.error(`Failed to fetch season ${seasonNumber}`, error);
+  const currentStatus = useMemo(() => {
+    // FIX: Cast Object.entries to [WatchStatus, TrackedItem[]][] to resolve type inference issue where 'list' was treated as unknown.
+    for (const [status, list] of Object.entries(trackedLists) as [WatchStatus, TrackedItem[]][]) {
+      if (list.some(item => item.id === id)) return status as WatchStatus;
     }
-  }, [id, mediaType, seasonDetailsMap]);
+    return null;
+  }, [trackedLists, id]);
 
-  const backdropSrcs = useMemo(() => {
-    const allBackdrops = (details?.images?.backdrops || []).filter(img => img.file_path);
-    if (allBackdrops.length === 0) {
-        return [customBackdropPath, details?.backdrop_path, collectionDetails?.backdrop_path]
-            .filter((p): p is string => !!p)
-            .map(p => getImageUrl(p, 'w1280'));
+  const isFavorited = favorites.some(f => f.id === id);
+  const userRating = ratings[id]?.rating || 0;
+
+  const nextEpisodeToWatch = useMemo(() => {
+    if (mediaType !== 'tv' || !details?.seasons) return null;
+    const progress = watchProgress[id] || {};
+    const sortedSeasons = [...details.seasons].filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
+    for (const season of sortedSeasons) {
+      for (let i = 1; i <= season.episode_count; i++) {
+        if (progress[season.season_number]?.[i]?.status !== 2) return { seasonNumber: season.season_number, episodeNumber: i };
+      }
     }
+    return null;
+  }, [mediaType, details, watchProgress, id]);
 
-    const idealRatio = 16 / 9;
-    const tolerance = 0.2;
+  if (loading) return <div className="p-20 text-center animate-pulse">Loading Cinema Details...</div>;
+  if (!details) return <div className="p-20 text-center">Failed to load content.</div>;
 
-    const idealImages = allBackdrops
-        .filter(img => Math.abs(img.aspect_ratio - idealRatio) < tolerance)
-        .sort((a, b) => b.vote_count - a.vote_count);
-
-    const otherImages = allBackdrops
-        .filter(img => Math.abs(img.aspect_ratio - idealRatio) >= tolerance)
-        .sort((a, b) => b.vote_count - a.vote_count);
-    
-    const sortedImagePaths = [...idealImages, ...otherImages].map(img => img.file_path);
-
-    const prioritizedPaths = [
-        customBackdropPath,
-        details?.backdrop_path,
-        ...sortedImagePaths,
-        collectionDetails?.backdrop_path,
-    ];
-
-    const uniquePaths = Array.from(new Set(prioritizedPaths.filter((p): p is string => !!p)));
-
-    return uniquePaths.map(p => getImageUrl(p, 'w1280'));
-  }, [details, customBackdropPath, collectionDetails]);
-
-  // --- EVENT HANDLERS ---
-  const handleTabClick = (tabId: ShowDetailTab) => {
-    setActiveTab(tabId);
-    if (tabId === 'cast' && !aggregateCredits && !isAggregateCreditsLoading && details?.seasons) {
-      setIsAggregateCreditsLoading(true);
-      getShowAggregateCredits(id, details.seasons)
-        .then(setAggregateCredits)
-        .catch(e => console.error("Failed to fetch aggregate credits", e))
-        .finally(() => setIsAggregateCreditsLoading(false));
-    }
-  };
-  
-  const handleToggleSeason = (seasonNumber: number) => {
-    const isCurrentlyExpanded = !!expandedSeasons[seasonNumber];
-    if (!isCurrentlyExpanded) {
-        fetchSeasonDetails(seasonNumber);
-    }
-    setExpandedSeasons(prev => ({ ...prev, [seasonNumber]: !isCurrentlyExpanded }));
-  };
-  
-  const handleOpenJournal = (season?: number, episode?: Episode) => {
-    setJournalModalState({ isOpen: true, season, episode });
-  };
-  
-  const handleOpenEpisodeDetail = (episode: Episode) => {
-    setEpisodeDetailModalState({ isOpen: true, episode });
-  };
-  
-  const handleEpisodeNav = (direction: 'next' | 'prev') => {
-    const currentEpisode = episodeDetailModalState.episode;
-    if (!currentEpisode || !details || !details.seasons) return;
-    const currentSeason = seasonDetailsMap[currentEpisode.season_number];
-    if (!currentSeason) return;
-    const currentIndex = currentSeason.episodes.findIndex(e => e.id === currentEpisode.id);
-    const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-    if (newIndex >= 0 && newIndex < currentSeason.episodes.length) {
-      setEpisodeDetailModalState({ isOpen: true, episode: currentSeason.episodes[newIndex] });
-    }
-  };
-
-  const handleUpdateStatus = (newStatus: WatchStatus | null) => {
-    if (!details) return;
-    const item: TrackedItem = {
-      id: details.id,
-      title: details.title || details.name || 'Untitled',
-      media_type: mediaType,
-      poster_path: details.poster_path,
-      genre_ids: details.genres?.map(g => g.id),
-    };
-    onUpdateLists(item, currentStatus, newStatus);
-  };
-  
-  const handleRefreshData = () => {
-    clearMediaCache(id, mediaType);
-    fetchData();
-  };
-  
-  const handleRateEpisode = (rating: number) => {
-    if (episodeRatingModalState.episode) {
-      onRateEpisode(id, episodeRatingModalState.episode.season_number, episodeRatingModalState.episode.episode_number, rating);
-    }
-    setEpisodeRatingModalState({ isOpen: false, episode: null });
-  };
-
-  const handleToggleFavoriteShowWithAnimation = () => {
-    if (!isFavorited) { // is being favorited
-        setAnimationDirection('up');
-    } else { // is being unfavorited
-        setAnimationDirection('down');
-    }
-    setIsAnimatingFavorite(false); // reset animation state
-    setTimeout(() => {
-        setIsAnimatingFavorite(true);
-    }, 10);
-    
-    if (details) {
-        // FIX: Argument of type 'TmdbMediaDetails' is not assignable to parameter of type 'TrackedItem'.
-        const trackedItem: TrackedItem = {
-            id: details.id,
-            title: details.title || details.name || 'Untitled',
-            media_type: details.media_type,
-            poster_path: details.poster_path,
-            genre_ids: details.genres?.map(g => g.id),
-        };
-        onToggleFavoriteShow(trackedItem);
-    }
-  };
-
-  const handleSaveWatchedDate = (data: { date: string; note: string }) => {
-    if (details && details.media_type === 'movie') {
-        onAddWatchHistory(details as TrackedItem, 0, 0, data.date, data.note);
-    }
-    setMarkAsWatchedModalOpen(false);
-  };
-
-  const handleLiveWatchForMovie = () => {
-    if (!details || details.media_type !== 'movie') return;
-    const mediaInfo: LiveWatchMediaInfo = {
-        id: details.id,
-        media_type: 'movie',
-        title: details.title || details.name || 'Untitled',
-        poster_path: details.poster_path,
-        runtime: details.runtime || 90, // Use a fallback runtime
-    };
-    onStartLiveWatch(mediaInfo);
-  };
-  
-    const handleUnmarkWatched = () => {
-        if(details && details.media_type === 'movie'){
-            onUnmarkMovieWatched(details.id);
-        }
-    };
-    
-    const handleMarkAll = () => {
-        if (details) {
-            onMarkAllWatched(id, details as TrackedItem);
-        }
-    };
-    const handleUnmarkAll = () => {
-        if (details) {
-            onUnmarkAllWatched(id);
-        }
-    };
-  
-  const handleDiscussEpisode = (seasonNumber: number, episodeNumber: number) => {
-      setActiveTab('comments');
-      setActiveCommentThread(`tv-${id}-s${seasonNumber}-e${episodeNumber}`);
-  };
-
-
-  // --- RENDER LOGIC ---
-  if (loading) return <ShowDetailSkeleton />;
-  if (error || !details) return <div className="text-center py-20"><p className="text-red-500">{error || "Details not found."}</p><button onClick={onBack} className="mt-4 px-4 py-2 bg-bg-secondary rounded-lg">Back</button></div>;
-
-  const { title, name, overview } = details;
-  const displayTitle = title || name;
-  const isNewMovie = mediaType === 'movie' && isNewRelease(details.release_date);
-  
-  const posterSrcs = [
-      customPosterPath,
-      ...sortedPosters.map(img => img.file_path),
-      details.poster_path,
-  ].filter((p): p is string => !!p).map(p => getImageUrl(p, 'w342'));
-
-  const tabs: { id: ShowDetailTab; label: string; condition: boolean }[] = [
-    { id: 'seasons', label: 'Seasons', condition: mediaType === 'tv' && !!details.seasons },
-    { id: 'comments', label: 'Discussions', condition: true },
-    { id: 'cast', label: 'Cast & Crew', condition: true },
-    { id: 'achievements', label: 'Achievements', condition: true },
-    { id: 'watch', label: 'Where to Watch', condition: !!watchProviders && !!watchProviders.results.US },
-    { id: 'moreInfo', label: mediaType === 'movie' ? 'Movie Info' : 'More Info', condition: true },
-    { id: 'recommendations', label: 'You May Also Like', condition: !!details.recommendations && details.recommendations.results.length > 0 },
-    { id: 'customize', label: 'Customize', condition: !!details.images && (details.images.posters.length > 0 || details.images.backdrops.length > 0) },
-  ];
-
-  const renderTabContent = () => {
-    switch(activeTab) {
-      case 'seasons': return (
-        <div className="space-y-4">
-            {details.seasons?.map(season => (
-                <SeasonAccordion 
-                    key={season.id} 
-                    season={season}
-                    showId={id} 
-                    isExpanded={!!expandedSeasons[season.season_number]}
-                    onToggle={() => handleToggleSeason(season.season_number)}
-                    seasonDetails={seasonDetailsMap[season.season_number]}
-                    watchProgress={watchProgress}
-                    onToggleEpisode={(...args) => onToggleEpisode(args[0], args[1], args[2], args[3], details as TrackedItem, args[5])}
-                    onMarkPreviousEpisodesWatched={(showId, seasonNumber, lastEp) => onMarkPreviousEpisodesWatched(showId, seasonNumber, lastEp)}
-                    onOpenJournal={handleOpenJournal}
-                    onOpenEpisodeDetail={handleOpenEpisodeDetail}
-                    showDetails={details}
-                    showPosterPath={details.poster_path}
-                    onMarkSeasonWatched={(showId, seasonNum) => onMarkSeasonWatched(showId, seasonNum, details as TrackedItem)}
-                    onUnmarkSeasonWatched={onUnmarkSeasonWatched}
-                    favoriteEpisodes={favoriteEpisodes}
-                    onToggleFavoriteEpisode={onToggleFavoriteEpisode}
-                    onStartLiveWatch={onStartLiveWatch}
-                    onSaveJournal={(showId, season, ep, entry) => onSaveJournal(showId, season, ep, entry ? entry : null)}
-                    episodeRatings={episodeRatings}
-                    onOpenEpisodeRatingModal={(ep) => setEpisodeRatingModalState({ isOpen: true, episode: ep })}
-                    onAddWatchHistory={onAddWatchHistory}
-                    onDiscussEpisode={handleDiscussEpisode}
-                    comments={comments}
-                    onImageClick={setImageViewerSrc}
-                    episodeNotes={episodeNotes}
-                    onSaveEpisodeNote={onSaveEpisodeNote}
-                    showRatings={showRatings}
-                    seasonRatings={seasonRatings}
-                    onRateSeason={onRateSeason}
-                />
-            ))}
-        </div>
-      );
-      case 'comments': return <CommentsTab details={details} allUsers={allUsers} comments={comments} currentUser={currentUser} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={fetchSeasonDetails} onSaveComment={onSaveComment} onToggleLikeComment={onToggleLikeComment} onDeleteComment={onDeleteComment} activeThread={activeCommentThread} setActiveThread={setActiveCommentThread} />;
-      case 'cast': 
-        if (isAggregateCreditsLoading) {
-            return <div className="text-center py-8">Loading comprehensive cast & crew data... This may take a moment.</div>;
-        }
-        return <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />;
-      case 'achievements': return <ShowAchievementsTab details={details} userData={userDataForAchievements} />;
-      case 'watch': return <WhereToWatch providers={watchProviders} />;
-      case 'moreInfo': return <MoreInfo details={details} onSelectShow={onSelectShow} />;
-      case 'recommendations': return <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} />;
-      case 'customize': return <CustomizeTab posterUrl={getImageUrl(customPosterPath || details.poster_path, 'w342')} backdropUrl={getImageUrl(customBackdropPath || details.backdrop_path, 'w780')} onOpenPosterSelector={() => setImageSelectorModalState({isOpen: true, initialTab: 'posters'})} onOpenBackdropSelector={() => setImageSelectorModalState({isOpen: true, initialTab: 'backdrops'})} />;
-      default: return null;
-    }
-  };
-  
-    const isCompleted = currentStatus === 'completed';
-
-  // --- FINAL RENDER ---
   return (
-    <>
-      <MarkAsWatchedModal
-        isOpen={markAsWatchedModalOpen}
-        onClose={() => setMarkAsWatchedModalOpen(false)}
-        mediaTitle={displayTitle || ''}
-        onSave={handleSaveWatchedDate}
-      />
-      <NotesModal
-        isOpen={isNotesModalOpen}
-        onClose={() => setIsNotesModalOpen(false)}
-        mediaTitle={displayTitle || ''}
-        initialNotes={mediaNotes[id] ? [{id: 'main', text: mediaNotes[id], timestamp: ''}] : []}
-        onSave={(notes) => onSaveNote(id, notes.length > 0 ? notes[0].text : '')}
-      />
-      <JournalModal isOpen={journalModalState.isOpen} onClose={() => setJournalModalState({ isOpen: false })} onSave={(entry, s, e) => onSaveJournal(id, s, e, entry)} mediaDetails={details} initialSeason={journalModalState.season} initialEpisode={journalModalState.episode} watchProgress={watchProgress} />
-      <ImageSelectorModal isOpen={imageSelectorModalState.isOpen} onClose={() => setImageSelectorModalState({ isOpen: false })} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => onSetCustomImage(id, type, path)} initialTab={imageSelectorModalState.initialTab} />
-      <RatingModal isOpen={ratingModalOpen} onClose={() => setRatingModalOpen(false)} onSave={(rating) => onRateItem(id, rating)} currentRating={userRating} mediaTitle={displayTitle || ''} />
-      <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} history={history.filter(h => h.id === id)} mediaTitle={displayTitle || ''} onDeleteHistoryItem={onDeleteHistoryItem} onClearMediaHistory={onClearMediaHistory} mediaDetails={details} />
-
-      {imageViewerSrc && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImageViewerSrc(null)}>
-              <img src={imageViewerSrc} alt="Season Poster" className="max-w-full max-h-full rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
-          </div>
-      )}
-
-      {episodeDetailModalState.episode && (
-        <EpisodeDetailModal 
-            isOpen={episodeDetailModalState.isOpen}
-            onClose={() => setEpisodeDetailModalState({isOpen: false, episode: null})}
-            episode={episodeDetailModalState.episode}
-            showDetails={details}
-            seasonDetails={seasonDetailsMap[episodeDetailModalState.episode.season_number]}
-            isWatched={watchProgress[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number]?.status === 2}
-            onToggleWatched={() => onToggleEpisode(id, episodeDetailModalState.episode!.season_number, episodeDetailModalState.episode!.episode_number, watchProgress[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number]?.status || 0, details as TrackedItem, episodeDetailModalState.episode.name)}
-            onOpenJournal={() => handleOpenJournal(episodeDetailModalState.episode?.season_number, episodeDetailModalState.episode!)}
-            isFavorited={!!favoriteEpisodes[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number]}
-            onToggleFavorite={() => onToggleFavoriteEpisode(id, episodeDetailModalState.episode!.season_number, episodeDetailModalState.episode!.episode_number)}
-            onStartLiveWatch={onStartLiveWatch}
-            onSaveJournal={(showId, season, ep, entry) => onSaveJournal(showId, season, ep, entry ? entry : null)}
-            watchProgress={watchProgress}
-            onNext={() => handleEpisodeNav('next')}
-            onPrevious={() => handleEpisodeNav('prev')}
-            onAddWatchHistory={onAddWatchHistory}
-            onRate={() => setEpisodeRatingModalState({ isOpen: true, episode: episodeDetailModalState.episode })}
-            episodeRating={episodeRatings[id]?.[episodeDetailModalState.episode.season_number]?.[episodeDetailModalState.episode.episode_number] || 0}
-            onDiscuss={() => handleDiscussEpisode(episodeDetailModalState.episode!.season_number, episodeDetailModalState.episode!.episode_number)}
-            episodeNotes={episodeNotes}
-            showRatings={showRatings}
-        />
-      )}
-      {episodeRatingModalState.episode && (
-          <RatingModal
-            isOpen={episodeRatingModalState.isOpen}
-            onClose={() => setEpisodeRatingModalState({ isOpen: false, episode: null })}
-            onSave={handleRateEpisode}
-            currentRating={episodeRatings[id]?.[episodeRatingModalState.episode.season_number]?.[episodeRatingModalState.episode.episode_number] || 0}
-            mediaTitle={`S${episodeRatingModalState.episode.season_number} E${episodeRatingModalState.episode.episode_number}: ${episodeRatingModalState.episode.name}`}
-          />
-      )}
+    <div className="animate-fade-in max-w-5xl mx-auto px-4">
+      <header className="py-4 flex items-center space-x-4">
+        <button onClick={onBack} className="p-2 bg-bg-secondary rounded-full"><ChevronLeftIcon className="w-6 h-6" /></button>
+        <h1 className="text-2xl font-bold">{details.title || details.name}</h1>
+      </header>
       
-      <div className={`animate-fade-in ${isModal ? 'max-w-4xl mx-auto' : ''}`}>
-        {isAnimatingFavorite && (
-            <FavoriteAnimation
-                onAnimationEnd={() => setIsAnimatingFavorite(false)}
-                genreId={details?.genres?.[0]?.id}
-                posterPath={customPosterPath || details?.poster_path || null}
-                genresMap={genres}
-                direction={animationDirection}
-            />
-        )}
-        {/* --- Backdrop and Header --- */}
-        <div className="relative mb-8">
-            {/* FIX: Add the required 'placeholder' prop to the 'FallbackImage' component. */}
-            <FallbackImage 
-                srcs={backdropSrcs} 
-                placeholder={PLACEHOLDER_BACKDROP_LARGE} 
-                alt={`${displayTitle} backdrop`} 
-                className="w-full h-60 sm:h-80 md:h-96 object-cover"
-            />
-          <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent"></div>
-          {!isModal && (
-            <button onClick={onBack} className="absolute top-4 left-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-40">
-                <ChevronLeftIcon className="h-6 w-6" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="col-span-1">
+          <img src={getImageUrl(details.poster_path, 'w500')} className="rounded-xl shadow-2xl w-full" alt="Poster" />
+          <div className="mt-4 flex flex-col space-y-2">
+            <div className="flex items-center justify-between">
+                {showRatings && details.vote_average && <ScoreStar score={details.vote_average} />}
+                <button onClick={() => onRateItem(id, userRating === 5 ? 0 : 5)} className={`p-3 rounded-xl bg-bg-secondary ${userRating > 0 ? 'text-yellow-400' : ''}`}><StarIcon className="w-6 h-6" /></button>
+            </div>
+            <button onClick={() => onUpdateLists(details as any, currentStatus, currentStatus === 'watching' ? null : 'watching')} className={`w-full py-3 rounded-xl font-bold ${currentStatus === 'watching' ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary'}`}>
+                {currentStatus === 'watching' ? 'Currently Watching' : 'Add to Watching'}
             </button>
-          )}
-          {isModal && (
-              <button onClick={onBack} className="absolute top-4 right-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-40">
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-          )}
+          </div>
         </div>
         
-        {/* --- Title & Info Section --- */}
-        <div className="container mx-auto px-4 -mt-24 sm:-mt-32 relative z-10">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
-            <div className="flex-shrink-0">
-                <FallbackImage 
-                    srcs={posterSrcs} 
-                    placeholder={PLACEHOLDER_POSTER}
-                    alt={`${displayTitle} poster`} 
-                    className="w-48 sm:w-56 aspect-[2/3] object-cover rounded-lg shadow-xl border-4 border-bg-primary"
-                />
-            </div>
-            <div className="w-full">
-                <h1 className="text-3xl sm:text-4xl font-bold text-text-primary [text-shadow:0_2px_4px_rgba(0,0,0,0.5)]">{displayTitle}</h1>
-                 {isNewMovie && (
-                    <div className="mt-2 flex justify-center sm:justify-start">
-                        <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300">
-                            New Release
-                        </span>
-                    </div>
-                )}
-                <div className="flex items-center justify-center sm:justify-start mt-2 gap-4">
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-sm text-text-secondary">
-                        <span>{details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4)}</span>
-                        {contentRating && (
-                            <>
-                                <span className="text-text-secondary/50">&bull;</span>
-                                <span className="border border-text-secondary/50 px-1.5 rounded-sm text-xs font-semibold">{contentRating}</span>
-                            </>
-                        )}
-                        <span className="text-text-secondary/50">&bull;</span>
-                        <span>{details.genres?.map(g => g.name).join(', ')}</span>
-                        {runtimeDisplay && <>
-                            <span className="text-text-secondary/50">&bull;</span>
-                            <span>{runtimeDisplay}</span>
-                        </>}
-                    </div>
-                </div>
-                {recentEpisodeCount > 0 && (
-                    <div className="mt-2 flex justify-center sm:justify-start">
-                        <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-600 text-white shadow-md">
-                            {recentEpisodeCount > 1 ? `${recentEpisodeCount} New Episodes` : 'New Episode'}
-                        </span>
-                    </div>
-                )}
-                <dl className="mt-2 flex flex-col items-center sm:items-start space-y-1">
-                    {showStatusInfo && (
-                        <div className="flex items-center">
-                            <dt className="w-20 text-xs font-semibold text-text-secondary uppercase text-right pr-2">Status</dt>
-                            <dd>
-                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${showStatusInfo.color}`}>
-                                    {showStatusInfo.text}
-                                </span>
-                            </dd>
-                        </div>
-                    )}
-                    {renewalStatusInfo && (
-                        <div className="flex items-center">
-                            <dt className="w-20 text-xs font-semibold text-text-secondary uppercase text-right pr-2">Renewal</dt>
-                            <dd>
-                                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-700 text-green-100">
-                                    {renewalStatusInfo.text}
-                                </span>
-                            </dd>
-                        </div>
-                    )}
-                    {(() => {
-                        const premiereDate = renewalStatusInfo?.date || showStatusInfo?.date;
-                        let premiereLabel: string | null = null;
-                        if (renewalStatusInfo?.date) {
-                            premiereLabel = 'Premieres';
-                        } else if (showStatusInfo?.text === 'Upcoming') {
-                            premiereLabel = 'Premieres';
-                        } else if (showStatusInfo?.text === 'In Season') {
-                            premiereLabel = 'Next Episode';
-                        }
-                        
-                        if (premiereDate && premiereLabel) {
-                            return (
-                                <div className="flex items-center">
-                                    <dt className="w-20 text-xs font-semibold text-text-secondary uppercase text-right pr-2">{premiereLabel}</dt>
-                                    <dd>
-                                        <span className="text-xs font-semibold text-text-primary">
-                                            {new Date(premiereDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-                                        </span>
-                                    </dd>
-                                </div>
-                            );
-                        }
-                        return null;
-                    })()}
-                </dl>
-            </div>
-          </div>
-
-          {/* --- Action Buttons --- */}
-            <div className="mt-6 space-y-2">
-                <div className="h-12">
-                    <StatusSelector currentStatus={currentStatus} onUpdateStatus={handleUpdateStatus} />
-                </div>
-                {mediaNotes[id] && (
-                    <div className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg -rotate-1 transform border border-yellow-300/50 dark:border-yellow-700/50 cursor-pointer" onClick={() => setIsNotesModalOpen(true)}>
-                        <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-1 text-sm">My Note</h4>
-                        <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm line-clamp-3">{mediaNotes[id]}</p>
-                    </div>
-                 )}
-                {mediaType === 'movie' ? (
-                    <>
-                        <div className="grid grid-cols-4 gap-2">
-                            <ActionButton
-                                icon={<CheckCircleIcon className="w-7 h-7" />}
-                                label={isCompleted ? "Unmark Watched" : "Mark Watched"}
-                                onClick={isCompleted ? handleUnmarkWatched : () => onMarkMediaAsWatched(details as TrackedItem)}
-                                isActive={isCompleted}
-                            />
-                            <ActionButton icon={<CalendarIcon className="w-7 h-7" />} label="Log Watch" onClick={() => setMarkAsWatchedModalOpen(true)} />
-                            <ActionButton icon={<PlayCircleIcon className="w-7 h-7" />} label="Live Watch" onClick={handleLiveWatchForMovie} />
-                            <ActionButton icon={<HeartIcon filled={isFavorited} className="w-7 h-7" />} label={isFavorited ? 'Favorited' : 'Favorite'} onClick={handleToggleFavoriteShowWithAnimation} isActive={isFavorited} />
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                            <ActionButton icon={<StarIcon filled={userRating > 0} className="w-7 h-7" />} label={userRating ? `Rated ${userRating}/5` : 'Rate'} onClick={() => setRatingModalOpen(true)} isActive={userRating > 0} />
-                            <ActionButton icon={<BookOpenIcon className="w-7 h-7" />} label="Journal" onClick={() => handleOpenJournal()} />
-                            <ActionButton icon={<PencilSquareIcon className="w-7 h-7" />} label="Notes" onClick={() => setIsNotesModalOpen(true)} isActive={!!mediaNotes[id]}/>
-                            <ActionButton icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} label="Discuss" onClick={() => setActiveTab('comments')} />
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                             <ActionButton icon={<ClockIcon className="w-7 h-7" />} label="History" onClick={() => setIsHistoryModalOpen(true)} />
-                            <PageChangeRequest mediaTitle={displayTitle || ''} mediaId={id}/>
-                            <ActionButton icon={<ArrowPathIcon className="w-7 h-7" />} label="Refresh" onClick={handleRefreshData} />
-                            <ActionButton icon={<ListBulletIcon className="w-7 h-7" />} label="Add to..." onClick={() => onOpenCustomListModal(details)} />
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="grid grid-cols-4 gap-2">
-                            <ActionButton icon={<HeartIcon filled={isFavorited} className="w-7 h-7" />} label={isFavorited ? 'Favorited' : 'Favorite'} onClick={handleToggleFavoriteShowWithAnimation} isActive={isFavorited} />
-                            <ActionButton icon={<StarIcon filled={userRating > 0} className="w-7 h-7" />} label={userRating ? `Rated ${userRating}/5` : 'Rate'} onClick={() => setRatingModalOpen(true)} isActive={userRating > 0} />
-                            <ActionButton icon={<BookOpenIcon className="w-7 h-7" />} label="Journal" onClick={() => handleOpenJournal()} />
-                            <ActionButton icon={<PencilSquareIcon className="w-7 h-7" />} label="Notes" onClick={() => setIsNotesModalOpen(true)} isActive={!!mediaNotes[id]}/>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                            <ActionButton icon={<ListBulletIcon className="w-7 h-7" />} label="Add to..." onClick={() => onOpenCustomListModal(details)} />
-                            <ActionButton icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} label="Discuss" onClick={() => setActiveTab('comments')} />
-                            <div className="col-span-2">
-                                <ActionButton
-                                    icon={<CheckCircleIcon className="w-7 h-7" />}
-                                    label={isCompleted ? "Unmark All Watched" : "Mark All Watched"}
-                                    onClick={isCompleted ? handleUnmarkAll : handleMarkAll}
-                                    isDestructive={isCompleted}
-                                    isActive={isCompleted}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                           <ActionButton icon={<ClockIcon className="w-7 h-7" />} label="History" onClick={() => setIsHistoryModalOpen(true)} />
-                           <div className="col-start-2">
-                                <PageChangeRequest mediaTitle={displayTitle || ''} mediaId={id}/>
-                           </div>
-                           <ActionButton icon={<ArrowPathIcon className="w-7 h-7" />} label="Refresh" onClick={handleRefreshData} />
-                        </div>
-                    </>
-                )}
-            </div>
-            
-        </div>
-
-        {/* --- Main Content Area --- */}
-        <div className="container mx-auto px-4 mt-8">
-            <section className="mb-8">
-                <h2 className="text-2xl font-bold text-text-primary mb-4">Overview</h2>
-                <p className="text-text-secondary whitespace-pre-wrap">{overview || 'No description available.'}</p>
-            </section>
-            
-            {details.media_type === 'tv' && (
-                <OverallProgress details={details} watchProgress={watchProgress} />
-            )}
-
-            {nextEpisodeToWatch && (
-              <div className="mb-8">
-                <NextUpWidget showId={id} details={details} nextEpisodeToWatch={nextEpisodeToWatch} onToggleEpisode={(...args) => onToggleEpisode(args[0], args[1], args[2], args[3], details as TrackedItem, args[5])} onOpenJournal={handleOpenJournal} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} watchProgress={watchProgress} onSaveJournal={onSaveJournal} onSaveComment={(key, text) => onSaveComment({ mediaKey: key, text, parentId: null, isSpoiler: false })} comments={comments} onDiscussEpisode={handleDiscussEpisode} />
-              </div>
-            )}
-            
-            {collectionDetails && <MovieCollection collectionId={collectionDetails.id} currentMovieId={id} onSelectMovie={onSelectShow} />}
-
+        <div className="col-span-2 space-y-6">
+          <section>
+            <h2 className="text-xl font-bold mb-2">Overview</h2>
+            <p className="text-text-secondary leading-relaxed">{details.overview}</p>
+          </section>
+          
+          {mediaType === 'tv' && details.seasons && (
             <section>
-              <div className="border-b border-bg-secondary/50 mb-6">
-                  <div className="flex space-x-2 overflow-x-auto hide-scrollbar pb-2">
-                      {tabs.filter(t => t.condition).map(tab => (
-                          <button
-                            key={tab.id}
-                            onClick={() => handleTabClick(tab.id)}
-                            className={`px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${
-                              activeTab === tab.id
-                                ? 'bg-accent-gradient text-on-accent'
-                                : 'bg-bg-secondary text-text-secondary hover:brightness-125'
-                            }`}
-                          >
-                              {tab.label}
-                          </button>
-                      ))}
-                  </div>
+              <h2 className="text-xl font-bold mb-4">Seasons</h2>
+              <div className="space-y-4">
+                {details.seasons.filter(s => s.season_number > 0).map(season => (
+                    <SeasonAccordion key={season.id} season={season} showId={id} isExpanded={false} onToggle={() => {}} seasonDetails={undefined} watchProgress={watchProgress} onToggleEpisode={props.onToggleEpisode} onMarkPreviousEpisodesWatched={props.onMarkPreviousEpisodesWatched} onOpenJournal={() => {}} onOpenEpisodeDetail={() => {}} showPosterPath={details.poster_path} onMarkSeasonWatched={props.onMarkSeasonWatched} onUnmarkSeasonWatched={props.onUnmarkSeasonWatched} showDetails={details} favoriteEpisodes={props.favoriteEpisodes} onToggleFavoriteEpisode={props.onToggleFavoriteEpisode} onStartLiveWatch={props.onStartLiveWatch} onSaveJournal={props.onSaveJournal} episodeRatings={props.episodeRatings} onOpenEpisodeRatingModal={() => {}} onAddWatchHistory={props.onAddWatchHistory} onDiscussEpisode={() => {}} comments={props.comments} onImageClick={() => {}} onSaveEpisodeNote={props.onSaveEpisodeNote} showRatings={showRatings} seasonRatings={props.seasonRatings} onRateSeason={props.onRateSeason} />
+                ))}
               </div>
-              {renderTabContent()}
             </section>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

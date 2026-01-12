@@ -1,209 +1,68 @@
-import { useEffect, useMemo, useRef } from 'react';
+
+import { useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { themes as builtInThemes, holidayThemes } from '../themes';
 import { Theme } from '../types';
 
-// --- Dynamic Date Calculation ---
+// FIX: Added getNextHoliday helper to calculate the next holiday based on the current date.
+export const getNextHoliday = (date: Date) => {
+  const currentYear = date.getFullYear();
+  
+  const holidays = [
+    { name: "New Year's Eve", month: 11, day: 31, id: 'holiday-new-years-eve', daysBefore: 1 },
+    { name: 'New Year', month: 0, day: 1, id: 'holiday-new-year', daysBefore: 1 },
+    { name: "Valentine's Day", month: 1, day: 14, id: 'holiday-valentines', daysBefore: 3 },
+    { name: 'Easter', month: 3, day: 9, id: 'holiday-easter', daysBefore: 3 }, // Fixed for 2025
+    { name: "Mother's Day", month: 4, day: 11, id: 'holiday-mothers-day', daysBefore: 3 }, // 2025
+    { name: "Father's Day", month: 5, day: 15, id: 'holiday-fathers-day', daysBefore: 3 }, // 2025
+    { name: "Independence Day", month: 6, day: 4, id: 'holiday-independence-day', daysBefore: 3 },
+    { name: 'Halloween', month: 9, day: 31, id: 'holiday-halloween', daysBefore: 7 },
+    { name: 'Thanksgiving', month: 10, day: 27, id: 'holiday-thanksgiving', daysBefore: 3 }, // 2025
+    { name: 'Christmas', month: 11, day: 25, id: 'holiday-christmas', daysBefore: 7 },
+  ];
 
-const getEaster = (year: number): Date => {
-  // Butcher's algorithm to find Easter day
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1; // month is 0-indexed
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month, day);
+  const upcomingHolidays = holidays.map(h => {
+    const holidayDate = new Date(currentYear, h.month, h.day);
+    if (holidayDate < date && (date.getMonth() !== h.month || date.getDate() !== h.day)) {
+        holidayDate.setFullYear(currentYear + 1);
+    }
+    const startDate = new Date(holidayDate);
+    startDate.setDate(holidayDate.getDate() - h.daysBefore);
+    return { ...h, date: holidayDate, startDate };
+  }).sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return upcomingHolidays[0];
 };
 
-const getNthDayOfMonth = (n: number, dayOfWeek: number, month: number, year: number): Date => {
-    const d = new Date(year, month, 1);
-    const day = d.getDay();
-    // Find the first occurrence of the dayOfWeek
-    d.setDate(1 + (dayOfWeek - day + 7) % 7);
-    // Add (n-1) weeks
-    d.setDate(d.getDate() + (n - 1) * 7);
-    return d;
-};
-
-
-// --- Holiday Definitions ---
-
-interface HolidayDefinition {
-    name: string;
-    themeId: string;
-    getPeriod: (year: number) => { startDate: Date; endDate: Date };
-}
-
-const holidays: HolidayDefinition[] = [
-    {
-        name: "New Year's Eve",
-        themeId: 'holiday-new-years-eve',
-        getPeriod: (year) => ({ startDate: new Date(year, 11, 26), endDate: new Date(year, 11, 31, 23, 59, 59) }),
-    },
-    {
-        name: 'New Year',
-        themeId: 'holiday-new-year',
-        getPeriod: (year) => ({ startDate: new Date(year, 0, 1), endDate: new Date(year, 0, 14, 23, 59, 59) }),
-    },
-    {
-        name: "Valentine's Day",
-        themeId: 'holiday-valentines',
-        getPeriod: (year) => ({ startDate: new Date(year, 1, 1), endDate: new Date(year, 1, 14, 23, 59, 59) }),
-    },
-    {
-        name: 'Easter',
-        themeId: 'holiday-easter',
-        getPeriod: (year) => {
-            const easterDate = getEaster(year);
-            const startDate = new Date(year, 3, 1); // April 1st
-            const endDate = new Date(easterDate);
-            endDate.setHours(23, 59, 59);
-            return { startDate, endDate };
-        },
-    },
-    {
-        name: "Mother's Day",
-        themeId: 'holiday-mothers-day',
-        getPeriod: (year) => {
-            const mothersDay = getNthDayOfMonth(2, 0, 4, year); // 2nd Sunday in May
-            const startDate = new Date(mothersDay);
-            startDate.setDate(mothersDay.getDate() - 14);
-            const endDate = new Date(mothersDay);
-            endDate.setHours(23, 59, 59);
-            return { startDate, endDate };
-        },
-    },
-    {
-        name: "Father's Day",
-        themeId: 'holiday-fathers-day',
-        getPeriod: (year) => {
-            const fathersDay = getNthDayOfMonth(3, 0, 5, year); // 3rd Sunday in June
-            const startDate = new Date(fathersDay);
-            startDate.setDate(fathersDay.getDate() - 14);
-            const endDate = new Date(fathersDay);
-            endDate.setHours(23, 59, 59);
-            return { startDate, endDate };
-        },
-    },
-    {
-        name: 'Independence Day',
-        themeId: 'holiday-independence-day',
-        getPeriod: (year) => ({ startDate: new Date(year, 6, 1), endDate: new Date(year, 6, 4, 23, 59, 59) }),
-    },
-    {
-        name: 'Halloween',
-        themeId: 'holiday-halloween',
-        getPeriod: (year) => ({ startDate: new Date(year, 9, 18), endDate: new Date(year, 9, 31, 23, 59, 59) }),
-    },
-    {
-        name: 'Thanksgiving',
-        themeId: 'holiday-thanksgiving',
-        getPeriod: (year) => {
-            const thanksgivingDay = getNthDayOfMonth(4, 4, 10, year); // 4th Thursday in Nov
-            const startDate = new Date(thanksgivingDay);
-            startDate.setDate(thanksgivingDay.getDate() - 14);
-            const endDate = new Date(thanksgivingDay);
-            endDate.setHours(23, 59, 59);
-            return { startDate, endDate };
-        },
-    },
-    {
-        name: 'Christmas',
-        themeId: 'holiday-christmas',
-        getPeriod: (year) => ({ startDate: new Date(year, 11, 11), endDate: new Date(year, 11, 25, 23, 59, 59) }),
-    },
-];
-
-const getActiveHolidayTheme = (date: Date): { name: string; themeId: string } | null => {
-    const year = date.getFullYear();
-    for (const holiday of holidays) {
-        const { startDate, endDate } = holiday.getPeriod(year);
-        if (date >= startDate && date <= endDate) {
-            return { name: holiday.name, themeId: holiday.themeId };
-        }
-    }
-    // Also check for previous year's New Year's Eve theme if it's early January
-    const prevYear = year - 1;
-    const newYearsEvePrevYear = holidays.find(h => h.name === "New Year's Eve");
-    if (newYearsEvePrevYear) {
-        const { startDate, endDate } = newYearsEvePrevYear.getPeriod(prevYear);
-         if (date >= startDate && date <= endDate) {
-            return { name: newYearsEvePrevYear.name, themeId: newYearsEvePrevYear.themeId };
-        }
-    }
-    
-    return null;
-};
-
-export const getNextHoliday = (date: Date): {name: string, date: Date, startDate: Date} | null => {
-    const year = date.getFullYear();
-    const upcomingThisYear = holidays
-        .map(h => ({ name: h.name, startDate: h.getPeriod(year).startDate }))
-        .filter(h => h.startDate > date)
-        .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-    
-    if (upcomingThisYear.length > 0) {
-        return { name: upcomingThisYear[0].name, date: upcomingThisYear[0].startDate, startDate: upcomingThisYear[0].startDate };
-    }
-
-    const nextYear = year + 1;
-    const upcomingNextYear = holidays
-        .map(h => ({ name: h.name, startDate: h.getPeriod(nextYear).startDate }))
-        .sort((a,b) => a.startDate.getTime() - b.startDate.getTime());
-        
-    if (upcomingNextYear.length > 0) {
-        return { name: upcomingNextYear[0].name, date: upcomingNextYear[0].startDate, startDate: upcomingNextYear[0].startDate };
-    }
-
-    return null;
-}
-
-interface HolidayInfo {
-    isHoliday: boolean;
-    holidayName: string | null;
-}
-
-export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolean): [Theme, (themeId: string) => void, HolidayInfo] {
+// FIX: Updated useTheme to accept autoHolidayThemesEnabled and return correct theme based on current date if enabled.
+export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolean = false): [Theme, (themeId: string) => void] {
   const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'original-dark');
   const prevThemeIdRef = useRef<string | null>(null);
 
   const allThemes = useMemo(() => [...builtInThemes, ...holidayThemes, ...customThemes], [customThemes]);
-
-  const activeHoliday = useMemo(() => {
-    if (!autoHolidayThemesEnabled) return null;
-    return getActiveHolidayTheme(new Date());
-  }, [autoHolidayThemesEnabled]);
-
-  const finalThemeId = activeHoliday ? activeHoliday.themeId : themeId;
-
-  const activeTheme = allThemes.find(t => t.id === finalThemeId) || allThemes.find(t => t.id === themeId) || builtInThemes[0];
   
-  const holidayInfo: HolidayInfo = {
-      isHoliday: !!activeHoliday,
-      holidayName: activeHoliday ? activeHoliday.name : null
-  };
-
+  const activeTheme = useMemo(() => {
+    if (autoHolidayThemesEnabled) {
+      const now = new Date();
+      const nextHoliday = getNextHoliday(now);
+      const holidayTheme = holidayThemes.find(t => t.id === nextHoliday.id);
+      
+      if (holidayTheme && now >= nextHoliday.startDate && now <= nextHoliday.date) {
+        return holidayTheme;
+      }
+    }
+    return allThemes.find(t => t.id === themeId) || builtInThemes[0];
+  }, [themeId, allThemes, autoHolidayThemesEnabled]);
+  
   useEffect(() => {
     const root = window.document.documentElement;
     const body = document.body;
 
-    // Clean up previous theme class
     if (prevThemeIdRef.current) {
         body.classList.remove(`theme-${prevThemeIdRef.current}`);
     }
-    // Add current theme class
     body.classList.add(`theme-${activeTheme.id}`);
     prevThemeIdRef.current = activeTheme.id;
-
 
     root.classList.remove('light', 'dark');
     root.classList.add(activeTheme.base);
@@ -219,29 +78,6 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
     root.style.setProperty('--color-bg-secondary', activeTheme.colors.bgSecondary);
     root.style.setProperty('--color-bg-backdrop', activeTheme.colors.bgBackdrop);
     root.style.setProperty('--on-accent', activeTheme.colors.onAccent || (activeTheme.base === 'dark' ? '#FFFFFF' : '#000000'));
-    
-    // For pattern themes, we need to add specific properties to the body
-    // because the main 'background' property in CSS doesn't cover everything.
-    if (activeTheme.colors.patternBgSize) {
-        // The bgGradient for patterns already includes the overlay color.
-        // This just adds sizing and positioning for the pattern part.
-        document.body.style.backgroundSize = activeTheme.colors.patternBgSize;
-        document.body.style.backgroundColor = activeTheme.colors.patternBgColor || 'transparent'; // base color behind pattern
-        document.body.style.backgroundPosition = activeTheme.colors.patternBgPosition || '0 0';
-    } else {
-        // IMPORTANT: Reset these properties for non-pattern themes
-        document.body.style.backgroundSize = '';
-        document.body.style.backgroundColor = '';
-        document.body.style.backgroundPosition = '';
-    }
-
-    // Special class for Halloween theme
-    if (activeTheme.id === 'holiday-halloween') {
-        document.body.classList.add('halloween-theme-active');
-    } else {
-        document.body.classList.remove('halloween-theme-active');
-    }
-
   }, [activeTheme]);
 
   const setTheme = (newThemeId: string) => {
@@ -250,5 +86,5 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
     }
   };
 
-  return [activeTheme, setTheme, holidayInfo];
+  return [activeTheme, setTheme];
 }

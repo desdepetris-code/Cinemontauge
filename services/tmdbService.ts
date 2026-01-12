@@ -1,3 +1,4 @@
+
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
 import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem, NewlyPopularEpisode, CastMember, CrewMember } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
@@ -136,7 +137,7 @@ export const searchMedia = async (query: string): Promise<TmdbMedia[]> => {
     } else {
         // Original logic for searches without a year
         const data = await fetchFromTmdb<{ results: (TmdbMedia & { media_type: 'movie' | 'tv' | 'person' })[] }>(`search/multi?query=${encodeURIComponent(searchTerm)}`);
-        return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
+        return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv') as TmdbMedia[];
     }
 };
 
@@ -148,7 +149,7 @@ export const searchMediaPaginated = async (
     const searchTerm = aliasMap[normalizedQuery] || query;
     const data = await fetchFromTmdb<{ results: (TmdbMedia & { media_type: 'movie' | 'tv' | 'person' })[], total_pages: number }>(`search/multi?query=${encodeURIComponent(searchTerm)}&page=${page}`);
     return {
-        results: data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv'),
+        results: data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv') as TmdbMedia[],
         total_pages: data.total_pages
     };
 };
@@ -198,11 +199,13 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
         fetchFromTmdb<{ results: any[] }>(`tv/${id}/content_ratings`).catch(() => ({ results: [] }))
     ]);
     detailsData.content_ratings = ratingsData;
+    detailsData.media_type = 'tv'; // Critical fix for HeroBanner clicks
     setToCache(cacheKey, detailsData, CACHE_TTL);
     return detailsData;
   } else { // movie
     const endpoint = `${mediaType}/${id}?append_to_response=images,recommendations,credits,videos,external_ids,release_dates&${imageLangParam}`;
     const data = await fetchFromTmdb<TmdbMediaDetails>(endpoint);
+    data.media_type = 'movie'; // Critical fix for HeroBanner clicks
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
   }
@@ -566,9 +569,10 @@ export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[
     if (cached) return cached;
 
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`trending/${mediaType}/week`);
-    
-    setToCache(cacheKey, data.results, CACHE_TTL_SHORT);
-    return data.results;
+    const resultsWithMediaType = data.results.map(item => ({ ...item, media_type: mediaType }));
+
+    setToCache(cacheKey, resultsWithMediaType, CACHE_TTL_SHORT);
+    return resultsWithMediaType;
 };
 
 export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> => {
@@ -648,6 +652,10 @@ export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): 
     return data;
 };
 
+export const getWatchProvidersForShow = async (id: number): Promise<WatchProviderResponse> => {
+    return getWatchProviders(id, 'tv');
+}
+
 export const getCollectionDetails = async (collectionId: number): Promise<TmdbCollection> => {
     const cacheKey = `tmdb_collection_${collectionId}`;
     const cached = getFromCache<TmdbCollection>(cacheKey);
@@ -663,10 +671,6 @@ export const getCollectionDetails = async (collectionId: number): Promise<TmdbCo
 export const getCalendarMedia = async (startDate: string, days: number): Promise<CalendarItem[]> => {
   // This is a complex function. For now, it will just fetch upcoming movies as an example.
   // A full implementation would involve fetching user's tracked shows and their episode air dates.
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + days);
-  const endDateStr = endDate.toISOString().split('T')[0];
-  
   const movies = await getUpcomingMovies(); // Simple version
   return movies.map(m => ({
     id: m.id,
