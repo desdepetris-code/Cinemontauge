@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getPersonDetails } from '../services/tmdbService';
 import { PersonDetails, UserData, TrackedItem, UserRatings, HistoryItem, TmdbMedia, PersonCredit, TmdbMediaDetails } from '../types';
-import { ChevronLeftIcon } from '../components/Icons';
+import { ChevronLeftIcon, TrophyIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FilmographyCard from '../components/FilmographyCard';
 import RatingModal from '../components/RatingModal';
@@ -18,6 +18,8 @@ interface ActorDetailProps {
   onRateItem: (mediaId: number, rating: number) => void;
   ratings: UserRatings;
   favorites: TrackedItem[];
+  onToggleWeeklyFavorite: (item: TrackedItem) => void;
+  weeklyFavorites: any[];
 }
 
 type ActorDetailTab = 'overview' | 'recommendations' | 'watched' | 'filmography';
@@ -44,7 +46,7 @@ const ActorDetailSkeleton: React.FC = () => (
 
 // --- MAIN COMPONENT ---
 const ActorDetail: React.FC<ActorDetailProps> = (props) => {
-    const { personId, onBack, userData, onSelectShow, onToggleFavoriteShow, onRateItem, ratings, favorites } = props;
+    const { personId, onBack, userData, onSelectShow, onToggleFavoriteShow, onRateItem, ratings, favorites, onToggleWeeklyFavorite, weeklyFavorites } = props;
 
     // --- STATE MANAGEMENT ---
     const [details, setDetails] = useState<PersonDetails | null>(null);
@@ -122,6 +124,22 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
             age--;
         }
         return `${age}`;
+    };
+
+    const dayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1; // 0: Mon, 6: Sun
+    const category = details?.gender === 1 ? 'actress' : 'actor';
+    const isWeeklyFavorite = weeklyFavorites.some(p => p.id === personId && p.category === category && p.dayIndex === dayIndex);
+
+    const handleWeeklyFavoriteToggle = () => {
+        if (!details) return;
+        onToggleWeeklyFavorite({
+            id: personId,
+            title: details.name,
+            media_type: 'person',
+            poster_path: details.profile_path,
+            category: category,
+            dayIndex: dayIndex
+        } as any);
     };
 
     // --- SUB-COMPONENTS (TABS & DISPLAYS) ---
@@ -246,6 +264,13 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                 <img src={backdropUrl} alt="" className="w-full h-48 sm:h-64 object-cover object-top" />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent"></div>
                 <button onClick={onBack} className="absolute top-4 left-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-40"><ChevronLeftIcon className="h-6 w-6" /></button>
+                <button 
+                    onClick={handleWeeklyFavoriteToggle}
+                    className={`absolute bottom-4 right-4 p-3 rounded-full transition-all group shadow-xl border border-white/10 ${isWeeklyFavorite ? 'bg-accent-gradient text-on-accent' : 'bg-backdrop/50 backdrop-blur-md text-white hover:bg-bg-secondary'}`}
+                    title="Nominate as Weekly Gem"
+                >
+                    <TrophyIcon className="w-6 h-6" />
+                </button>
             </div>
             <div className="container mx-auto px-4 -mt-24 sm:-mt-32 relative z-10">
                 <div className="flex flex-col sm:flex-row items-end">

@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { WeeklyPick } from '../types';
 import ShowCard from './ShowCard';

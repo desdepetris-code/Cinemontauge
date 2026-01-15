@@ -62,13 +62,13 @@ const NewReleaseCard: React.FC<{
 
     const getAgeRatingColor = (rating: string) => {
         const r = rating.toUpperCase();
-        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-sky-600 text-white';
-        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-teal-600 text-white';
-        if (r === 'PG-13') return 'bg-indigo-600 text-white';
-        if (r === 'TV-14') return 'bg-violet-600 text-white';
-        if (r === 'R') return 'bg-zinc-700 text-white';
-        if (r === 'TV-MA') return 'bg-slate-800 text-white';
-        if (r === 'NC-17') return 'bg-black text-white';
+        if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200';
+        if (r === 'TV-Y') return 'bg-[#008000] text-white';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black';
+        if (r === 'PG-13') return 'bg-[#00008B] text-white';
+        if (r === 'TV-14') return 'bg-[#800000] text-white';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20';
         return 'bg-stone-500 text-white';
     };
 
@@ -139,7 +139,7 @@ const NewReleaseCard: React.FC<{
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                          {releaseDate && <p className="text-xs text-white/80">{formatDate(releaseDate, timezone)}</p>}
                     </div>
@@ -207,7 +207,7 @@ interface NewReleasesProps {
   title: string;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
-  onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
+  onMarkShowAs_watched: (item: TmdbMedia, date?: string) => void;
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   completed: TrackedItem[];
@@ -216,7 +216,7 @@ interface NewReleasesProps {
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
 }
 
-const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
+const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAs_watched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -271,7 +271,7 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
                             item={item}
                             onSelect={onSelectShow}
                             onAdd={onOpenAddToListModal}
-                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onMarkShowAsWatched={onMarkShowAs_watched}
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={favorites.some(f => f.id === item.id)}
                             isCompleted={completed.some(c => c.id === item.id)}

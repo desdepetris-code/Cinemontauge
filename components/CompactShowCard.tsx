@@ -39,13 +39,14 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
 
     const getAgeRatingColor = (rating: string) => {
         const r = rating.toUpperCase();
-        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]';
-        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]';
-        if (r === 'PG-13') return 'bg-amber-400 text-black font-black shadow-[0_0_8px_rgba(251,191,36,0.5)]';
-        if (r === 'TV-14') return 'bg-violet-700 shadow-[0_0_8px_rgba(109,40,217,0.5)]';
-        if (['R'].includes(r)) return 'bg-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.5)]';
-        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 shadow-[0_0_8px_rgba(185,28,28,0.5)]';
-        return 'bg-stone-500';
+        if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200 shadow-sm';
+        if (r === 'TV-Y') return 'bg-[#008000] text-white';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black';
+        if (r === 'PG-13') return 'bg-[#00008B] text-white';
+        if (r === 'TV-14') return 'bg-[#800000] text-white';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-md';
+        return 'bg-stone-500 text-white';
     };
 
     const posterSrcs = [item.poster_path ? `${TMDB_IMAGE_BASE_URL}w342${item.poster_path}` : null];
@@ -58,7 +59,7 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
         >
             <div className="relative rounded-md overflow-hidden shadow-lg h-full">
                 {ageRating && (
-                    <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded-sm backdrop-blur-md z-20 shadow-md text-white ${getAgeRatingColor(ageRating)}`}>
+                    <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded-sm backdrop-blur-md z-20 shadow-md border border-white/10 ${getAgeRatingColor(ageRating)}`}>
                         {ageRating}
                     </div>
                 )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { TrackedItem, UserData, TmdbMedia, HistoryItem, WeeklyPick } from '../types';
 import { XMarkIcon, SearchIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon } from './Icons';
@@ -36,6 +37,7 @@ const NominatePicksModal: React.FC<NominatePicksModalProps> = ({ isOpen, onClose
             } catch (e) {
                 console.error(e);
             } finally {
+                // FIX: Changed setLoading to setIsLoading
                 setIsLoading(false);
             }
         } else {

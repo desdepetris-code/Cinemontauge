@@ -50,14 +50,14 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
 
     const getAgeRatingColor = (rating: string) => {
         const r = rating.toUpperCase();
-        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-sky-600 text-white';
-        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-teal-600 text-white';
-        if (r === 'PG-13') return 'bg-indigo-600 text-white';
-        if (r === 'TV-14') return 'bg-violet-600 text-white';
-        if (['R'].includes(r)) return 'bg-zinc-700 text-white';
-        if (['TV-MA'].includes(r)) return 'bg-slate-800 text-white';
-        if (r === 'NC-17') return 'bg-black text-white';
-        return 'bg-stone-500 text-white';
+        if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200 shadow-sm';
+        if (r === 'TV-Y') return 'bg-[#008000] text-white';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black';
+        if (r === 'PG-13') return 'bg-[#00008B] text-white';
+        if (r === 'TV-14') return 'bg-[#800000] text-white';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-md';
+        return 'bg-slate-500 text-white';
     };
 
     const backdropSrcs = [

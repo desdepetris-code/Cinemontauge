@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData } from '../types';
@@ -231,12 +232,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
   const getAgeRatingColor = (rating: string) => {
     const r = rating.toUpperCase();
-    if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]';
-    if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.3)]';
-    if (r === 'PG-13') return 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.4)] font-black';
-    if (r === 'TV-14') return 'bg-violet-700 text-white shadow-[0_0_10px_rgba(109,40,217,0.3)]';
-    if (r === 'R') return 'bg-orange-600 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]';
-    if (r === 'TV-MA' || r === 'NC-17') return 'bg-red-700 text-white shadow-[0_0_10px_rgba(185,28,28,0.4)]';
+    if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200 shadow-sm';
+    if (r === 'TV-Y') return 'bg-[#008000] text-white shadow-md';
+    if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black shadow-md';
+    if (r === 'PG-13') return 'bg-[#00008B] text-white shadow-md';
+    if (r === 'TV-14') return 'bg-[#800000] text-white shadow-md';
+    if (r === 'R') return 'bg-[#FF00FF] text-black font-black shadow-md';
+    if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-xl';
     return 'bg-stone-500 text-white';
   };
 

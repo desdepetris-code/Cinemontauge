@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { debounce } from 'lodash';
 import { searchMedia, getMediaDetails } from '../services/tmdbService';
@@ -40,14 +41,15 @@ const SearchResultItem: React.FC<{
         }
     }, [details, item.media_type]);
 
-    const getAgeRatingColor = (r: string) => {
-        const up = r.toUpperCase();
-        if (['G', 'TV-G', 'TV-Y'].includes(up)) return 'bg-green-600 text-white';
-        if (['PG', 'TV-PG', 'TV-Y7'].includes(up)) return 'bg-sky-500 text-white';
-        if (up === 'PG-13') return 'bg-yellow-500 text-black font-black';
-        if (up === 'TV-14') return 'bg-purple-600 text-white';
-        if (['R'].includes(up)) return 'bg-orange-600 text-white';
-        if (['TV-MA', 'NC-17'].includes(up)) return 'bg-red-700 text-white';
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200 shadow-sm';
+        if (r === 'TV-Y') return 'bg-[#008000] text-white';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black';
+        if (r === 'PG-13') return 'bg-[#00008B] text-white';
+        if (r === 'TV-14') return 'bg-[#800000] text-white';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-md';
         return 'bg-stone-500 text-white';
     };
 
