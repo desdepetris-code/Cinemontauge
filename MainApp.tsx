@@ -68,7 +68,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [episodeNotes, setEpisodeNotes] = useLocalStorage<Record<number, Record<number, Record<number, string>>>>(`episode_notes_${userId}`, {});
   const [customImagePaths, setCustomImagePaths] = useLocalStorage<CustomImagePaths>(`custom_image_paths_${userId}`, {});
   const [notifications, setNotifications] = useLocalStorage<AppNotification[]>(`notifications_${userId}`, []);
-  const [favoriteEpisodes, setFavoriteEpisodes] = useLocalStorage<FavoriteEpisodes>(`favorite_episodes_${userId}`, {});
+  const [favoriteEpisodes, setFavoriteEpisodes] = useLocalStorage<FavoriteEpisodes>(`favorite_ episedes_${userId}`, {});
   const [episodeRatings, setEpisodeRatings] = useLocalStorage<EpisodeRatings>(`episode_ratings_${userId}`, {});
   const [seasonRatings, setSeasonRatings] = useLocalStorage<SeasonRatings>(`season_ratings_${userId}`, {});
   const [customLists, setCustomLists] = useLocalStorage<CustomList[]>(`custom_lists_${userId}`, []);
@@ -158,7 +158,7 @@ export const MainApp: React.FC<MainAppProps> = ({
         const dayName = dayNames[pick.dayIndex];
         const categoryLabel = pick.category.toUpperCase();
 
-        // Check if we are replacing an existing pick
+        // Check if we are explicitly replacing an existing pick
         if (replacementId !== undefined) {
              const oldItem = prev.find(p => p.id === replacementId && p.category === pick.category && p.dayIndex === pick.dayIndex);
              const next = prev.filter(p => !(p.id === replacementId && p.category === pick.category && p.dayIndex === pick.dayIndex));
@@ -166,7 +166,7 @@ export const MainApp: React.FC<MainAppProps> = ({
              return [...next, pick];
         }
 
-        // Check if item already exists as a pick for this day/category to avoid duplicates
+        // Check if this item is already picked for this specific day and category
         if (prev.some(p => p.id === pick.id && p.category === pick.category && p.dayIndex === pick.dayIndex)) {
             confirmationService.show(`${pick.title} is already nominated as a ${categoryLabel} gem for ${dayName}!`);
             return prev;
@@ -175,7 +175,8 @@ export const MainApp: React.FC<MainAppProps> = ({
         // Limit check: 5 per category per day
         const existingCount = prev.filter(p => p.category === pick.category && p.dayIndex === pick.dayIndex).length;
         if (existingCount >= 5) {
-            confirmationService.show(`Limit reached: You already have 5 ${categoryLabel} gems for ${dayName}.`);
+            // This fallback is mostly for search-based adds that might bypass the detail page check
+            confirmationService.show(`Limit reached: You already have 5 ${categoryLabel} gems for ${dayName}. Replace one or pick a different day.`);
             return prev;
         }
 

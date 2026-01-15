@@ -7,6 +7,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import FilmographyCard from '../components/FilmographyCard';
 import RatingModal from '../components/RatingModal';
 import HistoryModal from '../components/HistoryModal';
+import NominationModal from '../components/NominationModal';
 
 // --- PROPS INTERFACE ---
 interface ActorDetailProps {
@@ -18,7 +19,7 @@ interface ActorDetailProps {
   onRateItem: (mediaId: number, rating: number) => void;
   ratings: UserRatings;
   favorites: TrackedItem[];
-  onToggleWeeklyFavorite: (item: TrackedItem) => void;
+  onToggleWeeklyFavorite: (item: TrackedItem, replacementId?: number) => void;
   weeklyFavorites: any[];
 }
 
@@ -56,6 +57,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
     
     const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; media: TmdbMedia | null }>({ isOpen: false, media: null });
     const [historyModalState, setHistoryModalState] = useState<{ isOpen: boolean; media: TmdbMedia | null }>({ isOpen: false, media: null });
+    const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
 
     // --- DATA FETCHING ---
     useEffect(() => {
@@ -126,23 +128,35 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         return `${age}`;
     };
 
-    const dayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1; // 0: Mon, 6: Sun
+    const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
     const category = details?.gender === 1 ? 'actress' : 'actor';
-    const isWeeklyFavorite = weeklyFavorites.some(p => p.id === personId && p.category === category && p.dayIndex === dayIndex);
+    const isWeeklyFavorite = useMemo(() => {
+        return weeklyFavorites.some(p => p.id === personId && p.category === category && p.dayIndex === todayIndex);
+    }, [weeklyFavorites, personId, category, todayIndex]);
 
-    const handleWeeklyFavoriteToggle = () => {
+    const handleWeeklyGemToggle = () => {
         if (!details) return;
-        onToggleWeeklyFavorite({
-            id: personId,
-            title: details.name,
-            media_type: 'person',
-            poster_path: details.profile_path,
-            category: category,
-            dayIndex: dayIndex
-        } as any);
+        const categoryDayCount = weeklyFavorites.filter(p => p.dayIndex === todayIndex && p.category === category).length;
+        
+        if (isWeeklyFavorite) {
+            setIsNominationModalOpen(true);
+        } else if (categoryDayCount < 5) {
+            onToggleWeeklyFavorite({
+                id: personId,
+                title: details.name,
+                media_type: 'person',
+                poster_path: details.profile_path,
+                category: category,
+                dayIndex: todayIndex
+            } as any);
+        } else {
+            setIsNominationModalOpen(true);
+        }
     };
 
     // --- SUB-COMPONENTS (TABS & DISPLAYS) ---
+
+    // FIX: Added missing ExpandableText component.
     const ExpandableText: React.FC<{ text: string, maxLength?: number }> = ({ text, maxLength = 400 }) => {
         const [isExpanded, setIsExpanded] = useState(false);
         if (!text) return <p className="text-text-secondary">No biography available.</p>;
@@ -163,16 +177,18 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         );
     };
 
+    // FIX: Added missing InfoRow component.
     const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => {
         if (!value) return null;
         return (
-            <div>
+            <div className="flex flex-col">
                 <dt className="text-sm font-medium text-text-secondary">{label}</dt>
                 <dd className="mt-1 text-md text-text-primary font-semibold">{value}</dd>
             </div>
         );
     };
 
+    // --- TAB RENDERING ---
     const OverviewTab = () => (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-4 bg-card-gradient p-4 rounded-lg self-start">
@@ -187,11 +203,16 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                  <div>
                     <h3 className="text-xl font-bold text-text-primary mb-2">Known For</h3>
                     <div className="flex overflow-x-auto py-2 -mx-2 px-2 space-x-4 hide-scrollbar">
-                        {knownFor.slice(0, 8).map(item => (
+                        {knownFor.slice(0, 10).map(item => (
                             <div key={`${item.id}-${item.credit_id}`} className="w-32 flex-shrink-0">
                                 <FilmographyCard
-                                    item={item} isFavorite={false} userRating={0} onSelect={() => onSelectShow(item.id, item.media_type)} 
-                                    onToggleFavorite={() => {}} onRate={() => {}} onShowHistory={() => {}}
+                                    item={item}
+                                    isFavorite={favorites.some(f => f.id === item.id)}
+                                    userRating={ratings[item.id]?.rating || 0}
+                                    onSelect={() => onSelectShow(item.id, item.media_type)}
+                                    onToggleFavorite={() => handleToggleFavorite(item)}
+                                    onRate={() => setRatingModalState({ isOpen: true, media: item })}
+                                    onShowHistory={() => setHistoryModalState({ isOpen: true, media: item })}
                                 />
                             </div>
                         ))}
@@ -205,6 +226,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         </div>
     );
     
+    // FIX: Added missing GridDisplay component for tabs.
     const GridDisplay: React.FC<{ items: PersonCredit[] }> = ({ items }) => {
         if (items.length === 0) {
             return <p className="text-text-secondary py-8 text-center">No items to display in this section.</p>;
@@ -259,19 +281,28 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         <>
             <RatingModal isOpen={ratingModalState.isOpen} onClose={() => setRatingModalState({ isOpen: false, media: null })} onSave={handleRate} currentRating={ratingModalState.media ? ratings[ratingModalState.media.id]?.rating || 0 : 0} mediaTitle={ratingModalState.media?.title || ratingModalState.media?.name || ''} />
             <HistoryModal isOpen={historyModalState.isOpen} onClose={() => setHistoryModalState({ isOpen: false, media: null })} history={historyForModal} mediaTitle={historyModalState.media?.title || historyModalState.media?.name || ''} mediaDetails={historyModalState.media as TmdbMediaDetails} />
+            <NominationModal 
+                isOpen={isNominationModalOpen} 
+                onClose={() => setIsNominationModalOpen(false)} 
+                item={details} 
+                category={category} 
+                onNominate={onToggleWeeklyFavorite} 
+                currentPicks={weeklyFavorites} 
+            />
 
             <div className="relative mb-8">
                 <img src={backdropUrl} alt="" className="w-full h-48 sm:h-64 object-cover object-top" />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent"></div>
                 <button onClick={onBack} className="absolute top-4 left-4 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-colors z-40"><ChevronLeftIcon className="h-6 w-6" /></button>
                 <button 
-                    onClick={handleWeeklyFavoriteToggle}
+                    onClick={handleWeeklyGemToggle}
                     className={`absolute bottom-4 right-4 p-3 rounded-full transition-all group shadow-xl border border-white/10 ${isWeeklyFavorite ? 'bg-accent-gradient text-on-accent' : 'bg-backdrop/50 backdrop-blur-md text-white hover:bg-bg-secondary'}`}
                     title="Nominate as Weekly Gem"
                 >
                     <TrophyIcon className="w-6 h-6" />
                 </button>
             </div>
+            
             <div className="container mx-auto px-4 -mt-24 sm:-mt-32 relative z-10">
                 <div className="flex flex-col sm:flex-row items-end">
                     <img src={profileUrl} alt={details.name} className="w-32 h-48 sm:w-40 sm:h-60 object-cover rounded-lg shadow-xl flex-shrink-0 border-4 border-bg-primary"/>
@@ -281,7 +312,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                 </div>
                 {details.images?.profiles && details.images.profiles.length > 1 && (
                     <div className="mt-6">
-                        <div className="flex space-x-2 overflow-x-auto hide-scrollbar">
+                        <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
                             {details.images.profiles.slice(1, 11).map(p => (
                                 <img key={p.file_path} src={getImageUrl(p.file_path, 'w185')} alt="" className="h-24 w-auto rounded-md" />
                             ))}
@@ -290,7 +321,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                 )}
             </div>
 
-            <div className="container mx-auto px-4 mt-8">
+            <div className="container mx-auto px-4 mt-8 pb-20">
                 <div className="border-b border-bg-secondary/50 mb-6">
                     <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
                         {tabs.map(tab => (

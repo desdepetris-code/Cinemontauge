@@ -14,7 +14,7 @@ interface NominationModalProps {
 }
 
 const NominationModal: React.FC<NominationModalProps> = ({ isOpen, onClose, item, category, onNominate, currentPicks }) => {
-    // Default to today. Sunday is day 6 in our indices, Monday is 0.
+    // Current day as default (0: Mon, 6: Sun)
     const [selectedDay, setSelectedDay] = useState<number>(() => {
         const d = new Date().getDay();
         return d === 0 ? 6 : d - 1;
@@ -71,8 +71,8 @@ const NominationModal: React.FC<NominationModalProps> = ({ isOpen, onClose, item
                             {categoryIcon}
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">Weekly Gem</h2>
-                            <p className="text-xs text-text-secondary mt-1">Nominate <strong className="text-primary-accent">{item.title || item.name}</strong></p>
+                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">Nominate Gem</h2>
+                            <p className="text-xs text-text-secondary mt-1">Select a day for <strong className="text-primary-accent">{item.title || item.name}</strong></p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10 text-text-secondary transition-colors"><XMarkIcon className="w-6 h-6" /></button>
@@ -108,7 +108,7 @@ const NominationModal: React.FC<NominationModalProps> = ({ isOpen, onClose, item
                                             <img src={getImageUrl(p.poster_path, 'w92')} className="w-10 h-14 rounded-lg object-cover flex-shrink-0 shadow-md" alt="" />
                                             <div className="min-w-0">
                                                 <span className="text-sm font-bold text-text-primary truncate block">{p.title}</span>
-                                                <span className="text-[9px] text-text-secondary/60 uppercase tracking-widest font-black">Current Gem</span>
+                                                <span className="text-[9px] text-text-secondary/60 uppercase tracking-widest font-black">Day Pick</span>
                                             </div>
                                         </div>
                                         <button 
@@ -136,7 +136,7 @@ const NominationModal: React.FC<NominationModalProps> = ({ isOpen, onClose, item
                         </div>
                     ) : isFull ? (
                         <div className="text-center space-y-2">
-                            <p className="text-[10px] text-text-secondary font-medium italic">Limit reached for this day. Select a gem above to replace it, or choose a different day of this week.</p>
+                            <p className="text-[10px] text-text-secondary font-medium italic">This day has reached its limit of 5. Select a gem above to replace it with this one, or choose a different day.</p>
                         </div>
                     ) : (
                         <button 
