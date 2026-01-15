@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { CalendarItem, Reminder, ReminderType } from '../types';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { CalendarItem, Reminder, ReminderType, TmdbMediaDetails } from '../types';
 import { BellIcon, CheckCircleIcon } from './Icons';
 import { formatDate, formatAirtime } from '../utils/formatUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import ReminderOptionsModal from './ReminderOptionsModal';
+import { getMediaDetails } from '../services/tmdbService';
 
 interface CalendarListItemProps {
   item: CalendarItem;
@@ -19,7 +21,39 @@ interface CalendarListItemProps {
 
 const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isReminderSet, onToggleReminder, isPast, isWatched, onToggleWatched, timezone }) => {
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  
+  const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMediaDetails(item.id, item.media_type).then(data => {
+        if (isMounted) setDetails(data);
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [item.id, item.media_type]);
+
+  const ageRating = useMemo(() => {
+    if (!details) return null;
+    if (item.media_type === 'tv') {
+      const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+      return usRating?.rating || null;
+    } else {
+      const usRelease = details.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+      const theatrical = usRelease?.release_dates?.find(d => d.certification);
+      return theatrical?.certification || null;
+    }
+  }, [details, item.media_type]);
+
+  const getAgeRatingColor = (rating: string) => {
+    const r = rating.toUpperCase();
+    if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]';
+    if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]';
+    if (r === 'PG-13') return 'bg-amber-400 text-black font-black shadow-[0_0_8px_rgba(251,191,36,0.5)]';
+    if (r === 'TV-14') return 'bg-violet-700 shadow-[0_0_8px_rgba(109,40,217,0.5)]';
+    if (['R'].includes(r)) return 'bg-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.5)]';
+    if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 shadow-[0_0_8px_rgba(185,28,28,0.5)]';
+    return 'bg-stone-500';
+  };
+
   const { seasonEpisode, episodeName } = useMemo(() => {
     if (item.media_type === 'tv' && item.episodeInfo) {
       const parts = item.episodeInfo.split(': ');
@@ -59,7 +93,6 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
   }, [item, isWatched]);
   
   const containerBgClass = isWatched ? 'bg-green-500/10' : (isPast ? 'bg-yellow-500/10' : 'bg-card-gradient');
-
 
   const imageSrcs = useMemo(() => {
     const getRawImageUrl = (path: string | null | undefined, size: string) => {
@@ -112,12 +145,19 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
         </div>
 
         <div className="flex items-start p-3 pl-5 pt-0 space-x-3">
-            <FallbackImage
-                srcs={imageSrcs}
-                placeholder={item.media_type === 'tv' ? PLACEHOLDER_STILL : PLACEHOLDER_POSTER}
-                alt={item.title}
-                className="w-32 h-20 object-cover rounded-md flex-shrink-0 bg-bg-secondary"
-            />
+            <div className="relative flex-shrink-0">
+                <FallbackImage
+                    srcs={imageSrcs}
+                    placeholder={item.media_type === 'tv' ? PLACEHOLDER_STILL : PLACEHOLDER_POSTER}
+                    alt={item.title}
+                    className="w-32 h-20 object-cover rounded-md bg-bg-secondary"
+                />
+                {ageRating && (
+                    <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded uppercase shadow-md z-10 text-white ${getAgeRatingColor(ageRating)}`}>
+                        {ageRating}
+                    </div>
+                )}
+            </div>
             <div className="flex-grow min-w-0">
                 <h3 className="font-bold text-text-primary truncate pr-10">{item.title}</h3>
                 {item.media_type === 'tv' ? (

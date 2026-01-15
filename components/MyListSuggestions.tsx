@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, TmdbMedia, TrackedItem } from '../types';
 import { discoverMedia, getMediaDetails } from '../services/tmdbService';
@@ -43,7 +44,8 @@ const MyListSuggestions: React.FC<MyListSuggestionsProps> = ({ userData, onSelec
                     filteredSuggestions.map(async (item) => {
                         if (!item.poster_path) {
                             try {
-                                const details = await getMediaDetails(item.id, item.media_type);
+                                // Cast media_type because discovery only returns 'tv' or 'movie'
+                                const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
                                 if (details.poster_path) {
                                     return details;
                                 }

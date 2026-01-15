@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrackedItem, TmdbMediaDetails } from '../types';
 import FallbackImage from './FallbackImage';
@@ -16,13 +17,9 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
 
     useEffect(() => {
         let isMounted = true;
-        if (item.media_type === 'tv') {
-            getMediaDetails(item.id, 'tv').then(data => {
-                if (isMounted) setDetails(data);
-            }).catch(console.error);
-        } else {
-            setDetails(null);
-        }
+        getMediaDetails(item.id, item.media_type).then(data => {
+            if (isMounted) setDetails(data);
+        }).catch(console.error);
         return () => { isMounted = false; };
     }, [item.id, item.media_type]);
     
@@ -31,15 +28,40 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect }) => 
       return getShowStatus(details)?.text ?? null;
     }, [details]);
 
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        if (details.media_type === 'tv') {
+          return details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || null;
+        } else {
+          return details.release_dates?.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.find(d => d.certification)?.certification || null;
+        }
+    }, [details]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]';
+        if (r === 'PG-13') return 'bg-amber-400 text-black font-black shadow-[0_0_8px_rgba(251,191,36,0.5)]';
+        if (r === 'TV-14') return 'bg-violet-700 shadow-[0_0_8px_rgba(109,40,217,0.5)]';
+        if (['R'].includes(r)) return 'bg-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.5)]';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 shadow-[0_0_8px_rgba(185,28,28,0.5)]';
+        return 'bg-stone-500';
+    };
+
     const posterSrcs = [item.poster_path ? `${TMDB_IMAGE_BASE_URL}w342${item.poster_path}` : null];
     const title = item.title;
 
     return (
         <div
             onClick={() => onSelect(item.id, item.media_type)}
-            className="cursor-pointer group transform hover:-translate-y-1 transition-transform duration-300"
+            className="cursor-pointer group transform hover:-translate-y-1 transition-transform duration-300 h-full"
         >
-            <div className="relative rounded-md overflow-hidden shadow-lg">
+            <div className="relative rounded-md overflow-hidden shadow-lg h-full">
+                {ageRating && (
+                    <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded-sm backdrop-blur-md z-20 shadow-md text-white ${getAgeRatingColor(ageRating)}`}>
+                        {ageRating}
+                    </div>
+                )}
                 <BrandedImage title={title} status={item.media_type === 'tv' ? showStatusText : null}>
                     <FallbackImage
                         srcs={posterSrcs}

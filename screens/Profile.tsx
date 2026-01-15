@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo } from '../types';
+import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings } from '../types';
 import { UserIcon, StarIcon, BookOpenIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, ListBulletIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, TvIcon, ChevronLeftIcon, ChevronRightIcon, UsersIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
@@ -115,7 +114,7 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
 interface ProfileProps {
   userData: UserData;
   genres: Record<number, string>;
-  onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
   onTraktImportCompleted: (data: {
     history: HistoryItem[];
@@ -196,11 +195,16 @@ interface ProfileProps {
   onOpenNominateModal: () => void;
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
+  shortcutSettings: ShortcutSettings;
+  setShortcutSettings: React.Dispatch<React.SetStateAction<ShortcutSettings>>;
+  navSettings: NavSettings;
+  setNavSettings: React.Dispatch<React.SetStateAction<NavSettings>>;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications } = props;
-  const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
+  const { userData, genres, onSelectShow, initialTab, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings } = props;
+  
+  const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
@@ -209,6 +213,12 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    if (initialTab) {
+        setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
@@ -251,7 +261,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
     { id: 'overview', label: 'Overview', icon: Squares2X2Icon },
-    { id: 'journey', label: 'My Journey', icon: MountainIcon },
+    { id: 'progress', label: 'Progress', icon: MountainIcon },
     { id: 'history', label: 'Overall History', icon: ClockIcon },
     { id: 'weeklyPicks', label: 'Weekly Picks', icon: TrophyIcon },
     { id: 'library', label: 'Library', icon: CollectionIcon },
@@ -295,7 +305,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
           </div>
         </div>
       );
-      case 'journey': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
+      case 'progress': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} />;
       case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;

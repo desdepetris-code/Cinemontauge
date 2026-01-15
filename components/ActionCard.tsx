@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { TmdbMedia, TrackedItem } from '../types';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { TmdbMedia, TrackedItem, TmdbMediaDetails } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER } from '../constants';
@@ -20,12 +21,22 @@ interface ActionCardProps {
     showRatings: boolean;
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, showRatings }) => {
+const ActionCard: React.FC<ActionCardProps> = ({ 
+    item, 
+    onSelect, 
+    onOpenAddToListModal, 
+    onMarkShowAsWatched, 
+    onToggleFavoriteShow, 
+    isFavorite, 
+    isCompleted, 
+    showRatings 
+}) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
+    const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
     
-    const posterSrcs = [getImageUrl(item.poster_path, 'w342')];
-    const title = item.title || item.name;
+    const posterSrcs = useMemo(() => [getImageUrl(item.poster_path, 'w342')], [item.poster_path]);
+    const title = item.title || item.name || 'Untitled';
     const releaseDate = item.release_date || item.first_air_date;
     const isNew = isNewRelease(releaseDate);
     
@@ -33,18 +44,41 @@ const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToList
         let isMounted = true;
         setRecentEpisodeCount(0);
 
-        if (item.media_type === 'tv' && !isNew) {
-            getMediaDetails(item.id, 'tv').then(details => {
-                if (isMounted) {
-                    const count = getRecentEpisodeCount(details);
+        getMediaDetails(item.id, item.media_type).then(data => {
+            if (isMounted) {
+                setDetails(data);
+                if (item.media_type === 'tv' && !isNew) {
+                    const count = getRecentEpisodeCount(data);
                     setRecentEpisodeCount(count);
                 }
-            }).catch(e => console.error(`Failed to check for new episodes for ${item.name}`, e));
-        }
+            }
+        }).catch(e => console.error(`Failed to fetch details for ActionCard ${item.id}`, e));
 
         return () => { isMounted = false; };
-    }, [item.id, item.media_type, item.name, isNew]);
+    }, [item.id, item.media_type, isNew]);
 
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        if (item.media_type === 'tv') {
+          const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+          return usRating?.rating || null;
+        } else {
+          const usRelease = details.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+          const theatrical = usRelease?.release_dates?.find(d => d.certification);
+          return theatrical?.certification || null;
+        }
+    }, [details, item.media_type]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]';
+        if (r === 'PG-13') return 'bg-amber-400 text-black font-black shadow-[0_0_8px_rgba(251,191,36,0.5)]';
+        if (r === 'TV-14') return 'bg-violet-700 shadow-[0_0_8px_rgba(109,40,217,0.5)]';
+        if (['R'].includes(r)) return 'bg-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.5)]';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 shadow-[0_0_8px_rgba(185,28,28,0.5)]';
+        return 'bg-stone-500';
+    };
 
     const handleAddClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -60,7 +94,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToList
         e.stopPropagation();
         const trackedItem: TrackedItem = {
             id: item.id,
-            title: item.title || item.name || 'Untitled',
+            title: title,
             media_type: item.media_type,
             poster_path: item.poster_path,
             genre_ids: item.genre_ids,
@@ -85,7 +119,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToList
             <MarkAsWatchedModal
                 isOpen={markAsWatchedModalState.isOpen}
                 onClose={() => setMarkAsWatchedModalState({ isOpen: false, item: null })}
-                mediaTitle={markAsWatchedModalState.item?.title || markAsWatchedModalState.item?.name || ''}
+                mediaTitle={title}
                 onSave={handleSaveWatchedDate}
             />
             <div className="w-full">
@@ -98,29 +132,29 @@ const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToList
                         <NewReleaseOverlay 
                             text={recentEpisodeCount > 1 ? "NEW EPISODES" : "NEW EPISODE"} 
                             position="top-right" 
-                            color="rose" 
+                            color="rose"
                         />
                     )}
-                    <div className="aspect-[2/3]">
-                        <FallbackImage 
-                            srcs={posterSrcs}
-                            placeholder={PLACEHOLDER_POSTER}
-                            alt={`${title} poster`}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <h3 className="text-white font-bold text-sm truncate">{title}</h3>
-                                {releaseDate && <p className="text-xs text-white/80">{new Date(releaseDate).getFullYear()}</p>}
-                            </div>
+                    {ageRating && (
+                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg text-white ${getAgeRatingColor(ageRating)}`}>
+                            {ageRating}
                         </div>
+                    )}
+                    <FallbackImage
+                        srcs={posterSrcs}
+                        placeholder={PLACEHOLDER_POSTER}
+                        noPlaceholder={true}
+                        alt={title}
+                        className="w-full aspect-[2/3] object-cover bg-bg-secondary transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 pl-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                         <h3 className="text-white text-xs font-bold text-center w-full">{title}</h3>
                     </div>
-                     {isCompleted && (
+                    {isCompleted && (
                         <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white pointer-events-none">
-                            <CheckCircleIcon className="w-8 h-8" />
-                            <span className="font-bold mt-1 text-sm">Watched</span>
+                            <CheckCircleIcon className="w-10 h-10" />
+                            <span className="font-bold mt-1">Watched</span>
                         </div>
                     )}
                 </div>
@@ -131,13 +165,22 @@ const ActionCard: React.FC<ActionCardProps> = ({ item, onSelect, onOpenAddToList
                     <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
-                        <CalendarIcon className="w-4 h-4" />
-                    </button>
                     <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
+                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
+                        <CalendarIcon className="w-4 h-4" />
+                    </button>
                 </div>
+                {details && (
+                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
+                        <p className="font-bold text-text-primary truncate">{title}</p>
+                        <div className="flex justify-between text-text-secondary">
+                             <span>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
+                             <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
+                        </div>
+                    </div>
+                 )}
             </div>
         </>
     );

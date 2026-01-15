@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { UserData, CustomList } from '../types';
 import ListGrid from '../components/ListGrid';
@@ -70,7 +71,8 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
   const [listToEdit, setListToEdit] = useState<CustomList | null>(null);
 
   const handleCreateList = (name: string, description: string, isPublic: boolean) => {
-    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), isPublic };
+    // FIX: Added 'likes: []' property to satisfy the CustomList interface requirement.
+    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), isPublic, likes: [] };
     setCustomLists(prev => [newList, ...prev]);
   };
     

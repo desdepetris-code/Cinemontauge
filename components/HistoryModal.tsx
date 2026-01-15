@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { HistoryItem, TmdbMediaDetails } from '../types';
 import { TrashIcon, XMarkIcon, CheckCircleIcon } from './Icons';
@@ -29,12 +30,11 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, history, m
   const handleClearAll = () => {
     if (mediaDetails && onClearMediaHistory) {
       const mediaTypeString = mediaDetails.media_type === 'tv' ? 'this TV show' : 'this movie';
-      const progressResetMessage = mediaDetails.media_type === 'tv' ? ' and reset all watch progress' : '';
-      const message = `This will permanently delete all ${history.length} watch record(s) for ${mediaTypeString} ("${mediaTitle}")${progressResetMessage}. Are you sure?`;
+      // FIX: Message now clearly states progress and library status are preserved.
+      const message = `This will permanently delete the ${history.length} watch log entry(ies) for ${mediaTypeString} ("${mediaTitle}"). Your watched status checkmarks and progress will remain intact. Proceed?`;
       
       if (window.confirm(message)) {
         onClearMediaHistory(mediaDetails.id, mediaDetails.media_type);
-        confirmationService.show(`All history for "${mediaTitle}" has been cleared.`);
         onClose();
       }
     }
@@ -92,14 +92,17 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, history, m
             )}
         </div>
         
-        <div className="flex justify-between items-center mt-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4 flex-shrink-0">
             {history.length > 0 && onClearMediaHistory ? (
-                <button onClick={handleClearAll} className="px-6 py-2 rounded-md text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors font-semibold">
-                    Clear All History
+                <button 
+                  onClick={handleClearAll} 
+                  className="w-full sm:w-auto px-6 py-2 rounded-lg border border-primary-accent/40 text-red-500 hover:bg-red-500 hover:text-white transition-all font-black uppercase tracking-widest text-xs"
+                >
+                    Clear All Logs
                 </button>
-            ) : <div></div>}
+            ) : <div className="hidden sm:block"></div>}
 
-            <button onClick={onClose} className="px-6 py-2 rounded-md text-text-primary bg-bg-secondary hover:brightness-125 transition-all">
+            <button onClick={onClose} className="w-full sm:w-auto px-10 py-3 rounded-lg text-white bg-accent-gradient font-black uppercase tracking-widest text-xs hover:opacity-90 shadow-lg">
                 Close
             </button>
         </div>

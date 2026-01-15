@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon } from '../components/Icons';
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
-import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings } from '../types';
+import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
@@ -45,21 +46,25 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
     </button>
 );
 
-const GoogleIcon: React.FC = () => (
-    <svg viewBox="0 0 48 48" className="w-5 h-5">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
-    </svg>
-);
-
 interface User {
     id: string;
     username: string;
     email: string;
 }
+
+const ALL_PROFILE_TABS: { id: ProfileTab; label: string }[] = [
+    { id: 'progress', label: 'Progress' },
+    { id: 'history', label: 'History' },
+    { id: 'weeklyPicks', label: 'Weekly Picks' },
+    { id: 'library', label: 'Library' },
+    { id: 'lists', label: 'Custom Lists' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'stats', label: 'Stats' },
+    { id: 'seasonLog', label: 'Season Log' },
+    { id: 'journal', label: 'Journal' },
+    { id: 'achievements', label: 'Achievements' },
+    { id: 'imports', label: 'Import & Sync' },
+];
 
 interface SettingsProps {
     userData: UserData;
@@ -100,11 +105,14 @@ interface SettingsProps {
     setSeasonRatings: React.Dispatch<React.SetStateAction<SeasonRatings>>;
     pin: string | null;
     setPin: React.Dispatch<React.SetStateAction<string | null>>;
+    shortcutSettings: ShortcutSettings;
+    setShortcutSettings: React.Dispatch<React.SetStateAction<ShortcutSettings>>;
+    navSettings: NavSettings;
+    setNavSettings: React.Dispatch<React.SetStateAction<NavSettings>>;
 }
 
-// FIX: Changed to a named export to resolve a module resolution issue.
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
   const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
@@ -122,207 +130,198 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     setNotificationSettings(prev => {
         const newState = { ...prev, [setting]: !prev[setting] };
         if (setting === 'masterEnabled' && !newState.masterEnabled) {
-            // If master is turned off, turn off all others
-            return Object.fromEntries(
-                Object.keys(prev).map(k => [k, false])
-            // FIX: Cast to 'unknown' first to resolve TypeScript conversion error.
-            ) as unknown as NotificationSettings;
-        }
-         if (setting === 'masterEnabled' && newState.masterEnabled) {
-            // If master is turned on, turn on all others
-            return Object.fromEntries(
-                Object.keys(prev).map(k => [k, true])
-            // FIX: Cast to 'unknown' first to resolve TypeScript conversion error.
-            ) as unknown as NotificationSettings;
+            return Object.fromEntries(Object.keys(prev).map(k => [k, false])) as unknown as NotificationSettings;
         }
         return newState;
     });
   };
 
-  const handleExportData = () => {
-    try {
-        const keysToExport = [
-            'watching_list', 'plan_to_watch_list', 'completed_list', 'favorites_list',
-            'watch_progress', 'history', 'custom_image_paths', 'notifications',
-            'favorite_episodes', 'customThemes', 'trakt_token', 'themeId'
-        ];
-        
-        const dataToExport: Record<string, any> = {};
-        
-        keysToExport.forEach(key => {
-            const item = localStorage.getItem(key);
-            if (item) {
-                try {
-                    dataToExport[key] = item;
-                } catch(e) {
-                    console.error(`Could not read key ${key} for export`, e);
-                }
-            }
-        });
-
-        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `sceneit_backup_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        alert('Data exported successfully!');
-
-    } catch (e) {
-        console.error('Failed to export data', e);
-        alert('An error occurred during export.');
-    }
+  const mandatoryNavIds = ['home', 'search', 'calendar', 'profile'];
+    
+  const moveNavTab = (index: number, direction: 'up' | 'down') => {
+    const newTabs = [...navSettings.tabs];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newTabs.length) return;
+    [newTabs[index], newTabs[swapIndex]] = [newTabs[swapIndex], newTabs[index]];
+    setNavSettings({ ...navSettings, tabs: newTabs });
   };
 
-    const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+  const removeNavTab = (tabId: string) => {
+    if (mandatoryNavIds.includes(tabId)) return;
+    setNavSettings({ ...navSettings, tabs: navSettings.tabs.filter(id => id !== tabId) });
+  };
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const text = e.target?.result as string;
-                const data = JSON.parse(text);
-
-                if (window.confirm("Are you sure you want to import this data? This will overwrite your current local data.")) {
-                    Object.keys(data).forEach(key => {
-                        localStorage.setItem(key, data[key]);
-                    });
-                    localStorage.setItem('sceneit_import_success', 'true');
-                    window.location.reload();
-                }
-            } catch (err) {
-                alert("Failed to parse the backup file. It might be corrupted.");
-            }
-        };
-        reader.readAsText(file);
-    };
-
-    const handleClearAllData = () => {
-        if (window.confirm("ARE YOU ABSOLUTELY SURE? This will delete all your watch history, lists, settings, and progress. This cannot be undone.")) {
-            localStorage.clear();
-            window.location.reload();
-        }
-    };
-    
-    if (activeView === 'legal') {
-        return <Legal onBack={() => setActiveView('settings')} />;
+  const addNavTab = (tabId: ProfileTab) => {
+    if (navSettings.tabs.length >= 7) {
+        alert("Maximum 7 navigation icons allowed.");
+        return;
     }
+    if (navSettings.tabs.includes(tabId)) return;
+    setNavSettings({ ...navSettings, tabs: [...navSettings.tabs, tabId] });
+  };
 
-    return (
-        <>
-        <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
-        <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
-            {currentUser && (
-                <SettingsCard title="Account">
-                    <SettingsRow title="Logged In As" subtitle={currentUser.email}>
-                        <span className="text-sm font-semibold">{currentUser.username}</span>
-                    </SettingsRow>
-                    <SettingsRow title="Reset Password" subtitle="Change your current password.">
-                        <button onClick={() => setIsResetPasswordModalOpen(true)} className="text-sm font-semibold text-primary-accent hover:underline">Change</button>
-                    </SettingsRow>
-                    <SettingsRow title="Log Out" subtitle="Sign out of your account.">
-                         <button onClick={onLogout} className="text-sm font-semibold text-red-500 hover:underline">Log Out</button>
-                    </SettingsRow>
-                </SettingsCard>
+  const toggleShortcutTab = (tabId: ProfileTab) => {
+    setShortcutSettings(prev => {
+        const isSelected = prev.tabs.includes(tabId);
+        if (isSelected) return { ...prev, tabs: prev.tabs.filter(id => id !== tabId) };
+        return { ...prev, tabs: [...prev.tabs, tabId] };
+    });
+  };
+
+  if (activeView === 'legal') return <Legal onBack={() => setActiveView('settings')} />;
+
+  return (
+    <>
+    <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
+    <div className="max-w-4xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
+        
+        <SettingsCard title="Dashboard Shortcuts">
+            <SettingsRow title="Enable Shortcut Bar" subtitle="Toggle the shortcut bar at the top of the dashboard.">
+                <ToggleSwitch enabled={shortcutSettings.show} onChange={(val) => setShortcutSettings({...shortcutSettings, show: val})} />
+            </SettingsRow>
+            {shortcutSettings.show && (
+                <div className="p-4 bg-bg-secondary/20 border-t border-bg-secondary/50">
+                    <p className="text-xs font-black uppercase tracking-widest text-text-secondary mb-3">Selected Shortcuts</p>
+                    <div className="flex flex-wrap gap-2">
+                        {ALL_PROFILE_TABS.map(tab => {
+                            const isSelected = shortcutSettings.tabs.includes(tab.id);
+                            return (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => toggleShortcutTab(tab.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isSelected ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             )}
+        </SettingsCard>
 
-            <SettingsCard title="Display Preferences">
-                 <SettingsRow title="Show Ratings & Scores" subtitle="Display TMDB and user scores throughout the app.">
-                    <ToggleSwitch enabled={showRatings} onChange={setShowRatings} />
-                </SettingsRow>
-                 <SettingsRow title="Show Watched Confirmation" subtitle="Display a banner when an item is marked as watched.">
-                    <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
-                </SettingsRow>
-            </SettingsCard>
-
-            <SettingsCard title="Notifications">
-                <SettingsRow title="All Notifications" subtitle="Master toggle for all app notifications.">
-                    <ToggleSwitch enabled={notificationSettings.masterEnabled} onChange={() => handleToggleNotification('masterEnabled')} />
-                </SettingsRow>
-                <SettingsRow title="New TV Episodes" subtitle="Notify when a show on your list airs a new episode.">
-                    <ToggleSwitch enabled={notificationSettings.newEpisodes} onChange={() => handleToggleNotification('newEpisodes')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                <SettingsRow title="New Movie Releases" subtitle="Notify when a movie from a collection is released.">
-                    <ToggleSwitch enabled={notificationSettings.movieReleases} onChange={() => handleToggleNotification('movieReleases')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                 <SettingsRow title="New Followers" subtitle="Notify when a user follows you.">
-                    <ToggleSwitch enabled={notificationSettings.newFollowers} onChange={() => handleToggleNotification('newFollowers')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                 <SettingsRow title="Likes on Your Lists" subtitle="Notify when another user likes one of your public lists.">
-                    <ToggleSwitch enabled={notificationSettings.listLikes} onChange={() => handleToggleNotification('listLikes')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                <SettingsRow title="App Updates & News" subtitle="Receive occasional updates about new features.">
-                    <ToggleSwitch enabled={notificationSettings.appUpdates} onChange={() => handleToggleNotification('appUpdates')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                <SettingsRow title="Import/Sync Status" subtitle="Notify when a data import or sync is complete.">
-                    <ToggleSwitch enabled={notificationSettings.importSyncCompleted} onChange={() => handleToggleNotification('importSyncCompleted')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-                <SettingsRow title="Sounds" subtitle="Play a sound for new notifications.">
-                    <ToggleSwitch enabled={notificationSettings.sounds} onChange={() => handleToggleNotification('sounds')} disabled={!notificationSettings.masterEnabled}/>
-                </SettingsRow>
-            </SettingsCard>
-            
-            <SettingsCard title="Privacy">
-                 <SettingsRow title="Activity Visibility" subtitle="Who can see your profile and activity.">
-                    <div className="relative">
-                        <select
-                            value={privacySettings.activityVisibility}
-                            onChange={(e) => setPrivacySettings({ activityVisibility: e.target.value as 'public' | 'followers' | 'private' })}
-                            className="appearance-none bg-bg-secondary border-none rounded-md py-1 px-3 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                        >
-                            <option value="followers">Followers</option>
-                            <option value="private">Private</option>
-                        </select>
+        <SettingsCard title="Navigation Customization">
+            <div className="p-4 space-y-4">
+                <p className="text-sm text-text-secondary">Home, Search, Calendar, and Profile are mandatory. Max 7 icons total.</p>
+                <div className="space-y-2">
+                    {navSettings.tabs.map((tabId, index) => {
+                        const isMandatory = mandatoryNavIds.includes(tabId);
+                        const meta = ALL_PROFILE_TABS.find(t => t.id === tabId) || { label: tabId.charAt(0).toUpperCase() + tabId.slice(1) };
+                        return (
+                            <div key={tabId} className="flex items-center justify-between p-3 bg-bg-secondary/40 rounded-lg border border-white/5">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-black text-text-secondary opacity-50">#{index + 1}</span>
+                                    <span className="font-bold text-text-primary">{meta.label} {isMandatory && <span className="text-[10px] opacity-40 ml-1">(Locked)</span>}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => moveNavTab(index, 'up')} disabled={index === 0} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
+                                        <ChevronDownIcon className="w-4 h-4 rotate-180" />
+                                    </button>
+                                    <button onClick={() => moveNavTab(index, 'down')} disabled={index === navSettings.tabs.length - 1} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
+                                        <ChevronDownIcon className="w-4 h-4" />
+                                    </button>
+                                    {!isMandatory && (
+                                        <button onClick={() => removeNavTab(tabId)} className="p-1 text-red-400 hover:bg-red-500/20 rounded-md">
+                                            <XMarkIcon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {navSettings.tabs.length < 7 && (
+                    <div className="pt-4 border-t border-bg-secondary/50">
+                        <p className="text-xs font-black uppercase tracking-widest text-text-secondary mb-3">Add Custom Icon (Limit 2 additional)</p>
+                        <div className="flex flex-wrap gap-2">
+                            {ALL_PROFILE_TABS.filter(tab => !navSettings.tabs.includes(tab.id)).map(tab => (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => addNavTab(tab.id)}
+                                    className="px-3 py-1.5 rounded-full text-xs font-bold bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-primary-accent/20"
+                                >
+                                    + {tab.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </SettingsRow>
-            </SettingsCard>
+                )}
+            </div>
+        </SettingsCard>
 
-            <ThemeSettings customThemes={props.customThemes} setCustomThemes={setCustomThemes} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={holidayAnimationsEnabled} setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} profileTheme={profileTheme} setProfileTheme={setProfileTheme}/>
+        <SettingsCard title="Advanced Interface (Desktop Only)">
+            <SettingsRow title="Navigation Position" subtitle="Place the menu bar at the bottom or as a sidebar.">
+                <div className="flex p-1 bg-bg-primary rounded-full border border-bg-secondary">
+                    {(['bottom', 'left', 'right'] as const).map(pos => (
+                        <button key={pos} onClick={() => setNavSettings({...navSettings, position: pos})} className={`px-3 py-1 text-[10px] uppercase font-black rounded-full transition-all ${navSettings.position === pos ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary'}`}>
+                            {pos}
+                        </button>
+                    ))}
+                </div>
+            </SettingsRow>
+            <SettingsRow title="Hover-to-Reveal Navigation" subtitle="Keep the navigation menu hidden until you hover over it.">
+                <ToggleSwitch enabled={navSettings.hoverRevealNav} onChange={(val) => setNavSettings({...navSettings, hoverRevealNav: val})} />
+            </SettingsRow>
+            <SettingsRow title="Hover-to-Reveal Header" subtitle="Keep the top search bar and logo hidden until you hover over it.">
+                <ToggleSwitch enabled={navSettings.hoverRevealHeader} onChange={(val) => setNavSettings({...navSettings, hoverRevealHeader: val})} />
+            </SettingsRow>
+        </SettingsCard>
 
-            <SettingsCard title="Localization">
-                <SettingsRow title="Time Format" subtitle="Display times in 12-hour or 24-hour format.">
-                     <div className="flex p-1 bg-bg-primary rounded-full border border-bg-secondary">
-                        <button onClick={() => setTimeFormat('12h')} className={`px-3 py-1 text-xs rounded-full ${timeFormat === '12h' ? 'bg-accent-gradient text-on-accent' : 'text-text-secondary'}`}>12-hour</button>
-                        <button onClick={() => setTimeFormat('24h')} className={`px-3 py-1 text-xs rounded-full ${timeFormat === '24h' ? 'bg-accent-gradient text-on-accent' : 'text-text-secondary'}`}>24-hour</button>
-                    </div>
+        {currentUser && (
+            <SettingsCard title="Account">
+                <SettingsRow title="Logged In As" subtitle={currentUser.email}>
+                    <span className="text-sm font-semibold">{currentUser.username}</span>
                 </SettingsRow>
-                <TimezoneSettings timezone={timezone} setTimezone={setTimezone} />
+                <SettingsRow title="Reset Password" subtitle="Change your current password.">
+                    <button onClick={() => setIsResetPasswordModalOpen(true)} className="text-sm font-semibold text-primary-accent hover:underline">Change</button>
+                </SettingsRow>
+                <SettingsRow title="Log Out" subtitle="Sign out of your account.">
+                     <button onClick={onLogout} className="text-sm font-semibold text-red-500 hover:underline">Log Out</button>
+                </SettingsRow>
             </SettingsCard>
+        )}
 
-            <SettingsCard title="Data Management">
-                <SettingsRow title="Export Data" subtitle="Download a JSON backup of all your data.">
-                    <button onClick={handleExportData} className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125"><DownloadIcon className="w-5 h-5"/></button>
-                </SettingsRow>
-                <SettingsRow title="Import Data" subtitle="Import a previously exported JSON backup.">
-                    <label className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125 cursor-pointer">
-                        <UploadIcon className="w-5 h-5"/>
-                        <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
-                    </label>
-                </SettingsRow>
-                 <SettingsRow title="Auto Backup Locally" subtitle={lastLocalBackup ? `Last backup: ${new Date(parseInt(lastLocalBackup)).toLocaleString()}` : 'Backs up data to this browser daily.'}>
-                    <ToggleSwitch enabled={autoBackupEnabled} onChange={setAutoBackupEnabled} />
-                </SettingsRow>
-                <SettingsRow title="Clear API Cache" subtitle="Force refetch all movie/show data. Your watch history is safe.">
-                    <button onClick={clearApiCache} className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125"><ArrowPathIcon className="w-5 h-5"/></button>
-                </SettingsRow>
-                <SettingsRow title="Remove Duplicate History" subtitle="Clean up any duplicate watch records.">
-                    <button onClick={onRemoveDuplicateHistory} className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125"><ArrowPathIcon className="w-5 h-5"/></button>
-                </SettingsRow>
-                <SettingsRow title="Clear All Data" subtitle="Permanently delete all data from this device." isDestructive>
-                    <button onClick={handleClearAllData} className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/30"><TrashIcon className="w-5 h-5"/></button>
-                </SettingsRow>
-            </SettingsCard>
-            
-            <SettingsCard title="About & Feedback">
-                <FeedbackForm onFeedbackSubmit={onFeedbackSubmit}/>
-                <SettingsRow title="Legal" subtitle="Terms of Service & Privacy Policy" onClick={() => setActiveView('legal')}>
-                    <ChevronRightIcon className="w-6 h-6"/>
-                </SettingsRow>
-            </SettingsCard>
-        </div>
-        </>
-    );
+        <SettingsCard title="Display Preferences">
+             <SettingsRow title="Show Ratings & Scores" subtitle="Display TMDB and user scores throughout the app.">
+                <ToggleSwitch enabled={showRatings} onChange={setShowRatings} />
+            </SettingsRow>
+             <SettingsRow title="Show Watched Confirmation" subtitle="Display a banner when an item is marked as watched.">
+                <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
+            </SettingsRow>
+            <SettingsRow title="Smart Watch Logic" subtitle="Helpful popup when episodes are marked out of order.">
+                <ToggleSwitch enabled={notificationSettings.showPriorEpisodesPopup} onChange={() => handleToggleNotification('showPriorEpisodesPopup')} />
+            </SettingsRow>
+        </SettingsCard>
+
+        <ThemeSettings customThemes={props.customThemes} setCustomThemes={setCustomThemes} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={false} setHolidayAnimationsEnabled={() => {}} profileTheme={profileTheme} setProfileTheme={setProfileTheme}/>
+
+        <SettingsCard title="Localization">
+            <SettingsRow title="Time Format" subtitle="Display times in 12-hour or 24-hour format.">
+                 <div className="flex p-1 bg-bg-primary rounded-full border border-bg-secondary">
+                    <button onClick={() => setTimeFormat('12h')} className={`px-3 py-1 text-xs rounded-full ${timeFormat === '12h' ? 'bg-accent-gradient text-on-accent' : 'text-text-secondary'}`}>12-hour</button>
+                    <button onClick={() => setTimeFormat('24h')} className={`px-3 py-1 text-xs rounded-full ${timeFormat === '24h' ? 'bg-accent-gradient text-on-accent' : 'text-text-secondary'}`}>24-hour</button>
+                </div>
+            </SettingsRow>
+            <TimezoneSettings timezone={timezone} setTimezone={setTimezone} />
+        </SettingsCard>
+
+        <SettingsCard title="Data Management">
+            <SettingsRow title="Clear API Cache" subtitle="Force refetch all movie/show data.">
+                <button onClick={clearApiCache} className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125"><ArrowPathIcon className="w-5 h-5"/></button>
+            </SettingsRow>
+            <SettingsRow title="Clear All Data" subtitle="Permanently delete all data from this device." isDestructive>
+                <button onClick={() => { if(window.confirm("ARE YOU SURE?")) { localStorage.clear(); window.location.reload(); } }} className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/30"><TrashIcon className="w-5 h-5"/></button>
+            </SettingsRow>
+        </SettingsCard>
+        
+        <SettingsCard title="About & Feedback">
+            <FeedbackForm onFeedbackSubmit={onFeedbackSubmit}/>
+            <SettingsRow title="Legal" subtitle="Terms of Service & Privacy Policy" onClick={() => setActiveView('legal')}>
+                <ChevronRightIcon className="w-6 h-6"/>
+            </SettingsRow>
+        </SettingsCard>
+    </div>
+    </>
+  );
 };

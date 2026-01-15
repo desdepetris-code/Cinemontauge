@@ -1,10 +1,11 @@
+
 import { useMemo } from 'react';
-import { UserData, CalculatedStats, TrackedItem, EpisodeProgress } from '../types';
+import { UserData, CalculatedStats, TrackedItem, EpisodeProgress, HistoryItem } from '../types';
 
 export function useCalculatedStats(data: UserData): CalculatedStats {
   return useMemo(() => {
     // Filter out history items with invalid timestamps to prevent crashes.
-    const validHistory = data.history.filter(h => h.timestamp && !isNaN(new Date(h.timestamp).getTime()));
+    const validHistory: HistoryItem[] = data.history.filter(h => h.timestamp && !isNaN(new Date(h.timestamp).getTime()));
 
     const nonManualHistory = validHistory.filter(h => 
       h.logId.startsWith('tv-') || h.logId.startsWith('log-') || h.logId.startsWith('live-')
@@ -20,7 +21,7 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    oneMonthAgo.setMonth(now.getMonth() - 1);
     const thisYearStart = new Date(now.getFullYear(), 0, 1);
 
     const watchedThisWeek = nonManualHistory.filter(h => 
@@ -69,7 +70,8 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const moviesToWatchCount = data.planToWatch.filter(i => i.media_type === 'movie').length;
 
     // --- Longest streak ---
-    const uniqueDates = [...new Set(nonManualHistory.map(h => new Date(h.timestamp).toDateString()))];
+    // FIX: Explicitly type uniqueDates as string array to avoid 'unknown' type error in sort.
+    const uniqueDates: string[] = Array.from(new Set(nonManualHistory.map(h => new Date(h.timestamp).toDateString())));
     uniqueDates.sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
     
     let longestStreak = 0;

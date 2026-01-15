@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem } from '../types';
-import { TrashIcon, ChevronDownIcon, StarIcon } from '../components/Icons';
+import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon } from '../components/Icons';
 import ListGrid from '../components/ListGrid';
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
@@ -13,7 +13,7 @@ type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments';
 
 const WatchHistory: React.FC<{
   history: HistoryItem[];
-  onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   timezone: string;
 }> = ({ history, onSelectShow, onDeleteHistoryItem, timezone }) => {
@@ -22,9 +22,19 @@ const WatchHistory: React.FC<{
 
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const sortedHistory = useMemo(() => {
     let items = history;
+
+    if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        items = items.filter(item => 
+            item.title.toLowerCase().includes(query) || 
+            item.episodeTitle?.toLowerCase().includes(query)
+        );
+    }
+
     if (filter !== 'all') {
       items = items.filter(item => item.media_type === filter);
     }
@@ -51,7 +61,7 @@ const WatchHistory: React.FC<{
     }
     // The history from props should already be sorted, but let's be safe.
     return [...items].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [history, filter, dateFilter]);
+  }, [history, filter, dateFilter, searchQuery]);
 
   const formatHistoryDate = (dateString: string, timezone: string) => {
     const date = new Date(dateString);
@@ -69,23 +79,35 @@ const WatchHistory: React.FC<{
 
   return (
     <div>
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+      <div className="mb-6 flex flex-col space-y-4">
         <div className="relative">
-          <select value={filter} onChange={(e) => setFilter(e.target.value as HistoryFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
-            <option value="all">All Types</option>
-            <option value="tv">TV Shows</option>
-            <option value="movie">Movies</option>
-          </select>
-          <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+            <input
+                type="text"
+                placeholder="Search history..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-bg-secondary text-text-primary placeholder-text-secondary rounded-lg border border-transparent focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all"
+            />
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
         </div>
-        <div className="relative">
-          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">Last 7 Days</option>
-            <option value="month">Last 30 Days</option>
-          </select>
-          <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+        <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+            <select value={filter} onChange={(e) => setFilter(e.target.value as HistoryFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
+                <option value="all">All Types</option>
+                <option value="tv">TV Shows</option>
+                <option value="movie">Movies</option>
+            </select>
+            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+            </div>
+            <div className="relative">
+            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent">
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+            </select>
+            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+            </div>
         </div>
       </div>
       <section>
@@ -137,7 +159,9 @@ const WatchHistory: React.FC<{
         ) : (
           <div className="text-center py-20 bg-bg-secondary/30 rounded-lg">
             <h2 className="text-xl font-bold">No History Found</h2>
-            <p className="mt-2 text-text-secondary">Your watch history for the selected filters is empty.</p>
+            <p className="mt-2 text-text-secondary">
+                {searchQuery ? "No matching records found." : "Your watch history for the selected filters is empty."}
+            </p>
           </div>
         )}
       </section>
@@ -174,7 +198,7 @@ const SearchHistory: React.FC<{
 // --- MAIN SCREEN ---
 interface HistoryScreenProps {
   userData: UserData;
-  onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;

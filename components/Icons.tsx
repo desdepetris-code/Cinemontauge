@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 type IconProps = React.SVGProps<SVGSVGElement>;
@@ -7,6 +6,12 @@ export const HeartIcon: React.FC<IconProps & { filled?: boolean }> = ({ filled, 
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
     </svg>
+);
+
+export const SofaIcon: React.FC<IconProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75V12c0-1.104.896-2 2-2h15.5c1.104 0 2 .896 2 2v3.75M2.25 15.75c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125M2.25 15.75v3.375c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125V15.75M12 10V5.25A2.25 2.25 0 0 0 9.75 3h-4.5A2.25 2.25 0 0 0 3 5.25V10m9 0v4.75M12 10h9m-9 0V5.25a2.25 2.25 0 0 1 2.25-2.25h4.5A2.25 2.25 0 0 1 21 5.25V10" />
+  </svg>
 );
 
 export const MountainIcon: React.FC<IconProps> = (props) => (
@@ -290,6 +295,12 @@ export const XMarkIcon: React.FC<IconProps> = (props) => (
 export const CalendarIcon: React.FC<IconProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-9 11.25h.008v.008H-9v-.008z" />
+    </svg>
+);
+
+export const LogWatchIcon: React.FC<IconProps> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
 );
 

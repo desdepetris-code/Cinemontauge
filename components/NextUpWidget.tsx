@@ -27,7 +27,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: (
     <button
         onClick={onClick}
         disabled={disabled}
-        className={`flex flex-col items-center justify-center space-y-1 w-full h-full p-2 rounded-lg border transition-all ${disabled ? 'text-text-secondary/50 cursor-not-allowed bg-bg-secondary/30 border-bg-secondary' : (isActive ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' : 'bg-bg-secondary border border-bg-secondary/80 text-text-primary hover:border-primary-accent hover:bg-bg-secondary/70')}`}
+        className={`flex flex-col items-center justify-center space-y-1 w-full h-full p-2 rounded-lg border transition-all ${disabled ? 'text-text-secondary/50 cursor-not-allowed bg-bg-secondary/30 border-primary-accent/10' : (isActive ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' : 'bg-bg-secondary border-primary-accent/20 text-text-primary hover:border-primary-accent hover:bg-bg-secondary/70')}`}
     >
         {icon}
         <span className="text-xs font-semibold text-center">{label}</span>
@@ -137,7 +137,6 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                 onSave={(text) => onSaveComment(episodeMediaKey, text)}
             />
             <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden">
-                {/* Image container with blurred backdrop */}
                 <div 
                     className="h-40 w-full bg-cover bg-center flex items-center justify-center relative"
                     style={{ backgroundImage: `url(${imageSrcs.backdrop[0]})` }}
@@ -169,7 +168,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                     <div className="grid grid-cols-5 gap-2 mt-4">
                         <ActionButton 
                             icon={<CheckCircleIcon className={`w-6 h-6 ${isWatched ? 'text-green-400' : ''}`} />} 
-                            label={isWatched ? "Watched" : "Watch"} 
+                            label={isWatched ? "Not Watched" : "Watch"} 
                             onClick={handleMarkWatched} 
                             isActive={isWatched}
                         />

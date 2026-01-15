@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem, Reminder, ReminderType } from '../types';
+import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem, Reminder, ReminderType, ShortcutSettings } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
@@ -19,7 +19,6 @@ import GenericCarousel from '../components/GenericCarousel';
 import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
 import { getEnrichedMediaFromBackend } from '../services/backendService';
-import WeeklyFavorites from '../components/WeeklyFavorites';
 
 interface DashboardProps {
   userData: UserData;
@@ -27,7 +26,7 @@ interface DashboardProps {
   onSelectShowInModal: (id: number, media_type: 'tv' | 'movie') => void;
   watchProgress: UserData['watchProgress'];
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
-  onShortcutNavigate: (screen: ScreenName, profileTab?: ProfileTab) => void;
+  onShortcutNavigate: (tabId: string) => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
   setCustomLists: React.Dispatch<React.SetStateAction<CustomList[]>>;
   liveWatchMedia: LiveWatchMediaInfo | null;
@@ -46,6 +45,7 @@ interface DashboardProps {
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   onOpenNominateModal: () => void;
+  shortcutSettings: ShortcutSettings;
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -120,7 +120,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 const Dashboard: React.FC<DashboardProps> = ({
     userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
     liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat,
-    reminders, onToggleReminder, onUpdateLists, onOpenNominateModal
+    reminders, onToggleReminder, onUpdateLists, onOpenNominateModal, shortcutSettings
 }) => {
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
 
@@ -185,10 +185,15 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="animate-fade-in space-y-8">
       <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
       <DateTimeDisplay timezone={timezone} timeFormat={timeFormat} />
-      <ShortcutNavigation onShortcutNavigate={onShortcutNavigate} />
+      
+      {shortcutSettings.show && (
+          <ShortcutNavigation 
+            onShortcutNavigate={onShortcutNavigate} 
+            selectedTabs={shortcutSettings.tabs}
+          />
+      )}
+      
       <StatsWidget userData={userData} genres={genres} />
-
-      <WeeklyFavorites items={userData.weeklyFavorites} onSelectShow={onSelectShow} onNominate={onOpenNominateModal} />
 
       {backendLoading && (
         <div className="px-6 mb-8">

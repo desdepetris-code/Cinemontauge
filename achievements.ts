@@ -1,3 +1,4 @@
+
 import { Achievement } from './types';
 
 export const allAchievements: Achievement[] = [
@@ -119,8 +120,11 @@ export const allAchievements: Achievement[] = [
   { id: 'favorite_show', name: 'Got a Favorite?', description: 'Add your first item to Favorites.', difficulty: 'Easy', check: (d,s) => ({ progress: d.favorites.length, goal: 1})},
   { id: 'favorite_collection', name: 'Top Tier', description: 'Add 10 items to your Favorites list.', difficulty: 'Medium', check: (d,s) => ({ progress: d.favorites.length, goal: 10})},
   { id: 'favorite_episode', name: 'That One Scene', description: 'Mark an episode as a favorite.', difficulty: 'Easy', check: (d,s) => ({ progress: Object.keys(d.favoriteEpisodes).length, goal: 1})},
-  { id: 'episode_connoisseur', name: 'Episode Connoisseur', description: 'Mark 20 episodes as favorites.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.favoriteEpisodes).reduce((acc: number, seasons) => acc + Object.values(seasons).reduce((sAcc: number, eps) => sAcc + Object.keys(eps).length, 0), 0), goal: 20})},
+  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
+  { id: 'episode_connoisseur', name: 'Episode Connoisseur', description: 'Mark 20 episodes as favorites.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.favoriteEpisodes).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 20})},
   { id: 'first_rating', name: 'First Opinion', description: 'Rate any movie or show.', difficulty: 'Easy', check: (d,s) => ({ progress: s.ratedItemsCount, goal: 1})},
-  { id: 'episode_rater', name: 'Episode Rater', description: 'Rate 10 individual episodes.', difficulty: 'Easy', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons) => acc + Object.values(seasons).reduce((sAcc: number, eps) => sAcc + Object.keys(eps).length, 0), 0), goal: 10})},
-  { id: 'prolific_episode_rater', name: 'Detailed Critic', description: 'Rate 50 individual episodes.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons) => acc + Object.values(seasons).reduce((sAcc: number, eps) => sAcc + Object.keys(eps).length, 0), 0), goal: 50})},
+  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
+  { id: 'episode_rater', name: 'Episode Rater', description: 'Rate 10 individual episodes.', difficulty: 'Easy', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 10})},
+  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
+  { id: 'prolific_episode_rater', name: 'Detailed Critic', description: 'Rate 50 individual episodes.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 50})},
 ];

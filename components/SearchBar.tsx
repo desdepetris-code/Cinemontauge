@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { debounce } from 'lodash';
-import { searchMedia } from '../services/tmdbService';
-import { TmdbMedia } from '../types';
+import { searchMedia, getMediaDetails } from '../services/tmdbService';
+import { TmdbMedia, TmdbMediaDetails } from '../types';
 import { SearchIcon, CheckCircleIcon, CalendarIcon, ChevronRightIcon } from './Icons';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER_SMALL } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
@@ -15,6 +15,83 @@ interface SearchBarProps {
   dropdownWider?: boolean;
 }
 
+const SearchResultItem: React.FC<{
+    item: TmdbMedia;
+    onSelect: (item: TmdbMedia) => void;
+    onMarkWatched: (e: React.MouseEvent, item: TmdbMedia) => void;
+    onOpenCalendar: (e: React.MouseEvent, item: TmdbMedia) => void;
+}> = ({ item, onSelect, onMarkWatched, onOpenCalendar }) => {
+    const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        getMediaDetails(item.id, item.media_type).then(data => {
+            if (isMounted) setDetails(data);
+        }).catch(() => {});
+        return () => { isMounted = false; };
+    }, [item.id, item.media_type]);
+
+    const rating = React.useMemo(() => {
+        if (!details) return null;
+        if (item.media_type === 'tv') {
+          return details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || null;
+        } else {
+          return details.release_dates?.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.find(d => d.certification)?.certification || null;
+        }
+    }, [details, item.media_type]);
+
+    const getAgeRatingColor = (r: string) => {
+        const up = r.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(up)) return 'bg-green-600 text-white';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(up)) return 'bg-sky-500 text-white';
+        if (up === 'PG-13') return 'bg-yellow-500 text-black font-black';
+        if (up === 'TV-14') return 'bg-purple-600 text-white';
+        if (['R'].includes(up)) return 'bg-orange-600 text-white';
+        if (['TV-MA', 'NC-17'].includes(up)) return 'bg-red-700 text-white';
+        return 'bg-stone-500 text-white';
+    };
+
+    return (
+        <li className="p-3 hover:bg-bg-secondary">
+            <div className="flex items-center space-x-3">
+                <img
+                    src={item.poster_path ? `${TMDB_IMAGE_BASE_URL}w92${item.poster_path}` : PLACEHOLDER_POSTER_SMALL}
+                    alt={item.title || item.name}
+                    className="w-12 h-[4.5rem] object-contain bg-slate-900 rounded-md cursor-pointer flex-shrink-0"
+                    onClick={() => onSelect(item)}
+                />
+                <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelect(item)}>
+                    <p className="font-semibold text-text-primary truncate">{item.title || item.name}</p>
+                    <div className="flex items-center space-x-2 text-sm text-text-secondary">
+                        <span>{item.release_date?.substring(0, 4) || item.first_air_date?.substring(0, 4)}</span>
+                        <div className="flex items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 text-[10px] font-black rounded ${item.media_type === 'tv' ? 'bg-teal-500/20 text-teal-300' : 'bg-sky-500/20 text-sky-300'}`}>
+                                {item.media_type === 'tv' ? 'TV' : 'MOVIE'}
+                            </span>
+                            {rating && (
+                                <span className={`px-1.5 py-0.5 text-[9px] font-black rounded uppercase shadow-sm ${getAgeRatingColor(rating)}`}>
+                                    {rating}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-0.5">
+                    <button onClick={(e) => { e.stopPropagation(); onSelect(item) }} className="p-2 rounded-full hover:bg-bg-primary" title="Go to details">
+                        <ChevronRightIcon className="w-5 h-5 text-text-secondary"/>
+                    </button>
+                    <button onClick={(e) => onMarkWatched(e, item)} className="p-2 rounded-full hover:bg-bg-primary" title="Mark as watched">
+                        <CheckCircleIcon className="w-5 h-5 text-text-secondary"/>
+                    </button>
+                    <button onClick={(e) => onOpenCalendar(e, item)} className="p-2 rounded-full hover:bg-bg-primary" title="Mark as watched on date">
+                        <CalendarIcon className="w-5 h-5 text-text-secondary"/>
+                    </button>
+                </div>
+            </div>
+        </li>
+    );
+};
+
 const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatched, value, onChange, disableDropdown, dropdownWider }) => {
   const [results, setResults] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,7 +99,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
   const [error, setError] = useState<string | null>(null);
   const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(
     debounce(async (searchQuery: string) => {
       if (searchQuery.length > 0) {
@@ -107,36 +183,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
               {error && <div className="p-4 text-center text-red-500">{error}</div>}
               <ul className="divide-y divide-bg-secondary/50 overflow-y-auto">
                 {results.map(item => (
-                  <li key={`${item.id}-${item.media_type}`} className="p-3 hover:bg-bg-secondary">
-                    <div className="flex items-center space-x-3">
-                        <img
-                            src={item.poster_path ? `${TMDB_IMAGE_BASE_URL}w92${item.poster_path}` : PLACEHOLDER_POSTER_SMALL}
-                            alt={item.title || item.name}
-                            className="w-12 h-[4.5rem] object-contain bg-slate-900 rounded-md cursor-pointer flex-shrink-0"
-                            onClick={() => handleSelect(item)}
-                        />
-                        <div className="flex-grow min-w-0 cursor-pointer" onClick={() => handleSelect(item)}>
-                            <p className="font-semibold text-text-primary truncate">{item.title || item.name}</p>
-                            <div className="flex items-center space-x-2 text-sm text-text-secondary">
-                                <span>{item.release_date?.substring(0, 4) || item.first_air_date?.substring(0, 4)}</span>
-                                <span className={`px-1.5 py-0.5 text-xs font-semibold rounded ${item.media_type === 'tv' ? 'bg-teal-500/20 text-teal-300' : 'bg-sky-500/20 text-sky-300'}`}>
-                                    {item.media_type === 'tv' ? 'TV' : 'Movie'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-0.5">
-                            <button onClick={(e) => { e.stopPropagation(); handleSelect(item) }} className="p-2 rounded-full hover:bg-bg-primary" title="Go to details">
-                                <ChevronRightIcon className="w-5 h-5 text-text-secondary"/>
-                            </button>
-                            <button onClick={(e) => handleMarkWatched(e, item)} className="p-2 rounded-full hover:bg-bg-primary" title="Mark as watched">
-                                <CheckCircleIcon className="w-5 h-5 text-text-secondary"/>
-                            </button>
-                            <button onClick={(e) => handleOpenCalendar(e, item)} className="p-2 rounded-full hover:bg-bg-primary" title="Mark as watched on date">
-                                <CalendarIcon className="w-5 h-5 text-text-secondary"/>
-                            </button>
-                        </div>
-                    </div>
-                  </li>
+                  <SearchResultItem 
+                    key={`${item.id}-${item.media_type}`} 
+                    item={item} 
+                    onSelect={handleSelect} 
+                    onMarkWatched={handleMarkWatched} 
+                    onOpenCalendar={handleOpenCalendar} 
+                  />
                 ))}
               </ul>
               {!loading && !error && results.length === 0 && value.length > 2 && (

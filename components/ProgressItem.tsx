@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, TrackedItem, WatchProgress, EpisodeTag, EpisodeProgress } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
@@ -57,7 +58,8 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
             let foundNextInSeason = false;
             for (let i = 1; i <= season.episode_count; i++) {
                 if (progressForShow[season.season_number]?.[i]?.status !== 2) {
-                    const partialEpisode = { episode_number: i, season_number: season.season_number, name: '', id: 0, overview: '', still_path: null, air_date: '' };
+                    // FIX: Added 'runtime: null' to fix type mismatch with 'Episode' interface.
+                    const partialEpisode = { episode_number: i, season_number: season.season_number, name: '', id: 0, overview: '', still_path: null, air_date: '', runtime: null };
                     tag = getEpisodeTag(partialEpisode, season, details, undefined);
                     nextEp = partialEpisode;
 

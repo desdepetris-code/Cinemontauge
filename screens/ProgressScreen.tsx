@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo } from '../types';
 import { getMediaDetails, getSeasonDetails, clearMediaCache } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon } from '../components/Icons';
+import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon } from '../components/Icons';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ProgressCard, { EnrichedShowData } from '../components/ProgressCard';
 import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovieCard';
@@ -50,6 +50,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
     const { watching, onHold, watchProgress, history } = userData;
     
     const [sortOption, setSortOption] = useState<SortOption>('lastWatched');
+    const [searchQuery, setSearchQuery] = useState('');
     const [enrichedMedia, setEnrichedMedia] = useState<EnrichedMediaData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -179,13 +180,18 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
     }, [watchProgress, history, refreshKey, pausedLiveSessions, watching, onHold, props.onUpdateLists, isRefreshing]);
 
     const sortedMedia = useMemo(() => {
-        const displayableMedia = enrichedMedia.filter(item => {
+        let results = enrichedMedia.filter(item => {
             if (item.media_type === 'tv') return (item as EnrichedShowData).nextEpisodeInfo !== null;
             return true;
         });
 
-        const watchingItems = displayableMedia.filter(item => (item as EnrichedShowData).status === 'watching');
-        const onHoldItems = displayableMedia.filter(item => (item as EnrichedShowData).status === 'onHold');
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            results = results.filter(item => item.title.toLowerCase().includes(query));
+        }
+
+        const watchingItems = results.filter(item => (item as EnrichedShowData).status === 'watching');
+        const onHoldItems = results.filter(item => (item as EnrichedShowData).status === 'onHold');
         
         const sortFunction = (a: EnrichedMediaData, b: EnrichedMediaData): number => {
             switch (sortOption) {
@@ -213,7 +219,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         onHoldItems.sort(sortFunction);
 
         return [...watchingItems, ...onHoldItems];
-    }, [enrichedMedia, sortOption]);
+    }, [enrichedMedia, sortOption, searchQuery]);
     
     const quickStats = useMemo(() => {
         let episodesLeft = 0, hoursLeft = 0, showsInProgress = 0, moviesInProgress = 0;
@@ -251,14 +257,30 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             </div>
 
             <section>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-accent-gradient">Up Next</h2>
-                    <div className="flex items-center space-x-2">
+                <div className="flex flex-col space-y-4 mb-4">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-accent-gradient">Up Next</h2>
+                        <button onClick={handleRefresh} disabled={isRefreshing || isLoading} className="p-2 bg-bg-secondary rounded-md text-text-primary hover:brightness-125 disabled:opacity-50" aria-label="Refresh Data">
+                            <ArrowPathIcon className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-grow">
+                            <input
+                                type="text"
+                                placeholder="Search shows in progress..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-bg-secondary text-text-primary placeholder-text-secondary rounded-lg border border-transparent focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all"
+                            />
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
+                        </div>
                         <div className="relative">
                             <select
                                 value={sortOption}
                                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                                className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 pl-3 pr-8 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                                className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 pl-3 pr-8 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary-accent h-full"
                             >
                                 <option value="lastWatched">Last Watched</option>
                                 <option value="oldestWatched">Oldest Watched</option>
@@ -268,9 +290,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                             </select>
                             <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
                         </div>
-                        <button onClick={handleRefresh} disabled={isRefreshing || isLoading} className="p-2 bg-bg-secondary rounded-md text-text-primary hover:brightness-125 disabled:opacity-50" aria-label="Refresh Data">
-                            <ArrowPathIcon className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        </button>
                     </div>
                 </div>
 
@@ -294,7 +313,9 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     </div>
                 ) : (
                     <div className="text-center py-16 bg-bg-secondary/30 rounded-lg">
-                        {currentUser ? (
+                        {searchQuery ? (
+                            <p className="text-text-secondary">No matching titles found in your progress.</p>
+                        ) : currentUser ? (
                              <>
                                 <h2 className="text-xl font-bold text-text-primary">All Caught Up!</h2>
                                 <p className="mt-2 text-text-secondary max-w-sm mx-auto">Add a new show to your "Watching" list or pause a movie to track it here.</p>

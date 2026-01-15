@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment, CastMember, CrewMember } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, CalendarIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, PencilSquareIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, PencilSquareIcon } from './Icons';
 import { LiveWatchMediaInfo } from '../types';
 import { formatRuntime, isNewRelease } from '../utils/formatUtils';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
@@ -68,6 +69,23 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   const [touchEnd, setTouchEnd] = useState(0);
   const [isLogWatchModalOpen, setIsLogWatchModalOpen] = useState(false);
   const minSwipeDistance = 50;
+
+  const ageRating = useMemo(() => {
+    if (!showDetails) return null;
+    const usRating = showDetails.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+    return usRating?.rating || null;
+  }, [showDetails]);
+
+  const getAgeRatingColor = (rating: string) => {
+    const r = rating.toUpperCase();
+    if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]';
+    if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]';
+    if (r === 'PG-13') return 'bg-amber-400 text-black font-black shadow-[0_0_8px_rgba(251,191,36,0.5)]';
+    if (r === 'TV-14') return 'bg-violet-700 shadow-[0_0_8px_rgba(109,40,217,0.5)]';
+    if (['R'].includes(r)) return 'bg-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.5)]';
+    if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 shadow-[0_0_8px_rgba(185,28,28,0.5)]';
+    return 'bg-stone-500';
+  };
 
   if (!isOpen || !episode) return null;
 
@@ -196,10 +214,15 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                             return null;
                         })()}
                       </div>
-                      <div className="flex items-center space-x-2 text-xs text-text-secondary/80 mt-1">
+                      <div className="flex items-center flex-wrap gap-2 text-xs text-text-secondary/80 mt-1">
                           {episode.air_date && <span>Aired: {new Date(episode.air_date + 'T00:00:00').toLocaleDateString()}</span>}
                           {episode.runtime && episode.runtime > 0 && episode.air_date && <span>&bull;</span>}
                           {episode.runtime && episode.runtime > 0 && <span>{formatRuntime(episode.runtime)}</span>}
+                          {ageRating && (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm text-white ${getAgeRatingColor(ageRating)}`}>
+                                    {ageRating}
+                                </span>
+                          )}
                       </div>
                   </div>
                   <p className="text-text-secondary text-sm">{episode.overview || "No description available."}</p>
@@ -220,19 +243,19 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   </button>
               )}
           </div>
-          <div className="p-4 border-t border-bg-secondary/50 flex flex-wrap justify-center gap-2">
+          <div className="p-4 border-t border-primary-accent/10 flex flex-wrap justify-center gap-2">
               <button
                   disabled={isFuture}
                   onClick={onToggleWatched}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${isWatched ? 'bg-green-500/20 text-green-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors ${isWatched ? 'bg-green-500/20 text-green-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <CheckCircleIcon className="w-5 h-5"/>
-                  <span>{isWatched ? 'Watched' : 'Mark Watched'}</span>
+                  <span>{isWatched ? 'Not Watched' : 'Watch'}</span>
               </button>
               <button
                   disabled={isFuture}
                   onClick={handleLiveWatch}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <PlayCircleIcon className="w-5 h-5"/>
                   <span>Live Watch</span>
@@ -240,15 +263,15 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               <button
                   disabled={isFuture}
                   onClick={() => setIsLogWatchModalOpen(true)}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
-                  <CalendarIcon className="w-5 h-5"/>
+                  <LogWatchIcon className="w-5 h-5"/>
                   <span>Log Watch</span>
               </button>
               <button
                   disabled={isFuture}
                   onClick={onOpenJournal}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <BookOpenIcon className="w-5 h-5"/>
                   <span>Journal</span>
@@ -256,7 +279,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               <button
                   disabled={isFuture}
                   onClick={onToggleFavorite}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${isFavorited ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors ${isFavorited ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <HeartIcon filled={isFavorited} className="w-5 h-5"/>
                   <span>{isFavorited ? 'Favorited' : 'Favorite'}</span>
@@ -264,7 +287,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                <button
                   disabled={isFuture}
                   onClick={onRate}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors ${episodeRating > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors ${episodeRating > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <StarIcon className="w-5 h-5"/>
                   <span>{episodeRating > 0 ? `Rated ${episodeRating}/5` : 'Rate'}</span>
@@ -272,10 +295,10 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               <button
                   disabled={isFuture}
                   onClick={() => { onDiscuss(); onClose(); }}
-                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md transition-colors bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
+                  className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
-                  <span>Discuss</span>
+                  <span>Comments</span>
               </button>
           </div>
         </div>

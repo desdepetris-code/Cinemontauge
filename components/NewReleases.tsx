@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { getNewReleases, getMediaDetails } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, TmdbMediaDetails, WatchStatus } from '../types';
@@ -46,6 +47,30 @@ const NewReleaseCard: React.FC<{
         if (!details || details.media_type !== 'tv' || isNew) return 0;
         return getRecentEpisodeCount(details);
     }, [details, isNew]);
+
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        if (item.media_type === 'tv') {
+          const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || null;
+          return usRating;
+        } else {
+          const usRelease = details.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+          const theatrical = usRelease?.release_dates?.find(d => d.certification)?.certification;
+          return theatrical || null;
+        }
+    }, [details, item.media_type]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-sky-600 text-white';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-teal-600 text-white';
+        if (r === 'PG-13') return 'bg-indigo-600 text-white';
+        if (r === 'TV-14') return 'bg-violet-600 text-white';
+        if (r === 'R') return 'bg-zinc-700 text-white';
+        if (r === 'TV-MA') return 'bg-slate-800 text-white';
+        if (r === 'NC-17') return 'bg-black text-white';
+        return 'bg-stone-500 text-white';
+    };
 
     const handlePlanToWatchClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -99,7 +124,12 @@ const NewReleaseCard: React.FC<{
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
                     onClick={() => onSelect(item.id, item.media_type)}
                 >
-                    {isNew && <NewReleaseOverlay />}
+                    {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
+                    {ageRating && (
+                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                            {ageRating}
+                        </div>
+                    )}
                     <div className="aspect-video">
                         <FallbackImage 
                             srcs={backdropSrcs}
@@ -172,9 +202,8 @@ const NewReleaseCard: React.FC<{
     );
 };
 
-
 interface NewReleasesProps {
-  mediaType?: 'tv' | 'movie';
+  mediaType: 'tv' | 'movie';
   title: string;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
@@ -182,56 +211,37 @@ interface NewReleasesProps {
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   completed: TrackedItem[];
-  timezone?: string;
+  timezone: string;
   onViewMore?: () => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
 }
 
-const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone = 'Etc/UTC', onViewMore, onUpdateLists }) => {
-    const [releases, setReleases] = useState<TmdbMedia[]>([]);
+const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
+    const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchReleases = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                let combined: TmdbMedia[] = [];
-                if (mediaType) {
-                    combined = await getNewReleases(mediaType);
-                } else {
-                    const [tv, movies] = await Promise.all([
-                        getNewReleases('tv'),
-                        getNewReleases('movie')
-                    ]);
-                    combined = [...tv, ...movies];
-                }
-                
-                combined.sort((a, b) => {
-                    const dateA = new Date(a.release_date || a.first_air_date || 0).getTime();
-                    const dateB = new Date(b.release_date || b.first_air_date || 0).getTime();
-                    return dateB - dateA;
-                });
-                const limitedResults = combined.slice(0, 8); // Limit to 8 for homepage
-                setReleases(limitedResults);
-
+                const results = await getNewReleases(mediaType);
+                setMedia(results.slice(0, 10));
             } catch (error) {
-                console.error("Failed to fetch new releases", error);
+                console.error(`Failed to fetch ${mediaType} new releases`, error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchReleases();
+        fetchData();
     }, [mediaType]);
 
     if (loading) {
         return (
              <div className="my-8">
-                <div className="flex justify-between items-center mb-4 px-6">
-                    <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
-                </div>
+                <div className="h-8 w-3/4 bg-bg-secondary rounded-md mb-4 px-6"></div>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
                     {[...Array(5)].map((_, i) => (
-                         <div key={i} className="w-72 flex-shrink-0">
+                        <div key={i} className="w-72 flex-shrink-0">
                              <div className="aspect-video bg-bg-secondary rounded-lg"></div>
                              <div className="h-9 bg-bg-secondary rounded-md mt-2"></div>
                         </div>
@@ -241,20 +251,7 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
         )
     }
 
-    if (releases.length === 0) {
-        return null;
-    }
-    
-    const handlePlanToWatch = (item: TmdbMedia) => {
-        const trackedItem: TrackedItem = {
-            id: item.id,
-            title: item.title || item.name || 'Untitled',
-            media_type: item.media_type,
-            poster_path: item.poster_path,
-            genre_ids: item.genre_ids,
-        };
-        onUpdateLists(trackedItem, null, 'planToWatch');
-    };
+    if (media.length === 0) return null;
 
     return (
         <div className="my-8">
@@ -268,24 +265,20 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
-                    {releases.map(item => {
-                        const isFavorite = favorites.some(fav => fav.id === item.id);
-                        const isCompleted = completed.some(c => c.id === item.id);
-                        return (
-                            <NewReleaseCard 
-                                key={`${item.id}-${item.media_type}`}
-                                item={item}
-                                onSelect={onSelectShow}
-                                onAdd={onOpenAddToListModal}
-                                onMarkShowAsWatched={onMarkShowAsWatched}
-                                onToggleFavoriteShow={onToggleFavoriteShow}
-                                isFavorite={isFavorite}
-                                isCompleted={isCompleted}
-                                timezone={timezone}
-                                onPlanToWatch={() => handlePlanToWatch(item)}
-                            />
-                        );
-                    })}
+                    {media.map(item => (
+                        <NewReleaseCard 
+                            key={item.id}
+                            item={item}
+                            onSelect={onSelectShow}
+                            onAdd={onOpenAddToListModal}
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onToggleFavoriteShow={onToggleFavoriteShow}
+                            isFavorite={favorites.some(f => f.id === item.id)}
+                            isCompleted={completed.some(c => c.id === item.id)}
+                            timezone={timezone}
+                            onPlanToWatch={() => onUpdateLists({ id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path }, null, 'planToWatch')}
+                        />
+                    ))}
                     <div className="w-4 flex-shrink-0"></div>
                 </div>
             </Carousel>

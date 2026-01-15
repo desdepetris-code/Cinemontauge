@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { HistoryItem, TmdbMedia } from '../types';
 import { getMediaDetails, getNewlyPopularEpisodes, getNewReleases } from '../services/tmdbService';
@@ -31,13 +30,20 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ history, onSelectShow }) => {
       try {
         let fetchedItems: (TmdbMedia | null)[] = [];
         if (history.length > 0) {
-          const uniqueItems = Array.from(new Map(history.map(item => [item.id, item])).values());
-          const recentItems = uniqueItems.slice(0, 10).map((h: HistoryItem) => ({ id: h.id, media_type: h.media_type }));
+          // Add explicit type cast to resolve 'unknown' type inference issue for uniqueItems.
+          const uniqueItems = Array.from(new Map(history.map(item => [item.id, item])).values()) as HistoryItem[];
+          // Filter to ensure only 'tv' or 'movie' types are passed to getMediaDetails
+          const recentItems = uniqueItems
+            .filter(h => h.media_type === 'tv' || h.media_type === 'movie')
+            .slice(0, 10)
+            .map((h: HistoryItem) => ({ id: h.id, media_type: h.media_type as 'tv' | 'movie' }));
+          
           fetchedItems = await Promise.all(recentItems.map(item => getMediaDetails(item.id, item.media_type).catch(() => null)));
         } else {
           const [popularEpisodes, popularMovies] = await Promise.all([getNewlyPopularEpisodes(), getNewReleases('movie')]);
           const combined = [...popularEpisodes.slice(0, 5).map(ep => ep.showInfo as TmdbMedia), ...popularMovies.slice(0, 5)];
-          fetchedItems = await Promise.all(combined.map(item => getMediaDetails(item.id, item.media_type).catch(() => null)));
+          // Cast media_type because we know getNewlyPopularEpisodes and getNewReleases only return 'tv' and 'movie'
+          fetchedItems = await Promise.all(combined.map(item => getMediaDetails(item.id, item.media_type as 'tv' | 'movie').catch(() => null)));
         }
         setItems(fetchedItems.filter((d): d is TmdbMedia => d !== null));
       } catch (error) {
@@ -75,7 +81,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ history, onSelectShow }) => {
     <div className="w-full h-56 md:h-72 rounded-lg mb-8 overflow-hidden relative group">
       <div className="w-full h-full flex transition-transform ease-out duration-1000" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
         {items.map((item) => (
-          <div key={item.id} onClick={() => onSelectShow(item.id, item.media_type)} className="w-full h-full flex-shrink-0 relative cursor-pointer">
+          <div key={item.id} onClick={() => onSelectShow(item.id, item.media_type as 'tv' | 'movie')} className="w-full h-full flex-shrink-0 relative cursor-pointer">
             <img src={getImageUrl(item.backdrop_path || item.poster_path, 'w1280', 'backdrop')} alt={item.title || item.name} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/20"></div>
           </div>

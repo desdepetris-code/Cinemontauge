@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { getTrending, getMediaDetails } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, TmdbMediaDetails, WatchStatus } from '../types';
@@ -9,6 +10,7 @@ import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import Carousel from './Carousel';
 
+// Helper function for image URLs
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
     return `${TMDB_IMAGE_BASE_URL}${size}${path}`;
@@ -42,6 +44,30 @@ const TrendingCard: React.FC<{
         if (!details || details.media_type !== 'tv' || isNew) return 0;
         return getRecentEpisodeCount(details);
     }, [details, isNew]);
+
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        if (item.media_type === 'tv') {
+          const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US')?.rating || null;
+          return usRating;
+        } else {
+          const usRelease = details.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+          const theatrical = usRelease?.release_dates?.find(d => d.certification)?.certification;
+          return theatrical || null;
+        }
+    }, [details, item.media_type]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-sky-600 text-white';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-teal-600 text-white';
+        if (r === 'PG-13') return 'bg-indigo-600 text-white';
+        if (r === 'TV-14') return 'bg-violet-600 text-white';
+        if (r === 'R') return 'bg-zinc-700 text-white';
+        if (r === 'TV-MA') return 'bg-slate-800 text-white';
+        if (r === 'NC-17') return 'bg-black text-white';
+        return 'bg-stone-500 text-white';
+    };
 
     const handleAddClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -86,12 +112,17 @@ const TrendingCard: React.FC<{
                 mediaTitle={markAsWatchedModalState.item?.title || markAsWatchedModalState.item?.name || ''}
                 onSave={handleSaveWatchedDate}
             />
-            <div className="w-72 flex-shrink-0">
+            <div className="w-72 flex-shrink-0 h-full">
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
                     onClick={() => onSelect(item.id, item.media_type)}
                 >
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
+                    {ageRating && (
+                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                            {ageRating}
+                        </div>
+                    )}
                     <div className="aspect-video">
                         <FallbackImage 
                             srcs={backdropSrcs}
@@ -125,44 +156,25 @@ const TrendingCard: React.FC<{
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                 </div>
-                {details ? (
+                 {details && (
                     <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
                         {recentEpisodeCount > 0 && (
                             <div className="bg-rose-600/80 text-white font-bold text-[10px] text-center rounded-md py-1 mb-1.5 tracking-wider">
                                 {recentEpisodeCount > 1 ? `${recentEpisodeCount} NEW EPISODES` : 'NEW EPISODE'}
                             </div>
                         )}
-                        {item.media_type === 'tv' ? (
-                            <>
-                                <p className="font-bold text-text-primary truncate">{details.name}</p>
-                                <div className="flex justify-between text-text-secondary">
-                                    <span>{details.number_of_seasons} Season{details.number_of_seasons !== 1 ? 's' : ''}</span>
-                                    <span>
-                                        {details.first_air_date?.substring(0, 4)} - 
-                                        {details.status === 'Ended' ? (details.last_episode_to_air?.air_date?.substring(0, 4) || '') : 'Present'}
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <p className="font-bold text-text-primary truncate">{details.title}</p>
-                                <p className="text-text-secondary">
-                                    {details.release_date ? new Date(details.release_date + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : ''}
-                                </p>
-                            </>
-                        )}
+                        <p className="font-bold text-text-primary truncate">{item.media_type === 'tv' ? details.name : details.title}</p>
+                        <p className="text-text-secondary">
+                            {item.media_type === 'tv' 
+                                ? `${details.number_of_seasons} Seasons` 
+                                : details.release_date?.substring(0, 4)}
+                        </p>
                     </div>
-                ) : (
-                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1 animate-pulse">
-                        <div className="h-3 bg-bg-secondary rounded w-3/4"></div>
-                        <div className="h-3 bg-bg-secondary rounded w-1/2"></div>
-                    </div>
-                )}
+                 )}
             </div>
         </>
     );
 };
-
 
 interface TrendingSectionProps {
   mediaType: 'tv' | 'movie';
@@ -178,29 +190,28 @@ interface TrendingSectionProps {
 }
 
 const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, onViewMore, onUpdateLists }) => {
-    const [trending, setTrending] = useState<TmdbMedia[]>([]);
+    const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchTrending = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const tmdbResults = await getTrending(mediaType);
-                const limitedResults = tmdbResults.slice(0, 10);
-                setTrending(limitedResults);
+                const results = await getTrending(mediaType);
+                setMedia(results.slice(0, 10));
             } catch (error) {
-                console.error(`Failed to fetch trending ${mediaType}`, error);
+                console.error(`Failed to fetch ${mediaType} trending`, error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchTrending();
+        fetchData();
     }, [mediaType]);
 
     if (loading) {
         return (
-             <div className="mb-8">
-                <h2 className="text-2xl font-bold text-text-primary px-6 mb-4">{title}</h2>
+             <div className="my-8">
+                <div className="h-8 w-3/4 bg-bg-secondary rounded-md mb-4 px-6"></div>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className="w-72 flex-shrink-0">
@@ -213,23 +224,10 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
         )
     }
 
-    if (trending.length === 0) {
-        return null;
-    }
-    
-    const handlePlanToWatch = (item: TmdbMedia) => {
-        const trackedItem: TrackedItem = {
-            id: item.id,
-            title: item.title || item.name || 'Untitled',
-            media_type: item.media_type,
-            poster_path: item.poster_path,
-            genre_ids: item.genre_ids,
-        };
-        onUpdateLists(trackedItem, null, 'planToWatch');
-    };
+    if (media.length === 0) return null;
 
     return (
-        <div className="mb-8">
+        <div className="my-8">
             <div className="flex justify-between items-center mb-4 px-6">
                 <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
                 {onViewMore && (
@@ -240,23 +238,19 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
-                    {trending.map(item => {
-                        const isFavorite = favorites.some(fav => fav.id === item.id);
-                        const isCompleted = completed.some(c => c.id === item.id);
-                        return (
-                            <TrendingCard 
-                                key={`${item.id}-${item.media_type}`}
-                                item={item}
-                                onSelect={onSelectShow}
-                                onAdd={onOpenAddToListModal}
-                                onMarkShowAsWatched={onMarkShowAsWatched}
-                                onToggleFavoriteShow={onToggleFavoriteShow}
-                                isFavorite={isFavorite}
-                                isCompleted={isCompleted}
-                                onPlanToWatch={() => handlePlanToWatch(item)}
-                            />
-                        );
-                    })}
+                    {media.map(item => (
+                        <TrendingCard 
+                            key={`${item.id}-${item.media_type}`}
+                            item={item}
+                            onSelect={onSelectShow}
+                            onAdd={onOpenAddToListModal}
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onToggleFavoriteShow={onToggleFavoriteShow}
+                            isFavorite={favorites.some(f => f.id === item.id)}
+                            isCompleted={completed.some(c => c.id === item.id)}
+                            onPlanToWatch={() => onUpdateLists({ id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path }, null, 'planToWatch')}
+                        />
+                    ))}
                     <div className="w-4 flex-shrink-0"></div>
                 </div>
             </Carousel>

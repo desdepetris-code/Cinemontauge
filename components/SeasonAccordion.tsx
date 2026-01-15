@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings } from '../types';
-import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, CalendarIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon } from './Icons';
+import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, isNewRelease } from '../utils/formatUtils';
-import MarkAsWatchedModal from './MarkAsWatchedModal';
+import MarkAsWatchedModal, { LogWatchScope } from './MarkAsWatchedModal';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL } from '../constants';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
@@ -11,6 +11,7 @@ import { confirmationService } from '../services/confirmationService';
 import NotesModal from './NotesModal';
 import ScoreStar from './ScoreStar';
 import RatingModal from './RatingModal';
+import { getSeasonDetails } from '../services/tmdbService';
 
 interface SeasonAccordionProps {
   season: TmdbMediaDetails['seasons'][0];
@@ -32,6 +33,7 @@ interface SeasonAccordionProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onSaveJournal: (showId: number, season: number, episode: number, entry: JournalEntry | null) => void;
   episodeRatings: EpisodeRatings;
+  /* Fixed: Removed duplicate identifier onOpenEpisodeRatingModal */
   onOpenEpisodeRatingModal: (episode: Episode) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
   isCollapsible?: boolean;
@@ -96,7 +98,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   seasonRatings,
   onRateSeason
 }) => {
-  const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
+  const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null; scope: LogWatchScope }>({ isOpen: false, episode: null, scope: 'single' });
   const [justWatchedEpisodeId, setJustWatchedEpisodeId] = useState<number | null>(null);
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
@@ -107,7 +109,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
 
     if (!seasonDetails?.episodes) {
       const totalInSeason = season.episode_count;
-      if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
+      if (totalInSeason === 0) return { seasonProgressPercent: 0, unwwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
       const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
       const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
@@ -124,6 +126,23 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
     const unwatched = totalAired - watchedCount;
     return { seasonProgressPercent: percent, unwatchedCount: unwatched, totalAiredEpisodesInSeason: totalAired };
   }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number]);
+
+  const ageRating = useMemo(() => {
+    if (!showDetails) return null;
+    const usRating = showDetails.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+    return usRating?.rating || null;
+  }, [showDetails]);
+
+  const getAgeRatingColor = (rating: string) => {
+    const r = rating.toUpperCase();
+    if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-green-600 text-white';
+    if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-sky-500 text-white';
+    if (r === 'PG-13') return 'bg-yellow-500 text-black font-black';
+    if (r === 'TV-14') return 'bg-purple-600 text-white';
+    if (['R'].includes(r)) return 'bg-orange-600 text-white';
+    if (['TV-MA', 'NC-17'].includes(r)) return 'bg-red-700 text-white';
+    return 'bg-stone-500 text-white';
+  };
 
 
   const seasonPosterSrcs = useMemo(() => {
@@ -162,6 +181,46 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   
   const userSeasonRating = seasonRatings[showId]?.[season.season_number] || 0;
 
+  const handleLogSeasonWatch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLogDateModalState({ isOpen: true, episode: null, scope: 'season' });
+  };
+
+  const handleBulkLogSave = async (data: { date: string; note: string; scope: LogWatchScope; selectedEpisodeIds?: number[] }) => {
+    const showInfo: TrackedItem = { 
+        id: showDetails.id, 
+        title: showDetails.name || 'Untitled', 
+        media_type: 'tv', 
+        poster_path: showDetails.poster_path 
+    };
+
+    if (data.scope === 'single' && logDateModalState.episode) {
+        onAddWatchHistory(showInfo, logDateModalState.episode.season_number, logDateModalState.episode.episode_number, data.date, data.note, logDateModalState.episode.name);
+        return;
+    }
+
+    if (!data.selectedEpisodeIds || data.selectedEpisodeIds.length === 0) {
+        confirmationService.show("No episodes selected to log.");
+        return;
+    }
+
+    confirmationService.show(`Logging ${data.selectedEpisodeIds.length} episodes...`);
+    try {
+        const sd = seasonDetails || await getSeasonDetails(showId, season.season_number);
+        const airedEpisodes = sd.episodes.filter(ep => ep.air_date && ep.air_date <= today);
+        
+        for (const ep of airedEpisodes) {
+            if (data.selectedEpisodeIds.includes(ep.id)) {
+                onAddWatchHistory(showInfo, ep.season_number, ep.episode_number, data.date, data.note, ep.name);
+            }
+        }
+        confirmationService.show(`Logged ${data.selectedEpisodeIds.length} episodes of "${season.name}" for ${showDetails.name}!`);
+    } catch (e) {
+        console.error(e);
+        confirmationService.show("Season logging failed.");
+    }
+  };
+
   return (
     <>
       <RatingModal 
@@ -180,27 +239,19 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
             }
         }}
         mediaTitle={notesModalState.episode ? `Note for S${notesModalState.episode.season_number} E${notesModalState.episode.episode_number}: ${notesModalState.episode.name}` : ''}
-        initialNote={episodeNote}
+        initialNotes={episodeNote ? [{ id: 'manual', text: episodeNote, timestamp: new Date().toISOString() }] : []}
       />
       <MarkAsWatchedModal
         isOpen={logDateModalState.isOpen}
-        onClose={() => setLogDateModalState({ isOpen: false, episode: null })}
-        mediaTitle={logDateModalState.episode ? `S${logDateModalState.episode.season_number} E${logDateModalState.episode.episode_number}: ${logDateModalState.episode.name}` : ''}
-        onSave={(data) => {
-            if (logDateModalState.episode) {
-                // FIX: Argument of type 'TmdbMediaDetails' is not assignable to parameter of type 'TrackedItem'.
-                const trackedItem: TrackedItem = {
-                    id: showDetails.id,
-                    title: showDetails.name || 'Untitled',
-                    media_type: 'tv',
-                    poster_path: showDetails.poster_path,
-                    genre_ids: showDetails.genres.map(g => g.id),
-                };
-                onAddWatchHistory(trackedItem, logDateModalState.episode.season_number, logDateModalState.episode.episode_number, data.date, data.note, logDateModalState.episode.name);
-            }
-        }}
+        onClose={() => setLogDateModalState({ isOpen: false, episode: null, scope: 'single' })}
+        mediaTitle={logDateModalState.episode ? `S${logDateModalState.episode.season_number} E${logDateModalState.episode.episode_number}: ${logDateModalState.episode.name}` : season.name}
+        onSave={handleBulkLogSave}
+        initialScope={logDateModalState.scope}
+        mediaType="tv"
+        showDetails={showDetails}
+        seasonDetails={seasonDetails}
       />
-      <div id={`season-${season.season_number}`} className="bg-card-gradient rounded-lg shadow-md overflow-hidden">
+      <div id={`season-${season.season_number}`} className="bg-card-gradient rounded-lg shadow-md overflow-hidden border border-primary-accent/10">
         {isCollapsible && (
              <div className="p-4">
                 <div className="flex items-start justify-between cursor-pointer" onClick={onToggle}>
@@ -220,7 +271,16 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                             <p className="text-sm text-text-secondary">{season.episode_count} Episodes</p>
                         </div>
                     </div>
-                    <div className="flex-shrink-0 ml-2">
+                    <div className="flex items-center gap-4 flex-shrink-0 ml-2">
+                        {!isUpcoming && (
+                            <button 
+                                onClick={handleLogSeasonWatch}
+                                className="group flex items-center space-x-2 text-primary-accent hover:text-primary-accent/80 transition-colors bg-primary-accent/10 px-4 py-1.5 rounded-full border border-primary-accent/20"
+                            >
+                                <LogWatchIcon className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.1em]">Log a Watch</span>
+                            </button>
+                        )}
                         <ChevronDownIcon className={`h-6 w-6 transition-transform text-text-secondary ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                 </div>
@@ -236,7 +296,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     <div className="flex items-center flex-shrink-0 space-x-1" onClick={e => e.stopPropagation()}>
                         <button
                             onClick={(e) => { e.stopPropagation(); setSeasonRatingModalOpen(true); }}
-                            className={`relative p-2 rounded-full transition-colors ${userSeasonRating > 0 ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`}
+                            className={`relative p-2 rounded-full transition-colors border border-primary-accent/10 ${userSeasonRating > 0 ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`}
                             title={userSeasonRating > 0 ? `Your Rating: ${userSeasonRating}/5` : 'Rate Season'}
                         >
                             <StarIcon filled={userSeasonRating > 0} className="h-5 w-5" />
@@ -244,7 +304,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                         </button>
                         <button
                             onClick={handleMarkUnmarkSeason}
-                            className={`p-2 rounded-full transition-colors ${isSeasonWatched ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
+                            className={`p-2 rounded-full transition-colors border border-primary-accent/10 ${isSeasonWatched ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
                             title={isSeasonWatched ? "Unmark Season" : "Mark Season Watched"}
                         >
                             {isSeasonWatched ? <XMarkIcon className="h-5 w-5" /> : <CheckCircleIcon className="h-5 w-5" />}
@@ -349,15 +409,20 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                             {isNew && <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-cyan-500/20 text-cyan-300">New</span>}
                                             {tag && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${tag.className}`}>{typeof tag === 'object' ? tag.text : tag}</span>}
                                         </div>
-                                        <div className="flex items-center space-x-2 text-xs text-text-secondary/80 mt-1">
+                                        <div className="flex items-center flex-wrap gap-2 text-xs text-text-secondary/80 mt-1">
                                             {!isFuture && ep.air_date && <span>{new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
                                             {isFuture && ep.air_date && <span>Airs: {new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
                                             {ep.runtime && ep.runtime > 0 && ep.air_date && <span>&bull;</span>}
                                             {ep.runtime && ep.runtime > 0 && <span>{formatRuntime(ep.runtime)}</span>}
+                                            {ageRating && (
+                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm ${getAgeRatingColor(ageRating)}`}>
+                                                    {ageRating}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 mt-2 md:mt-0" onClick={(e) => e.stopPropagation()}>
-                                        <ActionButton label={isWatched ? 'Watched' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
+                                        <ActionButton label={isWatched ? 'Not Watched' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
                                             <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''} ${shouldAnimateWatch ? 'animate-bounce-in' : ''}`} />
                                         </ActionButton>
                                         <ActionButton label="Live" onClick={handleLiveWatch} disabled={isFuture}>
@@ -375,11 +440,11 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                         <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
                                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                                         </ActionButton>
-                                        <ActionButton label="Discuss" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
                                             <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
                                         </ActionButton>
-                                        <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep }); }} disabled={isFuture}>
-                                            <CalendarIcon className="w-5 h-5" />
+                                        <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
+                                            <LogWatchIcon className="w-5 h-5" />
                                         </ActionButton>
                                     </div>
                                 </div>

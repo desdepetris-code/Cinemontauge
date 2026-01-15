@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { TmdbMedia, TrackedItem, ReminderType } from '../types';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { TmdbMedia, TrackedItem, ReminderType, TmdbMediaDetails } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, BellIcon, HeartIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
@@ -7,6 +8,7 @@ import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { isNewRelease } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import ReminderOptionsModal from './ReminderOptionsModal';
+import { getMediaDetails } from '../services/tmdbService';
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
@@ -24,7 +26,40 @@ interface PremiereCardProps {
 
 const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList, onToggleReminder, isReminderSet, isCompleted }) => {
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
     
+    useEffect(() => {
+        let isMounted = true;
+        getMediaDetails(item.id, item.media_type).then(data => {
+            if (isMounted) setDetails(data);
+        }).catch(() => {});
+        return () => { isMounted = false; };
+    }, [item.id, item.media_type]);
+
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        if (item.media_type === 'tv') {
+          const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+          return usRating?.rating || null;
+        } else {
+          const usRelease = details.release_dates?.results?.find(r => r.iso_3166_1 === 'US');
+          const theatrical = usRelease?.release_dates?.find(d => d.certification);
+          return theatrical?.certification || null;
+        }
+    }, [details, item.media_type]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G', 'TV-Y'].includes(r)) return 'bg-sky-600 text-white';
+        if (['PG', 'TV-PG', 'TV-Y7'].includes(r)) return 'bg-teal-600 text-white';
+        if (r === 'PG-13') return 'bg-indigo-600 text-white';
+        if (r === 'TV-14') return 'bg-violet-600 text-white';
+        if (['R'].includes(r)) return 'bg-zinc-700 text-white';
+        if (['TV-MA'].includes(r)) return 'bg-slate-800 text-white';
+        if (r === 'NC-17') return 'bg-black text-white';
+        return 'bg-stone-500 text-white';
+    };
+
     const backdropSrcs = [
         getFullImageUrl(item.backdrop_path, 'w500'),
         getFullImageUrl(item.poster_path, 'w342'),
@@ -57,12 +92,17 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
                 onClose={() => setIsReminderModalOpen(false)}
                 onSelect={handleSelectReminderType}
             />
-            <div className="w-72 flex-shrink-0">
+            <div className="w-72 flex-shrink-0 h-full">
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
                     onClick={() => onSelect(item.id, item.media_type)}
                 >
-                    {isNew && <NewReleaseOverlay />}
+                    {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
+                    {ageRating && (
+                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                            {ageRating}
+                        </div>
+                    )}
                     <div className="aspect-video">
                         <FallbackImage 
                             srcs={backdropSrcs}
