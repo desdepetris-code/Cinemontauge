@@ -15,7 +15,9 @@ const WatchlistModal: React.FC<WatchlistModalProps> = ({ isOpen, onClose, onUpda
   const lists: { id: WatchStatus, name: string }[] = [
     { id: 'watching', name: 'Watching' },
     { id: 'planToWatch', name: 'Plan to Watch' },
+    { id: 'onHold', name: 'On Hold' },
     { id: 'completed', name: 'Completed' },
+    { id: 'dropped', name: 'Dropped' },
   ];
 
   return (
