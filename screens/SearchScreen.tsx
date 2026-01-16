@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated, discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon } from '../components/Icons';
 import MarkAsWatchedModal from '../components/MarkAsWatchedModal';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
@@ -11,9 +11,7 @@ import TrendingSection from '../components/TrendingSection';
 import RelatedRecommendations from '../components/RelatedRecommendations';
 import GenericCarousel from '../components/GenericCarousel';
 import ActionCard from '../components/ActionCard';
-// FIX: Import getImageUrl to resolve 'Cannot find name' error.
 import { getImageUrl } from '../utils/imageUtils';
-// FIX: Import Carousel to resolve 'Cannot find name' error.
 import Carousel from '../components/Carousel';
 
 interface SearchScreenProps {
@@ -46,12 +44,11 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
     return (
         <div className="space-y-12 animate-fade-in">
             <section>
-                <h2 className="text-2xl font-bold text-text-primary mb-4">Top Picks For You</h2>
+                <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest mb-6">Top Picks For You</h2>
                 <Recommendations {...props} />
             </section>
             
             {latestWatchedItem && (
-                // FIX: Pass the required `completed` prop to `RelatedRecommendations`.
                 <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} completed={props.userData.completed} />
             )}
         </div>
@@ -96,7 +93,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     const performAllSearches = async () => {
         setLoading(true);
         setError(null);
-        setActiveTab('media');
         onUpdateSearchHistory(query);
 
         const mediaPromise = searchMediaPaginated(query, 1);
@@ -151,7 +147,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         case 'release_date.desc':
           return new Date(b.release_date || b.first_air_date || 0).getTime() - new Date(a.release_date || a.first_air_date || 0).getTime();
         case 'vote_average.desc':
-          // FIX: The 'vote_average' property does not exist on type 'TmdbMedia'. It has been added to the type definition.
           return (b.vote_average || 0) - (a.vote_average || 0);
         case 'alphabetical.asc':
             return (a.title || a.name || '').localeCompare(b.title || b.name || '');
@@ -184,7 +179,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   };
   
   const renderSearchResults = () => {
-    if (loading) return (
+    if (loading && mediaResults.length === 0) return (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
             {[...Array(14)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div><div className="h-9 bg-bg-secondary rounded-md mt-2"></div></div>)}
         </div>
@@ -196,7 +191,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4">
                 {filteredAndSortedMedia.map(item => <ActionCard key={item.id} item={item} onSelect={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} isFavorite={favorites.some(f => f.id === item.id)} isCompleted={userData.completed.some(c => c.id === item.id)} showRatings={showRatings} />)}
             </div>
-        ) : <p className="text-center py-8 text-text-secondary">No media found for the selected filters.</p>;
+        ) : query.length > 0 ? <p className="text-center py-8 text-text-secondary">No media found for the selected filters.</p> : null;
 
         case 'people': return peopleResults.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -257,57 +252,26 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   };
 
   const TabButton: React.FC<{ tabId: SearchTab; label: string; count: number }> = ({ tabId, label, count }) => (
-    <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${activeTab === tabId ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary hover:brightness-125'}`}>
+    <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap rounded-full transition-all ${activeTab === tabId ? 'bg-white text-black shadow-lg scale-105' : 'text-white/60 hover:text-white'}`}>
         {label} {loading ? '...' : `(${count})`}
     </button>
   );
 
   return (
-    <div className="px-6">
+    <div className="px-6 relative min-h-screen pb-40">
         <header className="mb-4">
-          <h1 className="text-3xl font-bold text-text-primary">Search & Discover</h1>
-           <p className="mt-1 text-text-secondary">Find your next favorite show, or see what's popular.</p>
+          <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Search</h1>
+           <p className="mt-1 text-sm font-bold text-text-secondary uppercase tracking-widest opacity-60">Find your next favorite montage</p>
         </header>
 
-        <div className="my-6">
-            <SearchBar 
-                onSelectResult={onSelectShow} 
-                onMarkShowAsWatched={onMarkShowAsWatched}
-                value={query}
-                onChange={onQueryChange}
-                disableDropdown
-            />
-        </div>
-        
         {query.length > 0 ? (
             <div className="animate-fade-in">
-              <div className="flex justify-between items-center mb-6">
-                  <div className="border-b border-bg-secondary/50 flex-grow">
-                      <Carousel>
-                          <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
-                              <TabButton tabId="media" label="Media" count={filteredAndSortedMedia.length} />
-                              <TabButton tabId="people" label="People" count={peopleResults.length} />
-                              <TabButton tabId="myLists" label="My Lists" count={myListResults.length} />
-                              <TabButton tabId="communityLists" label="Community Lists" count={communityListResults.length} />
-                              <TabButton tabId="users" label="Users" count={userResults.length} />
-                              <TabButton tabId="genres" label="Genres" count={genreResults.length} />
-                          </div>
-                      </Carousel>
-                  </div>
-                  {activeTab === 'media' && (
-                    <button onClick={() => setShowFilters(s => !s)} className="ml-4 flex items-center space-x-2 px-3 py-2 text-sm rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors">
-                      <FilterIcon className="w-4 h-4" />
-                      <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
-                    </button>
-                  )}
-              </div>
-              
               {showFilters && activeTab === 'media' && (
-                <div className="bg-bg-secondary/50 p-4 rounded-lg mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
-                  <div className="relative"><select value={mediaTypeFilter} onChange={e => setMediaTypeFilter(e.target.value as any)} className="w-full appearance-none bg-bg-primary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="all">All Types</option><option value="movie">Movies</option><option value="tv">TV Shows</option></select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" /></div>
-                  <div className="relative"><select value={genreFilter} onChange={e => setGenreFilter(e.target.value)} className="w-full appearance-none bg-bg-primary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="">All Genres</option>{Object.entries(genres).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" /></div>
-                  <input type="number" placeholder="Year (e.g., 2023)" value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="w-full bg-bg-primary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent" />
-                  <div className="relative"><select value={sortFilter} onChange={e => setSortFilter(e.target.value)} className="w-full appearance-none bg-bg-primary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="popularity.desc">Popularity</option><option value="release_date.desc">Release Date</option><option value="vote_average.desc">Rating</option><option value="alphabetical.asc">Alphabetical</option></select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" /></div>
+                <div className="bg-bg-secondary/30 p-6 rounded-3xl mb-8 border border-white/5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in shadow-inner">
+                  <div className="relative"><select value={mediaTypeFilter} onChange={e => setMediaTypeFilter(e.target.value as any)} className="w-full appearance-none bg-bg-primary/50 border border-white/10 rounded-xl py-2 px-3 text-xs font-bold uppercase tracking-widest text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="all">All Types</option><option value="movie">Movies</option><option value="tv">TV Shows</option></select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" /></div>
+                  <div className="relative"><select value={genreFilter} onChange={e => setGenreFilter(e.target.value)} className="w-full appearance-none bg-bg-primary/50 border border-white/10 rounded-xl py-2 px-3 text-xs font-bold uppercase tracking-widest text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="">All Genres</option>{Object.entries(genres).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" /></div>
+                  <input type="number" placeholder="Year" value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="w-full bg-bg-primary/50 border border-white/10 rounded-xl py-2 px-3 text-xs font-bold uppercase tracking-widest text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent placeholder:opacity-50" />
+                  <div className="relative"><select value={sortFilter} onChange={e => setSortFilter(e.target.value)} className="w-full appearance-none bg-bg-primary/50 border border-white/10 rounded-xl py-2 px-3 text-xs font-bold uppercase tracking-widest text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"><option value="popularity.desc">Popularity</option><option value="release_date.desc">Release Date</option><option value="vote_average.desc">Rating</option><option value="alphabetical.asc">Alphabetical</option></select><ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" /></div>
                 </div>
               )}
 
@@ -316,6 +280,57 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         ) : (
             <DiscoverView {...props} />
         )}
+
+        {/* Floating Bottom Search Island */}
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-40">
+            <div className="nav-spectral-bg animate-spectral-flow rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 border border-white/20 backdrop-blur-xl">
+                <div className="absolute inset-0 bg-black/40 rounded-3xl pointer-events-none"></div>
+                
+                <div className="relative z-10 flex flex-col space-y-4">
+                    {/* Only show categories when query has content */}
+                    {query.length > 0 && (
+                        <div className="animate-slide-in-up">
+                            <div className="flex justify-between items-center mb-2 px-2">
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">Search Categories</span>
+                                {activeTab === 'media' && (
+                                    <button onClick={() => setShowFilters(s => !s)} className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
+                                        <FilterIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <Carousel>
+                                <div className="flex space-x-2 overflow-x-auto pb-1 hide-scrollbar">
+                                    <TabButton tabId="media" label="Media" count={filteredAndSortedMedia.length} />
+                                    <TabButton tabId="people" label="People" count={peopleResults.length} />
+                                    <TabButton tabId="users" label="Users" count={userResults.length} />
+                                    <TabButton tabId="myLists" label="My Lists" count={myListResults.length} />
+                                    <TabButton tabId="communityLists" label="Public Lists" count={communityListResults.length} />
+                                    <TabButton tabId="genres" label="Genres" count={genreResults.length} />
+                                </div>
+                            </Carousel>
+                        </div>
+                    )}
+                    
+                    <div className="relative group">
+                        <SearchBar 
+                            onSelectResult={onSelectShow} 
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            value={query}
+                            onChange={onQueryChange}
+                            disableDropdown
+                        />
+                        {query.length > 0 && (
+                            <button 
+                                onClick={() => onQueryChange('')}
+                                className="absolute right-12 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
   );
 };
