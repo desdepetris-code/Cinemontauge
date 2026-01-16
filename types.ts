@@ -201,6 +201,8 @@ export interface HistoryItem extends TrackedItem {
   episodeNumber?: number;
   episodeTitle?: string;
   note?: string;
+  episodeStillPath?: string | null;
+  seasonPosterPath?: string | null;
 }
 
 export interface SearchHistoryItem {

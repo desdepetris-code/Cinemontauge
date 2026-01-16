@@ -4,7 +4,7 @@ import Header from './components/Header';
 import Dashboard from './screens/Dashboard';
 import ShowDetail from './components/ShowDetail';
 import { getGenres, clearMediaCache, getMediaDetails, getSeasonDetails } from './services/tmdbService';
-import { TrackedItem, WatchProgress, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, FavoriteEpisodes, ProfileTab, ScreenName, CustomList, UserRatings, LiveWatchMediaInfo, EpisodeRatings, SearchHistoryItem, Comment, Theme, SeasonRatings, Reminder, NotificationSettings, CustomListItem, JournalEntry, Follows, TraktToken, Note, EpisodeProgress, WeeklyPick, ShortcutSettings, NavSettings, AppPreferences } from './types';
+import { TrackedItem, WatchProgress, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, FavoriteEpisodes, ProfileTab, ScreenName, CustomList, UserRatings, LiveWatchMediaInfo, EpisodeRatings, SearchHistoryItem, Comment, Theme, SeasonRatings, Reminder, NotificationSettings, CustomListItem, JournalEntry, Follows, TraktToken, Note, EpisodeProgress, WeeklyPick, ShortcutSettings, NavSettings, AppPreferences, Episode } from './types';
 import Profile from './screens/Profile';
 import { useTheme } from './hooks/useTheme';
 import BottomTabNavigator from './navigation/BottomTabNavigator';
@@ -126,6 +126,8 @@ export const MainApp: React.FC<MainAppProps> = ({
     episode: number;
     showInfo: TrackedItem;
     hasFuture: boolean;
+    episodeStillPath?: string | null;
+    seasonPosterPath?: string | null;
   }>({ isOpen: false, showId: 0, season: 0, episode: 0, showInfo: {} as TrackedItem, hasFuture: false });
 
   const handleToggleNotification = useCallback((setting: keyof NotificationSettings) => {
@@ -279,7 +281,11 @@ export const MainApp: React.FC<MainAppProps> = ({
         }
     }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped]);
 
-  const handleToggleEpisode = useCallback(async (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem | TmdbMedia, episodeName?: string) => {
+  const handleToggleEpisode = useCallback(async (
+      showId: number, season: number, episode: number, 
+      currentStatus: number, showInfo: TrackedItem | TmdbMedia, 
+      episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null
+  ) => {
       const isWatched = currentStatus === 2;
       const newStatus = isWatched ? 0 : 2;
       
@@ -314,7 +320,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                   });
               });
 
-              setPriorModalState({ isOpen: true, showId, season, episode, showInfo: { ...showInfo, title: showTitle, poster_path: posterPath } as TrackedItem, hasFuture });
+              setPriorModalState({ isOpen: true, showId, season, episode, showInfo: { ...showInfo, title: showTitle, poster_path: posterPath } as TrackedItem, hasFuture, episodeStillPath, seasonPosterPath });
               return;
           }
       }
@@ -339,7 +345,9 @@ export const MainApp: React.FC<MainAppProps> = ({
               timestamp: new Date().toISOString(),
               seasonNumber: season,
               episodeNumber: episode,
-              episodeTitle: epTitle
+              episodeTitle: epTitle,
+              episodeStillPath,
+              seasonPosterPath
           };
           setHistory(prev => [logItem, ...prev]);
           setUserXp(prev => prev + XP_CONFIG.episode);
@@ -383,7 +391,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [watchProgress, notificationSettings.showPriorEpisodesPopup, watching, completed, dropped, updateLists, setHistory, setWatchProgress, setUserXp, setWatching, setOnHold, setDropped]);
 
   const handleBulkPriorAction = async (action: number) => {
-    const { showId, season, episode, showInfo } = priorModalState;
+    const { showId, season, episode, showInfo, episodeStillPath, seasonPosterPath } = priorModalState;
     setPriorModalState(p => ({ ...p, isOpen: false }));
 
     if (action === 2) return; 
@@ -401,6 +409,7 @@ export const MainApp: React.FC<MainAppProps> = ({
 
             for (let s = 1; s <= season; s++) {
                 const seasonDetails = await getSeasonDetails(showId, s);
+                const sPoster = seasonDetails.poster_path;
                 for (const ep of seasonDetails.episodes) {
                     if (s === season && ep.episode_number >= episode) break;
                     
@@ -413,7 +422,8 @@ export const MainApp: React.FC<MainAppProps> = ({
                         newHistoryItems.push({
                             logId: `tv-${showId}-${s}-${ep.episode_number}-${Date.now()}`,
                             id: showId, media_type: 'tv', title: showTitle, poster_path: posterPath,
-                            timestamp: new Date().toISOString(), seasonNumber: s, episodeNumber: ep.episode_number, episodeTitle: ep.name
+                            timestamp: new Date().toISOString(), seasonNumber: s, episodeNumber: ep.episode_number, episodeTitle: ep.name,
+                            episodeStillPath: ep.still_path, seasonPosterPath: sPoster
                         });
                     }
                 }
@@ -424,7 +434,8 @@ export const MainApp: React.FC<MainAppProps> = ({
             newHistoryItems.push({
                 logId: `tv-${showId}-${season}-${episode}-${Date.now()}`,
                 id: showId, media_type: 'tv', title: showTitle, poster_path: posterPath,
-                timestamp: new Date().toISOString(), seasonNumber: season, episodeNumber: episode, episodeTitle: 'n/a'
+                timestamp: new Date().toISOString(), seasonNumber: season, episodeNumber: episode, episodeTitle: 'n/a',
+                episodeStillPath, seasonPosterPath
             });
 
             setWatchProgress(prev => ({
@@ -448,7 +459,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
 
     if (action === 3) {
-        handleToggleEpisode(showId, season, episode, 0, showInfo);
+        handleToggleEpisode(showId, season, episode, 0, showInfo, undefined, episodeStillPath, seasonPosterPath);
     }
 
     if (action === 4) {
@@ -493,6 +504,7 @@ export const MainApp: React.FC<MainAppProps> = ({
         for (const season of details.seasons) {
             if (season.season_number === 0) continue;
             const seasonDetails = await getSeasonDetails(showId, season.season_number);
+            const sPoster = seasonDetails.poster_path;
             for (const ep of seasonDetails.episodes) {
                 const alreadyWatched = currentShowProgress[season.season_number]?.[ep.episode_number]?.status === 2;
                 const hasAired = ep.air_date && ep.air_date <= today;
@@ -502,7 +514,8 @@ export const MainApp: React.FC<MainAppProps> = ({
                     newHistoryLogs.push({
                         logId: `tv-bulk-${showId}-${season.season_number}-${ep.episode_number}-${Date.now()}`,
                         id: showId, media_type: 'tv', title: showTitle, poster_path: posterPath,
-                        timestamp: new Date().toISOString(), seasonNumber: season.season_number, episodeNumber: ep.episode_number, episodeTitle: ep.name
+                        timestamp: new Date().toISOString(), seasonNumber: season.season_number, episodeNumber: ep.episode_number, episodeTitle: ep.name,
+                        episodeStillPath: ep.still_path, seasonPosterPath: sPoster
                     });
                 }
             }
