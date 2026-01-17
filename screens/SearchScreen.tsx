@@ -214,7 +214,21 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
                 {filteredAndSortedMedia.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-fade-in">
-                        {filteredAndSortedMedia.map(item => <ActionCard key={item.id} item={item} onSelect={(id, type) => handleItemSelect(id, type, item)} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} isFavorite={favorites.some(f => f.id === item.id)} isCompleted={userData.completed.some(c => c.id === item.id)} showRatings={showRatings} showSeriesInfo={preferences.searchShowSeriesInfo} />)}
+                        {filteredAndSortedMedia.map(item => (
+                            <ActionCard 
+                                key={item.id} 
+                                item={item} 
+                                onSelect={(id, type) => handleItemSelect(id, type, item)} 
+                                onOpenAddToListModal={onOpenAddToListModal} 
+                                onMarkShowAsWatched={onMarkShowAsWatched} 
+                                onToggleFavoriteShow={onToggleFavoriteShow} 
+                                isFavorite={favorites.some(f => f.id === item.id)} 
+                                isCompleted={userData.completed.some(c => c.id === item.id)} 
+                                showRatings={showRatings} 
+                                showSeriesInfo={preferences.searchShowSeriesInfo} 
+                                userRating={userData.ratings[item.id]?.rating || 0}
+                            />
+                        ))}
                     </div>
                 ) : query.length > 0 ? <p className="text-center py-16 text-text-secondary">No media found.</p> : null}
             </div>

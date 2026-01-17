@@ -8,6 +8,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import { getMediaDetails } from '../services/tmdbService';
+import UserRatingStamp from './UserRatingStamp';
 
 interface ActionCardProps {
     item: TmdbMedia;
@@ -19,6 +20,7 @@ interface ActionCardProps {
     isCompleted: boolean;
     showRatings: boolean;
     showSeriesInfo?: 'expanded' | 'toggle' | 'hidden';
+    userRating?: number;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({ 
@@ -30,7 +32,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
     isFavorite, 
     isCompleted, 
     showRatings,
-    showSeriesInfo = 'expanded'
+    showSeriesInfo = 'expanded',
+    userRating = 0
 }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
@@ -155,6 +158,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     onClick={() => onSelect(item.id, item.media_type)}
                 >
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
+                    <UserRatingStamp rating={userRating} className="absolute -top-1 -left-1" />
                     {recentEpisodeCount > 0 && (
                         <NewReleaseOverlay 
                             text={recentEpisodeCount > 1 ? "NEW EPISODES" : "NEW EPISODE"} 

@@ -12,6 +12,7 @@ import NotesModal from './NotesModal';
 import ScoreStar from './ScoreStar';
 import RatingModal from './RatingModal';
 import { getSeasonDetails } from '../services/tmdbService';
+import UserRatingStamp from './UserRatingStamp';
 
 interface SeasonAccordionProps {
   season: TmdbMediaDetails['seasons'][0];
@@ -20,7 +21,7 @@ interface SeasonAccordionProps {
   onToggle: () => void;
   seasonDetails: TmdbSeasonDetails | undefined;
   watchProgress: WatchProgress;
-  onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null) => void;
+  onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
   onOpenJournal: (season: number, episode: Episode) => void;
   onOpenEpisodeDetail: (episode: Episode) => void;
@@ -56,12 +57,12 @@ const ActionButton: React.FC<{
   <button
     disabled={disabled}
     onClick={onClick}
-    className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all text-center w-full h-full ${disabled ? 'cursor-not-allowed text-text-secondary/30' : `text-text-secondary/80 hover:text-text-primary hover:bg-bg-secondary ${isActive ? 'bg-primary-accent/10 text-primary-accent border border-primary-accent/20' : 'bg-bg-secondary/40 border border-white/5'}`}`}
+    className={`flex flex-col items-center justify-center p-1 rounded-md transition-colors text-center w-14 ${disabled ? 'cursor-not-allowed text-text-secondary/30' : `text-text-secondary/80 hover:text-text-primary hover:bg-bg-secondary ${isActive ? 'text-primary-accent' : ''}`}`}
     aria-label={label}
     title={label}
   >
     {children}
-    <span className="text-[9px] font-black uppercase tracking-tighter mt-1 leading-none">{label}</span>
+    <span className="text-[10px] font-semibold mt-1 leading-tight">{label}</span>
   </button>
 );
 
@@ -107,28 +108,24 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
     const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
 
     if (!seasonDetails?.episodes) {
-        // Fallback calculation based on season summary if details aren't fetched yet
-        let airedInSeason = season.episode_count;
-        if (showDetails.last_episode_to_air && showDetails.last_episode_to_air.season_number === season.season_number) {
-            airedInSeason = showDetails.last_episode_to_air.episode_number;
-        }
-        
-        const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
-        const percent = airedInSeason > 0 ? (watchedCount / airedInSeason) * 100 : 0;
-        return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, airedInSeason - watchedCount), totalAiredEpisodesInSeason: airedInSeason };
+      const totalInSeason = season.episode_count;
+      if (totalInSeason === 0) return { seasonProgressPercent: 0, unwwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
+      const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
+      const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
+      return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
     const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= today);
     const totalAired = airedEpisodes.length;
     
-    if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
+    if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: season.episode_count, totalAiredEpisodesInSeason: 0 };
     
     const watchedCount = airedEpisodes.filter(ep => progressForSeason[ep.episode_number]?.status === 2).length;
     
     const percent = (watchedCount / totalAired) * 100;
     const unwatched = totalAired - watchedCount;
     return { seasonProgressPercent: percent, unwatchedCount: unwatched, totalAiredEpisodesInSeason: totalAired };
-  }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number, showDetails.last_episode_to_air]);
+  }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number]);
 
   const ageRating = useMemo(() => {
     if (!showDetails) return null;
@@ -266,20 +263,22 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
              <div className="p-4">
                 <div className="flex items-start justify-between cursor-pointer" onClick={onToggle}>
                     <div className="flex items-start flex-grow min-w-0">
-                        <FallbackImage 
-                            srcs={seasonPosterSrcs} 
-                            placeholder={PLACEHOLDER_POSTER} 
-                            alt={season.name} 
-                            className="w-12 h-18 object-cover rounded-md flex-shrink-0 cursor-pointer" 
-                            onClick={(e) => { e.stopPropagation(); onImageClick(getImageUrl(season.poster_path, 'original')); }}
-                        />
+                        <div className="relative flex-shrink-0">
+                            <FallbackImage 
+                                srcs={seasonPosterSrcs} 
+                                placeholder={PLACEHOLDER_POSTER} 
+                                alt={season.name} 
+                                className="w-12 h-18 object-cover rounded-md cursor-pointer" 
+                                onClick={(e) => { e.stopPropagation(); onImageClick(getImageUrl(season.poster_path, 'original')); }}
+                            />
+                            <UserRatingStamp rating={userSeasonRating} className="absolute -top-1 -right-1" />
+                        </div>
                         <div className="flex-grow ml-4 min-w-0">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-lg text-text-primary truncate">{season.name}</h3>
                                 {showRatings && season.vote_average && season.vote_average > 0 && <ScoreStar score={season.vote_average} size="xs" />}
                             </div>
-                            <p className="text-[10px] font-black text-primary-accent uppercase tracking-widest truncate">{showDetails.name}</p>
-                            <p className="text-sm text-text-secondary mt-1">{totalAiredEpisodesInSeason} Aired Episodes</p>
+                            <p className="text-sm text-text-secondary">{season.episode_count} Episodes</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0 ml-2">
@@ -299,8 +298,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                 <div className="mt-3 flex items-center gap-4">
                     <div className="flex-grow">
                         {!isUpcoming && (
-                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
-                                <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}></div>
+                            <div className="w-full bg-bg-secondary rounded-full h-2">
+                                <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${seasonProgressPercent}%` }}></div>
                             </div>
                         )}
                     </div>
@@ -308,10 +307,9 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                         <button
                             onClick={(e) => { e.stopPropagation(); setSeasonRatingModalOpen(true); }}
                             className={`relative p-2 rounded-full transition-colors border border-primary-accent/10 ${userSeasonRating > 0 ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`}
-                            title={userSeasonRating > 0 ? `Your Rating: ${userSeasonRating}/5` : 'Rate Season'}
+                            title={userSeasonRating > 0 ? `Your Rating: ${userSeasonRating}/10` : 'Rate Season'}
                         >
                             <StarIcon filled={userSeasonRating > 0} className="h-5 w-5" />
-                            {userSeasonRating > 0 && <span className="absolute -top-1 -right-1 text-[10px] bg-primary-accent text-on-accent rounded-full w-4 h-4 flex items-center justify-center font-bold">{userSeasonRating}</span>}
                         </button>
                         <button
                             onClick={handleMarkUnmarkSeason}
@@ -390,19 +388,20 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     };
 
                     return (
-                        <li key={ep.id} className={`relative group p-4 transition-colors hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
-                            <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-x-4 md:space-y-0">
-                                <div className="flex items-start space-x-4">
-                                    <div className={`w-28 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
-                                        <img 
-                                            src={getImageUrl(ep.still_path, 'w300', 'still')} 
-                                            alt={ep.name} 
-                                            className="w-full aspect-video object-cover rounded-lg bg-bg-secondary shadow-md"
-                                        />
-                                    </div>
-                                    <div className={`flex-grow min-w-0 flex flex-col ${isFuture ? 'opacity-60' : ''}`}>
+                        <li key={ep.id} className={`relative group p-3 transition-colors hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
+                            <div className="flex items-start md:items-center space-x-4">
+                                <div className={`w-32 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
+                                    <img 
+                                        src={getImageUrl(ep.still_path, 'w300', 'still')} 
+                                        alt={ep.name} 
+                                        className="w-full aspect-video object-cover rounded-md bg-bg-secondary"
+                                    />
+                                    <UserRatingStamp rating={epRating} className="absolute -top-1 -left-1" />
+                                </div>
+                                <div className="flex-grow min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-4 items-center">
+                                    <div className={`flex flex-col ${isFuture ? 'opacity-60' : ''}`}>
                                         <div className="flex items-center flex-wrap gap-x-2">
-                                            <p className="font-bold text-text-primary text-sm truncate leading-tight">
+                                            <p className="font-semibold text-text-primary text-sm truncate">
                                                 {ep.episode_number}. {ep.name}
                                             </p>
                                             {showRatings && (() => {
@@ -410,18 +409,21 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                                     return <ScoreStar score={ep.vote_average} voteCount={ep.vote_count} size="xs" className="-my-1" />;
                                                 }
                                                 if (ep.vote_average === 0) {
-                                                    if (tag?.text?.includes('Premiere')) return null;
+                                                    if (tag?.text?.includes('Premiere')) {
+                                                        return null;
+                                                    }
                                                     return <span className="text-xs text-text-secondary/70 font-semibold px-2">n/a</span>;
                                                 }
                                                 return null;
                                             })()}
+                                            {isNew && <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-cyan-500/20 text-cyan-300">New</span>}
+                                            {tag && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${tag.className}`}>{typeof tag === 'object' ? tag.text : tag}</span>}
                                         </div>
                                         <div className="flex items-center flex-wrap gap-2 text-xs text-text-secondary/80 mt-1">
-                                            {isNew && <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest bg-cyan-500/20 text-cyan-300">New</span>}
-                                            {tag && <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${tag.className}`}>{typeof tag === 'object' ? tag.text : tag}</span>}
                                             {!isFuture && ep.air_date && <span>{new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
-                                            {isFuture && ep.air_date && <span className="text-primary-accent font-bold">Airs: {new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
-                                            {ep.runtime && ep.runtime > 0 && <span>&bull; {formatRuntime(ep.runtime)}</span>}
+                                            {isFuture && ep.air_date && <span>Airs: {new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
+                                            {ep.runtime && ep.runtime > 0 && ep.air_date && <span>&bull;</span>}
+                                            {ep.runtime && ep.runtime > 0 && <span>{formatRuntime(ep.runtime)}</span>}
                                             {ageRating && (
                                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm border border-white/10 ${getAgeRatingColor(ageRating)}`}>
                                                     {ageRating}
@@ -429,33 +431,32 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                             )}
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:items-center md:justify-end md:gap-1 md:mt-0 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                    <ActionButton label={isWatched ? 'Unwatch' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
-                                        <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''} ${shouldAnimateWatch ? 'animate-bounce-in' : ''}`} />
-                                    </ActionButton>
-                                    <ActionButton label="Live" onClick={handleLiveWatch} disabled={isFuture}>
-                                        <PlayCircleIcon className="h-5 w-5" />
-                                    </ActionButton>
-                                    <ActionButton label="Journal" onClick={(e) => { e.stopPropagation(); onOpenJournal(season.season_number, ep); }} isActive={!!journalEntry?.text || !!journalEntry?.mood}>
-                                        <BookOpenIcon className="w-5 h-5" />
-                                    </ActionButton>
-                                     <ActionButton label="Note" onClick={(e) => { e.stopPropagation(); setNotesModalState({ isOpen: true, episode: ep }); }} isActive={hasNote}>
-                                        <PencilSquareIcon className="w-5 h-5" />
-                                    </ActionButton>
-                                    <ActionButton label="Favorite" onClick={(e) => { e.stopPropagation(); onToggleFavoriteEpisode(showId, season.season_number, ep.episode_number); }} isActive={isFavorited}>
-                                        <HeartIcon filled={isFavorited} className={`w-5 h-5 ${isFavorited ? 'text-yellow-400' : ''}`} />
-                                    </ActionButton>
-                                    <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
-                                        <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
-                                    </ActionButton>
-                                    <ActionButton label="Discuss" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
-                                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
-                                    </ActionButton>
-                                    <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
-                                        <LogWatchIcon className="w-5 h-5" />
-                                    </ActionButton>
+                                    <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 mt-2 md:mt-0" onClick={(e) => e.stopPropagation()}>
+                                        <ActionButton label={isWatched ? 'Not Watched' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
+                                            <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''} ${shouldAnimateWatch ? 'animate-bounce-in' : ''}`} />
+                                        </ActionButton>
+                                        <ActionButton label="Live" onClick={handleLiveWatch} disabled={isFuture}>
+                                            <PlayCircleIcon className="h-5 w-5" />
+                                        </ActionButton>
+                                        <ActionButton label="Journal" onClick={(e) => { e.stopPropagation(); onOpenJournal(season.season_number, ep); }} isActive={!!journalEntry?.text || !!journalEntry?.mood}>
+                                            <BookOpenIcon className="w-5 h-5" />
+                                        </ActionButton>
+                                         <ActionButton label="Note" onClick={(e) => { e.stopPropagation(); setNotesModalState({ isOpen: true, episode: ep }); }} isActive={hasNote}>
+                                            <PencilSquareIcon className="w-5 h-5" />
+                                        </ActionButton>
+                                        <ActionButton label="Favorite" onClick={(e) => { e.stopPropagation(); onToggleFavoriteEpisode(showId, season.season_number, ep.episode_number); }} isActive={isFavorited}>
+                                            <HeartIcon filled={isFavorited} className={`w-5 h-5 ${isFavorited ? 'text-yellow-400' : ''}`} />
+                                        </ActionButton>
+                                        <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
+                                            <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
+                                        </ActionButton>
+                                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                                            <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
+                                        </ActionButton>
+                                        <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
+                                            <LogWatchIcon className="w-5 h-5" />
+                                        </ActionButton>
+                                    </div>
                                 </div>
                             </div>
                         </li>

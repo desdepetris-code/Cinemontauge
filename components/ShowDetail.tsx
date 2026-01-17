@@ -29,6 +29,7 @@ import ReportIssueModal from './ReportIssueModal';
 import CommentModal from './CommentModal';
 import { confirmationService } from '../services/confirmationService';
 import NominationModal from './NominationModal';
+import UserRatingStamp from './UserRatingStamp';
 
 interface ShowDetailProps {
   id: number;
@@ -65,6 +66,7 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
+  onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
   genres: Record<number, string>;
@@ -442,7 +444,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         onPrevious={() => {}}
         onAddWatchHistory={props.onAddWatchHistory}
         onRate={() => {}}
-        episodeRating={0}
+        episodeRating={selectedEpisodeForDetail ? episodeRatings[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number] || 0 : 0}
         onDiscuss={() => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${selectedEpisodeForDetail?.season_number}-e${selectedEpisodeForDetail?.episode_number}`); }}
         showRatings={showRatings}
         episodeNotes={episodeNotes}
@@ -461,6 +463,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           <div className="w-full md:w-80 flex-shrink-0">
             <div className="relative group">
               <img src={posterUrl} className="rounded-2xl shadow-2xl w-full aspect-[2/3] object-cover border-4 border-bg-primary" alt="Poster" />
+              <UserRatingStamp rating={userRating} size="lg" className="absolute -top-4 -left-4" />
               {showRatings && details.vote_average && (
                 <div className="absolute -top-4 -right-4">
                   <ScoreStar score={details.vote_average} size="md" />

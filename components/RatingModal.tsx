@@ -12,16 +12,23 @@ interface RatingModalProps {
 const StarRating: React.FC<{ rating: number; onRatingChange: (rating: number) => void }> = ({ rating, onRatingChange }) => {
     const [hoverRating, setHoverRating] = useState(0);
     return (
-        <div className="flex items-center justify-center space-x-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-                <StarIcon
+        <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                <button
                     key={star}
-                    className="w-12 h-12 cursor-pointer"
-                    filled={(hoverRating || rating) >= star}
+                    type="button"
+                    className="p-1 transition-transform active:scale-90"
                     onClick={() => onRatingChange(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                />
+                >
+                    <StarIcon
+                        className={`w-8 h-8 sm:w-10 sm:h-10 cursor-pointer transition-colors ${
+                            (hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-text-secondary opacity-30'
+                        }`}
+                        filled={(hoverRating || rating) >= star}
+                    />
+                </button>
             ))}
         </div>
     );
@@ -43,28 +50,35 @@ const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSave, curr
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
-            <XMarkIcon className="w-5 h-5" />
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[110] p-4" onClick={onClose}>
+      <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
+            <XMarkIcon className="w-6 h-6" />
         </button>
-        <h2 className="text-2xl font-bold text-text-primary mb-2 text-center">Rate this!</h2>
-        <p className="text-text-secondary mb-6 text-center">{mediaTitle}</p>
+        <div className="text-center mb-6">
+            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter mb-1">Rate this</h2>
+            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate">{mediaTitle}</p>
+        </div>
         
-        <StarRating rating={rating} onRatingChange={setRating} />
+        <div className="py-4">
+            <StarRating rating={rating} onRatingChange={setRating} />
+            <div className="text-center mt-6">
+                <span className="text-4xl font-black text-primary-accent italic">{rating || '—'}<span className="text-sm opacity-40 not-italic ml-1">/ 10</span></span>
+            </div>
+        </div>
 
-        <div className="flex justify-center space-x-4 mt-8">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 rounded-md text-text-primary bg-bg-secondary hover:brightness-125 transition-all"
-          >
-            Cancel
-          </button>
+        <div className="flex flex-col space-y-3 mt-8">
           <button
             onClick={handleSave}
-            className="px-6 py-2 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity"
+            className="w-full py-4 rounded-2xl text-white bg-accent-gradient font-black uppercase tracking-widest text-sm hover:opacity-90 transition-opacity shadow-xl"
           >
-            Save Rating
+            Confirm Score
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[10px] hover:text-text-primary transition-all"
+          >
+            Cancel
           </button>
         </div>
       </div>
