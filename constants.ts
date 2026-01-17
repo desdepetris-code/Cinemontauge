@@ -1,38 +1,24 @@
 // TMDB API Key. For a production app, this should be in an environment variable.
 // This key is for demonstration purposes.
-//
-// API Rate Limiting:
-// While TMDB's legacy rate limits are disabled, there's an upper limit around 40 requests per second to prevent abuse.
-// This limit can change at any time, so be respectful of the service and handle 429 "Too Many Requests" responses gracefully.
-export const TMDB_API_KEY = '554247e0e3fe60f8ee159c2a2928a4f1';
+export const TMDB_API_KEY = 'b7922161a07780ff1d7caf291ecfa9ec';
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
 // IMPORTANT: Credentials for The TVDB API.
-// SECURITY NOTE: In a production app with a backend server, this key should be stored
-// in a secure environment variable and used server-side to avoid exposure on the client.
-// This implementation reflects the current frontend-only architecture.
 export const TVDB_API_KEY = "3f17fc0f-2f0b-48b2-9dec-f7074608790f";
 export const TVDB_API_BASE_URL = 'https://api4.thetvdb.com/v4';
 
 // IMPORTANT: Credentials for the Trakt.tv API.
-// This is the Client ID. In a production app, this should be in an environment variable.
 export const TRAKT_API_KEY = "a4304a02576bf36fea742a910ebfc82cd3be1c38bc47fb50db7995699da81c18";
-// SECURITY NOTE: The client secret should NEVER be exposed on the client-side.
-// The token exchange flow happens on a secure backend function.
 export const TRAKT_API_BASE_URL = 'https://api.trakt.tv';
 export const TRAKT_REDIRECT_URI = window.location.origin + '/auth/trakt/callback';
 
 // IMPORTANT: Credentials for MyAnimeList API
-// This is the Client ID. In a real app, this should be in an environment variable.
-// Using a placeholder for now as a real one requires a registered application.
-// For demonstration, a method to generate a PKCE code verifier is used instead of a secret.
 export const MAL_CLIENT_ID = 'a755b330561e298533c7c251d7cde369';
 export const MAL_API_BASE_URL = 'https://api.myanimelist.net/v2';
 export const MAL_AUTH_BASE_URL = 'https://myanimelist.net/v1/oauth2/authorize';
 export const MAL_TOKEN_URL = 'https://myanimelist.net/v1/oauth2/token';
 export const MAL_REDIRECT_URI = window.location.origin + window.location.pathname;
-
 
 // --- Branded SVG Placeholders ---
 const posterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300" fill="none"><rect width="200" height="300" fill="#1e293b"/><g opacity="0.4" transform="translate(60 110) scale(0.8)"><g transform="rotate(-10 40 9)"><path d="M0 0 H80 L75 18 H-5 Z" fill="#94a3b8"/><path d="M5 2 H18 L13 16 H0 z" fill="#334155"/><path d="M25 2 H38 L33 16 H20 z" fill="#334155"/><path d="M45 2 H58 L53 16 H40 z" fill="#334155"/><path d="M65 2 H78 L73 16 H60 z" fill="#334155"/></g><rect x="0" y="22" width="80" height="50" rx="5" ry="5" fill="#64748b"/><path d="M32 38 L52 50 L32 62 Z" fill="#1e293b"/></g></svg>`;

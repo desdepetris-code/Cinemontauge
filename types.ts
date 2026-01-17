@@ -207,7 +207,7 @@ export interface HistoryItem extends TrackedItem {
 
 export interface SearchHistoryItem {
   query?: string;
-  item?: TrackedItem;
+  item?: TrackedItem; // Fixed: Added to support item-based search history
   timestamp: string;
 }
 

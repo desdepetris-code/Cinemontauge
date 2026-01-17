@@ -11,7 +11,6 @@ interface SearchBarProps {
   onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
   value: string;
   onChange: (query: string) => void;
-  onSearchSubmit?: (query: string) => void;
   disableDropdown?: boolean;
   dropdownWider?: boolean;
 }
@@ -94,7 +93,7 @@ const SearchResultItem: React.FC<{
     );
 };
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatched, value, onChange, onSearchSubmit, disableDropdown, dropdownWider }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatched, value, onChange, disableDropdown, dropdownWider }) => {
   const [results, setResults] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -128,12 +127,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && value.trim()) {
-        onSearchSubmit?.(value.trim());
-    }
   };
 
   const handleSelect = (item: TmdbMedia) => {
@@ -179,7 +172,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
               type="text"
               value={value}
               onChange={handleChange}
-              onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               placeholder="Search shows & movies..."
               className="w-full pl-12 pr-4 py-3 bg-bg-primary text-text-primary placeholder-text-secondary/80 rounded-2xl border-2 border-primary-accent/30 focus:border-primary-accent focus:outline-none transition-all shadow-xl font-bold"
