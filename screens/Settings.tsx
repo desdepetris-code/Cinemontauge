@@ -205,7 +205,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                             <option value="toggle">Show Dropdown Button</option>
                             <option value="hidden">Hide Completely</option>
                         </select>
-                        <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                        <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
                     </div>
                 </SettingsRow>
             </div>

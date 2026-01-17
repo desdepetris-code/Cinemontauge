@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMedia, TrackedItem, TmdbMediaDetails } from '../types';
-import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, InformationCircleIcon, ChevronDownIcon } from './Icons';
+import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronDownIcon } from './Icons';
 import FallbackImage from './FallbackImage';
-import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER } from '../constants';
+import { PLACEHOLDER_POSTER } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { getImageUrl } from '../utils/imageUtils';
 import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
@@ -30,7 +30,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
     isFavorite, 
     isCompleted, 
     showRatings,
-    showSeriesInfo = 'toggle'
+    showSeriesInfo = 'expanded'
 }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
@@ -63,6 +63,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
     useEffect(() => {
         if (showSeriesInfo === 'expanded') setIsInfoExpanded(true);
         if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
+        if (showSeriesInfo === 'toggle') setIsInfoExpanded(false);
     }, [showSeriesInfo]);
 
     const ageRating = useMemo(() => {
@@ -148,7 +149,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 mediaTitle={title}
                 onSave={handleSaveWatchedDate}
             />
-            <div className={`w-full transition-all duration-300 ${isInfoExpanded ? 'z-20 scale-[1.02]' : 'z-0'}`}>
+            <div className={`w-full flex flex-col transition-all duration-300 ${isInfoExpanded ? 'z-20 scale-[1.02]' : 'z-0'}`}>
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
                     onClick={() => onSelect(item.id, item.media_type)}
@@ -210,11 +211,25 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     </button>
                 </div>
 
+                {/* Always show basic info block unless hidden by preference */}
+                {showSeriesInfo !== 'hidden' && (
+                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
+                        <p className="font-bold text-text-primary truncate">{title}</p>
+                        <div className="flex justify-between text-text-secondary">
+                             <span>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
+                             <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
+                        </div>
+                    </div>
+                )}
+
                 {shouldShowInfoSection && (
                     <div className="mt-2 p-3 bg-bg-secondary rounded-xl border border-white/5 animate-slide-in-up shadow-inner">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">Series Info</span>
-                            <span className="text-[10px] font-bold text-text-secondary">{airYears}</span>
+                        <div className="flex flex-col mb-2">
+                            <span className="text-[10px] font-black text-text-primary uppercase truncate">{title}</span>
+                            <div className="flex justify-between items-center mt-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent">Series Info</span>
+                                <span className="text-[9px] font-bold text-text-secondary">{airYears}</span>
+                            </div>
                         </div>
                         <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                             {details.seasons?.filter(s => s.season_number > 0).map(s => (
@@ -226,16 +241,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         </div>
                     </div>
                 )}
-
-                {details && (!isInfoExpanded || showSeriesInfo === 'hidden') && (
-                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1 transition-opacity duration-300">
-                        <p className="font-bold text-text-primary truncate">{title}</p>
-                        <div className="flex justify-between text-text-secondary">
-                             <span>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
-                             <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
-                        </div>
-                    </div>
-                 )}
             </div>
         </>
     );
