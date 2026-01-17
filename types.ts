@@ -1,3 +1,4 @@
+
 export interface NotificationSettings {
   masterEnabled: boolean;
   newEpisodes: boolean;
@@ -39,7 +40,7 @@ export interface AppPreferences {
 
 export type ScreenName = 'home' | 'search' | 'calendar' | 'progress' | 'profile' | 'allNewReleases' | 'allTrendingTV' | 'allTrendingMovies' | 'allTopRated' | 'allBingeWorthy' | 'allHiddenGems' | 'allTopComedy' | 'allWestern' | 'allSciFi' | 'allNewlyPopularEpisodes';
 
-export type ProfileTab = 'overview' | 'progress' | 'history' | 'weeklyPicks' | 'library' | 'lists' | 'activity' | 'stats' | 'seasonLog' | 'journal' | 'achievements' | 'imports' | 'settings';
+export type ProfileTab = 'overview' | 'progress' | 'history' | 'weeklyPicks' | 'library' | 'lists' | 'activity' | 'stats' | 'seasonLog' | 'journal' | 'achievements' | 'imports' | 'settings' | 'updates';
 
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'favorites';
 
@@ -301,7 +302,7 @@ export interface PrivacySettings {
 
 export interface AppNotification {
   id: string;
-  type: 'new_episode' | 'movie_release' | 'new_follower' | 'list_like' | 'app_update';
+  type: 'new_episode' | 'movie_release' | 'new_follower' | 'list_like' | 'app_update' | 'revival' | 'sequel' | 'stale_show';
   title: string;
   description: string;
   timestamp: string;
@@ -617,4 +618,16 @@ export interface CustomImagePaths {
     poster_path?: string | null;
     backdrop_path?: string | null;
   };
+}
+
+export interface MediaUpdate {
+    id: string;
+    type: 'stale' | 'revival' | 'sequel';
+    mediaId: number;
+    mediaType: 'tv' | 'movie';
+    title: string;
+    description: string;
+    poster_path: string | null;
+    timestamp: string;
+    details?: any;
 }

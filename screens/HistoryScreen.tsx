@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings } from '../types';
-import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon } from '../components/Icons';
+import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon } from '../components/Icons';
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
 import CompactShowCard from '../components/CompactShowCard';
@@ -12,22 +13,30 @@ type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments';
 
 // --- WATCH HISTORY TAB ---
 
+type WatchHistoryFilter = 'all' | 'shows' | 'movies' | 'seasons' | 'episodes' | 'movies_episodes' | 'movies_seasons';
+
 const WatchHistory: React.FC<{
   history: HistoryItem[];
   onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   timezone: string;
 }> = ({ history, onSelectShow, onDeleteHistoryItem, timezone }) => {
-  type HistoryFilter = 'all' | 'tv' | 'movie';
-  type DateFilter = 'all' | 'today' | 'week' | 'month';
-
-  const [filter, setFilter] = useState<HistoryFilter>('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [activeFilter, setActiveFilter] = useState<WatchHistoryFilter>('all');
+  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
   const [searchQuery, setSearchQuery] = useState('');
 
-  const sortedHistory = useMemo(() => {
-    let items = history;
+  const processedHistory = useMemo(() => {
+    let items = [...history];
 
+    // 1. Apply Date Filter (Jump to Date)
+    if (selectedDate) {
+        items = items.filter(item => {
+            const itemDate = new Date(item.timestamp).toISOString().split('T')[0];
+            return itemDate === selectedDate;
+        });
+    }
+
+    // 2. Apply Search
     if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         items = items.filter(item => 
@@ -36,32 +45,72 @@ const WatchHistory: React.FC<{
         );
     }
 
-    if (filter !== 'all') {
-      items = items.filter(item => item.media_type === filter);
-    }
+    // Sort by timestamp desc first
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    const now = new Date();
-    if (dateFilter !== 'all') {
-      items = items.filter(item => {
-        const itemDate = new Date(item.timestamp);
-        if (dateFilter === 'today') {
-          return itemDate.toDateString() === now.toDateString();
+    // 3. Apply Category Filter & Grouping
+    switch (activeFilter) {
+        case 'shows': {
+            const grouped = new Map<number, HistoryItem>();
+            items.filter(h => h.media_type === 'tv').forEach(item => {
+                if (!grouped.has(item.id)) {
+                    grouped.set(item.id, {
+                        ...item,
+                        episodeNumber: undefined,
+                        episodeTitle: 'Latest Show Activity',
+                        logId: `show-group-${item.id}-${item.logId}`
+                    });
+                }
+            });
+            return Array.from(grouped.values());
         }
-        if (dateFilter === 'week') {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(now.getDate() - 7);
-          return itemDate >= oneWeekAgo;
+        case 'episodes':
+            return items.filter(h => h.media_type === 'tv');
+        case 'movies':
+            return items.filter(h => h.media_type === 'movie');
+        case 'seasons': {
+            const grouped = new Map<string, HistoryItem>();
+            items.filter(h => h.media_type === 'tv').forEach(item => {
+                const key = `${item.id}-s${item.seasonNumber}`;
+                if (!grouped.has(key)) {
+                    grouped.set(key, {
+                        ...item,
+                        episodeNumber: undefined,
+                        episodeTitle: `Season ${item.seasonNumber} activity`,
+                        logId: `season-group-${key}-${item.logId}`
+                    });
+                }
+            });
+            return Array.from(grouped.values());
         }
-        if (dateFilter === 'month') {
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(now.getMonth() - 1);
-          return itemDate >= oneMonthAgo;
+        case 'movies_episodes':
+            return items; // No grouping, just movies and episodes interleaved
+        case 'movies_seasons': {
+            const grouped: HistoryItem[] = [];
+            const seenKeys = new Set<string>();
+            items.forEach(item => {
+                if (item.media_type === 'movie') {
+                    grouped.push(item);
+                } else {
+                    const key = `${item.id}-s${item.seasonNumber}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        grouped.push({
+                            ...item,
+                            episodeNumber: undefined,
+                            episodeTitle: `Season ${item.seasonNumber} activity`,
+                            logId: `season-group-${key}-${item.logId}`
+                        });
+                    }
+                }
+            });
+            return grouped;
         }
-        return true;
-      });
+        case 'all':
+        default:
+            return items;
     }
-    return [...items].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [history, filter, dateFilter, searchQuery]);
+  }, [history, activeFilter, searchQuery, selectedDate]);
 
   const formatHistoryDate = (dateString: string, timezone: string) => {
     const date = new Date(dateString);
@@ -77,55 +126,80 @@ const WatchHistory: React.FC<{
     return { day, month, year, fullWithTime };
   };
 
+  const filterOptions: { id: WatchHistoryFilter; label: string; icon: React.ReactNode }[] = [
+      { id: 'all', label: 'Show All', icon: <ClockIcon className="w-4 h-4" /> },
+      { id: 'shows', label: 'Shows Only', icon: <TvIcon className="w-4 h-4" /> },
+      { id: 'movies', label: 'Movies Only', icon: <FilmIcon className="w-4 h-4" /> },
+      { id: 'seasons', label: 'Seasons', icon: <ListBulletIcon className="w-4 h-4" /> },
+      { id: 'episodes', label: 'Episodes', icon: <TvIcon className="w-4 h-4" /> },
+      { id: 'movies_episodes', label: 'Movies & Episodes', icon: <SparklesIcon className="w-4 h-4" /> },
+      { id: 'movies_seasons', label: 'Movies & Seasons', icon: <TrophyIcon className="w-4 h-4" /> },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-4">
-        <div className="relative">
-            <input
-                type="text"
-                placeholder="Search history..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-bg-secondary text-text-primary placeholder-text-secondary rounded-xl border border-white/5 focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all shadow-inner"
-            />
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-            <div className="relative">
-                <select 
-                    value={filter} 
-                    onChange={(e) => setFilter(e.target.value as HistoryFilter)} 
-                    className="w-full appearance-none bg-bg-secondary border-none rounded-xl py-2 px-3 text-text-primary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-accent shadow-sm"
-                >
-                    <option value="all">All Types</option>
-                    <option value="tv">TV Shows</option>
-                    <option value="movie">Movies</option>
-                </select>
-                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+        {/* Search and Jump to Date */}
+        <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-grow">
+                <input
+                    type="text"
+                    placeholder="Search history..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-bg-secondary/40 text-text-primary placeholder-text-secondary/50 rounded-2xl border border-white/5 focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all shadow-inner font-semibold"
+                />
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
             </div>
-            <div className="relative">
-                <select 
-                    value={dateFilter} 
-                    onChange={(e) => setDateFilter(e.target.value as DateFilter)} 
-                    className="w-full appearance-none bg-bg-secondary border-none rounded-xl py-2 px-3 text-text-primary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-accent shadow-sm"
-                >
-                    <option value="all">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">Last 7 Days</option>
-                    <option value="month">Last 30 Days</option>
-                </select>
-                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+            <div className="relative min-w-[180px]">
+                <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-bg-secondary/40 text-text-primary rounded-2xl border border-white/5 focus:border-primary-accent focus:outline-none transition-all shadow-inner font-black text-xs uppercase tracking-widest cursor-pointer"
+                />
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-accent pointer-events-none" />
+                {selectedDate && (
+                    <button 
+                        onClick={() => setSelectedDate('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-red-400 transition-colors"
+                    >
+                        <XMarkIcon className="w-5 h-5" />
+                    </button>
+                )}
             </div>
         </div>
+
+        {/* Multi-Filter Bar */}
+        <Carousel>
+            <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
+                {filterOptions.map(opt => (
+                    <button
+                        key={opt.id}
+                        onClick={() => setActiveFilter(opt.id)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                            activeFilter === opt.id 
+                            ? 'bg-accent-gradient text-on-accent shadow-lg scale-105' 
+                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary border border-white/5'
+                        }`}
+                    >
+                        {opt.icon}
+                        <span>{opt.label}</span>
+                    </button>
+                ))}
+                <div className="w-4 flex-shrink-0"></div>
+            </div>
+        </Carousel>
       </div>
 
       <section className="space-y-8">
-        {sortedHistory.length > 0 ? (
+        {processedHistory.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {sortedHistory.map(item => {
+            {processedHistory.map(item => {
               const { day, month, year, fullWithTime } = formatHistoryDate(item.timestamp, timezone);
               
-              // IMAGE PRIORITY: Episode Still > Season Poster > Series Poster
+              const isGrouped = item.logId.includes('-group-');
+              
               const mainImagePaths = [
                   item.episodeStillPath ? getImageUrl(item.episodeStillPath, 'w780', 'still') : null,
                   item.seasonPosterPath ? getImageUrl(item.seasonPosterPath, 'w780') : null,
@@ -133,8 +207,7 @@ const WatchHistory: React.FC<{
               ].filter(Boolean);
 
               return (
-                <div key={item.logId} className="group relative bg-bg-secondary/20 backdrop-blur-sm rounded-3xl border border-white/5 overflow-hidden transition-all hover:bg-bg-secondary/40 flex flex-col shadow-xl">
-                    {/* Top Image Section */}
+                <div key={item.logId} className="group relative bg-bg-secondary/20 backdrop-blur-sm rounded-3xl border border-white/5 overflow-hidden transition-all hover:bg-bg-secondary/40 flex flex-col shadow-xl animate-fade-in">
                     <div 
                         className="w-full aspect-video relative cursor-pointer overflow-hidden bg-black/40 border-b border-white/5" 
                         onClick={() => onSelectShow(item.id, item.media_type)}
@@ -147,14 +220,12 @@ const WatchHistory: React.FC<{
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                         
-                        {/* Status/Type Badge */}
                         <div className="absolute top-4 left-4 flex gap-2 z-10">
                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10 ${item.media_type === 'tv' ? 'bg-red-500/60 text-white' : 'bg-blue-500/60 text-white'}`}>
-                                {item.media_type}
+                                {isGrouped ? (activeFilter === 'shows' ? 'series' : 'season') : item.media_type}
                             </span>
                         </div>
 
-                        {/* Floating Date Badge on Image - OPAQUE BACKGROUND */}
                         <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary rounded-2xl p-2 min-w-[55px] shadow-2xl border border-white/10 scale-90 group-hover:scale-100 transition-transform z-10">
                             <span className="text-[10px] font-black text-primary-accent uppercase tracking-widest leading-none">{month}</span>
                             <span className="text-xl font-black text-text-primary leading-none mt-1">{day}</span>
@@ -162,7 +233,6 @@ const WatchHistory: React.FC<{
                         </div>
                     </div>
 
-                    {/* Bottom Info Section */}
                     <div className="p-5 flex flex-col flex-grow">
                         <div className="flex justify-between items-start gap-4">
                             <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
@@ -172,7 +242,7 @@ const WatchHistory: React.FC<{
                                 {item.media_type === 'tv' && (
                                     <div className="mt-1 flex items-center gap-2">
                                         <p className="text-xs font-black text-white uppercase tracking-[0.15em]">
-                                            S{item.seasonNumber} • E{item.episodeNumber}
+                                            S{item.seasonNumber} {item.episodeNumber ? `• E${item.episodeNumber}` : ''}
                                         </p>
                                         {item.episodeTitle && (
                                             <>
@@ -183,22 +253,21 @@ const WatchHistory: React.FC<{
                                     </div>
                                 )}
                             </div>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }}
-                                className="p-3 rounded-full text-text-secondary/40 hover:text-red-500 hover:bg-red-500/10 transition-all bg-bg-secondary/20 flex-shrink-0"
-                                aria-label="Delete this specific play"
-                                title="Delete this play"
-                            >
-                                <TrashIcon className="w-5 h-5" />
-                            </button>
+                            {!isGrouped && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }}
+                                    className="p-3 rounded-full text-text-secondary/40 hover:text-red-500 hover:bg-red-500/10 transition-all bg-bg-secondary/20 flex-shrink-0"
+                                    title="Delete this play"
+                                >
+                                    <TrashIcon className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
 
                         {item.note && (
                             <div className="mt-4 p-4 bg-bg-primary/40 rounded-2xl border border-white/5 relative">
                                 <p className="text-sm text-text-secondary italic leading-relaxed font-medium">
-                                    <span className="text-primary-accent text-lg font-serif absolute -top-1 left-2 opacity-50">“</span>
                                     {item.note}
-                                    <span className="text-primary-accent text-lg font-serif absolute -bottom-4 right-2 opacity-50">”</span>
                                 </p>
                             </div>
                         )}
@@ -219,7 +288,7 @@ const WatchHistory: React.FC<{
             <ClockIcon className="w-16 h-16 text-text-secondary/20 mx-auto mb-4" />
             <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter">Timeline Empty</h2>
             <p className="mt-2 text-text-secondary font-medium px-10">
-                {searchQuery ? "No matching moments found in your history." : "Your cinematic journey is just beginning. Start tracking to see your timeline grow."}
+                {searchQuery || selectedDate ? "No matching moments found for these filters." : "Your cinematic journey is just beginning. Start tracking to see your timeline grow."}
             </p>
           </div>
         )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScreenName, ProfileTab } from '../types';
-import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, TvIcon, ListBulletIcon, UsersIcon, ChartPieIcon, BookOpenIcon, TrophyIcon, MountainIcon } from './Icons';
+// Added FireIcon to imports
+import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, TvIcon, ListBulletIcon, UsersIcon, ChartPieIcon, BookOpenIcon, TrophyIcon, MountainIcon, FireIcon } from './Icons';
 import Carousel from './Carousel';
 
 interface ShortcutNavigationProps {
@@ -23,6 +24,8 @@ const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.Reac
     achievements: { label: 'Achievements', icon: <BadgeIcon className="w-5 h-5" /> },
     imports: { label: 'Import & Sync', icon: <CogIcon className="w-5 h-5" /> },
     settings: { label: 'Settings', icon: <CogIcon className="w-5 h-5" /> },
+    // Added missing updates metadata
+    updates: { label: 'Updates', icon: <FireIcon className="w-5 h-5" /> },
 };
 
 const ShortcutButton: React.FC<{

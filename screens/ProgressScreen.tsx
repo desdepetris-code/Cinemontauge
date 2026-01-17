@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo } from '../types';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo, EpisodeProgress } from '../types';
 import { getMediaDetails, getSeasonDetails, clearMediaCache } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon } from '../components/Icons';
+import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon, FilmIcon, ListBulletIcon, SparklesIcon, CheckCircleIcon } from '../components/Icons';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ProgressCard, { EnrichedShowData } from '../components/ProgressCard';
 import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovieCard';
@@ -10,18 +11,111 @@ import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovi
 // --- TYPE DEFINITIONS ---
 type EnrichedMediaData = (EnrichedShowData | EnrichedMovieData);
 
-type SortOption = 'lastWatched' | 'oldestWatched' | 'mostEpisodesLeft' | 'leastEpisodesLeft' | 'popularity';
+type SortOption = 'lastWatched' | 'staleFirst' | 'mostEpisodesLeft' | 'leastEpisodesLeft' | 'popularity' | 'recentlyAired';
+type TypeFilter = 'all' | 'tv' | 'movie' | 'episode' | 'season';
+
+// --- Granular Component: Episode View Card ---
+const EpisodeProgressCard: React.FC<{ 
+    show: EnrichedShowData; 
+    onSelect: () => void;
+    onToggleWatched: (e: React.MouseEvent) => void;
+}> = ({ show, onSelect, onToggleWatched }) => {
+    const ep = show.nextEpisodeInfo;
+    if (!ep) return null;
+    
+    return (
+        <div 
+            onClick={onSelect}
+            className="group flex gap-4 p-3 bg-bg-secondary/30 rounded-2xl border border-white/5 hover:border-primary-accent/30 transition-all cursor-pointer shadow-lg overflow-hidden relative"
+        >
+            <div className="w-32 h-20 flex-shrink-0 relative rounded-xl overflow-hidden shadow-md">
+                <img 
+                    src={getImageUrl(ep.still_path || show.poster_path, 'w300', ep.still_path ? 'still' : 'poster')} 
+                    alt="" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
+            </div>
+            <div className="flex-grow min-w-0 flex flex-col justify-center">
+                <p className="text-[9px] font-black text-primary-accent uppercase tracking-[0.2em] mb-0.5 truncate">{show.title}</p>
+                <h3 className="text-sm font-black text-text-primary uppercase tracking-tight truncate">
+                    S{ep.season_number} E{ep.episode_number}: {ep.name}
+                </h3>
+                <p className="text-[10px] text-text-secondary mt-1 font-bold opacity-60">
+                    {ep.air_date ? new Date(ep.air_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
+                </p>
+            </div>
+            <button 
+                onClick={onToggleWatched}
+                className="self-center p-3 rounded-full bg-bg-secondary/50 text-text-secondary hover:text-green-400 hover:bg-green-400/10 transition-all border border-white/5"
+            >
+                <CheckCircleIcon className="w-5 h-5" />
+            </button>
+        </div>
+    );
+};
+
+// --- Granular Component: Season View Card ---
+const SeasonProgressCard: React.FC<{ 
+    show: EnrichedShowData; 
+    onSelect: () => void;
+}> = ({ show, onSelect }) => {
+    const progress = show.totalEpisodes > 0 ? (show.watchedCount / show.totalEpisodes) * 100 : 0;
+    
+    return (
+        <div 
+            onClick={onSelect}
+            className="group p-4 bg-bg-secondary/30 rounded-3xl border border-white/5 hover:border-primary-accent/30 transition-all cursor-pointer shadow-lg"
+        >
+            <div className="flex justify-between items-center mb-3">
+                <div className="min-w-0 flex-grow">
+                    <h3 className="text-lg font-black text-text-primary uppercase tracking-tighter truncate">{show.title}</h3>
+                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] opacity-60">
+                        Season {show.nextEpisodeInfo?.season_number || 1} Progress
+                    </p>
+                </div>
+                <div className="text-right ml-4">
+                    <span className="text-lg font-black text-primary-accent leading-none">{Math.round(progress)}%</span>
+                </div>
+            </div>
+            <div className="w-full bg-bg-primary rounded-full h-2 overflow-hidden border border-white/5">
+                <div 
+                    className="bg-accent-gradient h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${progress}%` }}
+                ></div>
+            </div>
+            <div className="flex justify-between mt-2 text-[9px] font-black text-text-secondary uppercase tracking-widest opacity-40">
+                <span>{show.watchedCount} Watched</span>
+                <span>{show.totalEpisodes - show.watchedCount} Remaining</span>
+            </div>
+        </div>
+    );
+};
 
 // --- HELPER COMPONENTS ---
 
 const QuickStat: React.FC<{ label: string; value: string | number; icon: React.ReactNode }> = ({ label, value, icon }) => (
-    <div className="bg-bg-secondary/50 p-3 rounded-lg flex items-center space-x-3">
+    <div className="bg-bg-secondary/50 p-3 rounded-2xl flex items-center space-x-3 border border-white/5">
         <div className="text-primary-accent">{icon}</div>
         <div>
-            <p className="text-xs text-text-secondary">{label}</p>
-            <p className="text-xl font-bold text-text-primary">{value}</p>
+            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest leading-none mb-1">{label}</p>
+            <p className="text-xl font-black text-text-primary leading-none">{value}</p>
         </div>
     </div>
+);
+
+const FilterButton: React.FC<{ label: string; active: boolean; onClick: () => void; icon: React.ReactNode }> = ({ label, active, onClick, icon }) => (
+    <button
+        onClick={onClick}
+        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            active 
+            ? 'bg-accent-gradient text-on-accent shadow-lg scale-105' 
+            : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-secondary/80'
+        }`}
+    >
+        {icon}
+        <span>{label}</span>
+    </button>
 );
 
 // --- MAIN SCREEN COMPONENT ---
@@ -50,6 +144,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
     const { watching, onHold, watchProgress, history } = userData;
     
     const [sortOption, setSortOption] = useState<SortOption>('lastWatched');
+    const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [enrichedMedia, setEnrichedMedia] = useState<EnrichedMediaData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +169,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         } else {
             setRefreshKey(prev => prev + 1);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -119,7 +213,20 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 const totalEpisodes = seasonsForCalc.reduce((acc, s) => acc + s.episode_count, 0);
                 const progressForShow = watchProgress[item.id] || {};
                 let watchedCount = 0;
-                seasonsForCalc.forEach(s => { for (let i = 1; i <= s.episode_count; i++) if (progressForShow[s.season_number]?.[i]?.status === 2) watchedCount++; });
+                let completedSeasons = 0;
+
+                seasonsForCalc.forEach(s => { 
+                    let seasonWatched = 0;
+                    for (let i = 1; i <= s.episode_count; i++) {
+                        if (progressForShow[s.season_number]?.[i]?.status === 2) {
+                            watchedCount++;
+                            seasonWatched++;
+                        }
+                    }
+                    if (s.episode_count > 0 && seasonWatched >= s.episode_count) {
+                        completedSeasons++;
+                    }
+                });
                 
                 if (totalEpisodes > 0 && watchedCount >= totalEpisodes) {
                     if (watchingIds.has(item.id)) {
@@ -149,12 +256,15 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 
                 const showHistory = history.filter(h => h.id === item.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 const lastWatchedTimestamp = showHistory.length > 0 ? new Date(showHistory[0].timestamp).getTime() : 0;
+                const isPaused = !!pausedLiveSessions[item.id];
                 
                 if (nextEpisodeInfo) {
                     return {
                         ...item, details, nextEpisodeInfo, watchedCount, totalEpisodes, lastWatchedTimestamp,
                         popularity: details.popularity || 0,
                         status: watchingIds.has(item.id) ? 'watching' : 'onHold',
+                        completedSeasons,
+                        isPaused
                     };
                 }
                 return null;
@@ -185,14 +295,24 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             return true;
         });
 
+        // 1. Apply Type Filter
+        if (typeFilter === 'tv') {
+            results = results.filter(i => i.media_type === 'tv');
+        } else if (typeFilter === 'movie') {
+            results = results.filter(i => i.media_type === 'movie');
+        } else if (typeFilter === 'episode') {
+            results = results.filter(i => i.media_type === 'tv');
+        } else if (typeFilter === 'season') {
+            results = results.filter(i => i.media_type === 'tv');
+        }
+
+        // 2. Apply Search
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             results = results.filter(item => item.title.toLowerCase().includes(query));
         }
 
-        const watchingItems = results.filter(item => (item as EnrichedShowData).status === 'watching');
-        const onHoldItems = results.filter(item => (item as EnrichedShowData).status === 'onHold');
-        
+        // 3. Sort function
         const sortFunction = (a: EnrichedMediaData, b: EnrichedMediaData): number => {
             switch (sortOption) {
                 case 'leastEpisodesLeft':
@@ -203,23 +323,34 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     const remainingA2 = a.media_type === 'tv' ? (a as EnrichedShowData).totalEpisodes - (a as EnrichedShowData).watchedCount : 1;
                     const remainingB2 = b.media_type === 'tv' ? (b as EnrichedShowData).totalEpisodes - (b as EnrichedShowData).watchedCount : 1;
                     return remainingB2 - remainingA2;
-                case 'oldestWatched':
+                case 'staleFirst':
                     const timeA = a.lastWatchedTimestamp === 0 ? Infinity : a.lastWatchedTimestamp;
                     const timeB = b.lastWatchedTimestamp === 0 ? Infinity : b.lastWatchedTimestamp;
                     return timeA - timeB;
                 case 'popularity':
                     return (b.popularity || 0) - (a.popularity || 0);
+                case 'recentlyAired':
+                    const airA = a.media_type === 'tv' ? new Date((a as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
+                    const airB = b.media_type === 'tv' ? new Date((b as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
+                    return airB - airA;
                 case 'lastWatched':
                 default:
                     return b.lastWatchedTimestamp - a.lastWatchedTimestamp;
             }
         };
 
-        watchingItems.sort(sortFunction);
-        onHoldItems.sort(sortFunction);
-
-        return [...watchingItems, ...onHoldItems];
-    }, [enrichedMedia, sortOption, searchQuery]);
+        // Standard grouping for All/Shows/Movies
+        if (typeFilter !== 'episode' && typeFilter !== 'season') {
+            const watchingItems = results.filter(item => (item as EnrichedShowData).status === 'watching');
+            const onHoldItems = results.filter(item => (item as EnrichedShowData).status === 'onHold');
+            watchingItems.sort(sortFunction);
+            onHoldItems.sort(sortFunction);
+            return [...watchingItems, ...onHoldItems];
+        } else {
+            // For Episodes/Seasons view, don't group by status as strictly, just sort
+            return results.sort(sortFunction);
+        }
+    }, [enrichedMedia, sortOption, searchQuery, typeFilter]);
     
     const quickStats = useMemo(() => {
         let episodesLeft = 0, hoursLeft = 0, showsInProgress = 0, moviesInProgress = 0;
@@ -247,93 +378,134 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
     }, [enrichedMedia]);
     
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-text-primary">Progress</h1>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <QuickStat label="Items in Progress" value={quickStats.itemsInProgress} icon={<TvIcon className="w-6 h-6"/>} />
-                <QuickStat label="Episodes to Watch" value={quickStats.episodesToWatch} icon={<ChartBarIcon className="w-6 h-6"/>} />
-                <QuickStat label="Est. Hours Left" value={`~${quickStats.hoursToWatch}h`} icon={<ClockIcon className="w-6 h-6"/>} />
-            </div>
+        <div className="animate-fade-in space-y-8 max-w-7xl mx-auto px-4 pb-20">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Progress</h1>
+                    <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] mt-1 opacity-60">Mapping your incomplete journeys</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                    <QuickStat label="Active" value={quickStats.itemsInProgress} icon={<TvIcon className="w-5 h-5"/>} />
+                    <QuickStat label="Episodes" value={quickStats.episodesToWatch} icon={<ChartBarIcon className="w-5 h-5"/>} />
+                    <QuickStat label="Hours" value={`${quickStats.hoursToWatch}h`} icon={<ClockIcon className="w-5 h-5"/>} />
+                </div>
+            </header>
 
-            <section>
-                <div className="flex flex-col space-y-4 mb-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-accent-gradient">Up Next</h2>
-                        <button onClick={handleRefresh} disabled={isRefreshing || isLoading} className="p-2 bg-bg-secondary rounded-md text-text-primary hover:brightness-125 disabled:opacity-50" aria-label="Refresh Data">
-                            <ArrowPathIcon className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        </button>
+            <section className="space-y-6">
+                <div className="flex flex-col space-y-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <FilterButton label="All" active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} icon={<ListBulletIcon className="w-4 h-4"/>} />
+                        <FilterButton label="Shows" active={typeFilter === 'tv'} onClick={() => setTypeFilter('tv')} icon={<TvIcon className="w-4 h-4"/>} />
+                        <FilterButton label="Movies" active={typeFilter === 'movie'} onClick={() => setTypeFilter('movie')} icon={<FilmIcon className="w-4 h-4"/>} />
+                        <FilterButton label="Episodes" active={typeFilter === 'episode'} onClick={() => setTypeFilter('episode')} icon={<PlayIcon className="w-4 h-4"/>} />
+                        <FilterButton label="Seasons" active={typeFilter === 'season'} onClick={() => setTypeFilter('season')} icon={<ChartBarIcon className="w-4 h-4"/>} />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-grow">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative flex-grow w-full">
                             <input
                                 type="text"
-                                placeholder="Search shows in progress..."
+                                placeholder="Search progress..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-bg-secondary text-text-primary placeholder-text-secondary rounded-lg border border-transparent focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all"
+                                className="w-full pl-10 pr-4 py-3 bg-bg-secondary/40 text-text-primary placeholder-text-secondary/50 rounded-2xl border border-white/5 focus:border-primary-accent focus:outline-none focus:ring-1 focus:ring-primary-accent transition-all shadow-inner font-semibold"
                             />
                             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
                         </div>
-                        <div className="relative">
-                            <select
-                                value={sortOption}
-                                onChange={(e) => setSortOption(e.target.value as SortOption)}
-                                className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 pl-3 pr-8 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary-accent h-full"
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <div className="relative flex-grow sm:min-w-[200px]">
+                                <select
+                                    value={sortOption}
+                                    onChange={(e) => setSortOption(e.target.value as SortOption)}
+                                    className="w-full appearance-none bg-bg-secondary/40 border border-white/5 rounded-2xl py-3 pl-4 pr-10 text-text-primary text-xs font-black uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-primary-accent h-full shadow-inner"
+                                >
+                                    <option value="lastWatched">Recently Active</option>
+                                    <option value="staleFirst">Stale First</option>
+                                    <option value="recentlyAired">Recently Aired</option>
+                                    <option value="popularity">Trending</option>
+                                    <option value="leastEpisodesLeft">Least Left</option>
+                                    <option value="mostEpisodesLeft">Most Left</option>
+                                </select>
+                                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+                            </div>
+                            <button 
+                                onClick={handleRefresh} 
+                                disabled={isRefreshing || isLoading} 
+                                className="p-3 bg-bg-secondary/40 rounded-2xl text-text-primary hover:brightness-125 disabled:opacity-50 border border-white/5 shadow-inner group" 
+                                aria-label="Refresh Data"
                             >
-                                <option value="lastWatched">Last Watched</option>
-                                <option value="oldestWatched">Oldest Watched</option>
-                                <option value="popularity">Popularity</option>
-                                <option value="leastEpisodesLeft">Fewest Left</option>
-                                <option value="mostEpisodesLeft">Most Left</option>
-                            </select>
-                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+                                <ArrowPathIcon className={`h-5 w-5 group-hover:text-primary-accent transition-colors ${isRefreshing ? 'animate-spin' : ''}`} />
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {isLoading ? (
                     <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => <div key={i} className="bg-card-gradient rounded-lg shadow-md p-4 animate-pulse h-48"></div>)}
+                        {[...Array(3)].map((_, i) => <div key={i} className="bg-bg-secondary/20 rounded-3xl animate-pulse h-48 border border-white/5"></div>)}
                     </div>
                 ) : sortedMedia.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-6">
                         {sortedMedia.map(item => {
+                            if (typeFilter === 'episode' && item.media_type === 'tv') {
+                                const show = item as EnrichedShowData;
+                                return (
+                                    <div key={item.id} className="animate-slide-in-up">
+                                        <EpisodeProgressCard 
+                                            show={show} 
+                                            onSelect={() => props.onSelectShow(item.id, 'tv')}
+                                            onToggleWatched={(e) => {
+                                                e.stopPropagation();
+                                                if (show.nextEpisodeInfo) {
+                                                    props.onToggleEpisode(show.id, show.nextEpisodeInfo.season_number, show.nextEpisodeInfo.episode_number, 0, show, show.nextEpisodeInfo.name);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            }
+
+                            if (typeFilter === 'season' && item.media_type === 'tv') {
+                                return (
+                                    <div key={item.id} className="animate-slide-in-up">
+                                        <SeasonProgressCard 
+                                            show={item as EnrichedShowData} 
+                                            onSelect={() => props.onSelectShow(item.id, 'tv')}
+                                        />
+                                    </div>
+                                );
+                            }
+
                             if (item.media_type === 'tv') {
                                 const showItem = item as EnrichedShowData;
                                 const nextEp = showItem.nextEpisodeInfo;
                                 const isFav = nextEp ? (favoriteEpisodes[item.id]?.[nextEp.season_number]?.[nextEp.episode_number] || false) : false;
-                                return <ProgressCard key={item.id} item={showItem} {...props} isEpisodeFavorited={isFav} />;
+                                return (
+                                    <div key={item.id} className="animate-slide-in-up">
+                                        <ProgressCard item={showItem} {...props} isEpisodeFavorited={isFav} />
+                                    </div>
+                                );
                             } else {
                                 const movieItem = item as EnrichedMovieData;
-                                return <ProgressMovieCard key={item.id} item={movieItem} onSelectShow={props.onSelectShow} onStartLiveWatch={onStartLiveWatch} />
+                                return (
+                                    <div key={item.id} className="animate-slide-in-up">
+                                        <ProgressMovieCard item={movieItem} onSelectShow={props.onSelectShow} onStartLiveWatch={onStartLiveWatch} />
+                                    </div>
+                                );
                             }
                         })}
                     </div>
                 ) : (
-                    <div className="text-center py-16 bg-bg-secondary/30 rounded-lg">
-                        {searchQuery ? (
-                            <p className="text-text-secondary">No matching titles found in your progress.</p>
-                        ) : currentUser ? (
-                             <>
-                                <h2 className="text-xl font-bold text-text-primary">All Caught Up!</h2>
-                                <p className="mt-2 text-text-secondary max-w-sm mx-auto">Add a new show to your "Watching" list or pause a movie to track it here.</p>
-                            </>
-                        ) : (
-                            <>
-                                <h2 className="text-xl font-bold text-text-primary">Welcome to Your Progress Page!</h2>
-                                <p className="mt-2 text-text-secondary max-w-sm mx-auto">
-                                    Your watched episodes and paused movies will be tracked here. Your data is currently saved on this device.
-                                </p>
-                                <button
-                                    onClick={onAuthClick}
-                                    className="mt-4 px-4 py-2 text-sm font-semibold rounded-full bg-accent-gradient text-on-accent hover:opacity-90 transition-opacity"
-                                >
-                                    Log In or Sign Up to Sync
-                                </button>
-                            </>
-                        )}
+                    <div className="text-center py-24 bg-bg-secondary/10 rounded-3xl border-4 border-dashed border-white/5 flex flex-col items-center">
+                        <SparklesIcon className="w-16 h-16 text-text-secondary/20 mb-4" />
+                        <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter">
+                            {searchQuery ? "No Matches Found" : "All Clear"}
+                        </h2>
+                        <p className="mt-2 text-text-secondary font-medium px-10 max-w-md mx-auto">
+                            {searchQuery 
+                                ? `We couldn't find any items in your progress matching "${searchQuery}".` 
+                                : "You've successfully finished all items you were tracking. Start something new from search or discovery!"}
+                        </p>
                     </div>
                 )}
             </section>

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { HomeIcon, SearchNavIcon, BookOpenIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, ListBulletIcon, UsersIcon, ChartPieIcon, TvIcon, BadgeIcon, MountainIcon } from '../components/Icons';
+import { HomeIcon, SearchNavIcon, BookOpenIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, ListBulletIcon, UsersIcon, ChartPieIcon, TvIcon, BadgeIcon, MountainIcon, FireIcon } from '../components/Icons';
 import { NavSettings, ProfileTab } from '../types';
 
 interface BottomTabNavigatorProps {
@@ -25,6 +26,7 @@ const iconMetadata: Record<string, { label: string; icon: React.FC<React.SVGProp
   seasonLog: { label: 'Log', icon: TvIcon },
   journal: { label: 'Journal', icon: BookOpenIcon },
   achievements: { label: 'Awards', icon: BadgeIcon },
+  updates: { label: 'Updates', icon: FireIcon },
 };
 
 const TabButton: React.FC<{
