@@ -10,6 +10,9 @@ import { getEpisodeTag } from '../utils/episodeTagUtils';
 import { isNewRelease, formatTime, getAiredEpisodeCount } from '../utils/formatUtils';
 import BrandedImage from './BrandedImage';
 import { getShowStatus } from '../utils/statusUtils';
+import UserRatingStamp from './UserRatingStamp';
+// Add missing import for NewReleaseOverlay
+import { NewReleaseOverlay } from './NewReleaseOverlay';
 
 interface ContinueWatchingProgressCardProps {
     item: TrackedItem & { isPaused?: boolean; elapsedSeconds?: number; seasonNumber?: number; episodeNumber?: number; episodeTitle?: string; runtime?: number };
@@ -54,7 +57,6 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         const isPaused = item.isPaused && item.seasonNumber !== undefined;
         const progressForShow = watchProgress[item.id] || {};
         
-        // Calculate aired count as denominator
         const airedTotal = getAiredEpisodeCount(details);
 
         let watchedTotal = 0;
@@ -88,7 +90,6 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         const progressInSeason = progressForShow[currentSeason.season_number] || {};
         const watchedInSeason = Object.values(progressInSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
         
-        // Denominator for season: check if it's currently airing or ended
         let airedInSeason = currentSeason.episode_count;
         if (details.last_episode_to_air && details.last_episode_to_air.season_number === currentSeason.season_number) {
             airedInSeason = details.last_episode_to_air.episode_number;
@@ -187,7 +188,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         const tmdbSeason = details?.seasons?.find(s => s.season_number === nextSeasonNumber);
 
         const paths = [
-            tmdbSeason?.poster_path, // SEASON POSTER PRIORITY
+            tmdbSeason?.poster_path, 
             tvdbPoster,
             details?.poster_path,
             item.poster_path,
@@ -202,7 +203,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
              return [getImageUrl(item.poster_path, 'w300', 'poster')];
         }
         const paths = [
-            nextEpisodeInfo?.still_path, // EPISODE STILL PRIORITY
+            nextEpisodeInfo?.still_path,
             seasonDetails?.poster_path,
             details?.poster_path,
         ];
@@ -212,6 +213,24 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
             getFullImageUrl(paths[2], 'w342'),
         ];
     }, [nextEpisodeInfo, seasonDetails, details, isPausedSession, item.poster_path]);
+
+    const ageRating = useMemo(() => {
+        if (!details) return null;
+        const usRating = details.content_ratings?.results?.find(r => r.iso_3166_1 === 'US');
+        return usRating?.rating || null;
+    }, [details]);
+
+    const getAgeRatingColor = (rating: string) => {
+        const r = rating.toUpperCase();
+        if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200 shadow-sm';
+        if (r === 'TV-Y') return 'bg-[#008000] text-white';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black shadow-md';
+        if (r === 'PG-13') return 'bg-[#00008B] text-white';
+        if (r === 'TV-14') return 'bg-[#800000] text-white';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-xl';
+        return 'bg-stone-500 text-white';
+    };
 
     const episodeTag: EpisodeTag | null = useMemo(() => {
         if (!nextEpisodeInfo || !details) return null;
@@ -259,10 +278,16 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                 </BrandedImage>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                 
-                <div className="absolute top-2 right-2 flex items-center space-x-2">
-                    {isNew && <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-cyan-500/20 text-cyan-300">New</span>}
+                {/* Repositioned & Stacked Badges */}
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-20">
+                    {ageRating && (
+                        <div className={`px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                            {ageRating}
+                        </div>
+                    )}
+                    {isNew && <NewReleaseOverlay position="static" color="cyan" />}
                     {episodeTag && (
-                        <div className={`text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm ${episodeTag.className}`}>
+                        <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md backdrop-blur-md border border-white/10 shadow-lg ${episodeTag.className}`}>
                             {episodeTag.text}
                         </div>
                     )}

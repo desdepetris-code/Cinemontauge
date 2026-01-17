@@ -62,7 +62,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
         return () => { isMounted = false; };
     }, [item.id, item.media_type, isNew]);
 
-    // Sync local expanded state if preference changes
     useEffect(() => {
         if (showSeriesInfo === 'expanded') setIsInfoExpanded(true);
         else if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
@@ -159,18 +158,23 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 >
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
                     <UserRatingStamp rating={userRating} className="absolute -top-1 -left-1" />
-                    {recentEpisodeCount > 0 && (
-                        <NewReleaseOverlay 
-                            text={recentEpisodeCount > 1 ? "NEW EPISODES" : "NEW EPISODE"} 
-                            position="top-right" 
-                            color="rose"
-                        />
-                    )}
-                    {ageRating && (
-                        <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg ${getAgeRatingColor(ageRating)}`}>
-                            {ageRating}
-                        </div>
-                    )}
+                    
+                    {/* Badge Container (Top-Right Stack) */}
+                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-20">
+                        {ageRating && (
+                            <div className={`px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                                {ageRating}
+                            </div>
+                        )}
+                        {recentEpisodeCount > 0 && (
+                            <NewReleaseOverlay 
+                                text={recentEpisodeCount > 1 ? "NEW EPISODES" : "NEW EPISODE"} 
+                                position="static"
+                                color="rose"
+                            />
+                        )}
+                    </div>
+
                     <FallbackImage
                         srcs={posterSrcs}
                         placeholder={PLACEHOLDER_POSTER}
