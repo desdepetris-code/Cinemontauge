@@ -107,24 +107,28 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
     const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
 
     if (!seasonDetails?.episodes) {
-      const totalInSeason = season.episode_count;
-      if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
-      const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
-      const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
-      return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
+        // Fallback calculation based on season summary if details aren't fetched yet
+        let airedInSeason = season.episode_count;
+        if (showDetails.last_episode_to_air && showDetails.last_episode_to_air.season_number === season.season_number) {
+            airedInSeason = showDetails.last_episode_to_air.episode_number;
+        }
+        
+        const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
+        const percent = airedInSeason > 0 ? (watchedCount / airedInSeason) * 100 : 0;
+        return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, airedInSeason - watchedCount), totalAiredEpisodesInSeason: airedInSeason };
     }
 
     const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= today);
     const totalAired = airedEpisodes.length;
     
-    if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: season.episode_count, totalAiredEpisodesInSeason: 0 };
+    if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
     
     const watchedCount = airedEpisodes.filter(ep => progressForSeason[ep.episode_number]?.status === 2).length;
     
     const percent = (watchedCount / totalAired) * 100;
     const unwatched = totalAired - watchedCount;
     return { seasonProgressPercent: percent, unwatchedCount: unwatched, totalAiredEpisodesInSeason: totalAired };
-  }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number]);
+  }, [season.episode_count, seasonDetails, watchProgress, showId, season.season_number, showDetails.last_episode_to_air]);
 
   const ageRating = useMemo(() => {
     if (!showDetails) return null;
@@ -274,8 +278,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                 <h3 className="font-bold text-lg text-text-primary truncate">{season.name}</h3>
                                 {showRatings && season.vote_average && season.vote_average > 0 && <ScoreStar score={season.vote_average} size="xs" />}
                             </div>
-                            <p className="text-xs font-black text-primary-accent uppercase tracking-widest truncate">{showDetails.name}</p>
-                            <p className="text-sm text-text-secondary mt-1">{season.episode_count} Episodes</p>
+                            <p className="text-[10px] font-black text-primary-accent uppercase tracking-widest truncate">{showDetails.name}</p>
+                            <p className="text-sm text-text-secondary mt-1">{totalAiredEpisodesInSeason} Aired Episodes</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0 ml-2">
@@ -295,8 +299,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                 <div className="mt-3 flex items-center gap-4">
                     <div className="flex-grow">
                         {!isUpcoming && (
-                            <div className="w-full bg-bg-secondary rounded-full h-2">
-                                <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${seasonProgressPercent}%` }}></div>
+                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
+                                <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}></div>
                             </div>
                         )}
                     </div>

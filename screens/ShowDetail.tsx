@@ -29,6 +29,7 @@ import ReportIssueModal from '../components/ReportIssueModal';
 import CommentModal from '../components/CommentModal';
 import { confirmationService } from '../services/confirmationService';
 import NominationModal from '../components/NominationModal';
+import { getAiredEpisodeCount } from '../utils/formatUtils';
 
 interface ShowDetailProps {
   id: number;
@@ -84,7 +85,7 @@ interface ShowDetailProps {
   onOpenAddToListModal: (item: any) => void;
 }
 
-type TabType = 'seasons' | 'info' | 'cast' | 'media' | 'customize' | 'achievements' | 'discovery' | 'discussion';
+type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'media' | 'discovery' | 'customize' | 'achievements';
 
 const DetailedActionButton: React.FC<{
   icon: React.ReactNode;
@@ -135,11 +136,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Seasons', icon: ListBulletIcon }] as any : []),
     { id: 'info', label: 'Info', icon: BookOpenIcon },
     { id: 'cast', label: 'Cast', icon: PlayCircleIcon },
+    { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
     { id: 'media', label: 'Gallery', icon: VideoCameraIcon },
     { id: 'discovery', label: 'Discovery', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
     { id: 'achievements', label: 'Badges', icon: BadgeIcon },
-    { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
   ], [mediaType]);
 
   const fetchData = useCallback(async () => {
@@ -199,13 +200,16 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [trackedLists, id]);
 
   const isAllWatched = useMemo(() => {
-    if (mediaType !== 'tv' || !details?.number_of_episodes) return false;
+    if (mediaType !== 'tv' || !details) return false;
+    const airedCount = getAiredEpisodeCount(details);
+    if (airedCount === 0) return false;
+    
     const progress = watchProgress[id] || {};
     let watchedCount = 0;
     Object.values(progress).forEach(s => {
       Object.values(s).forEach(e => { if ((e as EpisodeProgress).status === 2) watchedCount++; });
     });
-    return watchedCount >= details.number_of_episodes;
+    return watchedCount >= airedCount;
   }, [id, mediaType, details, watchProgress]);
 
   const nextEpisodeToWatch = useMemo(() => {
@@ -327,6 +331,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         console.error(e);
         confirmationService.show("Bulk logging failed.");
     }
+  };
+
+  const handleCommentsAction = () => {
+    setActiveCommentThread('general');
+    setActiveTab('discussion');
   };
 
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
@@ -501,121 +510,95 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 />
               </div>
               
-              {mediaType === 'tv' ? (
-                <div className="grid grid-cols-4 gap-2">
-                  <DetailedActionButton 
-                      label="Rate" 
-                      icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} 
-                      onClick={() => setIsRatingModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="History" 
-                      icon={<ClockIcon className="w-6 h-6" />} 
-                      onClick={() => setIsHistoryModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Add to List" 
-                      icon={<ListBulletIcon className="w-6 h-6" />} 
-                      onClick={() => props.onOpenAddToListModal(details)} 
-                  />
-                   <DetailedActionButton 
-                      label="Comments" 
-                      icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />} 
-                      isActive={hasComment}
-                      onClick={() => setActiveTab('discussion')} 
-                  />
-                  
-                  <DetailedActionButton 
-                      label="Journal" 
-                      icon={<BookOpenIcon className="w-6 h-6" />} 
-                      onClick={() => setIsJournalModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Notes" 
-                      icon={<PencilSquareIcon className="w-6 h-6" />} 
-                      onClick={() => setIsNotesModalOpen(true)} 
-                  />
+              <div className="grid grid-cols-4 gap-2">
+                <DetailedActionButton 
+                    label="Rate" 
+                    icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} 
+                    onClick={() => setIsRatingModalOpen(true)} 
+                />
+                <DetailedActionButton 
+                    label="History" 
+                    icon={<ClockIcon className="w-6 h-6" />} 
+                    onClick={() => setIsHistoryModalOpen(true)} 
+                />
+                <DetailedActionButton 
+                    label="Add to List" 
+                    icon={<ListBulletIcon className="w-6 h-6" />} 
+                    onClick={() => props.onOpenAddToListModal(details)} 
+                />
+                <DetailedActionButton 
+                    label="Comments" 
+                    icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />} 
+                    isActive={hasComment}
+                    onClick={handleCommentsAction} 
+                />
 
-                  <DetailedActionButton 
-                      label="Refresh" 
-                      icon={<ArrowPathIcon className="w-6 h-6" />} 
-                      onClick={handleRefresh} 
-                  />
-                  <DetailedActionButton 
-                      label="Log a Watch" 
-                      icon={<LogWatchIcon className="w-6 h-6" />} 
-                      onClick={() => setIsLogWatchModalOpen(true)} 
-                  />
-                  
-                  <DetailedActionButton 
-                      label="Report Issue" 
-                      className="col-start-1"
-                      icon={<QuestionMarkCircleIcon className="w-6 h-6" />} 
-                      onClick={() => setIsReportIssueModalOpen(true)} 
-                  />
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 gap-2">
-                  <DetailedActionButton 
-                      label="Rate" 
-                      icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} 
-                      onClick={() => setIsRatingModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="History" 
-                      icon={<ClockIcon className="w-6 h-6" />} 
-                      onClick={() => setIsHistoryModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Log Watch" 
-                      icon={<LogWatchIcon className="w-6 h-6" />} 
-                      onClick={() => setIsLogWatchModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Live Watch" 
-                      icon={<PlayCircleIcon className="w-6 h-6" />} 
-                      onClick={handleStartLiveWatch} 
-                  />
-                  <DetailedActionButton 
-                      label="Journal" 
-                      icon={<BookOpenIcon className="w-6 h-6" />} 
-                      onClick={() => setIsJournalModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Notes" 
-                      icon={<PencilSquareIcon className="w-6 h-6" />} 
-                      onClick={() => setIsNotesModalOpen(true)} 
-                  />
-                  <DetailedActionButton 
-                      label="Comments" 
-                      icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />} 
-                      isActive={hasComment}
-                      onClick={() => setActiveTab('discussion')} 
-                  />
-                  
-                   <DetailedActionButton 
-                      label="Add to List" 
-                      icon={<ListBulletIcon className="w-6 h-6" />} 
-                      onClick={() => props.onOpenAddToListModal(details)} 
-                  />
-                  <DetailedActionButton 
-                      label="Refresh" 
-                      icon={<ArrowPathIcon className="w-6 h-6" />} 
-                      onClick={handleRefresh} 
-                  />
+                {mediaType === 'tv' ? (
+                  <>
+                    <DetailedActionButton 
+                        label="Journal" 
+                        icon={<BookOpenIcon className="w-6 h-6" />} 
+                        onClick={() => setIsJournalModalOpen(true)} 
+                    />
+                    <DetailedActionButton 
+                        label="Notes" 
+                        icon={<PencilSquareIcon className="w-6 h-6" />} 
+                        onClick={() => setIsNotesModalOpen(true)} 
+                    />
 
-                  <DetailedActionButton 
-                      label="Report Issue" 
-                      className="col-start-1"
-                      icon={<QuestionMarkCircleIcon className="w-6 h-6" />} 
-                      onClick={() => setIsReportIssueModalOpen(true)} 
-                  />
-                </div>
-              )}
+                    <DetailedActionButton 
+                        label="Refresh" 
+                        icon={<ArrowPathIcon className="w-6 h-6" />} 
+                        onClick={handleRefresh} 
+                    />
+                    <DetailedActionButton 
+                        label="Log a Watch" 
+                        icon={<LogWatchIcon className="w-6 h-6" />} 
+                        onClick={() => setIsLogWatchModalOpen(true)} 
+                    />
+                  </>
+                ) : (
+                  <>
+                    <DetailedActionButton 
+                        label="Log Watch" 
+                        icon={<LogWatchIcon className="w-6 h-6" />} 
+                        onClick={() => setIsLogWatchModalOpen(true)} 
+                    />
+                    <DetailedActionButton 
+                        label="Live Watch" 
+                        icon={<PlayCircleIcon className="w-6 h-6" />} 
+                        onClick={handleStartLiveWatch} 
+                    />
+                    <DetailedActionButton 
+                        label="Journal" 
+                        icon={<BookOpenIcon className="w-6 h-6" />} 
+                        onClick={() => setIsJournalModalOpen(true)} 
+                    />
+                    <DetailedActionButton 
+                        label="Notes" 
+                        icon={<PencilSquareIcon className="w-6 h-6" />} 
+                        onClick={() => setIsNotesModalOpen(true)} 
+                    />
+                    <DetailedActionButton 
+                        label="Refresh" 
+                        className="col-start-1"
+                        icon={<ArrowPathIcon className="w-6 h-6" />} 
+                        onClick={handleRefresh} 
+                    />
+                  </>
+                )}
+                
+                <DetailedActionButton 
+                    label="Report Issue" 
+                    className={mediaType === 'tv' ? "col-start-1" : "col-start-2"}
+                    icon={<QuestionMarkCircleIcon className="w-6 h-6" />} 
+                    onClick={() => setIsReportIssueModalOpen(true)} 
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex-grow space-y-8">
+          <div className="flex-grow space-y-8 min-w-0">
             <header>
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 {showStatus && (
@@ -661,8 +644,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
             {mediaType === 'tv' && <OverallProgress details={details} watchProgress={watchProgress} />}
 
-            <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 hide-scrollbar">
-              <div className="flex space-x-8">
+            <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 overflow-x-auto hide-scrollbar">
+              <div className="flex space-x-8 whitespace-nowrap min-w-max">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
@@ -708,7 +691,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                         onAddWatchHistory={props.onAddWatchHistory} 
                         onDiscussEpisode={(s, e) => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${s}-e${e}`); }} 
                         comments={props.comments} 
-                        /* Removed duplicate onImageClick attribute */
                         onImageClick={(src) => {}} 
                         onSaveEpisodeNote={props.onSaveEpisodeNote} 
                         showRatings={showRatings} 
@@ -735,6 +717,23 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
               {activeTab === 'cast' && (
                 <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={props.onSelectPerson} />
+              )}
+
+              {activeTab === 'discussion' && (
+                <CommentsTab 
+                  details={details} 
+                  comments={props.comments} 
+                  currentUser={currentUser} 
+                  allUsers={props.allUsers} 
+                  seasonDetailsMap={seasonDetailsMap} 
+                  onFetchSeasonDetails={handleToggleSeason as any} 
+                  onSaveComment={props.onSaveComment} 
+                  onToggleLikeComment={() => {}} 
+                  onDeleteComment={() => {}} 
+                  activeThread={activeCommentThread} 
+                  // Fix: Use the correct state setter for the active comment thread
+                  setActiveThread={setActiveCommentThread} 
+                />
               )}
 
               {activeTab === 'media' && (
@@ -777,22 +776,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
               {activeTab === 'achievements' && (
                 <ShowAchievementsTab details={details} userData={allUserData} />
-              )}
-
-              {activeTab === 'discussion' && (
-                <CommentsTab 
-                  details={details} 
-                  comments={props.comments} 
-                  currentUser={currentUser} 
-                  allUsers={props.allUsers} 
-                  seasonDetailsMap={seasonDetailsMap} 
-                  onFetchSeasonDetails={handleToggleSeason as any} 
-                  onSaveComment={props.onSaveComment} 
-                  onToggleLikeComment={() => {}} 
-                  onDeleteComment={() => {}} 
-                  activeThread={activeCommentThread} 
-                  setActiveThread={setActiveCommentThread} 
-                />
               )}
             </div>
           </div>

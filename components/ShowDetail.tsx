@@ -727,6 +727,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
+                  // Fix: Use the correct state setter for the active comment thread
                   setActiveThread={setActiveCommentThread} 
                 />
               )}

@@ -127,7 +127,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
   const renderSearchResults = () => {
     if (loading && mediaResults.length === 0) return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4 animate-pulse">
             {[...Array(14)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div></div>)}
         </div>
     );

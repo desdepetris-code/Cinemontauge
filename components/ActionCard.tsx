@@ -149,7 +149,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 mediaTitle={title}
                 onSave={handleSaveWatchedDate}
             />
-            <div className={`w-full flex flex-col transition-all duration-300 ${isInfoExpanded ? 'z-20 scale-[1.02]' : 'z-0'}`}>
+            <div className={`w-full flex flex-col transition-all duration-300 ${isInfoExpanded ? 'z-20' : 'z-0'}`}>
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
                     onClick={() => onSelect(item.id, item.media_type)}
@@ -176,7 +176,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 pl-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                         <h3 className="text-white text-xs font-bold text-center w-full">{title}</h3>
+                         <h3 className="text-white text-[10px] font-bold text-center w-full">{title}</h3>
                     </div>
                     {isCompleted && (
                         <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white pointer-events-none">
@@ -196,45 +196,44 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     )}
                 </div>
 
-                <div className="w-full mt-2 grid grid-cols-4 gap-1.5">
-                    <button onClick={handleFavoriteClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-colors ${isFavorite ? 'bg-primary-accent/20 text-primary-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Favorite">
+                <div className="w-full mt-2 grid grid-cols-4 gap-1">
+                    <button onClick={handleFavoriteClick} className={`flex items-center justify-center py-2 px-1 text-xs rounded-md transition-colors ${isFavorite ? 'bg-primary-accent/20 text-primary-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Favorite">
                         <HeartIcon filled={isFavorite} className="w-4 h-4" />
                     </button>
-                    <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
+                    <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center py-2 px-1 text-xs rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-all group overflow-hidden relative" title="Add to List">
+                    <button onClick={handleAddClick} className="flex items-center justify-center py-2 px-1 text-xs rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-all" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
+                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center py-2 px-1 text-xs rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                 </div>
 
                 {showSeriesInfo !== 'hidden' && (
-                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
+                    <div className="mt-1 p-1.5 bg-bg-secondary/40 rounded-lg text-[10px] space-y-0.5">
                         <p className="font-bold text-text-primary truncate">{title}</p>
-                        <div className="flex justify-between text-text-secondary">
-                             <span>{item.media_type === 'tv' ? 'TV' : 'Movie'}</span>
+                        <div className="flex justify-between text-text-secondary opacity-80">
+                             <span className="uppercase font-black">{item.media_type}</span>
                              <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
                         </div>
                     </div>
                 )}
 
                 {shouldShowInfoSection && (
-                    <div className="mt-2 p-3 bg-bg-secondary rounded-xl border border-white/5 animate-slide-in-up shadow-inner">
-                        <div className="flex flex-col mb-2 pb-2 border-b border-white/5">
-                            <span className="text-[11px] font-black text-primary-accent uppercase truncate">{title}</span>
-                            <div className="flex justify-between items-center mt-0.5">
+                    <div className="mt-1.5 p-2 bg-bg-secondary rounded-xl border border-white/5 animate-slide-in-up shadow-inner">
+                        <div className="flex flex-col mb-1.5 pb-1.5 border-b border-white/5">
+                            <div className="flex justify-between items-center">
                                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-text-secondary">Seasons</span>
-                                <span className="text-[9px] font-bold text-text-secondary/60">{airYears}</span>
+                                <span className="text-[8px] font-bold text-text-secondary/60">{airYears}</span>
                             </div>
                         </div>
-                        <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                        <div className="space-y-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
                             {details.seasons?.filter(s => s.season_number > 0).map(s => (
-                                <div key={s.id} className="flex justify-between items-center text-[10px] py-1 border-b border-white/5 last:border-0">
-                                    <span className="font-bold text-text-primary">Season {s.season_number}</span>
-                                    <span className="text-text-secondary">{s.episode_count} Ep.</span>
+                                <div key={s.id} className="flex justify-between items-center text-[9px] py-1 border-b border-white/5 last:border-0">
+                                    <span className="font-bold text-text-primary">S{s.season_number}</span>
+                                    <span className="text-text-secondary/80">{s.episode_count} Ep.</span>
                                 </div>
                             ))}
                         </div>

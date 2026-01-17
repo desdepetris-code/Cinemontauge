@@ -6,6 +6,7 @@ import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIc
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ProgressCard, { EnrichedShowData } from '../components/ProgressCard';
 import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovieCard';
+import { getAiredEpisodeCount } from '../utils/formatUtils';
 
 // --- TYPE DEFINITIONS ---
 type EnrichedMediaData = (EnrichedShowData | EnrichedMovieData);
@@ -80,12 +81,12 @@ const SeasonProgressCard: React.FC<{
             <div className="w-full bg-bg-primary rounded-full h-2 overflow-hidden border border-white/5">
                 <div 
                     className="bg-accent-gradient h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${progress}%` }}
+                    style={{ width: `${Math.min(100, progress)}%` }}
                 ></div>
             </div>
             <div className="flex justify-between mt-2 text-[9px] font-black text-text-secondary uppercase tracking-widest opacity-60">
                 <span>{show.watchedCount} Watched</span>
-                <span>{show.totalEpisodes - show.watchedCount} Remaining</span>
+                <span>{Math.max(0, show.totalEpisodes - show.watchedCount)} Remaining</span>
             </div>
         </div>
     );
@@ -208,26 +209,30 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 if (!details || !details.seasons) return null;
                 const item = showsToProcess[index];
                 
-                const seasonsForCalc = details.seasons.filter(s => s.season_number > 0);
-                const totalEpisodes = seasonsForCalc.reduce((acc, s) => acc + s.episode_count, 0);
+                const airedEpisodes = getAiredEpisodeCount(details);
                 const progressForShow = watchProgress[item.id] || {};
                 let watchedCount = 0;
                 let completedSeasons = 0;
 
-                seasonsForCalc.forEach(s => { 
+                // We calculate accurate watched count regardless of airing
+                Object.values(progressForShow).forEach(season => {
+                    Object.values(season).forEach(ep => {
+                        if (ep.status === 2) watchedCount++;
+                    });
+                });
+
+                // Completed seasons (only if s.episode_count is reached)
+                (details.seasons || []).forEach(s => {
+                    if (s.season_number <= 0) return;
                     let seasonWatched = 0;
                     for (let i = 1; i <= s.episode_count; i++) {
-                        if (progressForShow[s.season_number]?.[i]?.status === 2) {
-                            watchedCount++;
-                            seasonWatched++;
-                        }
+                        if (progressForShow[s.season_number]?.[i]?.status === 2) seasonWatched++;
                     }
-                    if (s.episode_count > 0 && seasonWatched >= s.episode_count) {
-                        completedSeasons++;
-                    }
+                    if (s.episode_count > 0 && seasonWatched >= s.episode_count) completedSeasons++;
                 });
                 
-                if (totalEpisodes > 0 && watchedCount >= totalEpisodes) {
+                // Use aired count for catching completion logic
+                if (airedEpisodes > 0 && watchedCount >= airedEpisodes && (details.status === 'Ended' || details.status === 'Canceled')) {
                     if (watchingIds.has(item.id)) {
                         props.onUpdateLists(item, 'watching', 'completed');
                     }
@@ -235,7 +240,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 }
 
                 let nextEpisodeInfo: Episode | null = null;
-                const sortedSeasons = [...seasonsForCalc].sort((a,b) => a.season_number - b.season_number);
+                const sortedSeasons = [...details.seasons].filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
                 const today = new Date().toISOString().split('T')[0];
 
                 for (const season of sortedSeasons) {
@@ -257,16 +262,15 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 const lastWatchedTimestamp = showHistory.length > 0 ? new Date(showHistory[0].timestamp).getTime() : 0;
                 const isPaused = !!pausedLiveSessions[item.id];
                 
-                if (nextEpisodeInfo) {
-                    return {
-                        ...item, details, nextEpisodeInfo, watchedCount, totalEpisodes, lastWatchedTimestamp,
-                        popularity: details.popularity || 0,
-                        status: watchingIds.has(item.id) ? 'watching' : 'onHold',
-                        completedSeasons,
-                        isPaused
-                    };
-                }
-                return null;
+                return {
+                    ...item, details, nextEpisodeInfo, watchedCount, 
+                    totalEpisodes: airedEpisodes, // Denominator is now Aired Count
+                    lastWatchedTimestamp,
+                    popularity: details.popularity || 0,
+                    status: watchingIds.has(item.id) ? 'watching' : 'onHold',
+                    completedSeasons,
+                    isPaused
+                };
             });
             
             const finalEnrichedShows = (await Promise.all(enrichedShowDataPromises)).filter((item): item is EnrichedShowData => item !== null);
@@ -290,7 +294,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
 
     const sortedMedia = useMemo(() => {
         let results = enrichedMedia.filter(item => {
-            if (item.media_type === 'tv') return (item as EnrichedShowData).nextEpisodeInfo !== null;
+            if (item.media_type === 'tv') return (item as EnrichedShowData).nextEpisodeInfo !== null || (item as EnrichedShowData).watchedCount < (item as EnrichedShowData).totalEpisodes;
             return true;
         });
 
@@ -356,12 +360,10 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         enrichedMedia.forEach(item => {
             if (item.media_type === 'tv') {
                 const show = item as EnrichedShowData;
-                if (show.nextEpisodeInfo) {
-                    const remaining = show.totalEpisodes - show.watchedCount;
-                    episodesLeft += remaining;
-                    hoursLeft += remaining * 45;
-                    showsInProgress++;
-                }
+                const remaining = Math.max(0, show.totalEpisodes - show.watchedCount);
+                episodesLeft += remaining;
+                hoursLeft += remaining * 45;
+                showsInProgress++;
             } else {
                 const movie = item as EnrichedMovieData;
                 const remainingSeconds = (movie.details.runtime || 0) * 60 - movie.elapsedSeconds;
@@ -385,7 +387,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                     <QuickStat label="Active" value={quickStats.itemsInProgress} icon={<TvIcon className="w-5 h-5"/>} />
-                    <QuickStat label="Episodes" value={quickStats.episodesToWatch} icon={<ChartBarIcon className="w-5 h-5"/>} />
+                    <QuickStat label="To Aired" value={quickStats.episodesToWatch} icon={<ChartBarIcon className="w-5 h-5"/>} />
                     <QuickStat label="Hours" value={`${quickStats.hoursToWatch}h`} icon={<ClockIcon className="w-5 h-5"/>} />
                 </div>
             </header>
@@ -393,7 +395,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             <section className="space-y-6">
                 <div className="flex flex-col space-y-6">
                     <div className="flex flex-wrap items-center gap-2">
-                        <FilterButton label="All" active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} icon={<ListBulletIcon className="w-4 h-4"/>} />
+                        <FilterButton label="All" active={typeFilter === 'all'} onClick={() => setTypeFilter('all'} icon={<ListBulletIcon className="w-4 h-4"/>} />
                         <FilterButton label="Shows" active={typeFilter === 'tv'} onClick={() => setTypeFilter('tv')} icon={<TvIcon className="w-4 h-4"/>} />
                         <FilterButton label="Movies" active={typeFilter === 'movie'} onClick={() => setTypeFilter('movie')} icon={<FilmIcon className="w-4 h-4"/>} />
                         <FilterButton label="Episodes" active={typeFilter === 'episode'} onClick={() => setTypeFilter('episode')} icon={<PlayIcon className="w-4 h-4"/>} />

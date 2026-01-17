@@ -5,6 +5,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, SparklesIcon, ListBull
 import { formatDate } from '../utils/formatUtils';
 import CalendarListItem from '../components/CalendarListItem';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
+import CalendarPickerModal from '../components/MonthYearPicker';
 
 interface CalendarScreenProps {
   userData: UserData;
@@ -24,22 +25,16 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
     const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
     const [items, setItems] = useState<Record<string, CalendarItem[]>>({});
     const [loading, setLoading] = useState(true);
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-    // Filter items based on user lists as requested:
-    // "if a user is currently 'watching' ... or 'planToWatch' ... new episodes should appear"
-    // "For dropped or on hold shows they will no longer appear"
+    // Filter items based on user lists
     const relevantTrackedItems = useMemo(() => {
-        const includeIds = new Set([
-            ...userData.watching.map(i => i.id),
-            ...userData.planToWatch.map(i => i.id)
-        ]);
         const excludeIds = new Set([
             ...userData.onHold.map(i => i.id),
             ...userData.dropped.map(i => i.id)
         ]);
 
         const combined = [...userData.watching, ...userData.planToWatch];
-        // Ensure uniqueness and that it's not in excluded lists
         const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
         return unique.filter(item => !excludeIds.has(item.id));
     }, [userData.watching, userData.planToWatch, userData.onHold, userData.dropped]);
@@ -94,7 +89,6 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
 
         const calendarItems: CalendarItem[] = [];
 
-        // Process Movies
         movieDetails.forEach(details => {
             if (details?.release_date && details.release_date >= startDateStr && details.release_date <= endDateStr) {
                 calendarItems.push({
@@ -105,7 +99,6 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
             }
         });
 
-        // Process TV Seasons
         const seasonFetchPromises: Promise<{ showDetails: TmdbMediaDetails, seasonDetail: TmdbSeasonDetails } | null>[] = [];
         showDetails.forEach(details => {
             if (details?.seasons) {
@@ -140,7 +133,6 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
             });
         });
 
-        // Process Reminders
         reminders.forEach(r => {
             if (r.releaseDate >= startDateStr && r.releaseDate <= endDateStr) {
                 if (!calendarItems.some(i => i.id === r.mediaId && i.date === r.releaseDate)) {
@@ -206,6 +198,14 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
 
     return (
         <div className="animate-fade-in max-w-4xl mx-auto px-4 pb-20">
+            <CalendarPickerModal 
+                isOpen={isPickerOpen}
+                onClose={() => setIsPickerOpen(false)}
+                currentDate={currentDate}
+                onDateChange={setCurrentDate}
+                mode={viewMode === 'day' ? 'full' : 'month-year'}
+            />
+            
             <header className="flex flex-col md:flex-row md:items-center justify-between py-6 gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-text-primary uppercase tracking-tight">Timeline</h1>
@@ -236,12 +236,15 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
                 </button>
                 <div className="text-center flex flex-col">
                     <button onClick={handleToday} className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-accent mb-1 hover:underline">Return to Today</button>
-                    <span className="text-lg font-black text-text-primary uppercase tracking-tight">
+                    <button 
+                        onClick={() => setIsPickerOpen(true)}
+                        className="text-lg font-black text-text-primary uppercase tracking-tight hover:text-primary-accent transition-colors px-4"
+                    >
                         {viewMode === 'day' 
                             ? formatDate(currentDate.toISOString(), timezone, { weekday: 'long', month: 'short', day: 'numeric' })
                             : currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })
                         }
-                    </span>
+                    </button>
                 </div>
                 <button onClick={handleNext} className="p-3 bg-bg-primary rounded-2xl text-text-primary hover:text-primary-accent transition-all shadow-md">
                     <ChevronRightIcon className="w-6 h-6" />

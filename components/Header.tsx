@@ -1,4 +1,3 @@
-
 import React from 'react';
 import SearchBar from './SearchBar';
 import { TmdbMedia } from '../types';
@@ -31,35 +30,37 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
   const hoverClasses = hoverReveal ? "opacity-0 hover:opacity-100 transition-opacity duration-300" : "opacity-100";
 
   return (
-    <header className={`sticky top-0 z-30 py-2 px-6 bg-backdrop backdrop-blur-md shadow-lg border-b border-primary-accent/10 ${hoverClasses}`}>
-      <div className="container mx-auto flex justify-between items-center gap-4">
+    <header className={`sticky top-0 z-30 py-2 px-4 bg-backdrop backdrop-blur-md shadow-lg border-b border-primary-accent/10 ${hoverClasses}`}>
+      <div className="container mx-auto flex items-center justify-between gap-2 md:gap-4">
         <div 
           onClick={onGoHome}
           className="flex flex-col items-center cursor-pointer group flex-shrink-0"
         >
-            <img src={cmLogoUri} alt="CineMontauge Logo" className="h-8 w-auto transition-transform duration-500 group-hover:scale-110" />
-            <h1 className="text-[10px] font-black text-text-primary tracking-[0.1em] mt-0.5 group-hover:text-primary-accent transition-colors">CineM<span className="lowercase">ontauge</span></h1>
+            <img src={cmLogoUri} alt="CineMontauge Logo" className="h-6 w-auto md:h-8 transition-transform duration-500 group-hover:scale-110" />
+            <h1 className="hidden xs:block text-[8px] md:text-[10px] font-black text-text-primary tracking-[0.1em] mt-0.5 group-hover:text-primary-accent transition-colors">CineM<span className="lowercase">ontauge</span></h1>
         </div>
 
-        <div className="flex-1 flex justify-center items-center max-w-xl">
+        <div className="flex-grow flex justify-center items-center">
             {isHoliday && (
-                <div className="hidden md:flex items-center space-x-2 mr-4 px-3 py-1 bg-primary-accent/10 border border-primary-accent/20 rounded-full shadow-sm animate-fade-in">
+                <div className="hidden lg:flex items-center space-x-2 mr-4 px-3 py-1 bg-primary-accent/10 border border-primary-accent/20 rounded-full shadow-sm animate-fade-in">
                     <span role="img" aria-label="Party Popper">🎉</span>
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">{holidayName}</span>
                 </div>
             )}
             {!isOnSearchScreen && (
-                <SearchBar 
-                    onSelectResult={onSelectShow} 
-                    onMarkShowAsWatched={onMarkShowAsWatched} 
-                    value={query} 
-                    onChange={onQueryChange}
-                    dropdownWider
-                />
+                <div className="w-full max-w-2xl px-2">
+                    <SearchBar 
+                        onSelectResult={onSelectShow} 
+                        onMarkShowAsWatched={onMarkShowAsWatched} 
+                        value={query} 
+                        onChange={onQueryChange}
+                        dropdownWider
+                    />
+                </div>
             )}
         </div>
         
-        <div className="flex items-center justify-end w-32 md:w-48 flex-shrink-0">
+        <div className="flex items-center justify-end flex-shrink-0">
           {currentUser ? (
             <button
               onClick={onGoToProfile}
@@ -68,12 +69,12 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
               <img
                 src={profilePictureUrl || `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzY0NzQ4YiI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS43OS00IDQgMS43OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiI+PC9wYXRoPjwvc3ZnPg==`}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover bg-bg-secondary border border-transparent group-hover:border-primary-accent"
+                className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover bg-bg-secondary border border-transparent group-hover:border-primary-accent"
               />
-              <span className="hidden md:block text-[10px] font-bold text-text-primary uppercase tracking-widest truncate max-w-[80px]">{currentUser.username}</span>
+              <span className="hidden sm:block text-[10px] font-bold text-text-primary uppercase tracking-widest truncate max-w-[60px] md:max-w-[80px]">{currentUser.username}</span>
             </button>
           ) : (
-            <button onClick={onAuthClick} className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-full bg-accent-gradient text-on-accent hover:opacity-90">Login</button>
+            <button onClick={onAuthClick} className="px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-bold uppercase tracking-widest rounded-full bg-accent-gradient text-on-accent hover:opacity-90">Login</button>
           )}
         </div>
       </div>

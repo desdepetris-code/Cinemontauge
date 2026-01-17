@@ -7,7 +7,7 @@ import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
-import { isNewRelease, formatTime } from '../utils/formatUtils';
+import { isNewRelease, formatTime, getAiredEpisodeCount } from '../utils/formatUtils';
 import BrandedImage from './BrandedImage';
 import { getShowStatus } from '../utils/statusUtils';
 
@@ -53,20 +53,19 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         
         const isPaused = item.isPaused && item.seasonNumber !== undefined;
         const progressForShow = watchProgress[item.id] || {};
-        const seasonsForCalc = (details.seasons || []).filter(s => s.season_number > 0);
-        const total = seasonsForCalc.reduce((acc, s) => acc + s.episode_count, 0);
-
-        let watched = 0;
-        for (const season of seasonsForCalc) {
-            for (let i = 1; i <= season.episode_count; i++) {
-                if (progressForShow[season.season_number]?.[i]?.status === 2) {
-                    watched++;
-                }
-            }
-        }
         
-        const overallPercent = total > 0 ? (watched / total) * 100 : 0;
-        const leftInShow = total - watched;
+        // Calculate aired count as denominator
+        const airedTotal = getAiredEpisodeCount(details);
+
+        let watchedTotal = 0;
+        Object.values(progressForShow).forEach(season => {
+            Object.values(season).forEach(ep => {
+                if ((ep as EpisodeProgress).status === 2) watchedTotal++;
+            });
+        });
+        
+        const overallPercent = airedTotal > 0 ? (watchedTotal / airedTotal) * 100 : 0;
+        const leftInShow = Math.max(0, airedTotal - watchedTotal);
 
         let currentSNum = 0;
         if (isPaused) {
@@ -75,29 +74,38 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
             currentSNum = nextEpisodeInfo.season_number;
         }
 
+        const seasonsForCalc = (details.seasons || []).filter(s => s.season_number > 0);
         const currentSeason = seasonsForCalc.find(s => s.season_number === currentSNum);
+        
         if (!currentSeason) {
              return { 
-                overallProgressPercent: overallPercent, totalEpisodes: total, watchedEpisodes: watched, episodesLeftInShow: leftInShow,
+                overallProgressPercent: overallPercent, totalEpisodes: airedTotal, watchedEpisodes: watchedTotal, episodesLeftInShow: leftInShow,
                 seasonProgressPercent: 0, episodesLeftInSeason: 0, currentSeasonNumber: 0,
                 totalEpisodesInSeason: 0, watchedEpisodesInSeason: 0,
             };
         }
 
-        const watchedInSeason = Object.values(progressForShow[currentSeason.season_number] || {}).filter(ep => (ep as EpisodeProgress).status === 2).length;
-        const totalInSeason = currentSeason.episode_count;
-        const sProgress = totalInSeason > 0 ? (watchedInSeason / totalInSeason) * 100 : 0;
-        const sLeft = totalInSeason - watchedInSeason;
+        const progressInSeason = progressForShow[currentSeason.season_number] || {};
+        const watchedInSeason = Object.values(progressInSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
+        
+        // Denominator for season: check if it's currently airing or ended
+        let airedInSeason = currentSeason.episode_count;
+        if (details.last_episode_to_air && details.last_episode_to_air.season_number === currentSeason.season_number) {
+            airedInSeason = details.last_episode_to_air.episode_number;
+        }
+
+        const sProgress = airedInSeason > 0 ? (watchedInSeason / airedInSeason) * 100 : 0;
+        const sLeft = Math.max(0, airedInSeason - watchedInSeason);
 
         return { 
             overallProgressPercent: overallPercent, 
-            totalEpisodes: total, 
-            watchedEpisodes: watched,
+            totalEpisodes: airedTotal, 
+            watchedEpisodes: watchedTotal,
             episodesLeftInShow: leftInShow,
             seasonProgressPercent: sProgress,
             episodesLeftInSeason: sLeft,
             currentSeasonNumber: currentSNum,
-            totalEpisodesInSeason: totalInSeason,
+            totalEpisodesInSeason: airedInSeason,
             watchedEpisodesInSeason: watchedInSeason
         };
     }, [details, watchProgress, item, nextEpisodeInfo]);
@@ -303,7 +311,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                 )}
                 
                 <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">
-                    <div className="h-full bg-accent-gradient transition-all duration-500" style={{ width: `${isPausedSession ? episodeProgressPercent : overallProgressPercent}%` }}></div>
+                    <div className="h-full bg-accent-gradient transition-all duration-500" style={{ width: `${isPausedSession ? Math.min(100, episodeProgressPercent) : Math.min(100, overallProgressPercent)}%` }}></div>
                 </div>
             </div>
             <div className="p-3 bg-bg-secondary/30 text-xs">
@@ -312,24 +320,24 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                         <div>
                             <div className="flex justify-between items-center">
                                 <span className="font-bold text-text-primary">Season {currentSeasonNumber}</span>
-                                <span className="text-text-secondary">{episodesLeftInSeason} episodes left</span>
+                                <span className="text-text-secondary">{episodesLeftInSeason} aired episodes left</span>
                             </div>
-                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1">
-                                <div className="bg-accent-gradient h-1.5 rounded-full" style={{ width: `${seasonProgressPercent}%` }}></div>
+                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1 overflow-hidden">
+                                <div className="bg-accent-gradient h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}></div>
                             </div>
-                            <div className="text-right text-text-secondary/80">{watchedEpisodesInSeason} / {totalEpisodesInSeason} ({seasonProgressPercent.toFixed(0)}%)</div>
+                            <div className="text-right text-text-secondary/80">{watchedEpisodesInSeason} / {totalEpisodesInSeason} aired ({Math.round(Math.min(100, seasonProgressPercent))}%)</div>
                         </div>
                     )}
                     {totalEpisodes > 0 && (
                         <div>
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-text-primary">Overall Progress</span>
-                                <span className="text-text-secondary">{episodesLeftInShow} episodes left</span>
+                                <span className="font-bold text-text-primary">Overall Aired</span>
+                                <span className="text-text-secondary">{episodesLeftInShow} left</span>
                             </div>
-                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1">
-                                <div className="bg-accent-gradient h-1.5 rounded-full" style={{ width: `${overallProgressPercent}%` }}></div>
+                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1 overflow-hidden">
+                                <div className="bg-accent-gradient h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, overallProgressPercent)}%` }}></div>
                             </div>
-                            <div className="text-right text-text-secondary/80">{watchedEpisodes} / {totalEpisodes} ({overallProgressPercent.toFixed(0)}%)</div>
+                            <div className="text-right text-text-secondary/80">{watchedEpisodes} / {totalEpisodes} aired ({Math.round(Math.min(100, overallProgressPercent))}%)</div>
                         </div>
                     )}
                 </div>

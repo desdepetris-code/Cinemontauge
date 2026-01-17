@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { TmdbMediaDetails, WatchProgress } from '../types';
+import { getAiredEpisodeCount } from '../utils/formatUtils';
 
 interface OverallProgressProps {
   details: TmdbMediaDetails;
@@ -7,39 +8,34 @@ interface OverallProgressProps {
 }
 
 const OverallProgress: React.FC<OverallProgressProps> = ({ details, watchProgress }) => {
-  const { watchedCount, totalCount } = useMemo(() => {
+  const { watchedCount, totalAiredCount } = useMemo(() => {
     if (!details.seasons) {
-        return { watchedCount: 0, totalCount: 0 };
+        return { watchedCount: 0, totalAiredCount: 0 };
     }
 
-    const seasonsForCalc = [...details.seasons]
-      .filter(s => s.season_number > 0 && s.episode_count > 0)
-      .sort((a, b) => a.season_number - a.season_number);
-
+    const airedCount = getAiredEpisodeCount(details);
     const progressForShow = watchProgress[details.id] || {};
     let totalWatched = 0;
-    let totalEpisodes = 0;
 
-    seasonsForCalc.forEach(season => {
-        let seasonWatched = 0;
-        for (let i = 1; i <= season.episode_count; i++) {
-            if (progressForShow[season.season_number]?.[i]?.status === 2) {
-                seasonWatched++;
+    // We still count watched episodes across all seasons
+    Object.values(progressForShow).forEach(season => {
+        Object.values(season).forEach(ep => {
+            if (ep.status === 2) {
+                totalWatched++;
             }
-        }
-        totalWatched += seasonWatched;
-        totalEpisodes += season.episode_count;
+        });
     });
 
     return { 
         watchedCount: totalWatched, 
-        totalCount: totalEpisodes,
+        totalAiredCount: airedCount,
     };
   }, [details, watchProgress]);
   
-  const overallPercent = totalCount > 0 ? (watchedCount / totalCount) * 100 : 0;
+  // Progress is capped at 100% based on aired episodes
+  const overallPercent = totalAiredCount > 0 ? (watchedCount / totalAiredCount) * 100 : 0;
 
-  if (totalCount === 0) return null;
+  if (totalAiredCount === 0 && watchedCount === 0) return null;
 
   return (
     <section className="mb-8">
@@ -47,15 +43,15 @@ const OverallProgress: React.FC<OverallProgressProps> = ({ details, watchProgres
       <div className="bg-card-gradient p-4 rounded-lg shadow-md">
         <div>
             <div className="flex justify-between items-center text-sm mb-1">
-                <span className="font-bold text-text-primary">Total Progress</span>
-                <span className="text-text-secondary">{`${watchedCount} / ${totalCount} episodes`}</span>
+                <span className="font-bold text-text-primary">Aired Progress</span>
+                <span className="text-text-secondary">{`${watchedCount} / ${totalAiredCount} aired episodes`}</span>
             </div>
-            <div className="w-full bg-bg-secondary rounded-full h-4 relative">
+            <div className="w-full bg-bg-secondary rounded-full h-4 relative overflow-hidden">
                 <div 
-                    className="bg-accent-gradient h-4 rounded-full flex items-center justify-center text-xs font-bold text-on-accent"
-                    style={{ width: `${overallPercent}%` }}
+                    className="bg-accent-gradient h-4 rounded-full flex items-center justify-center text-xs font-bold text-on-accent transition-all duration-500"
+                    style={{ width: `${Math.min(100, overallPercent)}%` }}
                 >
-                    {overallPercent > 10 && `${overallPercent.toFixed(0)}%`}
+                    {overallPercent >= 5 && `${Math.round(overallPercent)}%`}
                 </div>
             </div>
         </div>

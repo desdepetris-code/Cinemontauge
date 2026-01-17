@@ -194,15 +194,15 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 <SettingsRow title="Always Expand Filters" subtitle="When enabled, filters are visible immediately. When disabled, you must click the filter icon." disabled={!preferences.searchShowFilters}>
                     <ToggleSwitch enabled={preferences.searchAlwaysExpandFilters} onChange={() => handleTogglePreference('searchAlwaysExpandFilters')} />
                 </SettingsRow>
-                <SettingsRow title="Search Result Series Info" subtitle="Choose how seasons and episode details appear on search results.">
+                <SettingsRow title="Search Result Series Info" subtitle="Choose how seasons and episode details appear on results.">
                     <div className="relative">
                         <select 
                             value={preferences.searchShowSeriesInfo} 
                             onChange={(e) => handleSeriesInfoPreference(e.target.value as any)}
-                            className="appearance-none bg-bg-secondary text-text-primary text-xs font-black uppercase py-2 pl-4 pr-10 rounded-xl focus:outline-none"
+                            className="appearance-none bg-bg-secondary text-text-primary text-[10px] font-black uppercase py-2 pl-4 pr-10 rounded-xl focus:outline-none"
                         >
-                            <option value="expanded">Always Visible (Default)</option>
                             <option value="toggle">Use Dropdown Button</option>
+                            <option value="expanded">Always Visible (Default)</option>
                             <option value="hidden">Hide Completely</option>
                         </select>
                         <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />

@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, TrackedItem, WatchProgress, EpisodeTag, EpisodeProgress } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
+import { getAiredEpisodeCount } from '../utils/formatUtils';
 
 interface ProgressItemProps {
     item: TrackedItem;
@@ -27,25 +27,22 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
         currentSeasonNumber,
         episodeTag
     } = useMemo(() => {
-        if (!details || !details.seasons) return { 
+        if (!details) return { 
             overallProgressPercent: 0, totalEpisodes: 0, watchedEpisodes: 0, 
             seasonProgressPercent: 0, episodesLeftInSeason: 0, currentSeasonNumber: 0,
             episodeTag: null
         };
         
-        const seasonsForCalc = details.seasons.filter(s => s.season_number > 0);
-        const total = seasonsForCalc.reduce((acc, s) => acc + s.episode_count, 0);
+        const airedTotal = getAiredEpisodeCount(details);
         
-        let watched = 0;
+        let watchedTotal = 0;
         const progressForShow = watchProgress[item.id] || {};
 
-        for (const season of seasonsForCalc) {
-            for (let i = 1; i <= season.episode_count; i++) {
-                if (progressForShow[season.season_number]?.[i]?.status === 2) {
-                    watched++;
-                }
-            }
-        }
+        Object.values(progressForShow).forEach(season => {
+            Object.values(season).forEach(ep => {
+                if ((ep as EpisodeProgress).status === 2) watchedTotal++;
+            });
+        });
 
         let nextEp = null;
         let tag: EpisodeTag | null = null;
@@ -53,21 +50,24 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
         let sLeft = 0;
         let currentSNum = 0;
 
-        const sortedSeasons = [...seasonsForCalc].sort((a,b) => a.season_number - b.season_number);
-        for (const season of sortedSeasons) {
+        const seasonsForCalc = (details.seasons || []).filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
+        for (const season of seasonsForCalc) {
             let foundNextInSeason = false;
             for (let i = 1; i <= season.episode_count; i++) {
                 if (progressForShow[season.season_number]?.[i]?.status !== 2) {
-                    // FIX: Added 'runtime: null' to fix type mismatch with 'Episode' interface.
                     const partialEpisode = { episode_number: i, season_number: season.season_number, name: '', id: 0, overview: '', still_path: null, air_date: '', runtime: null };
                     tag = getEpisodeTag(partialEpisode, season, details, undefined);
                     nextEp = partialEpisode;
 
-                    // Calculate season progress for *this* season
-                    // FIX: Explicitly cast 'ep' to EpisodeProgress to resolve TypeScript error where 'status' was not recognized.
                     const watchedInSeason = Object.values(progressForShow[season.season_number] || {}).filter(ep => (ep as EpisodeProgress).status === 2).length;
-                    sProgress = season.episode_count > 0 ? (watchedInSeason / season.episode_count) * 100 : 0;
-                    sLeft = season.episode_count - watchedInSeason;
+                    
+                    let airedInSeason = season.episode_count;
+                    if (details.last_episode_to_air && details.last_episode_to_air.season_number === season.season_number) {
+                        airedInSeason = details.last_episode_to_air.episode_number;
+                    }
+
+                    sProgress = airedInSeason > 0 ? (watchedInSeason / airedInSeason) * 100 : 0;
+                    sLeft = Math.max(0, airedInSeason - watchedInSeason);
                     currentSNum = season.season_number;
 
                     foundNextInSeason = true;
@@ -77,9 +77,9 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
             if (foundNextInSeason) break;
         }
 
-        if (!nextEp && total > 0 && watched >= total) {
-            // All caught up, show stats for the last season
-            const lastSeason = sortedSeasons[sortedSeasons.length - 1];
+        if (!nextEp && airedTotal > 0 && watchedTotal >= airedTotal) {
+            // All caught up with aired content
+            const lastSeason = seasonsForCalc[seasonsForCalc.length - 1];
             if (lastSeason) {
                 sProgress = 100;
                 sLeft = 0;
@@ -87,11 +87,11 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
             }
         }
         
-        const overallPercent = total > 0 ? (watched / total) * 100 : 0;
+        const overallPercent = airedTotal > 0 ? (watchedTotal / airedTotal) * 100 : 0;
         return { 
             overallProgressPercent: overallPercent, 
-            totalEpisodes: total, 
-            watchedEpisodes: watched, 
+            totalEpisodes: airedTotal, 
+            watchedEpisodes: watchedTotal, 
             episodeTag: tag,
             seasonProgressPercent: sProgress,
             episodesLeftInSeason: sLeft,
@@ -124,10 +124,10 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
                                 <span className="font-semibold text-text-secondary">S{currentSeasonNumber}</span>
                                 <span className="text-text-secondary/80">{episodesLeftInSeason} left</span>
                             </div>
-                            <div className="mt-0.5 w-full bg-bg-primary rounded-full h-1">
+                            <div className="mt-0.5 w-full bg-bg-primary rounded-full h-1 overflow-hidden">
                                 <div 
-                                    className="bg-accent-gradient h-1 rounded-full"
-                                    style={{ width: `${seasonProgressPercent}%` }}
+                                    className="bg-accent-gradient h-1 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}
                                 />
                             </div>
                         </div>
@@ -136,13 +136,13 @@ const ProgressItem: React.FC<ProgressItemProps> = ({ item, watchProgress, onSele
                      {totalEpisodes > 0 && (
                         <div>
                             <div className="flex justify-between items-center text-xs">
-                                <span className="font-semibold text-text-secondary">Overall</span>
+                                <span className="font-semibold text-text-secondary">Aired</span>
                                 <span className="text-text-secondary/80">{watchedEpisodes} / {totalEpisodes}</span>
                             </div>
-                            <div className="mt-0.5 w-full bg-bg-primary rounded-full h-1">
+                            <div className="mt-0.5 w-full bg-bg-primary rounded-full h-1 overflow-hidden">
                                 <div 
-                                    className="bg-accent-gradient h-1 rounded-full"
-                                    style={{ width: `${overallProgressPercent}%` }}
+                                    className="bg-accent-gradient h-1 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, overallProgressPercent)}%` }}
                                 />
                             </div>
                         </div>

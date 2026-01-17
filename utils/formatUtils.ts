@@ -31,6 +31,45 @@ export const isNewRelease = (dateString: string | null | undefined): boolean => 
     }
 };
 
+/**
+ * Calculates the total number of episodes that have aired for a show.
+ * If the show is ended/canceled, it uses the total episode count.
+ * Otherwise, it calculates based on last_episode_to_air and season data.
+ */
+export const getAiredEpisodeCount = (details: TmdbMediaDetails): number => {
+    if (details.media_type !== 'tv' || !details.seasons) return 0;
+    
+    // If show is ended, every episode is considered 'aired'
+    if (details.status === 'Ended' || details.status === 'Canceled') {
+        return details.number_of_episodes || 0;
+    }
+
+    const lastAired = details.last_episode_to_air;
+    if (!lastAired) {
+        // If nothing has aired yet (upcoming show), aired count is 0
+        return 0;
+    }
+
+    let count = 0;
+    // Sort seasons to process them in order
+    const sortedSeasons = [...details.seasons].sort((a, b) => a.season_number - b.season_number);
+    
+    for (const s of sortedSeasons) {
+        if (s.season_number <= 0) continue; // Skip specials
+
+        if (s.season_number < lastAired.season_number) {
+            // Previous season: add all episodes
+            count += s.episode_count;
+        } else if (s.season_number === lastAired.season_number) {
+            // Current season: use the episode number of the last aired episode
+            count += lastAired.episode_number;
+            break; // Stop after processing the current season
+        }
+    }
+    
+    return count;
+};
+
 export const getRecentEpisodeCount = (
     details: TmdbMediaDetails | null,
     seasonDetails?: TmdbSeasonDetails | null

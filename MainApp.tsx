@@ -4,7 +4,7 @@ import Header from './components/Header';
 import Dashboard from './screens/Dashboard';
 import ShowDetail from './components/ShowDetail';
 import { getGenres, clearMediaCache, getMediaDetails, getSeasonDetails } from './services/tmdbService';
-import { TrackedItem, WatchProgress, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, FavoriteEpisodes, ProfileTab, ScreenName, CustomList, UserRatings, LiveWatchMediaInfo, EpisodeRatings, SearchHistoryItem, Comment, Theme, SeasonRatings, Reminder, NotificationSettings, CustomListItem, JournalEntry, Follows, TraktToken, Note, EpisodeProgress, WeeklyPick, ShortcutSettings, NavSettings, AppPreferences, Episode, PrivacySettings, ProfileTheme } from './types';
+import { TrackedItem, WatchProgress, HistoryItem, CustomImagePaths, WatchStatus, TmdbMedia, UserData, AppNotification, FavoriteEpisodes, ProfileTab, ScreenName, CustomList, UserRatings, LiveWatchMediaInfo, EpisodeRatings, SearchHistoryItem, Comment, Theme, SeasonRatings, Reminder, NotificationSettings, CustomListItem, JournalEntry, Follows, Note, EpisodeProgress, WeeklyPick, ShortcutSettings, NavSettings, AppPreferences, Episode, PrivacySettings, ProfileTheme } from './types';
 import Profile from './screens/Profile';
 import { useTheme } from './hooks/useTheme';
 import BottomTabNavigator from './navigation/BottomTabNavigator';
@@ -19,8 +19,6 @@ import { confirmationService } from './services/confirmationService';
 import CalendarScreen from './screens/CalendarScreen';
 import { calculateLevelInfo, XP_CONFIG } from './utils/xpUtils';
 import AnimationContainer from './components/AnimationContainer';
-import * as traktService from './services/traktService';
-import { firebaseConfig } from './firebaseConfig';
 import NominatePicksModal from './components/NominatePicksModal';
 import PriorEpisodesModal from './components/PriorEpisodesModal';
 import AllNewReleasesScreen from './screens/AllNewReleasesScreen';
@@ -287,6 +285,83 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   };
 
+  /**
+   * Performs a global wipe of a media item from all user-specific tracking.
+   * As requested: removal from history means removal from the app completely.
+   */
+  const handlePurgeMediaFromRegistry = useCallback((id: number) => {
+    // 1. Remove from all system lists
+    const filterOut = (prev: TrackedItem[]) => prev.filter(item => item.id !== id);
+    setWatching(filterOut);
+    setPlanToWatch(filterOut);
+    setCompleted(filterOut);
+    setOnHold(filterOut);
+    setDropped(filterOut);
+    setFavorites(filterOut);
+
+    // 2. Remove from custom lists
+    setCustomLists(prev => prev.map(list => ({
+        ...list,
+        items: list.items.filter(item => item.id !== id)
+    })));
+
+    // 3. Clear watch progress keys
+    setWatchProgress(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+
+    // 4. Clear all rating tiers
+    setRatings(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+    setEpisodeRatings(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+    setSeasonRatings(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+
+    // 5. Clear notes and entries
+    setMediaNotes(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+    setEpisodeNotes(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+
+    // 6. Clear reminders and favorites
+    setFavoriteEpisodes(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+    setReminders(prev => prev.filter(r => r.mediaId !== id));
+
+    // 7. Finally, clear from history
+    setHistory(prev => prev.filter(h => h.id !== id));
+    
+    // Clear paused sessions
+    setPausedLiveSessions(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+    });
+
+    confirmationService.show("Title and all progress completely removed from your account.");
+  }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setFavorites, setCustomLists, setWatchProgress, setRatings, setEpisodeRatings, setSeasonRatings, setMediaNotes, setEpisodeNotes, setFavoriteEpisodes, setReminders, setHistory, setPausedLiveSessions]);
+
   const updateLists = useCallback((item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => {
         const setters: Record<string, React.Dispatch<React.SetStateAction<TrackedItem[]>>> = {
             watching: setWatching, planToWatch: setPlanToWatch, completed: setCompleted,
@@ -435,7 +510,7 @@ export const MainApp: React.FC<MainAppProps> = ({
       if (action === 1) { setPriorModalState(p => ({ ...p, isOpen: false })); await handleMarkPreviousEpisodesWatched(showId, season, episode); handleToggleEpisode(showId, season, episode, 0, showInfo, undefined, episodeStillPath, seasonPosterPath); }
       else if (action === 2) { setPriorModalState(p => ({ ...p, isOpen: false })); }
       else if (action === 3) { setPriorModalState(p => ({ ...p, isOpen: false })); setWatchProgress(prev => { const next = { ...prev }; if (!next[showId]) next[showId] = {}; if (!next[showId][season]) next[showId][season] = {}; next[showId][season][episode] = { ...next[showId][season][episode], status: 2 }; return next; }); setHistory(prev => [{ ...showInfo, logId: `tv-${showId}-${season}-${episode}-${Date.now()}`, timestamp: new Date().toISOString(), seasonNumber: season, episodeNumber: episode, episodeStillPath, seasonPosterPath }, ...prev]); }
-      else if (action === 4) { setPriorModalState(p => ({ ...p, isOpen: false })); setWatchProgress(prev => { const next = { ...prev }; if (next[showId]) { Object.keys(next[showId]).forEach(sKey => { const sNum = parseInt(sKey); Object.keys(next[showId][sNum]).forEach(eKey => { const eNum = parseInt(eKey); if (sNum > season || (sNum === season && eNum >= episode)) delete next[showId][sNum][eNum]; }); }); } return next; }); setHistory(prev => prev.filter(h => !(h.id === showId && (h.seasonNumber! > season || (h.seasonNumber === season && h.episodeNumber! >= episode))))); }
+      else if (action === 4) { setPriorModalState(p => ({ ...p, isOpen: false })); setWatchProgress(prev => { const next = { ...prev }; if (next[showId]) { Object.keys(next[showId]).forEach(sKey => { const sNum = parseInt(sKey); Object.keys(next[showId][sNum]).forEach(eKey => { const eNum = parseInt(eKey); if (sNum > season || (sNum === season && eNum >= episode)) delete next[showId][sNum][eKey]; }); }); } return next; }); setHistory(prev => prev.filter(h => !(h.id === showId && (h.seasonNumber! > season || (h.seasonNumber === season && h.episodeNumber! >= episode))))); }
   }, [priorModalState, handleMarkPreviousEpisodesWatched, handleToggleEpisode, setWatchProgress, setHistory]);
 
   const handleTraktImportCompleted = useCallback((data: any) => {
@@ -523,16 +598,23 @@ export const MainApp: React.FC<MainAppProps> = ({
                     updateLists(tracked, null, 'completed');
                     setUserXp(prev => prev + (item.media_type === 'movie' ? XP_CONFIG.movie : 0));
                 }}
-                onUnmarkMovieWatched={(id) => { setHistory(prev => prev.filter(h => h.id !== id)); setCompleted(prev => prev.filter(i => i.id !== id)); }}
+                onUnmarkMovieWatched={(id) => handlePurgeMediaFromRegistry(id)}
                 onMarkSeasonWatched={(sid, sNum) => handleMarkPreviousEpisodesWatched(sid, sNum, 999)}
-                onUnmarkSeasonWatched={(sid, sNum) => { setHistory(prev => prev.filter(h => !(h.id === sid && h.seasonNumber === sNum))); setWatchProgress(prev => { const next = { ...prev }; if (next[sid]) delete next[sid][sNum]; return next; }); }}
+                onUnmarkSeasonWatched={(sid, sNum) => { 
+                    setHistory(prev => prev.filter(h => !(h.id === sid && h.seasonNumber === sNum))); 
+                    setWatchProgress(prev => { 
+                        const next = { ...prev }; 
+                        if (next[sid]) delete next[sid][sNum]; 
+                        return next; 
+                    }); 
+                }}
                 onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched}
                 favoriteEpisodes={favoriteEpisodes}
                 onToggleFavoriteEpisode={(sid, s, e) => setFavoriteEpisodes(prev => { const next = { ...prev }; if (!next[sid]) next[sid] = {}; if (!next[sid][s]) next[sid][s] = {}; next[sid][s][e] = !next[sid][s][e]; return next; })}
                 onSelectPerson={setSelectedPerson}
                 onStartLiveWatch={() => {}}
-                onDeleteHistoryItem={(item) => setHistory(prev => prev.filter(h => h.logId !== item.logId))}
-                onClearMediaHistory={(mid) => setHistory(prev => prev.filter(h => h.id !== mid))}
+                onDeleteHistoryItem={(item) => handlePurgeMediaFromRegistry(item.id)}
+                onClearMediaHistory={(mid) => handlePurgeMediaFromRegistry(mid)}
                 episodeRatings={episodeRatings}
                 onRateEpisode={(sid, s, e, r) => setEpisodeRatings(prev => { const next = { ...prev }; if (!next[sid]) next[sid] = {}; if (!next[sid][s]) next[sid][s] = {}; next[sid][s][e] = r; return next; })}
                 onAddWatchHistory={(item, s, e, ts, nt, en) => setHistory(prev => [{ ...item, logId: `log-${item.id}-${Date.now()}`, timestamp: ts || new Date().toISOString(), seasonNumber: s, episodeNumber: e, note: nt, episodeTitle: en }, ...prev])}
@@ -583,7 +665,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             setCustomLists={setCustomLists}
             notificationSettings={notificationSettings}
             setNotificationSettings={setNotificationSettings}
-            onDeleteHistoryItem={(item) => setHistory(prev => prev.filter(h => h.logId !== item.logId))}
+            onDeleteHistoryItem={(item) => handlePurgeMediaFromRegistry(item.id)}
             onDeleteSearchHistoryItem={(timestamp) => setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp))}
             onClearSearchHistory={() => setSearchHistory([])}
             setHistory={setHistory}
