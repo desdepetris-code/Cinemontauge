@@ -74,7 +74,7 @@ const AllNewReleasesScreen: React.FC<AllNewReleasesScreenProps> = (props) => {
                 <h1 className="text-3xl font-bold text-text-primary text-center w-full">All New Movie Releases</h1>
             </header>
             
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4">
                 {movies.map(movie => (
                     <ActionCard 
                         key={movie.id} 

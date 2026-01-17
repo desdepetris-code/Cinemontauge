@@ -194,18 +194,18 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 <SettingsRow title="Always Expand Filters" subtitle="When enabled, filters are visible immediately. When disabled, you must click the filter icon." disabled={!preferences.searchShowFilters}>
                     <ToggleSwitch enabled={preferences.searchAlwaysExpandFilters} onChange={() => handleTogglePreference('searchAlwaysExpandFilters')} />
                 </SettingsRow>
-                <SettingsRow title="Show Card Series Info" subtitle="Display season and episode counts on TV show results.">
+                <SettingsRow title="Show Card Series Info" subtitle="Choose how season and episode counts appear on search results.">
                     <div className="relative">
                         <select 
                             value={preferences.searchShowSeriesInfo} 
                             onChange={(e) => handleSeriesInfoPreference(e.target.value as any)}
-                            className="appearance-none bg-bg-secondary text-text-primary text-xs font-black uppercase py-2 pl-4 pr-8 rounded-xl focus:outline-none"
+                            className="appearance-none bg-bg-secondary text-text-primary text-xs font-black uppercase py-2 pl-4 pr-10 rounded-xl focus:outline-none"
                         >
-                            <option value="expanded">Expanded</option>
-                            <option value="toggle">Toggle Button</option>
-                            <option value="hidden">Hidden</option>
+                            <option value="expanded">Always Visible (Default)</option>
+                            <option value="toggle">Show Dropdown Button</option>
+                            <option value="hidden">Hide Completely</option>
                         </select>
-                        <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                        <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                     </div>
                 </SettingsRow>
             </div>
