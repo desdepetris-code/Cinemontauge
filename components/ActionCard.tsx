@@ -62,8 +62,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
     // Sync local expanded state if preference changes
     useEffect(() => {
         if (showSeriesInfo === 'expanded') setIsInfoExpanded(true);
-        if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
-        if (showSeriesInfo === 'toggle') setIsInfoExpanded(false);
+        else if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
+        else if (showSeriesInfo === 'toggle') setIsInfoExpanded(false);
     }, [showSeriesInfo]);
 
     const ageRating = useMemo(() => {
@@ -211,7 +211,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     </button>
                 </div>
 
-                {/* Always show basic info block unless hidden by preference */}
+                {/* Info block: Title, type, year */}
                 {showSeriesInfo !== 'hidden' && (
                     <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
                         <p className="font-bold text-text-primary truncate">{title}</p>
@@ -222,20 +222,21 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     </div>
                 )}
 
+                {/* Season list section with show name as header */}
                 {shouldShowInfoSection && (
                     <div className="mt-2 p-3 bg-bg-secondary rounded-xl border border-white/5 animate-slide-in-up shadow-inner">
-                        <div className="flex flex-col mb-2">
-                            <span className="text-[10px] font-black text-text-primary uppercase truncate">{title}</span>
+                        <div className="flex flex-col mb-2 pb-2 border-b border-white/5">
+                            <span className="text-[11px] font-black text-primary-accent uppercase truncate">{title}</span>
                             <div className="flex justify-between items-center mt-0.5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent">Series Info</span>
-                                <span className="text-[9px] font-bold text-text-secondary">{airYears}</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-text-secondary">Season Breakdown</span>
+                                <span className="text-[9px] font-bold text-text-secondary/60">{airYears}</span>
                             </div>
                         </div>
                         <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                             {details.seasons?.filter(s => s.season_number > 0).map(s => (
                                 <div key={s.id} className="flex justify-between items-center text-[10px] py-1 border-b border-white/5 last:border-0">
                                     <span className="font-bold text-text-primary">Season {s.season_number}</span>
-                                    <span className="text-text-secondary">{s.episode_count} Episodes</span>
+                                    <span className="text-text-secondary">{s.episode_count} Ep.</span>
                                 </div>
                             ))}
                         </div>
