@@ -15,11 +15,11 @@ import { getImageUrl } from '../utils/imageUtils';
 import Carousel from '../components/Carousel';
 
 interface SearchScreenProps {
-  onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
+  onSelectShow: (id: number, media_type: 'tv' | 'movie', itemData?: TrackedItem) => void;
   onSelectPerson: (personId: number) => void;
   onSelectUser: (userId: string) => void;
   searchHistory: SearchHistoryItem[];
-  onUpdateSearchHistory: (query: string) => void;
+  onUpdateSearchHistory: (queryOrItem: string | TrackedItem) => void;
   query: string;
   onQueryChange: (query: string) => void;
   onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
@@ -94,7 +94,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     const performAllSearches = async () => {
         setLoading(true);
         setError(null);
-        onUpdateSearchHistory(query);
 
         const mediaPromise = searchMediaPaginated(query, 1);
         const peoplePromise = searchPeoplePaginated(query, 1);
@@ -114,7 +113,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         try {
             const [mediaData, peopleData] = await Promise.all([mediaPromise, peoplePromise]);
             setMediaResults(mediaData.results);
-            setPeopleResults(peopleData.results);
+            setPeopleResults(mediaData.results);
         } catch (e) {
             setError("Could not perform search. Please check your connection.");
         } finally {
@@ -124,7 +123,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
     const debounceTimer = setTimeout(performAllSearches, 500);
     return () => clearTimeout(debounceTimer);
-}, [query, onUpdateSearchHistory, userData.customLists, genres, currentUser?.id]);
+}, [query, userData.customLists, genres, currentUser?.id]);
 
   const filteredAndSortedMedia = useMemo(() => {
     let results = [...mediaResults];
@@ -178,9 +177,20 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
       }));
   };
   
+  const handleItemSelect = (id: number, media_type: 'tv' | 'movie', item: TmdbMedia) => {
+    const tracked: TrackedItem = {
+        id: item.id,
+        title: item.title || item.name || 'Untitled',
+        media_type: item.media_type,
+        poster_path: item.poster_path,
+        genre_ids: item.genre_ids
+    };
+    onSelectShow(id, media_type, tracked);
+  };
+
   const renderSearchResults = () => {
     if (loading && mediaResults.length === 0) return (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-pulse">
             {[...Array(14)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div><div className="h-9 bg-bg-secondary rounded-md mt-2"></div></div>)}
         </div>
     );
@@ -188,8 +198,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
     switch (activeTab) {
         case 'media': return filteredAndSortedMedia.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-fade-in">
-                {filteredAndSortedMedia.map(item => <ActionCard key={item.id} item={item} onSelect={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} isFavorite={favorites.some(f => f.id === item.id)} isCompleted={userData.completed.some(c => c.id === item.id)} showRatings={showRatings} showSeriesInfo={preferences.searchShowSeriesInfo} />)}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-fade-in">
+                {filteredAndSortedMedia.map(item => <ActionCard key={item.id} item={item} onSelect={(id, type) => handleItemSelect(id, type, item)} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} isFavorite={favorites.some(f => f.id === item.id)} isCompleted={userData.completed.some(c => c.id === item.id)} showRatings={showRatings} showSeriesInfo={preferences.searchShowSeriesInfo} />)}
             </div>
         ) : query.length > 0 ? <p className="text-center py-16 text-text-secondary font-black uppercase tracking-widest text-xs opacity-50">No media found matching these filters.</p> : null;
 
@@ -356,8 +366,13 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                     
                     <div className="relative group">
                         <SearchBar 
-                            onSelectResult={onSelectShow} 
+                            onSelectResult={(id, type) => {
+                                const matched = filteredAndSortedMedia.find(m => m.id === id);
+                                if (matched) handleItemSelect(id, type, matched);
+                                else onSelectShow(id, type);
+                            }} 
                             onMarkShowAsWatched={onMarkShowAsWatched}
+                            onSearchSubmit={onUpdateSearchHistory}
                             value={query}
                             onChange={onQueryChange}
                             disableDropdown

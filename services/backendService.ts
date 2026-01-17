@@ -18,7 +18,7 @@ async function fetchAndEnrich(endpoint: string, mediaType: 'movie' | 'tv'): Prom
     try {
         const response = await fetch(`${BACKEND_URL}/${endpoint}`);
         if (!response.ok) {
-            console.error(`Failed to fetch from backend endpoint: ${endpoint}, Status: ${response.status}`);
+            // Silently return empty on failure to avoid console spam
             return [];
         }
         const items: BackendMedia[] = await response.json();
@@ -48,7 +48,7 @@ async function fetchAndEnrich(endpoint: string, mediaType: 'movie' | 'tv'): Prom
         }
         return enrichedItems;
     } catch (error) {
-        console.error(`Error during enrichment for ${mediaType}:`, error);
+        // Silently catch network errors (Failed to fetch)
         return [];
     }
 }

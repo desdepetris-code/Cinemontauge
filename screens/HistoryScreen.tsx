@@ -4,6 +4,7 @@ import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubble
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
 import CompactShowCard from '../components/CompactShowCard';
+import ActionCard from '../components/ActionCard';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL } from '../constants';
@@ -82,29 +83,6 @@ const WatchHistory: React.FC<{
             });
             return Array.from(grouped.values());
         }
-        case 'movies_episodes':
-            return items; // No grouping, just movies and episodes interleaved
-        case 'movies_seasons': {
-            const grouped: HistoryItem[] = [];
-            const seenKeys = new Set<string>();
-            items.forEach(item => {
-                if (item.media_type === 'movie') {
-                    grouped.push(item);
-                } else {
-                    const key = `${item.id}-s${item.seasonNumber}`;
-                    if (!seenKeys.has(key)) {
-                        seenKeys.add(key);
-                        grouped.push({
-                            ...item,
-                            episodeNumber: undefined,
-                            episodeTitle: `Season ${item.seasonNumber} activity`,
-                            logId: `season-group-${key}-${item.logId}`
-                        });
-                    }
-                }
-            });
-            return grouped;
-        }
         case 'all':
         default:
             return items;
@@ -131,8 +109,6 @@ const WatchHistory: React.FC<{
       { id: 'movies', label: 'Movies Only', icon: <FilmIcon className="w-4 h-4" /> },
       { id: 'seasons', label: 'Seasons', icon: <ListBulletIcon className="w-4 h-4" /> },
       { id: 'episodes', label: 'Episodes', icon: <TvIcon className="w-4 h-4" /> },
-      { id: 'movies_episodes', label: 'Movies & Episodes', icon: <SparklesIcon className="w-4 h-4" /> },
-      { id: 'movies_seasons', label: 'Movies & Seasons', icon: <TrophyIcon className="w-4 h-4" /> },
   ];
 
   return (
@@ -302,32 +278,57 @@ const SearchHistory: React.FC<{
   searchHistory: SearchHistoryItem[];
   onDelete: (timestamp: string) => void;
   onClear: () => void;
+  onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   timezone: string;
-}> = ({ searchHistory, onDelete, onClear, timezone }) => (
+}> = ({ searchHistory, onDelete, onClear, onSelectShow, timezone }) => (
   <div className="space-y-6">
     <div className="flex justify-between items-center px-2">
-        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">Recent Searches</h2>
+        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">Recent Searches & Views</h2>
         {searchHistory.length > 0 && <button onClick={onClear} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline">Clear All</button>}
     </div>
     {searchHistory.length > 0 ? (
-      <ul className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {searchHistory.map(item => (
-          <li key={item.timestamp} className="bg-bg-secondary/30 rounded-xl p-4 flex items-center justify-between hover:bg-bg-secondary/50 transition-colors">
-            <div className="flex items-center gap-4">
-                <SearchIcon className="w-5 h-5 text-primary-accent" />
-                <div>
-                  <p className="text-text-primary font-bold">{item.query}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60 mt-0.5">{formatDateTime(item.timestamp, timezone)}</p>
-                </div>
-            </div>
-            <button onClick={() => onDelete(item.timestamp)} className="p-2 rounded-full text-text-secondary/30 hover:text-red-500 hover:bg-red-500/10 transition-all"><TrashIcon className="w-5 h-5"/></button>
-          </li>
+          <div key={item.timestamp} className="relative group">
+            <button 
+              onClick={() => onDelete(item.timestamp)} 
+              className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+              title="Remove from history"
+            >
+              <XMarkIcon className="w-3.5 h-3.5" />
+            </button>
+            
+            {item.item ? (
+              <div className="space-y-2">
+                <ActionCard 
+                  item={item.item as any} 
+                  onSelect={() => onSelectShow(item.item!.id, item.item!.media_type)} 
+                  onOpenAddToListModal={() => {}}
+                  onMarkShowAsWatched={() => {}}
+                  onToggleFavoriteShow={() => {}}
+                  isFavorite={false}
+                  isCompleted={false}
+                  showRatings={false}
+                  showSeriesInfo="hidden"
+                />
+                <p className="text-[8px] font-black text-text-secondary/40 uppercase tracking-widest text-center">{formatDate(item.timestamp, timezone, { month: 'short', day: 'numeric' })}</p>
+              </div>
+            ) : (
+              <div className="bg-bg-secondary/30 rounded-2xl p-4 h-full flex flex-col justify-center items-center text-center border border-white/5 hover:bg-bg-secondary/50 transition-all cursor-default">
+                <SearchIcon className="w-6 h-6 text-primary-accent mb-2 opacity-60" />
+                <p className="text-sm text-text-primary font-black uppercase tracking-tight line-clamp-2">"{item.query}"</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-3">{formatDate(item.timestamp, timezone, { month: 'short', day: 'numeric' })}</p>
+              </div>
+            )}
+          </div>
         ))}
-      </ul>
-    ) : <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border-4 border-dashed border-white/5">
+      </div>
+    ) : (
+      <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border-4 border-dashed border-white/5">
         <SearchIcon className="w-16 h-16 text-text-secondary/20 mx-auto mb-4" />
         <p className="text-text-secondary font-black uppercase tracking-widest">No Search History</p>
-    </div>}
+      </div>
+    )}
   </div>
 );
 
@@ -392,7 +393,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
   const renderContent = () => {
     switch (activeTab) {
       case 'watch': return <WatchHistory history={props.userData.history} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} timezone={props.timezone} />;
-      case 'search': return <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} timezone={props.timezone} />;
+      case 'search': return <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} onSelectShow={props.onSelectShow} timezone={props.timezone} />;
       case 'ratings': return <RatingsHistory ratings={props.userData.ratings} onSelect={(id) => props.onSelectShow(id, 'movie')} />; 
       case 'favorites': return (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
