@@ -108,7 +108,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     enableAnimations: true,
   });
 
-  // Fixed: Defined missing profile-related states
   const [privacySettings, setPrivacySettings] = useLocalStorage<PrivacySettings>(`privacy_settings_${userId}`, {
     activityVisibility: 'public'
   });
@@ -160,7 +159,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     });
   }, [setCustomLists]);
 
-  // Fixed: Added genre fetching logic
   useEffect(() => {
     getGenres().then(setGenres).catch(console.error);
   }, []);
@@ -211,7 +209,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       confirmationService.show(`Gem removed: ${pick.title}`);
   }, [setWeeklyFavorites]);
 
-  // Fixed: Added missing custom list handlers
   const handleAddToList = useCallback((listId: string, item: CustomListItem) => {
     setCustomLists(prev => prev.map(list => {
       if (list.id === listId) {
@@ -246,11 +243,9 @@ export const MainApp: React.FC<MainAppProps> = ({
         let newItem: SearchHistoryItem;
         if (typeof entry === 'string') {
             const query = entry.trim();
-            // Fixed: use SearchHistoryItem types correctly
             if (!query || (prev.length > 0 && prev[0].query === query)) return prev;
             newItem = { query, timestamp };
         } else {
-            // Fixed: use SearchHistoryItem types correctly
             if (prev.length > 0 && prev[0].item?.id === entry.id) return prev;
             newItem = { item: entry, timestamp };
         }
@@ -494,7 +489,8 @@ export const MainApp: React.FC<MainAppProps> = ({
     if (selectedShow) {
         return (
             <ShowDetail 
-                {...selectedShow} 
+                id={selectedShow.id}
+                mediaType={selectedShow.media_type}
                 onBack={handleBack} 
                 watchProgress={watchProgress}
                 history={history}

@@ -38,14 +38,13 @@ export const checkForUpdates = async (userData: UserData): Promise<{ updates: Me
     const completedItems = [...userData.completed].slice(0, 20);
     
     for (const item of completedItems) {
-        // FIX: Narrow media_type to 'tv' | 'movie' to satisfy getMediaDetails signature
         if (item.media_type === 'person') continue;
 
         try {
-            const details = await getMediaDetails(item.id, item.media_type);
+            const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie').catch(() => null);
+            if (!details) continue;
             
             if (item.media_type === 'tv') {
-                // Check if show has new episodes aired or upcoming after completion
                 const userProgress = userData.watchProgress[item.id] || {};
                 const maxSeasonInHistory = Math.max(0, ...Object.keys(userProgress).map(Number));
                 
@@ -67,9 +66,10 @@ export const checkForUpdates = async (userData: UserData): Promise<{ updates: Me
                     });
                 }
             } else if (item.media_type === 'movie' && details.belongs_to_collection) {
-                // Check movie collection for sequels
-                const collection = await getCollectionDetails(details.belongs_to_collection.id);
-                const sequels = collection.parts.filter(part => {
+                const collection = await getCollectionDetails(details.belongs_to_collection.id).catch(() => null);
+                if (!collection) continue;
+
+                const sequels = (collection.parts || []).filter(part => {
                     const isWatched = userData.completed.some(c => c.id === part.id);
                     const isUpcoming = part.release_date && new Date(part.release_date) > now;
                     const isRecent = part.release_date && new Date(part.release_date) > new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
@@ -90,13 +90,8 @@ export const checkForUpdates = async (userData: UserData): Promise<{ updates: Me
                     });
                 });
             }
-        } catch (e) {
-            console.error(`Update check failed for ${item.title}`, e);
-        }
+        } catch (e) {}
     }
-
-    // Filter updates against seen notifications to generate fresh ones
-    // (Logic for checking against previously sent notifications could go here)
     
     updates.forEach(update => {
         notifications.push({

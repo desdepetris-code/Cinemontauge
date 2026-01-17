@@ -33,7 +33,7 @@ export const clearSeasonCache = (tvId: number, seasonNumber: number): void => {
     } catch (error) {}
 };
 
-const fetchFromTmdb = async <T,>(endpoint: string, method: 'GET' | 'POST' = 'GET', body: object | null = null, extraParams: string = ''): Promise<T> => {
+const fetchFromTmdb = async <T,>(endpoint: string, method: 'GET' | 'POST' = 'GET', body: object | null = null, extraParams: string = ''): Promise<T | null> => {
   const separator = endpoint.includes('?') ? '&' : '?';
   const url = `${TMDB_API_BASE_URL}/${endpoint}${separator}api_key=${TMDB_API_KEY}${extraParams}`;
   const options: RequestInit = {
@@ -49,6 +49,7 @@ const fetchFromTmdb = async <T,>(endpoint: string, method: 'GET' | 'POST' = 'GET
   const response = await fetch(url, options);
   
   if (!response.ok) {
+    if (response.status === 404) return null;
     let message = 'Failed to fetch data from TMDB';
     try {
         const errorData = await response.json();
@@ -58,7 +59,7 @@ const fetchFromTmdb = async <T,>(endpoint: string, method: 'GET' | 'POST' = 'GET
   }
   
   const data = await response.json();
-  if (data.success === false) throw new Error(`TMDB Error: ${data.status_message || 'Resource not found.'}`);
+  if (data.success === false) return null;
   return data;
 };
 
@@ -77,9 +78,11 @@ export const searchMedia = async (query: string): Promise<TmdbMedia[]> => {
             fetchFromTmdb<{ results: TmdbMedia[] }>(`search/movie?query=${encodeURIComponent(titleQuery)}&primary_release_year=${year}`),
             fetchFromTmdb<{ results: TmdbMedia[] }>(`search/tv?query=${encodeURIComponent(titleQuery)}&first_air_date_year=${year}`)
         ]);
-        return [...movieResults.results.map(i => ({...i, media_type: 'movie' as const})), ...tvResults.results.map(i => ({...i, media_type: 'tv' as const}))].sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
+        const results = [...(movieResults?.results || []).map(i => ({...i, media_type: 'movie' as const})), ...(tvResults?.results || []).map(i => ({...i, media_type: 'tv' as const}))];
+        return results.sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
     } else {
         const data = await fetchFromTmdb<{ results: (TmdbMedia & { media_type: 'movie' | 'tv' | 'person' })[] }>(`search/multi?query=${encodeURIComponent(searchTerm)}`);
+        if (!data) return [];
         return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv') as TmdbMedia[];
     }
 };
@@ -89,6 +92,7 @@ export const searchMediaPaginated = async (query: string, page: number = 1): Pro
     const normalizedQuery = query.toLowerCase().trim();
     const searchTerm = aliasMap[normalizedQuery] || query;
     const data = await fetchFromTmdb<{ results: (TmdbMedia & { media_type: 'movie' | 'tv' | 'person' })[], total_pages: number }>(`search/multi?query=${encodeURIComponent(searchTerm)}&page=${page}`);
+    if (!data) return { results: [], total_pages: 0 };
     return {
         results: data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv') as TmdbMedia[],
         total_pages: data.total_pages
@@ -97,26 +101,27 @@ export const searchMediaPaginated = async (query: string, page: number = 1): Pro
 
 export const searchPeoplePaginated = async (query: string, page: number = 1): Promise<{ results: TmdbPerson[], total_pages: number }> => {
     if (!query || !query.trim()) return { results: [], total_pages: 0 };
-    return await fetchFromTmdb<{ results: TmdbPerson[], total_pages: number }>(`search/person?query=${encodeURIComponent(query)}&page=${page}`);
+    const data = await fetchFromTmdb<{ results: TmdbPerson[], total_pages: number }>(`search/person?query=${encodeURIComponent(query)}&page=${page}`);
+    return data || { results: [], total_pages: 0 };
 };
 
-export const findByImdbId = async (imdbId: string): Promise<TmdbFindResponse> => {
+export const findByImdbId = async (imdbId: string): Promise<TmdbFindResponse | null> => {
     if (!imdbId) throw new Error("IMDB ID required");
     const cacheKey = `tmdb_find_${imdbId}`;
     const cached = getFromCache<TmdbFindResponse>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<TmdbFindResponse>(`find/${imdbId}?external_source=imdb_id`);
-    setToCache(cacheKey, data, CACHE_TTL);
+    if (data) setToCache(cacheKey, data, CACHE_TTL);
     return data;
 };
 
-export const findByTvdbId = async (tvdbId: number): Promise<TmdbFindResponse> => {
+export const findByTvdbId = async (tvdbId: number): Promise<TmdbFindResponse | null> => {
     if (!tvdbId) throw new Error("TVDB ID required");
     const cacheKey = `tmdb_find_tvdb_${tvdbId}`;
     const cached = getFromCache<TmdbFindResponse>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<TmdbFindResponse>(`find/${tvdbId}?external_source=tvdb_id`);
-    setToCache(cacheKey, data, CACHE_TTL);
+    if (data) setToCache(cacheKey, data, CACHE_TTL);
     return data;
 };
 
@@ -131,12 +136,14 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
         fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=images,recommendations,external_ids,credits,videos&${imageLangParam}`),
         fetchFromTmdb<{ results: any[] }>(`tv/${id}/content_ratings`).catch(() => ({ results: [] }))
     ]);
-    detailsData.content_ratings = ratingsData;
+    if (!detailsData) throw new Error("The resource you requested could not be found.");
+    detailsData.content_ratings = ratingsData || { results: [] };
     detailsData.media_type = 'tv';
     setToCache(cacheKey, detailsData, CACHE_TTL);
     return detailsData;
   } else {
     const data = await fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=images,recommendations,credits,videos,external_ids,release_dates&${imageLangParam}`);
+    if (!data) throw new Error("The resource you requested could not be found.");
     data.media_type = 'movie';
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
@@ -149,7 +156,8 @@ export const getSeasonDetails = async (tvId: number, seasonNumber: number): Prom
   const cached = getFromCache<TmdbSeasonDetails>(cacheKey);
   if (cached) return cached;
   const data = await fetchFromTmdb<TmdbSeasonDetails>(`tv/${tvId}/season/${seasonNumber}?append_to_response=aggregate_credits&include_image_language=en,null`);
-  data.episodes = data.episodes.map(e => ({ ...e, season_number: seasonNumber }));
+  if (!data) throw new Error("Season not found.");
+  data.episodes = (data.episodes || []).map(e => ({ ...e, season_number: seasonNumber }));
   setToCache(cacheKey, data, CACHE_TTL);
   return data;
 };
@@ -184,7 +192,7 @@ export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDe
     const crewMap = new Map<number, { person: Omit<CrewMember, 'job'|'department'>, jobs: Set<string>, departments: Set<string> }>();
     for (const credits of allEpisodeCredits) {
         if (!credits) continue;
-        credits.cast.forEach((person: any) => {
+        credits.cast?.forEach((person: any) => {
             if (!mainCastMap.has(person.id)) mainCastMap.set(person.id, { person, appearances: 0, characters: new Set() });
             const entry = mainCastMap.get(person.id)!;
             entry.appearances++;
@@ -196,7 +204,7 @@ export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDe
             entry.appearances++;
             if (person.character) entry.characters.add(person.character);
         });
-        credits.crew.forEach((person: any) => {
+        credits.crew?.forEach((person: any) => {
             if (!crewMap.has(person.id)) {
                 const { job, department, ...personInfo } = person;
                 crewMap.set(person.id, { person: personInfo, jobs: new Set(), departments: new Set() });
@@ -228,8 +236,8 @@ export const getGenres = async (): Promise<Record<number, string>> => {
     fetchFromTmdb<{ genres: { id: number, name: string }[] }>('genre/movie/list')
   ]);
   const allGenres: Record<number, string> = {};
-  tvGenres.genres.forEach(g => allGenres[g.id] = g.name);
-  movieGenres.genres.forEach(g => allGenres[g.id] = g.name);
+  tvGenres?.genres.forEach(g => allGenres[g.id] = g.name);
+  movieGenres?.genres.forEach(g => allGenres[g.id] = g.name);
   setToCache(cacheKey, allGenres, CACHE_TTL * 12);
   return allGenres;
 };
@@ -255,7 +263,7 @@ export const discoverMedia = async (mediaType: 'tv' | 'movie', filters: any): Pr
     const cached = getFromCache<TmdbMedia[]>(cacheKey);
     if(cached) return cached;
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/${mediaType}?include_adult=false&language=en-US${params}`);
-    const results = data.results.map(item => ({ ...item, media_type: mediaType }));
+    const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
     setToCache(cacheKey, results, CACHE_TTL_SHORT);
     return results;
 };
@@ -281,8 +289,8 @@ export const discoverMediaPaginated = async (mediaType: 'tv' | 'movie', filters:
     const cached = getFromCache<{ results: TmdbMedia[], total_pages: number }>(cacheKey);
     if(cached) return cached;
     const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(`discover/${mediaType}?include_adult=false&language=en-US${params}`);
-    const results = data.results.map(item => ({ ...item, media_type: mediaType }));
-    const response = { ...data, results };
+    const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
+    const response = { results, total_pages: data?.total_pages || 0 };
     setToCache(cacheKey, response, CACHE_TTL_SHORT);
     return response;
 };
@@ -324,6 +332,7 @@ export const getAllNewReleasesPaginated = async (page: number): Promise<{ result
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     const startDate = ninetyDaysAgo.toISOString().split('T')[0];
     const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(`discover/movie?include_adult=false&language=en-US&primary_release_date.gte=${startDate}&primary_release_date.lte=${today}&sort_by=popularity.desc&page=${page}`);
+    if (!data) return { results: [], total_pages: 0 };
     return { ...data, results: data.results.map(item => ({ ...item, media_type: 'movie' as const })) };
 };
 
@@ -363,7 +372,7 @@ export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[
     const cached = getFromCache<TmdbMedia[]>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`trending/${mediaType}/week`);
-    const results = data.results.map(item => ({ ...item, media_type: mediaType }));
+    const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
     setToCache(cacheKey, results, CACHE_TTL_SHORT);
     return results;
 };
@@ -400,7 +409,7 @@ export const getUpcomingMovies = async (): Promise<TmdbMedia[]> => {
     twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
     const endDate = twoMonthsLater.toISOString().split('T')[0];
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/movie?primary_release_date.gte=${today}&primary_release_date.lte=${endDate}&sort_by=popularity.desc&region=US`);
-    return data.results.map(i => ({ ...i, media_type: 'movie' }));
+    return (data?.results || []).map(i => ({ ...i, media_type: 'movie' }));
 };
 
 export const getPersonDetails = async (personId: number): Promise<PersonDetails> => {
@@ -409,17 +418,18 @@ export const getPersonDetails = async (personId: number): Promise<PersonDetails>
     const cached = getFromCache<PersonDetails>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<PersonDetails>(`person/${personId}?append_to_response=combined_credits,images`);
+    if (!data) throw new Error("Person not found.");
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
 };
 
-export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): Promise<WatchProviderResponse> => {
+export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): Promise<WatchProviderResponse | null> => {
     if (!id || isNaN(id)) throw new Error("Valid ID required");
     const cacheKey = `tmdb_providers_${mediaType}_${id}`;
     const cached = getFromCache<WatchProviderResponse>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<WatchProviderResponse>(`${mediaType}/${id}/watch/providers`);
-    setToCache(cacheKey, data, CACHE_TTL);
+    if (data) setToCache(cacheKey, data, CACHE_TTL);
     return data;
 };
 
@@ -429,7 +439,8 @@ export const getCollectionDetails = async (collectionId: number): Promise<TmdbCo
     const cached = getFromCache<TmdbCollection>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<TmdbCollection>(`collection/${collectionId}`);
-    data.parts = data.parts.map(p => ({...p, media_type: 'movie'}));
+    if (!data) throw new Error("Collection not found.");
+    data.parts = (data.parts || []).map(p => ({...p, media_type: 'movie'}));
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
 };
