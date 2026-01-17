@@ -18,7 +18,7 @@ interface ActionCardProps {
     isFavorite: boolean;
     isCompleted: boolean;
     showRatings: boolean;
-    showSeriesInfo?: boolean;
+    showSeriesInfo?: 'expanded' | 'toggle' | 'hidden';
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({ 
@@ -30,12 +30,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
     isFavorite, 
     isCompleted, 
     showRatings,
-    showSeriesInfo = true
+    showSeriesInfo = 'toggle'
 }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
-    const [isInfoExpanded, setIsInfoExpanded] = useState(false);
+    const [isInfoExpanded, setIsInfoExpanded] = useState(showSeriesInfo === 'expanded');
     
     const posterSrcs = useMemo(() => [getImageUrl(item.poster_path, 'w342')], [item.poster_path]);
     const title = item.title || item.name || 'Untitled';
@@ -58,6 +58,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
 
         return () => { isMounted = false; };
     }, [item.id, item.media_type, isNew]);
+
+    // Sync local expanded state if preference changes
+    useEffect(() => {
+        if (showSeriesInfo === 'expanded') setIsInfoExpanded(true);
+        if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
+    }, [showSeriesInfo]);
 
     const ageRating = useMemo(() => {
         if (!details) return null;
@@ -132,6 +138,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
         return start === end ? start : `${start} — ${end}`;
     }, [details, item.media_type]);
 
+    const shouldShowInfoSection = showSeriesInfo !== 'hidden' && item.media_type === 'tv' && details && isInfoExpanded;
+
     return (
         <>
             <MarkAsWatchedModal
@@ -176,7 +184,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         </div>
                     )}
                     
-                    {showSeriesInfo && item.media_type === 'tv' && (
+                    {showSeriesInfo === 'toggle' && item.media_type === 'tv' && (
                         <button 
                             onClick={toggleInfo}
                             className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-30 ${isInfoExpanded ? 'bg-primary-accent text-white rotate-180' : 'bg-black/40 text-white/70 hover:text-white hover:bg-black/60'}`}
@@ -194,7 +202,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
+                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-all group overflow-hidden relative" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
                     <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
@@ -202,7 +210,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     </button>
                 </div>
 
-                {showSeriesInfo && isInfoExpanded && item.media_type === 'tv' && details && (
+                {shouldShowInfoSection && (
                     <div className="mt-2 p-3 bg-bg-secondary rounded-xl border border-white/5 animate-slide-in-up shadow-inner">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">Series Info</span>
@@ -219,7 +227,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     </div>
                 )}
 
-                {details && (!isInfoExpanded || !showSeriesInfo) && (
+                {details && (!isInfoExpanded || showSeriesInfo === 'hidden') && (
                     <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1 transition-opacity duration-300">
                         <p className="font-bold text-text-primary truncate">{title}</p>
                         <div className="flex justify-between text-text-secondary">

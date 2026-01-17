@@ -138,7 +138,11 @@ export const Settings: React.FC<SettingsProps> = (props) => {
   };
 
   const handleTogglePreference = (key: keyof AppPreferences) => {
-      setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+      setPreferences(prev => ({ ...prev, [key]: !prev[key] as any }));
+  };
+
+  const handleSeriesInfoPreference = (val: AppPreferences['searchShowSeriesInfo']) => {
+      setPreferences(prev => ({ ...prev, searchShowSeriesInfo: val }));
   };
 
   const mandatoryNavIds = ['home', 'search', 'calendar', 'profile'];
@@ -184,14 +188,25 @@ export const Settings: React.FC<SettingsProps> = (props) => {
         <SettingsCard title="Feature Visibility">
             <div className="p-4 border-b border-bg-secondary/50">
                 <p className="text-xs font-black uppercase tracking-widest text-primary-accent mb-4">Search Page Controls</p>
-                <SettingsRow title="Show Search Filters" subtitle="Enable or disable the filtering options in search.">
+                <SettingsRow title="Enable Search Filters" subtitle="Whether to allow filtering on the search page at all.">
                     <ToggleSwitch enabled={preferences.searchShowFilters} onChange={() => handleTogglePreference('searchShowFilters')} />
                 </SettingsRow>
-                <SettingsRow title="Always Expand Search Filters" subtitle="Keep filters expanded by default without clicking the icon.">
+                <SettingsRow title="Always Expand Filters" subtitle="When enabled, filters are visible immediately. When disabled, you must click the filter icon." disabled={!preferences.searchShowFilters}>
                     <ToggleSwitch enabled={preferences.searchAlwaysExpandFilters} onChange={() => handleTogglePreference('searchAlwaysExpandFilters')} />
                 </SettingsRow>
                 <SettingsRow title="Show Card Series Info" subtitle="Display season and episode counts on TV show results.">
-                    <ToggleSwitch enabled={preferences.searchShowSeriesInfo} onChange={() => handleTogglePreference('searchShowSeriesInfo')} />
+                    <div className="relative">
+                        <select 
+                            value={preferences.searchShowSeriesInfo} 
+                            onChange={(e) => handleSeriesInfoPreference(e.target.value as any)}
+                            className="appearance-none bg-bg-secondary text-text-primary text-xs font-black uppercase py-2 pl-4 pr-8 rounded-xl focus:outline-none"
+                        >
+                            <option value="expanded">Expanded</option>
+                            <option value="toggle">Toggle Button</option>
+                            <option value="hidden">Hidden</option>
+                        </select>
+                        <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                    </div>
                 </SettingsRow>
             </div>
             <div className="p-4">

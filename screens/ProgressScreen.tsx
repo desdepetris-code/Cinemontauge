@@ -407,7 +407,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                 placeholder="Search progress..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 font-bold shadow-2xl"
+                                className="w-full pl-12 pr-4 py-3 font-bold shadow-2xl"
                             />
                             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
                         </div>

@@ -174,7 +174,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
               onChange={handleChange}
               onFocus={() => setIsFocused(true)}
               placeholder="Search shows & movies..."
-              className="w-full pl-10 pr-4 py-3 bg-bg-primary text-text-primary placeholder-text-secondary/80 rounded-2xl border-2 border-primary-accent/30 focus:border-primary-accent focus:outline-none transition-all shadow-xl font-bold"
+              className="w-full pl-12 pr-4 py-3 bg-bg-primary text-text-primary placeholder-text-secondary/80 rounded-2xl border-2 border-primary-accent/30 focus:border-primary-accent focus:outline-none transition-all shadow-xl font-bold"
             />
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
           </div>

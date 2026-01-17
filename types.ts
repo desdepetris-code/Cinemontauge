@@ -1,4 +1,3 @@
-
 export interface NotificationSettings {
   masterEnabled: boolean;
   newEpisodes: boolean;
@@ -27,7 +26,7 @@ export interface NavSettings {
 export interface AppPreferences {
   searchAlwaysExpandFilters: boolean;
   searchShowFilters: boolean;
-  searchShowSeriesInfo: boolean;
+  searchShowSeriesInfo: 'expanded' | 'toggle' | 'hidden'; // Updated for 3-way control
   dashShowStats: boolean;
   dashShowLiveWatch: boolean;
   dashShowContinueWatching: boolean;

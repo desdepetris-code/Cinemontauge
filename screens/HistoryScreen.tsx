@@ -146,9 +146,9 @@ const WatchHistory: React.FC<{
                     placeholder="Search history..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 font-semibold shadow-inner"
+                    className="w-full pl-12 pr-4 py-3 font-bold shadow-inner"
                 />
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
             </div>
             <div className="relative min-w-[180px]">
                 <input
@@ -179,7 +179,7 @@ const WatchHistory: React.FC<{
                         className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap type-box-filter ${
                             activeFilter === opt.id 
                             ? 'bg-accent-gradient text-on-accent shadow-lg scale-105 font-black border-transparent' 
-                            : 'bg-bg-secondary text-text-primary/70'
+                            : 'bg-bg-primary text-text-primary/70'
                         }`}
                     >
                         {opt.icon}

@@ -72,8 +72,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Filter states
-  const [showFilters, setShowFilters] = useState(false);
+  // Local state for toggle mode
+  const [showFiltersToggle, setShowFiltersToggle] = useState(false);
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'tv' | 'movie'>('all');
   const [genreFilter, setGenreFilter] = useState<string>('');
   const [yearFilter, setYearFilter] = useState<string>('');
@@ -87,7 +87,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         setCommunityListResults([]);
         setUserResults([]);
         setGenreResults([]);
-        setShowFilters(false);
+        setShowFiltersToggle(false);
         return;
     }
 
@@ -114,9 +114,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         try {
             const [mediaData, peopleData] = await Promise.all([mediaPromise, peoplePromise]);
             setMediaResults(mediaData.results);
-            if (preferences.searchShowFilters && !preferences.searchAlwaysExpandFilters) {
-                setShowFilters(true);
-            }
             setPeopleResults(peopleData.results);
         } catch (e) {
             setError("Could not perform search. Please check your connection.");
@@ -127,7 +124,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
     const debounceTimer = setTimeout(performAllSearches, 500);
     return () => clearTimeout(debounceTimer);
-}, [query, onUpdateSearchHistory, userData.customLists, genres, currentUser?.id, preferences.searchShowFilters, preferences.searchAlwaysExpandFilters]);
+}, [query, onUpdateSearchHistory, userData.customLists, genres, currentUser?.id]);
 
   const filteredAndSortedMedia = useMemo(() => {
     let results = [...mediaResults];
@@ -264,7 +261,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     </button>
   );
 
-  const filtersVisible = preferences.searchAlwaysExpandFilters || (preferences.searchShowFilters && showFilters);
+  const filtersAreVisible = preferences.searchAlwaysExpandFilters || (preferences.searchShowFilters && showFiltersToggle);
 
   return (
     <div className="px-6 relative min-h-screen pb-40">
@@ -275,7 +272,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
         {query.length > 0 ? (
             <div className="animate-fade-in">
-              {preferences.searchShowFilters && filtersVisible && activeTab === 'media' && (
+              {preferences.searchShowFilters && filtersAreVisible && activeTab === 'media' && (
                 <div className="bg-bg-secondary/20 p-6 rounded-3xl mb-8 border border-white/5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in shadow-2xl backdrop-blur-md">
                   <div className="relative">
                     <select 
@@ -339,7 +336,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             <div className="flex justify-between items-center mb-2 px-2">
                                 <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">Search Categories</span>
                                 {activeTab === 'media' && preferences.searchShowFilters && !preferences.searchAlwaysExpandFilters && (
-                                    <button onClick={() => setShowFilters(s => !s)} className={`p-1.5 rounded-lg transition-all ${showFilters ? 'bg-primary-accent text-on-accent' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+                                    <button onClick={() => setShowFiltersToggle(s => !s)} className={`p-1.5 rounded-lg transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
                                         <FilterIcon className="w-4 h-4" />
                                     </button>
                                 )}
