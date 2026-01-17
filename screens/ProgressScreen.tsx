@@ -40,7 +40,7 @@ const EpisodeProgressCard: React.FC<{
                 <h3 className="text-sm font-black text-text-primary uppercase tracking-tight truncate">
                     S{ep.season_number} E{ep.episode_number}: {ep.name}
                 </h3>
-                <p className="text-[10px] text-text-secondary mt-1 font-bold opacity-60">
+                <p className="text-[10px] text-text-secondary mt-1 font-bold opacity-80">
                     {ep.air_date ? new Date(ep.air_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
                 </p>
             </div>
@@ -69,7 +69,7 @@ const SeasonProgressCard: React.FC<{
             <div className="flex justify-between items-center mb-3">
                 <div className="min-w-0 flex-grow">
                     <h3 className="text-lg font-black text-text-primary uppercase tracking-tighter truncate">{show.title}</h3>
-                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] opacity-60">
+                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] opacity-80">
                         Season {show.nextEpisodeInfo?.season_number || 1} Progress
                     </p>
                 </div>
@@ -83,7 +83,7 @@ const SeasonProgressCard: React.FC<{
                     style={{ width: `${progress}%` }}
                 ></div>
             </div>
-            <div className="flex justify-between mt-2 text-[9px] font-black text-text-secondary uppercase tracking-widest opacity-40">
+            <div className="flex justify-between mt-2 text-[9px] font-black text-text-secondary uppercase tracking-widest opacity-60">
                 <span>{show.watchedCount} Watched</span>
                 <span>{show.totalEpisodes - show.watchedCount} Remaining</span>
             </div>
@@ -109,7 +109,7 @@ const FilterButton: React.FC<{ label: string; active: boolean; onClick: () => vo
         className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all type-box-filter ${
             active 
             ? 'bg-accent-gradient text-on-accent shadow-lg scale-105 border-transparent' 
-            : 'bg-bg-secondary text-text-primary/70'
+            : 'bg-bg-primary text-text-primary opacity-90'
         }`}
     >
         {icon}
@@ -381,7 +381,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Progress</h1>
-                    <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] mt-1 opacity-60">Mapping your incomplete journeys</p>
+                    <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] mt-1 opacity-80">Mapping your incomplete journeys</p>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                     <QuickStat label="Active" value={quickStats.itemsInProgress} icon={<TvIcon className="w-5 h-5"/>} />
@@ -407,16 +407,16 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                 placeholder="Search progress..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 font-semibold shadow-inner"
+                                className="w-full pl-10 pr-4 py-3 font-bold shadow-2xl"
                             />
-                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
                         </div>
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                             <div className="relative flex-grow sm:min-w-[200px]">
                                 <select
                                     value={sortOption}
                                     onChange={(e) => setSortOption(e.target.value as SortOption)}
-                                    className="w-full appearance-none rounded-2xl py-3 pl-4 pr-10 text-xs font-black uppercase tracking-widest focus:outline-none shadow-inner"
+                                    className="w-full appearance-none rounded-2xl py-3 pl-4 pr-10 text-xs font-black uppercase tracking-widest focus:outline-none shadow-2xl"
                                 >
                                     <option value="lastWatched">Recently Active</option>
                                     <option value="staleFirst">Stale First</option>
@@ -425,7 +425,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                     <option value="leastEpisodesLeft">Least Left</option>
                                     <option value="mostEpisodesLeft">Most Left</option>
                                 </select>
-                                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+                                <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80 pointer-events-none" />
                             </div>
                             <button 
                                 onClick={handleRefresh} 
