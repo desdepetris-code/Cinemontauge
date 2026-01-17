@@ -194,7 +194,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 <SettingsRow title="Always Expand Filters" subtitle="When enabled, filters are visible immediately. When disabled, you must click the filter icon." disabled={!preferences.searchShowFilters}>
                     <ToggleSwitch enabled={preferences.searchAlwaysExpandFilters} onChange={() => handleTogglePreference('searchAlwaysExpandFilters')} />
                 </SettingsRow>
-                <SettingsRow title="Search Result Series Info" subtitle="Choose how seasons and episode details appear on results.">
+                <SettingsRow title="Search Result Series Info" subtitle="Choose how seasons and episode details appear on search results.">
                     <div className="relative">
                         <select 
                             value={preferences.searchShowSeriesInfo} 

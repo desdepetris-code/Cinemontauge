@@ -20,6 +20,7 @@ interface SearchScreenProps {
   onQueryChange: (query: string) => void;
   onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
+  onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   genres: Record<number, string>;
