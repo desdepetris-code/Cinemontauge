@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LiveWatchMediaInfo, TrackedItem, TmdbMedia } from '../types';
 import LiveWatchControls from './LiveWatchControls';
-import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon } from './Icons';
+import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon, TrashIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatTime } from '../utils/formatUtils';
 
@@ -19,6 +19,7 @@ interface ResizableState {
 interface LiveWatchTrackerProps {
   isOpen: boolean;
   onClose: () => void;
+  onDiscard: () => void;
   mediaInfo: LiveWatchMediaInfo | null;
   elapsedSeconds: number;
   isPaused: boolean;
@@ -30,7 +31,7 @@ interface LiveWatchTrackerProps {
 }
 
 const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
-  const { isOpen, onClose, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
+  const { isOpen, onClose, onDiscard, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
 
   const [position, setPosition] = useState({ x: window.innerWidth - 450 - 20, y: 100 });
   const [size, setSize] = useState({ width: 450, height: 320 });
@@ -128,10 +129,13 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
             <p className="text-xs text-text-secondary">{formatTime(elapsedSeconds)} / {formatTime(mediaInfo.runtime * 60)}</p>
           </div>
           <div className="flex items-center">
-            <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-2 rounded-full hover:bg-bg-secondary">
+            <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-2 rounded-full hover:bg-white/10">
               {isPaused ? <PlayIcon className="w-5 h-5"/> : <PauseIcon className="w-5 h-5"/>}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-2 rounded-full hover:bg-bg-secondary">
+             <button onClick={(e) => { e.stopPropagation(); onDiscard(); }} className="p-2 rounded-full text-red-400 hover:bg-red-500/20" title="Discard session">
+              <TrashIcon className="w-5 h-5"/>
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-2 rounded-full hover:bg-white/10" title="Stop & Save">
               <XMarkIcon className="w-5 h-5"/>
             </button>
           </div>
@@ -167,6 +171,7 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
               isPaused={isPaused}
               onTogglePause={onTogglePause}
               onStop={onClose}
+              onDiscard={onDiscard}
               isDashboardWidget={false}
               onMinimize={onToggleMinimize}
               onMarkWatched={() => onMarkWatched(mediaInfo)}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StarIcon, XMarkIcon } from './Icons';
+import { StarIcon, XMarkIcon, TrashIcon } from './Icons';
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -49,6 +49,11 @@ const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSave, curr
     onClose();
   };
 
+  const handleRemove = () => {
+      onSave(0);
+      onClose();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[110] p-4" onClick={onClose}>
       <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
@@ -62,8 +67,17 @@ const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSave, curr
         
         <div className="py-4">
             <StarRating rating={rating} onRatingChange={setRating} />
-            <div className="text-center mt-6">
+            <div className="text-center mt-6 flex flex-col items-center">
                 <span className="text-4xl font-black text-primary-accent italic">{rating || '—'}<span className="text-sm opacity-40 not-italic ml-1">/ 10</span></span>
+                {currentRating > 0 && (
+                    <button 
+                        onClick={handleRemove}
+                        className="mt-4 flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                        <TrashIcon className="w-4 h-4" />
+                        Remove My Rating
+                    </button>
+                )}
             </div>
         </div>
 

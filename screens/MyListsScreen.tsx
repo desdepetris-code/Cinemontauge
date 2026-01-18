@@ -71,13 +71,13 @@ const ListWithFilters: React.FC<ListWithFiltersProps> = ({ list, onSelectShow, o
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState<'all' | 'tv' | 'movie'>('all');
     const [genreFilter, setGenreFilter] = useState<string>('');
-    const [showFilters, setShowFilters] = useState(preferences.searchAlwaysExpandFilters);
+    const [showFilters, setShowFilters] = useState(preferences?.searchAlwaysExpandFilters || false);
 
     useEffect(() => {
-        if (preferences.searchAlwaysExpandFilters) {
+        if (preferences?.searchAlwaysExpandFilters) {
             setShowFilters(true);
         }
-    }, [preferences.searchAlwaysExpandFilters]);
+    }, [preferences?.searchAlwaysExpandFilters]);
 
     const filteredItems = useMemo(() => {
         return list.items.filter(item => {
@@ -122,7 +122,7 @@ const ListWithFilters: React.FC<ListWithFiltersProps> = ({ list, onSelectShow, o
                     />
                     <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
                 </div>
-                {!preferences.searchAlwaysExpandFilters && (
+                {preferences && !preferences.searchAlwaysExpandFilters && (
                     <button 
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-xl transition-all ${showFilters ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-text-secondary hover:text-text-primary border border-white/5'}`}
@@ -133,7 +133,7 @@ const ListWithFilters: React.FC<ListWithFiltersProps> = ({ list, onSelectShow, o
                 )}
             </div>
 
-            {(showFilters || preferences.searchAlwaysExpandFilters) && (
+            {(showFilters || preferences?.searchAlwaysExpandFilters) && (
                 <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-bg-primary/40 rounded-2xl border border-white/5 animate-fade-in">
                     <div className="relative">
                         <select 

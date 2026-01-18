@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo, EpisodeProgress } from '../types';
+import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo, EpisodeProgress, AppPreferences } from '../types';
 import { getMediaDetails, getSeasonDetails, clearMediaCache } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon, FilmIcon, ListBulletIcon, SparklesIcon, CheckCircleIcon } from '../components/Icons';
+import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon, FilmIcon, ListBulletIcon, Squares2X2Icon, CheckCircleIcon, SparklesIcon, EyeSlashIcon } from '../components/Icons';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ProgressCard, { EnrichedShowData } from '../components/ProgressCard';
 import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovieCard';
@@ -19,9 +19,12 @@ const EpisodeProgressCard: React.FC<{
     show: EnrichedShowData; 
     onSelect: () => void;
     onToggleWatched: (e: React.MouseEvent) => void;
-}> = ({ show, onSelect, onToggleWatched }) => {
+    preferences: AppPreferences;
+}> = ({ show, onSelect, onToggleWatched, preferences }) => {
     const ep = show.nextEpisodeInfo;
     if (!ep) return null;
+
+    const needsSpoilerShield = preferences.enableSpoilerShield && ep.air_date;
     
     return (
         <div 
@@ -29,11 +32,18 @@ const EpisodeProgressCard: React.FC<{
             className="group flex gap-4 p-3 bg-bg-secondary/30 rounded-2xl border border-white/5 hover:border-primary-accent/30 transition-all cursor-pointer shadow-lg overflow-hidden relative"
         >
             <div className="w-32 h-20 flex-shrink-0 relative rounded-xl overflow-hidden shadow-md">
-                <img 
-                    src={getImageUrl(ep.still_path || show.poster_path, 'w300', ep.still_path ? 'still' : 'poster')} 
-                    alt="" 
-                    className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
-                />
+                <div className={needsSpoilerShield ? 'blur-md brightness-50' : ''}>
+                    <img 
+                        src={getImageUrl(ep.still_path || show.poster_path, 'w300', ep.still_path ? 'still' : 'poster')} 
+                        alt="" 
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                    />
+                </div>
+                {needsSpoilerShield && (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/50 group-hover:text-white transition-colors">
+                        <EyeSlashIcon className="w-6 h-6 drop-shadow-lg" />
+                    </div>
+                )}
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
             </div>
             <div className="flex-grow min-w-0 flex flex-col justify-center">
@@ -137,10 +147,11 @@ interface ProgressScreenProps {
   onAuthClick: () => void;
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
+  preferences: AppPreferences;
 }
 
 const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
-    const { userData, favoriteEpisodes, currentUser, onAuthClick, pausedLiveSessions, onStartLiveWatch } = props;
+    const { userData, favoriteEpisodes, currentUser, onAuthClick, pausedLiveSessions, onStartLiveWatch, preferences } = props;
     const { watching, onHold, watchProgress, history } = userData;
     
     const [sortOption, setSortOption] = useState<SortOption>('lastWatched');
@@ -395,7 +406,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             <section className="space-y-6">
                 <div className="flex flex-col space-y-6">
                     <div className="flex flex-wrap items-center gap-2">
-                        <FilterButton label="All" active={typeFilter === 'all'} onClick={() => setTypeFilter('all'} icon={<ListBulletIcon className="w-4 h-4"/>} />
+                        <FilterButton label="All" active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} icon={<ListBulletIcon className="w-4 h-4"/>} />
                         <FilterButton label="Shows" active={typeFilter === 'tv'} onClick={() => setTypeFilter('tv')} icon={<TvIcon className="w-4 h-4"/>} />
                         <FilterButton label="Movies" active={typeFilter === 'movie'} onClick={() => setTypeFilter('movie')} icon={<FilmIcon className="w-4 h-4"/>} />
                         <FilterButton label="Episodes" active={typeFilter === 'episode'} onClick={() => setTypeFilter('episode')} icon={<PlayIcon className="w-4 h-4"/>} />
@@ -461,6 +472,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                                     props.onToggleEpisode(show.id, show.nextEpisodeInfo.season_number, show.nextEpisodeInfo.episode_number, 0, show, show.nextEpisodeInfo.name);
                                                 }
                                             }}
+                                            preferences={preferences}
                                         />
                                     </div>
                                 );

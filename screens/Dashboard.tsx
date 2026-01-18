@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, ProfileTab, ScreenName, TmdbMedia, WatchStatus, CustomList, CustomListItem, LiveWatchMediaInfo, TrackedItem, HistoryItem, Reminder, ReminderType, ShortcutSettings, AppPreferences } from '../types';
+import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
 import NewSeasons from '../components/NewSeasons';
-import { getUpcomingMovies, discoverMedia } from '../services/tmdbService';
+import { discoverMedia } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
@@ -44,17 +44,16 @@ interface DashboardProps {
   reminders: Reminder[];
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
-  onOpenNominateModal: () => void;
   shortcutSettings: ShortcutSettings;
   preferences: AppPreferences;
+  onRemoveWeeklyPick: (pick: any) => void;
+  onOpenNominateModal: () => void;
 }
 
 const ApiKeyWarning: React.FC = () => (
     <div className="bg-red-500/20 text-red-300 p-4 rounded-lg mx-6 text-center">
         <h3 className="font-bold text-lg">TMDB API Key Missing</h3>
-        <p className="mt-2 text-sm">
-            The content carousels on this page cannot be loaded. Please add your TMDB API key to the `constants.ts` file to enable this feature.
-        </p>
+        <p className="mt-2 text-sm">The content carousels on this page cannot be loaded.</p>
     </div>
 );
 
@@ -62,136 +61,55 @@ interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'on
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
 ({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences }) => {
-    
-    const carouselProps = {
-        onSelectShow: onSelectShow,
-        onOpenAddToListModal: onOpenAddToListModal,
-        onMarkShowAsWatched: onMarkShowAsWatched,
-        onToggleFavoriteShow: onToggleFavoriteShow,
-        favorites: favorites,
-        completed: userData.completed,
-        onUpdateLists: onUpdateLists,
-    };
-    
+    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists };
 
     return (
         <div className="space-y-8">
           {preferences.dashShowUpcoming && (
-            <>
-              <UpcomingPremieresCarousel
-                title="📺 Upcoming TV Premieres"
-                onSelectShow={onSelectShow}
-                completed={userData.completed}
-                reminders={reminders}
-                onToggleReminder={onToggleReminder}
-                onViewMore={() => onShortcutNavigate('calendar')}
-                onUpdateLists={onUpdateLists}
-                onOpenAddToListModal={onOpenAddToListModal}
-              />
-              <UpcomingMoviesCarousel
-                title="🎬 Upcoming Movie Releases"
-                onSelectShow={onSelectShow}
-                completed={userData.completed}
-                reminders={reminders}
-                onToggleReminder={onToggleReminder}
-                onViewMore={() => onShortcutNavigate('calendar')}
-                onUpdateLists={onUpdateLists}
-                onOpenAddToListModal={onOpenAddToListModal}
-              />
-            </>
+            <><UpcomingPremieresCarousel title="📺 Upcoming TV Premieres" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} onViewMore={() => onShortcutNavigate('calendar')} />
+            <UpcomingMoviesCarousel title="🎬 Upcoming Movie Releases" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} onViewMore={() => onShortcutNavigate('calendar')} /></>
           )}
-
           {preferences.dashShowTrending && (
-            <>
-              <NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAs_watched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} onUpdateLists={onUpdateLists} />
-              <NewlyPopularEpisodes onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('allNewlyPopularEpisodes')} />
-              <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} onViewMore={() => onShortcutNavigate('allTrendingTV')} onUpdateLists={onUpdateLists} />
-              <TrendingSection mediaType="movie" title="🔥 Trending Movies" onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} completed={userData.completed} onViewMore={() => onShortcutNavigate('allTrendingMovies')} onUpdateLists={onUpdateLists} />
-            </>
+            <><NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" {...carouselProps} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} />
+            <NewlyPopularEpisodes onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('allNewlyPopularEpisodes')} />
+            <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" {...carouselProps} onViewMore={() => onShortcutNavigate('allTrendingTV')} />
+            <TrendingSection mediaType="movie" title="🔥 Trending Movies" {...carouselProps} onViewMore={() => onShortcutNavigate('allTrendingMovies')} /></>
           )}
-
           {preferences.dashShowRecommendations && (
-            <>
-              <GenericCarousel title="💥 Top Rated Action & Adventure" fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300, genre: '28|12' })} {...carouselProps} onViewMore={() => onShortcutNavigate('allTopRated')} />
-              <GenericCarousel title="🎭 Binge-Worthy TV Dramas" fetcher={() => discoverMedia('tv', { sortBy: 'popularity.desc', genre: 18, vote_count_gte: 100 })} {...carouselProps} onViewMore={() => onShortcutNavigate('allBingeWorthy')} />
-              <GenericCarousel 
-                  title="💎 Hidden Gems"
-                  fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 20, vote_count_lte: 400 })}
-                  {...carouselProps}
-                  onViewMore={() => onShortcutNavigate('allHiddenGems')}
-              />
-              <GenericCarousel title="😂 Top Comedy Shows" fetcher={() => discoverMedia('tv', { genre: 35, sortBy: 'popularity.desc', vote_count_gte: 100 })} {...carouselProps} onViewMore={() => onShortcutNavigate('allTopComedy')} />
-              <GenericCarousel title="🤠 For Western Fans" fetcher={() => discoverMedia('movie', { genre: 37, sortBy: 'popularity.desc' })} {...carouselProps} onViewMore={() => onShortcutNavigate('allWestern')} />
-              <GenericCarousel title="🚀 Sci-Fi Universe" fetcher={async () => {
-                  const [movies, tv] = await Promise.all([
-                      discoverMedia('movie', { genre: 878, sortBy: 'popularity.desc' }),
-                      discoverMedia('tv', { genre: 10765, sortBy: 'popularity.desc' }) // 10765 is Sci-Fi & Fantasy for TV
-                  ]);
-                  return [...movies, ...tv].sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
-              }} {...carouselProps} onViewMore={() => onShortcutNavigate('allSciFi')} />
-            </>
+            <><GenericCarousel title="💥 Top Rated Action & Adventure" fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 300, genre: '28|12' })} {...carouselProps} onViewMore={() => onShortcutNavigate('allTopRated')} />
+            <GenericCarousel title="🎭 Binge-Worthy TV Dramas" fetcher={() => discoverMedia('tv', { sortBy: 'popularity.desc', genre: 18, vote_count_gte: 100 })} {...carouselProps} onViewMore={() => onShortcutNavigate('allBingeWorthy')} />
+            <GenericCarousel title="💎 Hidden Gems" fetcher={() => discoverMedia('movie', { sortBy: 'vote_average.desc', vote_count_gte: 20, vote_count_lte: 400 })} {...carouselProps} onViewMore={() => onShortcutNavigate('allHiddenGems')} />
+            <GenericCarousel title="😂 Top Comedy Shows" fetcher={() => discoverMedia('tv', { genre: 35, sortBy: 'popularity.desc', vote_count_gte: 100 })} {...carouselProps} onViewMore={() => onShortcutNavigate('allTopComedy')} />
+            <GenericCarousel title="🤠 For Western Fans" fetcher={() => discoverMedia('movie', { genre: 37, sortBy: 'popularity.desc' })} {...carouselProps} onViewMore={() => onShortcutNavigate('allWestern')} />
+            <GenericCarousel title="🚀 Sci-Fi Universe" fetcher={async () => { const [movies, tv] = await Promise.all([discoverMedia('movie', { genre: 878, sortBy: 'popularity.desc' }), discoverMedia('tv', { genre: 10765, sortBy: 'popularity.desc' })]); return [...movies, ...tv].sort((a,b) => (b.popularity || 0) - (a.popularity || 0)); }} {...carouselProps} onViewMore={() => onShortcutNavigate('allSciFi')} /></>
           )}
         </div>
     );
 };
 
-
 const Dashboard: React.FC<DashboardProps> = ({
     userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
     liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat,
-    reminders, onToggleReminder, onUpdateLists, onOpenNominateModal, shortcutSettings, preferences
+    reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, onRemoveWeeklyPick, onOpenNominateModal
 }) => {
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
-
   const [backendMovies, setBackendMovies] = useState<TmdbMedia[]>([]);
   const [backendShows, setBackendShows] = useState<TmdbMedia[]>([]);
   const [backendLoading, setBackendLoading] = useState(true);
 
   useEffect(() => {
     const fetchBackendData = async () => {
-        if (isApiKeyMissing) {
-            setBackendLoading(false);
-            return;
-        }
+        if (isApiKeyMissing) { setBackendLoading(false); return; }
         try {
             const { movies, shows } = await getEnrichedMediaFromBackend();
             setBackendMovies(movies);
             setBackendShows(shows);
-        } catch (e) {
-            console.error("Failed to load data from custom backend", e);
-        } finally {
-            setBackendLoading(false);
-        }
+        } catch (e) { console.error(e); } finally { setBackendLoading(false); }
     };
     fetchBackendData();
   }, [isApiKeyMissing]);
   
-  const backendCarouselProps = useMemo(() => ({
-    onSelectShow: onSelectShow,
-    onOpenAddToListModal: onOpenAddToListModal,
-    onMarkShowAsWatched: onMarkShowAsWatched,
-    onToggleFavoriteShow: onToggleFavoriteShow,
-    favorites: favorites,
-    completed: userData.completed,
-    onUpdateLists: onUpdateLists,
-  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData.completed, onUpdateLists]);
-
-  const trackedShowsForNewSeasons = useMemo(() => {
-    const allItems = new Map<number, TrackedItem>();
-    [...userData.watching, ...userData.onHold].forEach(item => {
-        if (item.media_type === 'tv' && !allItems.has(item.id)) {
-            allItems.set(item.id, item);
-        }
-    });
-    userData.customLists.forEach(list => {
-        list.items.forEach(item => {
-            if (item.media_type === 'tv' && !allItems.has(item.id)) {
-                allItems.set(item.id, item as TrackedItem);
-            }
-        });
-    });
-    return Array.from(allItems.values());
-  }, [userData.watching, userData.onHold, userData.customLists]);
+  const carouselProps = useMemo(() => ({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData.completed, onUpdateLists]);
 
   const recommendationSeedItems = useMemo(() => {
     return [...userData.watching].filter(item => {
@@ -200,136 +118,32 @@ const Dashboard: React.FC<DashboardProps> = ({
     });
   }, [userData.watching, userData.watchProgress, userData.onHold]);
 
+  const trackedShowsForNewSeasons = useMemo(() => {
+    const allItems = new Map<number, TrackedItem>();
+    [...userData.watching, ...userData.onHold].forEach(item => { if (item.media_type === 'tv') allItems.set(item.id, item); });
+    userData.customLists.forEach(list => { list.items.forEach(item => { if (item.media_type === 'tv') allItems.set(item.id, item as TrackedItem); }); });
+    return Array.from(allItems.values());
+  }, [userData.watching, userData.onHold, userData.customLists]);
+
   return (
     <div className="animate-fade-in space-y-8">
       <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
       <DateTimeDisplay timezone={timezone} timeFormat={timeFormat} />
-      
-      {shortcutSettings.show && (
-          <ShortcutNavigation 
-            onShortcutNavigate={onShortcutNavigate} 
-            selectedTabs={shortcutSettings.tabs}
-          />
-      )}
-      
+      {shortcutSettings.show && <ShortcutNavigation onShortcutNavigate={onShortcutNavigate} selectedTabs={shortcutSettings.tabs} />}
       {preferences.dashShowStats && <StatsWidget userData={userData} genres={genres} />}
-
-      {backendLoading && (
-        <div className="px-6 mb-8">
-            <div className="h-8 w-1/2 bg-bg-secondary rounded-md mb-4 animate-pulse"></div>
-            <div className="flex space-x-4 overflow-x-hidden">
-                {[...Array(5)].map((_, i) => <div key={i} className="w-72 h-48 bg-bg-secondary rounded-lg flex-shrink-0 animate-pulse"></div>)}
-            </div>
-        </div>
-      )}
-      {!backendLoading && backendMovies.length > 0 && (
-          <GenericCarousel 
-              title="Featured Movies"
-              fetcher={() => Promise.resolve(backendMovies)}
-              {...backendCarouselProps}
-          />
-      )}
-      {!backendLoading && backendShows.length > 0 && (
-          <GenericCarousel 
-              title="Featured TV Shows"
-              fetcher={() => Promise.resolve(backendShows)}
-              {...backendCarouselProps}
-          />
-      )}
-
+      {!backendLoading && backendMovies.length > 0 && <GenericCarousel title="Featured Movies" fetcher={() => Promise.resolve(backendMovies)} {...carouselProps} />}
+      {!backendLoading && backendShows.length > 0 && <GenericCarousel title="Featured TV Shows" fetcher={() => Promise.resolve(backendShows)} {...carouselProps} />}
       {preferences.dashShowLiveWatch && (
           <section className="px-6">
-            {liveWatchMedia ? (
-              <LiveWatchControls
-                mediaInfo={liveWatchMedia}
-                elapsedSeconds={liveWatchElapsedSeconds}
-                isPaused={liveWatchIsPaused}
-                onTogglePause={onLiveWatchTogglePause}
-                onStop={onLiveWatchStop}
-                isDashboardWidget={true}
-              />
-            ) : (
-              <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center">
-                <h3 className="text-xl font-bold text-text-primary">No Live Session Active</h3>
-                <p className="text-text-secondary mt-2">Start a live watch session from any show or movie page to see controls here.</p>
-              </div>
-            )}
+            {liveWatchMedia ? <LiveWatchControls mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={onLiveWatchTogglePause} onStop={onLiveWatchStop} isDashboardWidget={true} /> : <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center"><h3 className="text-xl font-bold text-text-primary">No Live Session Active</h3><p className="text-text-secondary mt-2">Start a session from any page.</p></div>}
           </section>
       )}
-      
-      {preferences.dashShowContinueWatching && (
-          <ContinueWatching
-            watching={userData.watching}
-            onHold={userData.onHold}
-            watchProgress={watchProgress}
-            history={userData.history}
-            onSelectShow={onSelectShow}
-            onToggleEpisode={onToggleEpisode}
-            pausedLiveSessions={pausedLiveSessions}
-          />
-      )}
-
-      {preferences.dashShowUpcoming && !isApiKeyMissing && (
-        trackedShowsForNewSeasons.length > 0 ? (
-            <NewSeasons 
-                title="New Seasons From Your Lists" 
-                onSelectShow={onSelectShow} 
-                trackedShows={trackedShowsForNewSeasons} 
-                watchProgress={userData.watchProgress} 
-                timezone={timezone} 
-            />
-        ) : (
-            <div className="px-6">
-                <h2 className="text-2xl font-bold text-text-primary mb-4">New Seasons From Your Lists</h2>
-                <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center">
-                    <p className="text-text-secondary">This section is personalized! Add TV shows to your "Watching" list or custom lists to see upcoming seasons here.</p>
-                </div>
-            </div>
-        )
-      )}
-
-      {preferences.dashShowRecommendations && !isApiKeyMissing && recommendationSeedItems.length > 0 && (
-        <RelatedRecommendations
-            seedItems={recommendationSeedItems}
-            userData={userData}
-            onSelectShow={onSelectShow}
-            onOpenAddToListModal={onOpenAddToListModal}
-            onMarkShowAsWatched={onMarkShowAsWatched}
-            onToggleFavoriteShow={onToggleFavoriteShow}
-            favorites={favorites}
-            completed={userData.completed}
-        />
-      )}
-
+      {preferences.dashShowContinueWatching && <ContinueWatching watching={userData.watching} onHold={userData.onHold} watchProgress={watchProgress} history={userData.history} onSelectShow={onSelectShow} onToggleEpisode={onToggleEpisode} pausedLiveSessions={pausedLiveSessions} />}
+      {preferences.dashShowUpcoming && !isApiKeyMissing && (trackedShowsForNewSeasons.length > 0 ? <NewSeasons title="New Seasons From Your Lists" onSelectShow={onSelectShow} trackedShows={trackedShowsForNewSeasons} watchProgress={userData.watchProgress} timezone={timezone} /> : <div className="px-6"><h2 className="text-2xl font-bold text-text-primary mb-4">New Seasons</h2><div className="bg-card-gradient rounded-lg shadow-md p-6 text-center"><p className="text-text-secondary">Track shows to see upcoming seasons here.</p></div></div>)}
+      {preferences.dashShowRecommendations && !isApiKeyMissing && recommendationSeedItems.length > 0 && <RelatedRecommendations seedItems={recommendationSeedItems} userData={userData} {...carouselProps} />}
       <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} />
-      
-      {!isApiKeyMissing && (
-        <DiscoverContent 
-          onSelectShow={onSelectShow} 
-          onOpenAddToListModal={onOpenAddToListModal} 
-          onMarkShowAsWatched={onMarkShowAsWatched} 
-          onToggleFavoriteShow={onToggleFavoriteShow} 
-          favorites={favorites} 
-          userData={userData} 
-          timezone={timezone} 
-          onShortcutNavigate={onShortcutNavigate}
-          genres={genres}
-          reminders={reminders}
-          onToggleReminder={onToggleReminder}
-          onViewMore={() => onShortcutNavigate('allNewReleases')}
-          onUpdateLists={onUpdateLists}
-          preferences={preferences}
-        />
-      )}
-
-      {!isApiKeyMissing && (
-        <MyListSuggestions
-            userData={userData}
-            onSelectShow={onSelectShow}
-            onOpenAddToListModal={onOpenAddToListModal}
-        />
-      )}
-
+      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} />}
+      {!isApiKeyMissing && <MyListSuggestions userData={userData} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} />}
       {isApiKeyMissing && <ApiKeyWarning />}
     </div>
   );

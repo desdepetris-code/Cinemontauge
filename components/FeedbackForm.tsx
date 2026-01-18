@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 interface FeedbackFormProps {
@@ -18,7 +19,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ onFeedbackSubmit }) => {
       alert('Please fill out the Subject and Message fields.');
       return;
     }
-    const mailtoSubject = `SceneIt: ${requestType} - ${subject}`;
+    const mailtoSubject = `CineMontauge: ${requestType} - ${subject}`;
     const mailtoBody = `Name: ${name || 'Not provided'}\nEmail: ${email || 'Not provided'}\n\nMessage:\n${message}`;
     window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(mailtoSubject)}&body=${encodeURIComponent(mailtoBody)}`;
     onFeedbackSubmit();

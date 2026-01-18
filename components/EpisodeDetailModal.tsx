@@ -159,7 +159,6 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
       getImageUrl(showDetails.poster_path, 'w500', 'poster'),
   ];
 
-  // --- SPOILER SHIELD ---
   const showSpoilerOverlay = preferences.enableSpoilerShield && !isWatched && !isFuture && !revealOverview;
 
   return (
@@ -315,11 +314,11 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors ${episodeRating > 0 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-bg-secondary text-text-primary'} ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <StarIcon className="w-5 h-5"/>
-                  <span>{episodeRating > 0 ? `Rated ${episodeRating}/5` : 'Rate'}</span>
+                  <span>{episodeRating > 0 ? `Rated ${episodeRating}/10` : 'Rate'}</span>
               </button>
               <button
                   disabled={isFuture}
-                  onClick={() => { onDiscuss(); onClose(); }}
+                  onClick={onDiscuss}
                   className={`flex-1 min-w-[120px] flex items-center justify-center space-x-2 py-2 px-3 text-sm font-semibold rounded-md border border-primary-accent/20 transition-colors bg-bg-secondary text-text-primary ${isFuture ? 'cursor-not-allowed opacity-50' : 'hover:brightness-125'}`}
               >
                   <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>

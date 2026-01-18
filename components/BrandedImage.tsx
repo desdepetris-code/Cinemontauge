@@ -13,39 +13,39 @@ const BrandedImage: React.FC<BrandedImageProps> = ({ title, status, children }) 
 
     const textToShow = status ? status.replace('Status: ', '').replace('Ongoing: ', '') : '';
     let colorClass = 'text-white';
-    let bgColor = 'bg-black/60';
+    let bgColor = 'bg-black/70';
 
     if (status) {
         if (status.includes('Ended')) {
             bgColor = 'bg-black/90';
             colorClass = 'text-gray-300';
         } else if (status.includes('Canceled')) {
-            bgColor = 'bg-blue-800/90';
+            bgColor = 'bg-blue-900/90';
             colorClass = 'text-blue-200';
         } else if (status.includes('in season')) {
-            bgColor = 'bg-red-700/90';
+            bgColor = 'bg-red-900/90';
             colorClass = 'text-red-100';
         } else if (status.includes('off season') || status.includes('Undetermined')) {
-            bgColor = 'bg-purple-800/90';
+            bgColor = 'bg-purple-900/90';
             colorClass = 'text-purple-200';
         } else if (status.includes('Upcoming')) {
-            bgColor = 'bg-teal-700/90';
+            bgColor = 'bg-teal-900/90';
             colorClass = 'text-teal-100';
         }
     }
     
     return (
-        <>
+        <div className="relative h-full w-full">
             {children}
-            <div className={`absolute top-0 left-0 bottom-0 w-6 ${bgColor} flex items-center justify-center backdrop-blur-sm pointer-events-none`}>
+            <div className={`absolute bottom-0 left-0 right-0 h-5 ${bgColor} flex items-center justify-center backdrop-blur-md pointer-events-none z-10 border-t border-white/5`}>
                 <span 
-                    className={`${colorClass} font-bold text-[10px] uppercase tracking-wider [writing-mode:vertical-rl] [text-orientation:mixed] transform rotate-180 whitespace-nowrap overflow-hidden text-ellipsis px-1`}
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
+                    className={`${colorClass} font-black text-[9px] uppercase tracking-[0.2em] px-2 truncate leading-none text-center`}
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
                 >
                     {textToShow}
                 </span>
             </div>
-        </>
+        </div>
     );
 };
 

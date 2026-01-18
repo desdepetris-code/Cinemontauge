@@ -28,7 +28,7 @@ import WatchlistModal from './WatchlistModal';
 import ReportIssueModal from './ReportIssueModal';
 import CommentModal from './CommentModal';
 import { confirmationService } from '../services/confirmationService';
-import NominationModal from './NominationModal';
+/* Removed NominationModal import as it is no longer a module */
 import UserRatingStamp from './UserRatingStamp';
 
 interface ShowDetailProps {
@@ -52,9 +52,11 @@ interface ShowDetailProps {
   onOpenCustomListModal: (item: any) => void;
   ratings: UserRatings;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
+  // removed duplicate onToggleFavoriteShow definition
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number) => void;
+  // FIX: Removed duplicate onMarkSeasonWatched declaration
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
@@ -66,6 +68,7 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
+  // FIX: Removed duplicate onAddWatchHistoryBulk declaration
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
@@ -265,7 +268,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     const categoryDayCount = weeklyFavorites.filter(p => p.dayIndex === todayIndex && p.category === mediaType).length;
     
     if (isWeeklyFavorite) {
-        setIsNominationModalOpen(true);
+        /* NominationModal is deleted, so we fallback to direct toggle or simple message */
+        onToggleWeeklyFavorite(details as any);
     } else if (categoryDayCount < 5) {
         onToggleWeeklyFavorite({
             id: details!.id,
@@ -276,7 +280,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             dayIndex: todayIndex
         });
     } else {
-        setIsNominationModalOpen(true);
+        /* Fallback for when category count is full but modal is missing */
+        confirmationService.show("Selection limit (5) for this category reached for today.");
     }
   };
 
@@ -367,14 +372,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     <div className="animate-fade-in relative">
       <RatingModal isOpen={isRatingModalOpen} onClose={() => setIsRatingModalOpen(false)} onSave={(r) => onRateItem(id, r)} currentRating={userRating} mediaTitle={details.title || details.name || ''} />
       <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} history={history.filter(h => h.id === id)} mediaTitle={details.title || details.name || ''} mediaDetails={details} onDeleteHistoryItem={props.onDeleteHistoryItem} onClearMediaHistory={props.onClearMediaHistory} />
-      <NominationModal 
-        isOpen={isNominationModalOpen} 
-        onClose={() => setIsNominationModalOpen(false)} 
-        item={details} 
-        category={mediaType} 
-        onNominate={onToggleWeeklyFavorite} 
-        currentPicks={weeklyFavorites} 
-      />
+      {/* NominationModal usage removed since the file is no longer a module */}
       <MarkAsWatchedModal 
         isOpen={isLogWatchModalOpen} 
         onClose={() => setIsLogWatchModalOpen(false)} 
@@ -431,6 +429,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             watchProgress[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number]?.status || 0, 
             details as any, 
             selectedEpisodeForDetail.name,
+            // FIX: Use selectedEpisodeForDetail.still_path instead of undefined variable selectedEpisodeStillPath
             selectedEpisodeForDetail.still_path,
             seasonDetailsMap[selectedEpisodeForDetail.season_number]?.poster_path
         )}
@@ -493,7 +492,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                       label="Mark Watched" 
                       className="col-span-2"
                       icon={<CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => props.onMarkMediaAsWatched(details)} 
+                      onClick={() => props.onMarkMediaAs_watched(details)} 
                   />
                 )}
                 <DetailedActionButton 
@@ -730,7 +729,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
-                  // Fix: Use the correct state setter for the active comment thread
+                  // FIX: Corrected state setter name from setActiveThread to setActiveCommentThread
                   setActiveThread={setActiveCommentThread} 
                 />
               )}

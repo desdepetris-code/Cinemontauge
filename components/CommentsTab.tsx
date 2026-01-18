@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TmdbMediaDetails, Comment, PublicUser, TmdbSeasonDetails } from '../types';
+import { TmdbMediaDetails, Comment, PublicUser, TmdbSeasonDetails, Follows, CommentVisibility } from '../types';
 import CommentThread from './CommentThread';
-import { ChevronDownIcon } from './Icons';
+import { ChevronDownIcon, GlobeAltIcon, UsersIcon, LockClosedIcon } from './Icons';
 
 interface CommentsTabProps {
     details: TmdbMediaDetails;
@@ -10,46 +10,65 @@ interface CommentsTabProps {
     allUsers: PublicUser[];
     seasonDetailsMap: Record<number, TmdbSeasonDetails>;
     onFetchSeasonDetails: (seasonNumber: number) => void;
-    onSaveComment: (commentData: { mediaKey: string; text: string; parentId: string | null; isSpoiler: boolean; }) => void;
+    onSaveComment: (commentData: { mediaKey: string; text: string; parentId: string | null; isSpoiler: boolean; visibility: CommentVisibility; }) => void;
     onToggleLikeComment: (commentId: string) => void;
     onDeleteComment: (commentId: string) => void;
     activeThread: string;
     setActiveThread: (key: string) => void;
+    follows: Follows;
 }
 
 const CommentForm: React.FC<{
-    onSubmit: (text: string, isSpoiler: boolean) => void;
+    onSubmit: (text: string, isSpoiler: boolean, visibility: CommentVisibility) => void;
     buttonText?: string;
     onCancel?: () => void;
 }> = ({ onSubmit, buttonText = "Post Comment", onCancel }) => {
     const [text, setText] = useState('');
     const [isSpoiler, setIsSpoiler] = useState(false);
+    const [visibility, setVisibility] = useState<CommentVisibility>('public');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!text.trim()) return;
-        onSubmit(text, isSpoiler);
+        onSubmit(text, isSpoiler, visibility);
         setText('');
         setIsSpoiler(false);
     };
 
     return (
-        <form onSubmit={handleSubmit} className="bg-bg-secondary/50 p-4 rounded-lg">
+        <form onSubmit={handleSubmit} className="bg-bg-secondary/20 p-6 rounded-2xl border border-white/5 shadow-inner">
             <textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
                 placeholder="Join the discussion..."
-                className="w-full h-24 p-2 bg-bg-primary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                className="w-full h-24 p-3 bg-bg-primary rounded-xl text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent border border-white/10"
                 required
             />
-            <div className="flex justify-between items-center mt-2">
-                <label className="flex items-center text-sm text-text-secondary cursor-pointer">
-                    <input type="checkbox" checked={isSpoiler} onChange={e => setIsSpoiler(e.target.checked)} className="h-4 w-4 rounded border-bg-secondary text-primary-accent focus:ring-primary-accent" />
-                    <span className="ml-2">Mark as spoiler</span>
-                </label>
-                <div className="space-x-2">
-                    {onCancel && <button type="button" onClick={onCancel} className="px-4 py-2 text-sm rounded-md text-text-primary hover:bg-bg-secondary">Cancel</button>}
-                    <button type="submit" className="px-4 py-2 text-sm font-semibold rounded-md bg-accent-gradient text-on-accent hover:opacity-90">{buttonText}</button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                    <label className="flex items-center text-xs text-text-secondary cursor-pointer font-bold uppercase tracking-widest">
+                        <input type="checkbox" checked={isSpoiler} onChange={e => setIsSpoiler(e.target.checked)} className="h-4 w-4 rounded border-bg-secondary text-primary-accent focus:ring-primary-accent" />
+                        <span className="ml-2">Spoiler</span>
+                    </label>
+                    <div className="flex items-center gap-2 bg-bg-primary p-1 rounded-lg border border-white/5">
+                        {(['public', 'followers', 'private'] as const).map(v => (
+                            <button
+                                key={v}
+                                type="button"
+                                onClick={() => setVisibility(v)}
+                                className={`p-1.5 rounded transition-all ${visibility === v ? 'bg-primary-accent text-on-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                                title={v.charAt(0).toUpperCase() + v.slice(1)}
+                            >
+                                {v === 'public' && <GlobeAltIcon className="w-4 h-4" />}
+                                {v === 'followers' && <UsersIcon className="w-4 h-4" />}
+                                {v === 'private' && <LockClosedIcon className="w-4 h-4" />}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="space-x-2 w-full sm:w-auto flex justify-end">
+                    {onCancel && <button type="button" onClick={onCancel} className="px-4 py-2 text-xs font-black uppercase rounded-xl text-text-primary hover:bg-bg-secondary">Cancel</button>}
+                    <button type="submit" className="px-6 py-2 text-xs font-black uppercase rounded-xl bg-accent-gradient text-on-accent hover:opacity-90 shadow-lg">{buttonText}</button>
                 </div>
             </div>
         </form>
@@ -58,12 +77,38 @@ const CommentForm: React.FC<{
 
 
 const CommentsTab: React.FC<CommentsTabProps> = (props) => {
-    const { details, onFetchSeasonDetails, seasonDetailsMap, activeThread, setActiveThread, currentUser } = props;
+    const { details, onFetchSeasonDetails, seasonDetailsMap, activeThread, setActiveThread, currentUser, follows } = props;
     const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'most_liked'>('newest');
 
-    const handlePostComment = (text: string, isSpoiler: boolean) => {
+    const filteredComments = useMemo(() => {
+        const viewerId = currentUser?.id || 'guest';
+        const myFollowing = follows[viewerId] || [];
+
+        return props.comments.filter(comment => {
+            const authorId = comment.user.id;
+            
+            // Rules:
+            // 1. Author can always see their own comment
+            if (authorId === viewerId) return true;
+            
+            // 2. Private comments are ONLY for the author
+            if (comment.visibility === 'private') return false;
+            
+            // 3. Public comments are for everyone
+            if (comment.visibility === 'public') return true;
+            
+            // 4. Followers only: viewer must follow author
+            if (comment.visibility === 'followers') {
+                return myFollowing.includes(authorId);
+            }
+
+            return false;
+        });
+    }, [props.comments, currentUser, follows]);
+
+    const handlePostComment = (text: string, isSpoiler: boolean, visibility: CommentVisibility) => {
         const mediaKey = activeThread === 'general' ? `${details.media_type}-${details.id}` : activeThread;
-        props.onSaveComment({ mediaKey, text, parentId: null, isSpoiler });
+        props.onSaveComment({ mediaKey, text, parentId: null, isSpoiler, visibility });
     };
 
     const threadOptions = useMemo(() => {
@@ -159,7 +204,7 @@ const CommentsTab: React.FC<CommentsTabProps> = (props) => {
             )}
             
             <CommentThread
-                allComments={props.comments}
+                allComments={filteredComments}
                 threadKey={activeThread === 'general' ? `${details.media_type}-${details.id}` : activeThread}
                 sortBy={sortBy}
                 currentUser={currentUser}

@@ -26,7 +26,7 @@ export interface NavSettings {
 export interface AppPreferences {
   searchAlwaysExpandFilters: boolean;
   searchShowFilters: boolean;
-  searchShowSeriesInfo: 'expanded' | 'toggle' | 'hidden'; // Updated for 3-way control
+  searchShowSeriesInfo: 'expanded' | 'toggle' | 'hidden'; 
   dashShowStats: boolean;
   dashShowLiveWatch: boolean;
   dashShowContinueWatching: boolean;
@@ -40,9 +40,9 @@ export interface AppPreferences {
 
 export type ScreenName = 'home' | 'search' | 'calendar' | 'progress' | 'profile' | 'allNewReleases' | 'allTrendingTV' | 'allTrendingMovies' | 'allTopRated' | 'allBingeWorthy' | 'allHiddenGems' | 'allTopComedy' | 'allWestern' | 'allSciFi' | 'allNewlyPopularEpisodes';
 
-export type ProfileTab = 'overview' | 'progress' | 'history' | 'weeklyPicks' | 'library' | 'lists' | 'activity' | 'stats' | 'seasonLog' | 'journal' | 'achievements' | 'imports' | 'settings' | 'updates';
+export type ProfileTab = 'overview' | 'progress' | 'history' | 'library' | 'lists' | 'activity' | 'stats' | 'seasonLog' | 'journal' | 'achievements' | 'imports' | 'settings' | 'updates' | 'weeklyPicks';
 
-export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'favorites';
+export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'favorites' | 'allCaughtUp';
 
 export interface TrackedItem {
   id: number;
@@ -50,11 +50,6 @@ export interface TrackedItem {
   media_type: 'tv' | 'movie' | 'person';
   poster_path: string | null;
   genre_ids?: number[];
-}
-
-export interface WeeklyPick extends TrackedItem {
-  category: 'tv' | 'movie' | 'actor' | 'actress';
-  dayIndex: number; // 0: Mon, 1: Tue, 2: Wed, 3: Thu, 4: Fri, 5: Sat, 6: Sun
 }
 
 export interface TmdbMedia {
@@ -206,9 +201,13 @@ export interface HistoryItem extends TrackedItem {
   seasonPosterPath?: string | null;
 }
 
+export interface DeletedHistoryItem extends HistoryItem {
+  deletedAt: string;
+}
+
 export interface SearchHistoryItem {
   query?: string;
-  item?: TrackedItem; // Fixed: Added to support item-based search history
+  item?: TrackedItem; 
   timestamp: string;
 }
 
@@ -272,6 +271,8 @@ export interface FavoriteEpisodes {
   };
 }
 
+export type CommentVisibility = 'public' | 'private' | 'followers';
+
 export interface Comment {
   id: string;
   mediaKey: string; // e.g., 'movie-123' or 'tv-123-s1-e1'
@@ -285,6 +286,7 @@ export interface Comment {
   parentId: string | null;
   likes: string[]; // User IDs
   isSpoiler: boolean;
+  visibility: CommentVisibility;
 }
 
 export interface PublicUser {
@@ -357,11 +359,11 @@ export interface UserData {
   completed: TrackedItem[];
   onHold: TrackedItem[];
   dropped: TrackedItem[];
+  allCaughtUp: TrackedItem[];
   favorites: TrackedItem[];
-  weeklyFavorites: WeeklyPick[];
-  weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
   watchProgress: WatchProgress;
   history: HistoryItem[];
+  deletedHistory: DeletedHistoryItem[];
   customLists: CustomList[];
   ratings: UserRatings;
   episodeRatings: EpisodeRatings;
@@ -371,6 +373,13 @@ export interface UserData {
   comments: Comment[];
   mediaNotes: Record<number, Note[]>;
   episodeNotes: Record<number, Record<number, Record<number, string>>>;
+  weeklyFavorites: WeeklyPick[];
+  weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
+}
+
+export interface WeeklyPick extends TrackedItem {
+  category: 'tv' | 'movie' | 'actor' | 'actress';
+  dayIndex: number;
 }
 
 export interface CalculatedStats {

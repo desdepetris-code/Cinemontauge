@@ -1,6 +1,6 @@
 import React from 'react';
 import { LiveWatchMediaInfo } from '../types';
-import { PlayIcon, PauseIcon, StopIcon, ChevronDownIcon, XMarkIcon, CheckCircleIcon, PlusIcon } from './Icons';
+import { PlayIcon, PauseIcon, StopIcon, ChevronDownIcon, XMarkIcon, CheckCircleIcon, PlusIcon, TrashIcon } from './Icons';
 import { formatTime } from '../utils/formatUtils';
 
 interface LiveWatchControlsProps {
@@ -9,6 +9,7 @@ interface LiveWatchControlsProps {
   isPaused: boolean;
   onTogglePause: () => void;
   onStop: () => void;
+  onDiscard?: () => void;
   isDashboardWidget?: boolean; 
   onMinimize?: () => void;
   onMarkWatched?: () => void;
@@ -16,7 +17,7 @@ interface LiveWatchControlsProps {
 }
 
 const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
-  const { mediaInfo, elapsedSeconds, isPaused, onTogglePause, onStop, isDashboardWidget, onMinimize, onMarkWatched, onAddToList } = props;
+  const { mediaInfo, elapsedSeconds, isPaused, onTogglePause, onStop, onDiscard, isDashboardWidget, onMinimize, onMarkWatched, onAddToList } = props;
   const runtimeInSeconds = mediaInfo.runtime * 60;
   const progress = runtimeInSeconds > 0 ? Math.min((elapsedSeconds / runtimeInSeconds) * 100, 100) : 0;
 
@@ -37,8 +38,8 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
                  <button 
                     onClick={onStop}
                     className="p-2 bg-backdrop/50 rounded-full text-text-primary hover:bg-bg-secondary transition-colors"
-                    aria-label="Close player"
-                    title="Close"
+                    aria-label="Stop player and save progress"
+                    title="Stop & Save"
                 >
                     <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -68,12 +69,17 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
         </div>
 
         <div className="flex justify-center items-center space-x-4">
+            {onDiscard && (
+                <button onClick={onDiscard} className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-all" title="Discard Session">
+                    <TrashIcon className="w-6 h-6" />
+                </button>
+            )}
             {onMarkWatched && 
                 <button onClick={onMarkWatched} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all" title="Mark as Watched">
                     <CheckCircleIcon className="w-6 h-6"/>
                 </button>
             }
-             <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-white rounded-full">
+             <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-white rounded-full transition-transform active:scale-95 shadow-lg">
                 {isPaused ? <PlayIcon className="w-8 h-8"/> : <PauseIcon className="w-8 h-8"/>}
             </button>
             {onAddToList &&

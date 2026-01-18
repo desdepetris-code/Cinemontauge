@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated, discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import Recommendations from './Recommendations';
@@ -16,6 +16,8 @@ interface SearchScreenProps {
   onSelectUser: (userId: string) => void;
   searchHistory: SearchHistoryItem[];
   onUpdateSearchHistory: (queryOrItem: string | TrackedItem) => void;
+  onDeleteSearchHistoryItem: (timestamp: string) => void;
+  onClearSearchHistory: () => void;
   query: string;
   onQueryChange: (query: string) => void;
   onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
@@ -32,7 +34,7 @@ interface SearchScreenProps {
   preferences: AppPreferences;
 }
 
-const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' | 'onUpdateSearchHistory' | 'searchHistory'>> = (props) => {
+const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' | 'onUpdateSearchHistory'>> = (props) => {
     const latestWatchedItem = useMemo(() => {
         return [...props.userData.history]
           .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -41,6 +43,60 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
     
     return (
         <div className="space-y-12 animate-fade-in">
+            {props.searchHistory.length > 0 && (
+                <section>
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <ClockIcon className="w-6 h-6 text-primary-accent" />
+                            <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Recent Searches</h2>
+                        </div>
+                        <button 
+                            onClick={props.onClearSearchHistory}
+                            className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                    <Carousel>
+                        <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar">
+                            {props.searchHistory.map((h) => (
+                                <div key={h.timestamp} className="relative group/h flex-shrink-0 w-48">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
+                                        className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover/h:opacity-100 transition-opacity shadow-lg"
+                                    >
+                                        <XMarkIcon className="w-3 h-3" />
+                                    </button>
+                                    {h.item ? (
+                                        <div className="w-full">
+                                            <ActionCard 
+                                                item={h.item as any} 
+                                                onSelect={() => props.onSelectShow(h.item!.id, h.item!.media_type as any)} 
+                                                onOpenAddToListModal={() => {}} 
+                                                onMarkShowAsWatched={() => {}} 
+                                                onToggleFavoriteShow={() => {}} 
+                                                isFavorite={false} 
+                                                isCompleted={false} 
+                                                showRatings={false} 
+                                                showSeriesInfo="hidden" 
+                                            />
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={() => props.onQueryChange(h.query!)}
+                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all"
+                                        >
+                                            <p className="text-xs font-black text-text-primary uppercase tracking-tight line-clamp-2">"{h.query}"</p>
+                                            <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <div className="w-4 flex-shrink-0"></div>
+                        </div>
+                    </Carousel>
+                </section>
+            )}
             <section>
                 <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest mb-6">Top Picks For You</h2>
                 <Recommendations {...props} />
@@ -64,14 +120,12 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Initialize filter visibility based on preference
   const [showFiltersToggle, setShowFiltersToggle] = useState(preferences.searchAlwaysExpandFilters);
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'tv' | 'movie'>('all');
   const [genreFilter, setGenreFilter] = useState<string>('');
   const [yearFilter, setYearFilter] = useState<string>('');
   const [sortFilter, setSortFilter] = useState<string>('popularity.desc');
 
-  // Sync state if preference changes in settings
   useEffect(() => {
     if (preferences.searchAlwaysExpandFilters) {
         setShowFiltersToggle(true);
@@ -86,7 +140,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         setCommunityListResults([]);
         setUserResults([]);
         setGenreResults([]);
-        // Don't reset if preference says stay open
         if (!preferences.searchAlwaysExpandFilters) setShowFiltersToggle(false);
         return;
     }
@@ -100,8 +153,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         setMyListResults(userData.customLists.filter(list => list.name.toLowerCase().includes(lowerCaseQuery)));
         setCommunityListResults(searchPublicLists(query, currentUser?.id || null));
         setUserResults(searchUsers(query, currentUser?.id || null));
-        const genreArray = Object.entries(genres).map(([id, name]) => ({id: Number(id), name}));
-        setGenreResults(genreArray.filter(g => String(g.name).toLowerCase().includes(lowerCaseQuery)));
+        const genreArray = Object.entries(genres).map(([id, name]) => ({id: Number(id), name: name as string}));
+        setGenreResults(genreArray.filter(g => g.name.toLowerCase().includes(lowerCaseQuery)));
 
         try {
             const [mediaData, peopleData] = await Promise.all([mediaPromise, peoplePromise]);
@@ -137,8 +190,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
   const renderSearchResults = () => {
     if (loading && mediaResults.length === 0) return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4 animate-pulse">
-            {[...Array(14)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div></div>)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 animate-pulse">
+            {[...Array(12)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-2xl"></div></div>)}
         </div>
     );
     if (error) return <div className="text-center p-8 text-red-500 font-bold">{error}</div>;
@@ -151,69 +204,68 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                         {!preferences.searchAlwaysExpandFilters && (
                             <button 
                                 onClick={() => setShowFiltersToggle(!showFiltersToggle)}
-                                className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5'}`}
+                                className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
                             >
-                                <FilterIcon className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Filters</span>
+                                <FilterIcon className="w-5 h-5" />
+                                <span className="text-xs font-black uppercase tracking-widest">Filters</span>
                             </button>
                         )}
                     </div>
                 )}
 
                 {(showFiltersToggle || preferences.searchAlwaysExpandFilters) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-bg-secondary/20 rounded-3xl border border-white/5 animate-fade-in shadow-inner">
                         <div className="relative">
                             <select 
                                 value={mediaTypeFilter}
                                 onChange={e => setMediaTypeFilter(e.target.value as any)}
-                                className="w-full appearance-none bg-bg-primary border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black uppercase text-text-primary focus:outline-none"
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
                             >
                                 <option value="all">All Media</option>
                                 <option value="movie">Movies Only</option>
                                 <option value="tv">TV Shows Only</option>
                             </select>
-                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
                         </div>
                         <div className="relative">
                             <select 
                                 value={genreFilter}
                                 onChange={e => setGenreFilter(e.target.value)}
-                                className="w-full appearance-none bg-bg-primary border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black uppercase text-text-primary focus:outline-none"
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
                             >
                                 <option value="">All Genres</option>
-                                {/* Fix: Added explicit casting to string for genre name comparison to fix TS error 'localeCompare does not exist on type unknown' */}
-                                {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                                {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name as string}</option>)}
                             </select>
-                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
                         </div>
                         <div className="relative">
                             <input 
                                 type="text"
                                 maxLength={4}
-                                placeholder="Year (e.g. 2024)"
+                                placeholder="Year (e.g. 2025)"
                                 value={yearFilter}
                                 onChange={e => setYearFilter(e.target.value.replace(/\D/g, ''))}
-                                className="w-full bg-bg-primary border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black uppercase text-text-primary focus:outline-none"
+                                className="w-full bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
                             />
                         </div>
                         <div className="relative">
                             <select 
                                 value={sortFilter}
                                 onChange={e => setSortFilter(e.target.value)}
-                                className="w-full appearance-none bg-bg-primary border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black uppercase text-text-primary focus:outline-none"
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
                             >
                                 <option value="popularity.desc">Most Popular</option>
                                 <option value="release_date.desc">Newest First</option>
                                 <option value="vote_average.desc">Highest Rated</option>
                                 <option value="alphabetical.asc">A to Z</option>
                             </select>
-                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
                         </div>
                     </div>
                 )}
 
                 {filteredAndSortedMedia.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-4 animate-fade-in">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8 animate-fade-in pb-10">
                         {filteredAndSortedMedia.map(item => (
                             <ActionCard 
                                 key={item.id} 
@@ -230,63 +282,70 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             />
                         ))}
                     </div>
-                ) : query.length > 0 ? <p className="text-center py-16 text-text-secondary">No media found.</p> : null}
+                ) : query.length > 0 ? <p className="text-center py-24 text-text-secondary font-bold uppercase tracking-widest opacity-50">No media found matching your criteria.</p> : null}
             </div>
         );
 
         case 'people': return peopleResults.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-fade-in">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-10 animate-fade-in">
                 {peopleResults.map(p => (
                     <div key={p.id} className="text-center group cursor-pointer" onClick={() => onSelectPerson(p.id)}>
-                        <img src={getImageUrl(p.profile_path, 'w185', 'profile')} alt={p.name} className="w-24 h-24 mx-auto rounded-full object-cover shadow-2xl border-2 border-white/5 transition-all group-hover:scale-110" />
-                        <p className="mt-3 text-sm font-black text-text-primary uppercase">{p.name}</p>
+                        <div className="relative inline-block">
+                             <img src={getImageUrl(p.profile_path, 'h632', 'profile')} alt={p.name} className="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full object-cover shadow-2xl border-4 border-white/5 transition-all group-hover:scale-105 group-hover:border-primary-accent" />
+                             <div className="absolute inset-0 rounded-full bg-primary-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                        <p className="mt-4 text-base font-black text-text-primary uppercase tracking-tight group-hover:text-primary-accent transition-colors">{p.name}</p>
                     </div>
                 ))}
             </div>
-        ) : <p className="text-center py-16 text-text-secondary">No people found.</p>;
+        ) : <p className="text-center py-24 text-text-secondary font-bold uppercase tracking-widest opacity-50">No people found.</p>;
         default: return null;
     }
   };
 
   const TabButton: React.FC<{ tabId: SearchTab; label: string; count: number }> = ({ tabId, label, count }) => (
-    <button onClick={() => setActiveTab(tabId)} className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap rounded-full transition-all border ${activeTab === tabId ? 'bg-accent-gradient text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary/60 border-white/5'}`}>
-        {label} ({count})
+    <button onClick={() => setActiveTab(tabId)} className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] whitespace-nowrap rounded-full transition-all border ${activeTab === tabId ? 'bg-accent-gradient text-on-accent border-transparent shadow-xl scale-105' : 'bg-bg-secondary/40 text-text-primary/60 border-white/10 hover:bg-bg-secondary hover:text-text-primary'}`}>
+        {label} <span className="opacity-40 ml-1">({count})</span>
     </button>
   );
 
   return (
-    <div className="px-6 relative min-h-screen pb-40">
-        <header className="mb-6">
-          <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Search</h1>
+    <div className="px-6 relative min-h-screen pb-48">
+        <header className="mb-10">
+          <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Exploration</h1>
+          <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60">Discover your next obsession</p>
         </header>
         {query.length > 0 ? renderSearchResults() : <DiscoverView {...props} />}
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-40">
-            <div className="nav-spectral-bg animate-spectral-flow rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 border border-white/20 backdrop-blur-xl">
-                <div className="absolute inset-0 bg-black/40 rounded-3xl pointer-events-none"></div>
-                <div className="relative z-10 flex flex-col space-y-4">
+        
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-40 group/nav">
+            <div className="nav-spectral-bg animate-spectral-flow rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] p-5 border border-white/20 backdrop-blur-2xl transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)]">
+                <div className="absolute inset-0 bg-black/50 rounded-[2.5rem] pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col space-y-5">
                     {query.length > 0 && (
                         <Carousel>
-                            <div className="flex space-x-2 overflow-x-auto pb-1 hide-scrollbar">
+                            <div className="flex space-x-3 overflow-x-auto pb-1 hide-scrollbar px-2">
                                 <TabButton tabId="media" label="Media" count={filteredAndSortedMedia.length} />
                                 <TabButton tabId="people" label="People" count={peopleResults.length} />
                                 <TabButton tabId="users" label="Users" count={userResults.length} />
                                 <TabButton tabId="myLists" label="My Lists" count={myListResults.length} />
-                                <TabButton tabId="communityLists" label="Public Lists" count={communityListResults.length} />
+                                <TabButton tabId="communityLists" label="Community" count={communityListResults.length} />
                                 <TabButton tabId="genres" label="Genres" count={genreResults.length} />
                             </div>
                         </Carousel>
                     )}
-                    <SearchBar 
-                        onSelectResult={(id, type) => {
-                            const matched = filteredAndSortedMedia.find(m => m.id === id);
-                            if (matched) handleItemSelect(id, type, matched);
-                            else onSelectShow(id, type);
-                        }} 
-                        onMarkShowAsWatched={onMarkShowAsWatched}
-                        value={query}
-                        onChange={onQueryChange}
-                        disableDropdown
-                    />
+                    <div className="px-2">
+                        <SearchBar 
+                            onSelectResult={(id, type) => {
+                                const matched = filteredAndSortedMedia.find(m => m.id === id);
+                                if (matched) handleItemSelect(id, type, matched);
+                                else onSelectShow(id, type);
+                            }} 
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            value={query}
+                            onChange={onQueryChange}
+                            disableDropdown
+                        />
+                    </div>
                 </div>
             </div>
         </div>

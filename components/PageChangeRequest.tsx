@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { QuestionMarkCircleIcon } from './Icons';
 import ReportIssueModal from './ReportIssueModal';
@@ -22,8 +23,8 @@ const PageChangeRequest: React.FC<PageChangeRequestProps> = ({ mediaTitle, media
   const options = ["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Other Error"];
 
   const handleSelect = (option: string) => {
-    const subject = `SceneIt Page Change Request: ${mediaTitle} (ID: ${mediaId})`;
-    const body = `Hi SceneIt team,\n\nI'm reporting an issue with the page for "${mediaTitle}" (ID: ${mediaId}).\n\nIssue Type: ${option}\n\nDetails:\n[Please describe the issue here]\n\nThanks,`;
+    const subject = `CineMontauge Page Change Request: ${mediaTitle} (ID: ${mediaId})`;
+    const body = `Hi CineMontauge team,\n\nI'm reporting an issue with the page for "${mediaTitle}" (ID: ${mediaId}).\n\nIssue Type: ${option}\n\nDetails:\n[Please describe the issue here]\n\nThanks,`;
     window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setIsModalOpen(false);
   };

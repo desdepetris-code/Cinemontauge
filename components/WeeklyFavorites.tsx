@@ -1,17 +1,17 @@
-
 import React, { useMemo } from 'react';
 import { WeeklyPick } from '../types';
 import ShowCard from './ShowCard';
 import Carousel from './Carousel';
-import { TrophyIcon, SparklesIcon, TvIcon, FilmIcon, UserIcon, UsersIcon } from './Icons';
+import { TrophyIcon, SparklesIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, TrashIcon } from './Icons';
 
 interface WeeklyFavoritesProps {
   items: WeeklyPick[];
   onSelectShow: (id: number, media_type: 'tv' | 'movie' | 'person') => void;
   onNominate: () => void;
+  onRemovePick?: (pick: WeeklyPick) => void;
 }
 
-const WeeklyFavorites: React.FC<WeeklyFavoritesProps> = ({ items, onSelectShow, onNominate }) => {
+const WeeklyFavorites: React.FC<WeeklyFavoritesProps> = ({ items, onSelectShow, onNominate, onRemovePick }) => {
   const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   
   const sortedPicks = useMemo(() => {
@@ -59,6 +59,15 @@ const WeeklyFavorites: React.FC<WeeklyFavoritesProps> = ({ items, onSelectShow, 
                             {item.category}
                         </div>
                     </div>
+                    {onRemovePick && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onRemovePick(item); }}
+                            className="absolute -top-2 -right-2 z-40 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-xl hover:bg-red-600 scale-90"
+                            title="Remove nomination"
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                        </button>
+                    )}
                     <ShowCard item={item} onSelect={onSelectShow as any} />
                   </div>
                 ))}

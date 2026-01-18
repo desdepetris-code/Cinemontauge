@@ -37,7 +37,7 @@ interface SeasonAccordionProps {
   onOpenEpisodeRatingModal: (episode: Episode) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
   isCollapsible?: boolean;
-  onDiscussEpisode: (seasonNumber: number, episodeNumber: number) => void;
+  onOpenCommentModal: (episode: Episode) => void;
   comments: Comment[];
   onImageClick: (src: string) => void;
   episodeNotes?: Record<number, Record<number, Record<number, string>>>;
@@ -78,6 +78,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   onMarkPreviousEpisodesWatched,
   onOpenEpisodeDetail,
   onOpenJournal,
+  onOpenCommentModal,
   showDetails,
   showPosterPath,
   favoriteEpisodes,
@@ -90,7 +91,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   onOpenEpisodeRatingModal,
   onAddWatchHistory,
   isCollapsible = true,
-  onDiscussEpisode,
   comments,
   onImageClick,
   episodeNotes = {},
@@ -345,6 +345,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     const isLastEpisode = ep.episode_number === totalEpisodesInSeason;
                     const shouldAnimateWatch = justWatchedEpisodeId === ep.id;
                     const hasNote = !!(episodeNotes[showId]?.[season.season_number]?.[ep.episode_number]);
+                    const episodeMediaKey = `tv-${showId}-s${ep.season_number}-e${ep.episode_number}`;
+                    const existingComment = comments.find(c => c.mediaKey === episodeMediaKey);
 
                     const handleToggleWatched = (e: React.MouseEvent) => {
                         e.stopPropagation();
@@ -389,7 +391,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                         onStartLiveWatch(mediaInfo);
                     };
 
-                    // --- SPOILER SHIELD LOGIC ---
                     const needsSpoilerShield = preferences.enableSpoilerShield && !isWatched && !isFuture && ep.air_date;
 
                     return (
@@ -462,7 +463,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                         <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
                                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                                         </ActionButton>
-                                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onOpenCommentModal(ep); }} isActive={!!existingComment}>
                                             <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
                                         </ActionButton>
                                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>

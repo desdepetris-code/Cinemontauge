@@ -43,9 +43,6 @@ const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, 
     </div>
 );
 
-/**
- * Utility to parse CSV text into ImportPreviewItems.
- */
 const parseCSV = (text: string): ImportPreviewItem[] => {
     const rows = text.split('\n').filter(r => r.trim());
     if (rows.length < 2) return [];
@@ -53,7 +50,6 @@ const parseCSV = (text: string): ImportPreviewItem[] => {
     const headerLine = rows[0].toLowerCase();
     const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
 
-    // Check for specific formats
     if (headerLine.includes('letterboxd uri')) {
         const nameIndex = headers.indexOf('Name');
         const tmdbIdIndex = headers.indexOf('TMDb ID');
@@ -90,7 +86,6 @@ const parseCSV = (text: string): ImportPreviewItem[] => {
         });
     }
 
-    // Generic Fallback
     const titleIdx = headers.findIndex(h => h.includes('title') || h.includes('name'));
     const typeIdx = headers.findIndex(h => h.includes('type') || h.includes('category'));
     const dateIdx = headers.findIndex(h => h.includes('date') || h.includes('watched'));
@@ -142,10 +137,9 @@ const JsonFileImporter: React.FC<{
                 const text = e.target?.result as string;
                 const data = JSON.parse(text);
                 
-                // Basic check for SceneIt format
                 const hasValidFields = data.history || data.customLists || data.watchProgress || data.ratings;
                 if (!hasValidFields) {
-                    throw new Error("JSON structure not recognized. Ensure this is a SceneIt backup or supported export.");
+                    throw new Error("JSON structure not recognized. Ensure this is a CineMontauge backup or supported export.");
                 }
                 
                 setPreviewData(data);
@@ -284,7 +278,6 @@ const GoogleDriveImporter: React.FC<{
     const handleExportToDrive = async () => {
         setIsLoading(true);
         try {
-            // Generate simple History CSV
             const csvRows = [
                 ['Title', 'Type', 'Date Watched', 'Season', 'Episode', 'TMDB ID'].join(','),
                 ...currentHistory.map(h => [
@@ -297,7 +290,7 @@ const GoogleDriveImporter: React.FC<{
                 ].join(','))
             ].join('\n');
 
-            const fileName = `SceneIt_History_Backup_${new Date().toISOString().split('T')[0]}.csv`;
+            const fileName = `CineMontauge_History_Backup_${new Date().toISOString().split('T')[0]}.csv`;
             const success = await googleDriveService.uploadToDrive(fileName, csvRows);
             if (success) {
                 confirmationService.show(`Export successful: ${fileName} saved to your Drive.`);

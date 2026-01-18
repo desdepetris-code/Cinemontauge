@@ -1,7 +1,6 @@
 import React from 'react';
 import { ScreenName, ProfileTab } from '../types';
-// Added FireIcon to imports
-import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, TvIcon, ListBulletIcon, UsersIcon, ChartPieIcon, BookOpenIcon, TrophyIcon, MountainIcon, FireIcon } from './Icons';
+import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, TvIcon, ListBulletIcon, UsersIcon, ChartPieIcon, BookOpenIcon, MountainIcon, FireIcon, CloudArrowUpIcon, TrophyIcon } from './Icons';
 import Carousel from './Carousel';
 
 interface ShortcutNavigationProps {
@@ -14,7 +13,6 @@ const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.Reac
     overview: { label: 'Overview', icon: <ChartPieIcon className="w-5 h-5" /> },
     progress: { label: 'Progress', icon: <MountainIcon className="w-5 h-5" /> },
     history: { label: 'History', icon: <ClockIcon className="w-5 h-5" /> },
-    weeklyPicks: { label: 'Weekly Gems', icon: <TrophyIcon className="w-5 h-5" /> },
     library: { label: 'Library', icon: <CollectionIcon className="w-5 h-5" /> },
     lists: { label: 'Custom Lists', icon: <ListBulletIcon className="w-5 h-5" /> },
     activity: { label: 'Activity', icon: <UsersIcon className="w-5 h-5" /> },
@@ -22,10 +20,10 @@ const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.Reac
     seasonLog: { label: 'Season Log', icon: <TvIcon className="w-5 h-5" /> },
     journal: { label: 'Journal', icon: <BookOpenIcon className="w-5 h-5" /> },
     achievements: { label: 'Achievements', icon: <BadgeIcon className="w-5 h-5" /> },
-    imports: { label: 'Import & Sync', icon: <CogIcon className="w-5 h-5" /> },
+    imports: { label: 'Import & Sync', icon: <CloudArrowUpIcon className="w-5 h-5" /> },
     settings: { label: 'Settings', icon: <CogIcon className="w-5 h-5" /> },
-    // Added missing updates metadata
     updates: { label: 'Updates', icon: <FireIcon className="w-5 h-5" /> },
+    weeklyPicks: { label: 'Weekly Picks', icon: <TrophyIcon className="w-5 h-5" /> },
 };
 
 const ShortcutButton: React.FC<{

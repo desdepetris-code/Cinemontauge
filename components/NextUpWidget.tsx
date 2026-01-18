@@ -14,33 +14,34 @@ interface NextUpWidgetProps {
     nextEpisodeToWatch: { seasonNumber: number; episodeNumber: number } | null;
     onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null) => void;
     onOpenJournal: (season: number, episode: Episode) => void;
+    onOpenCommentModal: (episode: Episode) => void;
     favoriteEpisodes: FavoriteEpisodes;
     onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
     onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
     watchProgress: WatchProgress;
     onSaveJournal: (showId: number, seasonNumber: number, episodeNumber: number, entry: JournalEntry | null) => void;
-    onSaveComment: (mediaKey: string, text: string) => void;
+    onSaveComment: (commentData: any) => void;
     comments: Comment[];
+    onSelectShow?: (id: number, media_type: 'tv' | 'movie' | 'person') => void;
 }
 
 const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void; disabled?: boolean; isActive?: boolean; }> = ({ icon, label, onClick, disabled, isActive }) => (
     <button
         onClick={onClick}
         disabled={disabled}
-        className={`flex flex-col items-center justify-center space-y-1 w-full h-full p-2 rounded-lg border transition-all ${disabled ? 'text-text-secondary/50 cursor-not-allowed bg-bg-secondary/30 border-primary-accent/10' : (isActive ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' : 'bg-bg-secondary border-primary-accent/20 text-text-primary hover:border-primary-accent hover:bg-bg-secondary/70')}`}
+        className={`flex flex-col items-center justify-center space-y-1 w-full h-full p-2 rounded-lg border transition-all ${disabled ? 'text-text-secondary/50 cursor-not-allowed bg-bg-secondary/30 border-primary-accent/10' : (isActive ? 'bg-primary-accent/20 border-primary-accent shadow-lg text-primary-accent' : 'bg-bg-secondary border-primary-accent/20 text-text-primary hover:border-primary-accent hover:bg-bg-secondary/70')}`}
     >
         {icon}
-        <span className="text-xs font-semibold text-center">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-tight text-center">{label}</span>
     </button>
 );
 
 const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
-    const { showId, details, nextEpisodeToWatch, onToggleEpisode, onOpenJournal, favoriteEpisodes, onToggleFavoriteEpisode, onStartLiveWatch, watchProgress, onSaveJournal, onSaveComment, comments } = props;
+    const { showId, details, nextEpisodeToWatch, onToggleEpisode, onOpenJournal, onOpenCommentModal, favoriteEpisodes, onToggleFavoriteEpisode, onStartLiveWatch, watchProgress, onSaveJournal, onSaveComment, comments, onSelectShow } = props;
     
     const [episodeDetails, setEpisodeDetails] = useState<Episode | null>(null);
     const [seasonDetails, setSeasonDetails] = useState<TmdbSeasonDetails | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -103,13 +104,12 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
         );
     }
     
-    if (!episodeDetails) {
-        return null;
-    }
+    if (!episodeDetails) return null;
 
     const epProgress = watchProgress[showId]?.[episodeDetails.season_number]?.[episodeDetails.episode_number];
     const isWatched = epProgress?.status === 2;
     const isFavorited = favoriteEpisodes[showId]?.[episodeDetails.season_number]?.[episodeDetails.episode_number] || false;
+    const hasJournal = !!(epProgress?.journal?.text || epProgress?.journal?.mood);
 
     const episodeMediaKey = `tv-${showId}-s${episodeDetails.season_number}-e${episodeDetails.episode_number}`;
     const existingComment = comments.find(c => c.mediaKey === episodeMediaKey);
@@ -120,7 +120,9 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
     };
     
     const handleOpenJournal = () => onOpenJournal(episodeDetails.season_number, episodeDetails);
+    const handleOpenComment = () => onOpenCommentModal(episodeDetails);
     const handleToggleFavorite = () => onToggleFavoriteEpisode(showId, episodeDetails.season_number, episodeDetails.episode_number);
+    
     const handleLiveWatch = () => {
         const mediaInfo: LiveWatchMediaInfo = {
             id: showId, media_type: 'tv', title: details.name || 'Show',
@@ -132,76 +134,69 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
     };
     
     return (
-        <>
-            <CommentModal
-                isOpen={isCommentModalOpen}
-                onClose={() => setIsCommentModalOpen(false)}
-                mediaTitle={`S${episodeDetails.season_number} E${episodeDetails.episode_number}: ${episodeDetails.name}`}
-                initialText={existingComment?.text}
-                onSave={(text) => onSaveComment(episodeMediaKey, text)}
-            />
-            <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden">
-                <div 
-                    className="h-40 w-full bg-cover bg-center flex items-center justify-center relative"
-                    style={{ backgroundImage: `url(${imageSrcs.backdrop[0]})` }}
-                >
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-                     <FallbackImage
-                        srcs={imageSrcs.still}
-                        placeholder={PLACEHOLDER_STILL}
-                        alt={`Still from ${episodeDetails.name}`}
-                        className="relative h-full w-auto object-contain"
-                    />
-                    {tag && (
-                        <div className={`absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${tag.className}`}>
-                            {tag.text}
-                        </div>
-                    )}
+        <div className="bg-card-gradient rounded-2xl shadow-xl overflow-hidden border border-white/5 group/widget">
+            <div 
+                className="h-44 w-full bg-cover bg-center flex items-center justify-center relative cursor-pointer overflow-hidden"
+                style={{ backgroundImage: `url(${imageSrcs.backdrop[0]})` }}
+                onClick={() => onSelectShow?.(showId, 'tv')}
+            >
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] transition-all group-hover/widget:backdrop-blur-0 group-hover/widget:bg-black/20"></div>
+                    <FallbackImage
+                    srcs={imageSrcs.still}
+                    placeholder={PLACEHOLDER_STILL}
+                    alt={`Still from ${episodeDetails.name}`}
+                    className="relative h-full w-auto object-contain transition-transform duration-700 group-hover/widget:scale-110"
+                />
+                {tag && (
+                    <div className={`absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-md border border-white/10 shadow-lg ${tag.className}`}>
+                        {tag.text}
+                    </div>
+                )}
+            </div>
+            
+            <div className="p-6">
+                <div className="mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-accent mb-1">
+                        S{episodeDetails.season_number} E{episodeDetails.episode_number}
+                    </p>
+                    <h4 className="font-black text-xl text-text-primary uppercase tracking-tighter truncate leading-none">{episodeDetails.name}</h4>
                 </div>
                 
-                <div className="p-4">
-                    <div>
-                        <p className="text-sm font-semibold text-text-secondary">
-                            S{episodeDetails.season_number} E{episodeDetails.episode_number}
-                        </p>
-                        <h4 className="font-bold text-lg text-text-primary truncate">{episodeDetails.name}</h4>
-                    </div>
-                    
-                    <p className="text-xs text-text-secondary line-clamp-2 mt-2">{episodeDetails.overview}</p>
-                    
-                    <div className="grid grid-cols-5 gap-2 mt-4">
-                        <ActionButton 
-                            icon={<CheckCircleIcon className={`w-6 h-6 ${isWatched ? 'text-green-400' : ''}`} />} 
-                            label={isWatched ? "Not Watched" : "Watch"} 
-                            onClick={handleMarkWatched} 
-                            isActive={isWatched}
-                        />
-                        <ActionButton 
-                            icon={<PlayCircleIcon className="w-6 h-6" />} 
-                            label="Live" 
-                            onClick={handleLiveWatch} 
-                        />
-                        <ActionButton 
-                            icon={<BookOpenIcon className="w-6 h-6" />} 
-                            label="Journal" 
-                            onClick={handleOpenJournal} 
-                        />
-                        <ActionButton 
-                            icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />} 
-                            label="Comment" 
-                            onClick={() => setIsCommentModalOpen(true)}
-                            isActive={!!existingComment}
-                        />
-                        <ActionButton 
-                            icon={<StarIcon filled={isFavorited} className={`w-6 h-6 ${isFavorited ? 'text-yellow-400' : ''}`} />} 
-                            label="Favorite" 
-                            onClick={handleToggleFavorite} 
-                            isActive={isFavorited}
-                        />
-                    </div>
+                <p className="text-xs text-text-secondary/70 line-clamp-2 leading-relaxed mb-6 font-medium">{episodeDetails.overview || "No preview available for this episode."}</p>
+                
+                <div className="grid grid-cols-5 gap-3">
+                    <ActionButton 
+                        icon={<CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-400' : ''}`} />} 
+                        label={isWatched ? "Done" : "Watch"} 
+                        onClick={handleMarkWatched} 
+                        isActive={isWatched}
+                    />
+                    <ActionButton 
+                        icon={<PlayCircleIcon className="w-5 h-5" />} 
+                        label="Live" 
+                        onClick={handleLiveWatch} 
+                    />
+                    <ActionButton 
+                        icon={<BookOpenIcon className={`w-5 h-5 ${hasJournal ? 'text-primary-accent' : ''}`} />} 
+                        label="Journal" 
+                        onClick={handleOpenJournal} 
+                        isActive={hasJournal}
+                    />
+                    <ActionButton 
+                        icon={<ChatBubbleOvalLeftEllipsisIcon className={`w-5 h-5 ${existingComment ? 'text-sky-400' : ''}`} />} 
+                        label="Comments" 
+                        onClick={handleOpenComment}
+                        isActive={!!existingComment}
+                    />
+                    <ActionButton 
+                        icon={<StarIcon filled={isFavorited} className={`w-5 h-5 ${isFavorited ? 'text-yellow-400' : ''}`} />} 
+                        label="Fav" 
+                        onClick={handleToggleFavorite} 
+                        isActive={isFavorited}
+                    />
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

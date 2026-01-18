@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HomeIcon, SearchNavIcon, BookOpenIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, ListBulletIcon, UsersIcon, ChartPieIcon, TvIcon, BadgeIcon, MountainIcon, FireIcon } from '../components/Icons';
 import { NavSettings, ProfileTab } from '../types';
@@ -18,7 +17,6 @@ const iconMetadata: Record<string, { label: string; icon: React.FC<React.SVGProp
   profile: { label: 'Profile', icon: UserIcon },
   progress: { label: 'Progress', icon: MountainIcon },
   history: { label: 'History', icon: ClockIcon },
-  weeklyPicks: { label: 'Gems', icon: TrophyIcon },
   library: { label: 'Library', icon: CollectionIcon },
   lists: { label: 'Lists', icon: ListBulletIcon },
   activity: { label: 'Activity', icon: UsersIcon },

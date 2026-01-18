@@ -26,6 +26,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelec
   const tabs: { id: WatchStatus, label: string }[] = [
     { id: 'watching', label: 'Watching' },
     { id: 'planToWatch', label: 'Plan to Watch' },
+    { id: 'allCaughtUp', label: 'All Caught Up' },
     { id: 'completed', label: 'Completed' },
     { id: 'onHold', label: 'On Hold' },
     { id: 'dropped', label: 'Dropped' },
