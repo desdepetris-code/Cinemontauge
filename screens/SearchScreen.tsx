@@ -4,7 +4,6 @@ import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, Custom
 import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
-import Recommendations from './Recommendations';
 import RelatedRecommendations from '../components/RelatedRecommendations';
 import ActionCard from '../components/ActionCard';
 import { getImageUrl } from '../utils/imageUtils';
@@ -102,10 +101,6 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                     </Carousel>
                 </section>
             )}
-            <section>
-                <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest mb-6">Top Picks For You</h2>
-                <Recommendations {...props} />
-            </section>
             {latestWatchedItem && <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} completed={props.userData.completed} />}
         </div>
     );

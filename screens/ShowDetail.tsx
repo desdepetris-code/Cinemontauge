@@ -30,8 +30,7 @@ import CommentModal from '../components/CommentModal';
 import { confirmationService } from '../services/confirmationService';
 import NominationModal from '../components/NominationModal';
 import UserRatingStamp from '../components/UserRatingStamp';
-import { getDominantColor, mixColors } from '../utils/colorUtils';
-import { getAiredEpisodeCount } from '../utils/formatUtils';
+import { getDominantColor } from '../utils/colorUtils';
 
 interface ShowDetailProps {
   id: number;
@@ -196,7 +195,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     { id: 'cast', label: 'Cast and Crew', icon: UsersIcon },
     { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
     { id: 'media', label: 'Gallery', icon: VideoCameraIcon },
-    { id: 'recs', label: 'Recs', icon: SparklesIcon },
+    { id: 'recs', label: 'Discovery', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
     { id: 'achievements', label: 'Badges', icon: BadgeIcon },
   ], [mediaType]);
@@ -438,7 +437,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         onSave={handleLogWatchSave} initialScope={mediaType === 'tv' ? 'show' : 'single'} mediaType={mediaType} showDetails={details}
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="posters" />
-      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
+      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.backdrops || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={(notes) => onSaveMediaNote(id, notes)} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <JournalModal 
         isOpen={isJournalModalOpen} 
@@ -590,8 +589,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 overflow-x-auto hide-scrollbar">
               <div className="flex space-x-8 whitespace-nowrap min-w-max">
                 {tabs.map(tab => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-sm font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
-                    <span className="flex items-center gap-2"><tab.icon className="w-4 h-4" />{tab.label}</span>
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-sm font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
+                    <tab.icon className="w-4 h-4" />{tab.label}
                     {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full"></div>}
                   </button>
                 ))}
@@ -635,6 +634,18 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />
+              )}
+              {activeTab === 'media' && (
+                <div className="space-y-8">
+                   <section>
+                      <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4">Gallery</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                         {details.images?.backdrops?.slice(0, 12).map((img, i) => (
+                            <img key={i} src={getImageUrl(img.file_path, 'w500')} className="rounded-lg shadow-md hover:scale-105 transition-transform cursor-zoom-in" alt="Scene" />
+                         ))}
+                      </div>
+                   </section>
+                </div>
               )}
               {activeTab === 'recs' && <div className="space-y-12">{details.belongs_to_collection && <MovieCollection collectionId={details.belongs_to_collection.id} currentMovieId={id} onSelectMovie={(mid) => onSelectShow(mid, 'movie')} />}<RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} /></div>}
               {activeTab === 'customize' && <div className="space-y-4"><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2><CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} /></div>}
