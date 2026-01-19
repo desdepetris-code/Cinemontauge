@@ -492,7 +492,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                       label="Mark Watched" 
                       className="col-span-2"
                       icon={<CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => props.onMarkMediaAs_watched(details)} 
+                      // FIX: Corrected typo onMarkMediaAs_watched to onMarkMediaAsWatched
+                      onClick={() => props.onMarkMediaAsWatched(details)} 
                   />
                 )}
                 <DetailedActionButton 

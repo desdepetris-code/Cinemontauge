@@ -14,7 +14,9 @@ const ProviderGroup: React.FC<{ title: string; providers?: { provider_name: stri
       <div className="flex flex-wrap gap-4">
         {providers.map(p => (
           <div key={p.provider_name} className="flex items-center space-x-2 bg-bg-secondary p-2 rounded-lg">
-            <img src={getImageUrl(p.logo_path, 'w92')} alt={p.provider_name} className="w-8 h-8 rounded-md object-contain" />
+            <div className="bg-white p-1 rounded-md shadow-sm border border-black/5">
+                <img src={getImageUrl(p.logo_path, 'w92')} alt={p.provider_name} className="w-8 h-8 rounded-sm object-contain" />
+            </div>
             <span className="text-sm text-text-primary">{p.provider_name}</span>
           </div>
         ))}

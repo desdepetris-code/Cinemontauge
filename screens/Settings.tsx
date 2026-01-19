@@ -208,6 +208,9 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                         <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
                     </div>
                 </SettingsRow>
+                <SettingsRow title="Show Recent Searches" subtitle="Toggle the visibility of your recent search history on the search page.">
+                    <ToggleSwitch enabled={preferences.searchShowRecentHistory} onChange={() => handleTogglePreference('searchShowRecentHistory')} />
+                </SettingsRow>
             </div>
             <div className="p-4">
                 <p className="text-xs font-black uppercase tracking-widest text-primary-accent mb-4">Dashboard Widgets</p>

@@ -27,17 +27,18 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
     const [loading, setLoading] = useState(true);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-    // Filter items based on user lists
+    // Filter items based on user lists - now including 'allCaughtUp'
     const relevantTrackedItems = useMemo(() => {
         const excludeIds = new Set([
             ...userData.onHold.map(i => i.id),
-            ...userData.dropped.map(i => i.id)
+            ...userData.dropped.map(i => i.id),
+            ...userData.completed.map(i => i.id) // Only exclude finished shows
         ]);
 
-        const combined = [...userData.watching, ...userData.planToWatch];
+        const combined = [...userData.watching, ...userData.planToWatch, ...userData.allCaughtUp];
         const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
         return unique.filter(item => !excludeIds.has(item.id));
-    }, [userData.watching, userData.planToWatch, userData.onHold, userData.dropped]);
+    }, [userData.watching, userData.planToWatch, userData.onHold, userData.dropped, userData.allCaughtUp, userData.completed]);
 
     const hasNoData = useMemo(() => relevantTrackedItems.length === 0 && reminders.length === 0, [relevantTrackedItems, reminders]);
 

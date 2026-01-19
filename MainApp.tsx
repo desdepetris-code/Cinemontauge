@@ -97,6 +97,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     searchAlwaysExpandFilters: false,
     searchShowFilters: true,
     searchShowSeriesInfo: 'expanded',
+    searchShowRecentHistory: true,
     dashShowStats: true,
     dashShowLiveWatch: true,
     dashShowContinueWatching: true,
@@ -130,6 +131,8 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
+  const [initialLibraryStatus, setInitialLibraryStatus] = useState<WatchStatus | undefined>(undefined);
+
   const [selectedShow, setSelectedShow] = useState<{ id: number; media_type: 'tv' | 'movie' } | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<number | null>(null);
   const [liveWatchMedia, setLiveWatchMedia] = useState<LiveWatchMediaInfo | null>(null);
@@ -403,6 +406,17 @@ export const MainApp: React.FC<MainAppProps> = ({
     setSelectedPerson(null);
     setSelectedUserId(null);
     window.scrollTo(0, 0);
+
+    // Reset initial sub-states
+    setInitialLibraryStatus(undefined);
+
+    if (tabId === 'library-plan-to-watch') {
+        setActiveScreen('profile');
+        setProfileInitialTab('library');
+        setInitialLibraryStatus('planToWatch');
+        return;
+    }
+
     const screenNames: string[] = ['home', 'search', 'calendar', 'progress', 'profile'];
     if (screenNames.includes(tabId)) {
         setActiveScreen(tabId as ScreenName);
@@ -556,23 +570,43 @@ export const MainApp: React.FC<MainAppProps> = ({
     });
   }, [setRatings]);
 
-  const handlePurgeMediaFromRegistry = useCallback((mediaId: number, mediaType?: 'tv' | 'movie') => {
+  const handlePurgeMediaFromRegistry = useCallback((mediaId: number, mediaType: 'tv' | 'movie', deleteLive: boolean = false) => {
     setHistory(prev => {
-        const logsToArchive = prev.filter(h => h.id === mediaId);
+        const logsToArchive = prev.filter(h => {
+            if (h.id !== mediaId) return false;
+            // If deleting live, archive all. 
+            // If not deleting live, only archive non-live logs.
+            if (deleteLive) return true;
+            return !h.logId.startsWith('live-');
+        });
+
         if (logsToArchive.length > 0) {
             setDeletedHistory(dPrev => [...logsToArchive.map(l => ({ ...l, deletedAt: new Date().toISOString() })), ...dPrev]);
         }
-        return prev.filter(h => h.id !== mediaId);
+
+        return prev.filter(h => {
+            if (h.id !== mediaId) return true;
+            if (deleteLive) return false;
+            return h.logId.startsWith('live-');
+        });
     });
-    setWatchProgress(prev => {
-        const next = { ...prev };
-        delete next[mediaId];
-        return next;
-    });
-    // Explicit removal from library
-    const trackedItem = { id: mediaId } as TrackedItem;
-    updateLists(trackedItem, null, null);
-  }, [setHistory, setWatchProgress, setDeletedHistory, updateLists]);
+
+    if (deleteLive) {
+        setWatchProgress(prev => {
+            const next = { ...prev };
+            delete next[mediaId];
+            return next;
+        });
+        setPausedLiveSessions(prev => {
+            const next = { ...prev };
+            delete next[mediaId];
+            return next;
+        });
+    }
+
+    // Explicit check for remaining progress to determine library status
+    setTimeout(() => syncLibraryItem(mediaId, mediaType), 50);
+  }, [setHistory, setWatchProgress, setDeletedHistory, setPausedLiveSessions, syncLibraryItem]);
 
   const handleMarkPreviousEpisodesWatched = useCallback(async (showId: number, seasonNumber: number, lastEpisodeNumber: number) => {
     try {
@@ -698,6 +732,11 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show("Log permanently deleted");
   }, [setDeletedHistory]);
 
+  const handleClearAllDeletedHistory = useCallback(() => {
+    setDeletedHistory([]);
+    confirmationService.show("Trash bin emptied permanently.");
+  }, [setDeletedHistory]);
+
   const handleSaveComment = useCallback((commentData: any) => {
     const newComment: Comment = {
         id: `c-${Date.now()}`,
@@ -714,12 +753,27 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show("Comment posted");
   }, [currentUser, profilePictureUrl, setComments]);
 
-  const handleMarkAllWatched = useCallback((showId: number, showInfo: TrackedItem) => {
-    handleMarkPreviousEpisodesWatched(showId, 999, 9999);
+  const handleMarkAllWatched = useCallback(async (showId: number, showInfo: TrackedItem) => {
+    try {
+        const details = await getMediaDetails(showId, 'tv');
+        if (details.last_episode_to_air) {
+            handleMarkPreviousEpisodesWatched(
+                showId, 
+                details.last_episode_to_air.season_number, 
+                details.last_episode_to_air.episode_number
+            );
+        } else if (details.number_of_episodes && details.number_of_episodes > 0) {
+            // Fallback for shows without explicit 'last aired' coords but with total count
+            handleMarkPreviousEpisodesWatched(showId, 999, 9999);
+        }
+    } catch (e) {
+        console.error(e);
+        confirmationService.show("Failed to identify aired episodes.");
+    }
   }, [handleMarkPreviousEpisodesWatched]);
 
   const handleUnmarkAllWatched = useCallback((showId: number) => {
-    handlePurgeMediaFromRegistry(showId);
+    handlePurgeMediaFromRegistry(showId, 'tv', true);
   }, [handlePurgeMediaFromRegistry]);
 
   const handleTraktImportCompleted = useCallback((data: any) => {
@@ -780,7 +834,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 ratings={ratings}
                 onRateItem={handleRateItem}
                 onMarkMediaAsWatched={handleMarkMovieAsWatched}
-                onUnmarkMovieWatched={(id) => handlePurgeMediaFromRegistry(id, 'movie')}
+                onUnmarkMovieWatched={(id, deleteLive) => handlePurgeMediaFromRegistry(id, 'movie', deleteLive)}
                 onMarkSeasonWatched={(sid, sNum) => handleMarkPreviousEpisodesWatched(sid, sNum, 999)}
                 onUnmarkSeasonWatched={(sid, sNum) => { 
                     setHistory(prev => {
@@ -801,7 +855,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onSelectPerson={(id) => setSelectedPerson(id)}
                 onStartLiveWatch={handleStartLiveWatch}
                 onDeleteHistoryItem={handleDeleteHistoryItem}
-                onClearMediaHistory={(mid, mType) => handlePurgeMediaFromRegistry(mid, mType as any)}
+                onClearMediaHistory={(mid, mType) => handlePurgeMediaFromRegistry(mid, mType as any, true)}
                 episodeRatings={episodeRatings}
                 onRateEpisode={(sid, s, e, r) => setEpisodeRatings(prev => { const next = { ...prev }; if (!next[sid]) next[sid] = {}; if (!next[sid][s]) next[sid][s] = {}; next[sid][s][e] = r; return next; })}
                 onAddWatchHistory={(item, s, e, ts, nt, en) => {
@@ -827,6 +881,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 episodeNotes={episodeNotes}
                 preferences={preferences}
                 follows={follows}
+                pausedLiveSessions={pausedLiveSessions}
             />
         );
     }
@@ -841,6 +896,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             genres={genres} 
             onSelectShow={handleSelectShow} 
             initialTab={profileInitialTab} 
+            initialLibraryStatus={initialLibraryStatus}
             currentUser={currentUser} 
             onAuthClick={onAuthClick} 
             onLogout={onLogout} 
@@ -860,6 +916,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             onDeleteHistoryItem={handleDeleteHistoryItem}
             onRestoreHistoryItem={handleRestoreHistoryItem}
             onPermanentDeleteHistoryItem={handlePermanentDeleteHistoryItem}
+            onClearAllDeletedHistory={handleClearAllDeletedHistory}
             onDeleteSearchHistoryItem={(timestamp) => setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp))}
             onClearSearchHistory={() => setSearchHistory([])}
             setHistory={setHistory}

@@ -120,10 +120,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const trackedShowsForNewSeasons = useMemo(() => {
     const allItems = new Map<number, TrackedItem>();
-    [...userData.watching, ...userData.onHold].forEach(item => { if (item.media_type === 'tv') allItems.set(item.id, item); });
+    [...userData.watching, ...userData.onHold, ...userData.allCaughtUp].forEach(item => { if (item.media_type === 'tv') allItems.set(item.id, item); });
     userData.customLists.forEach(list => { list.items.forEach(item => { if (item.media_type === 'tv') allItems.set(item.id, item as TrackedItem); }); });
     return Array.from(allItems.values());
-  }, [userData.watching, userData.onHold, userData.customLists]);
+  }, [userData.watching, userData.onHold, userData.allCaughtUp, userData.customLists]);
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -156,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {preferences.dashShowRecommendations && !isApiKeyMissing && recommendationSeedItems.length > 0 && <RelatedRecommendations seedItems={recommendationSeedItems} userData={userData} {...carouselProps} />}
       
       {preferences.dashShowPlanToWatch && (
-        <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} />
+        <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('library-plan-to-watch')} />
       )}
 
       {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} />}

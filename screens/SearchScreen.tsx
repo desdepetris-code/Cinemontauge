@@ -41,9 +41,11 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
           .find(h => !h.logId.startsWith('live-'));
     }, [props.userData.history]);
     
+    const showRecentHistory = props.preferences.searchShowRecentHistory !== false;
+
     return (
         <div className="space-y-12 animate-fade-in">
-            {props.searchHistory.length > 0 && (
+            {showRecentHistory && props.searchHistory.length > 0 && (
                 <section>
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
@@ -51,7 +53,8 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                             <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Recent Searches</h2>
                         </div>
                         <button 
-                            onClick={props.onClearSearchHistory}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onClearSearchHistory(); }}
                             className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors"
                         >
                             Clear All
@@ -62,7 +65,8 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                             {props.searchHistory.map((h) => (
                                 <div key={h.timestamp} className="relative group/h flex-shrink-0 w-48">
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
                                         className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover/h:opacity-100 transition-opacity shadow-lg"
                                     >
                                         <XMarkIcon className="w-3 h-3" />
@@ -83,7 +87,8 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                                         </div>
                                     ) : (
                                         <button 
-                                            onClick={() => props.onQueryChange(h.query!)}
+                                            type="button"
+                                            onClick={() => (props as any).onQueryChange(h.query!)}
                                             className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all"
                                         >
                                             <p className="text-xs font-black text-text-primary uppercase tracking-tight line-clamp-2">"{h.query}"</p>
@@ -109,7 +114,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, onSelectUser, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList, timezone, showRatings, preferences } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onMarkPreviousEpisodesWatched, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList, timezone, showRatings, preferences } = props;
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
@@ -315,7 +320,12 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
           <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Exploration</h1>
           <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60">Discover your next obsession</p>
         </header>
-        {query.length > 0 ? renderSearchResults() : <DiscoverView {...props} />}
+        {query.length > 0 ? renderSearchResults() : (
+            <DiscoverView 
+                {...props} 
+                onQueryChange={onQueryChange}
+            />
+        )}
         
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-40 group/nav">
             <div className="nav-spectral-bg animate-spectral-flow rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] p-5 border border-white/20 backdrop-blur-2xl transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)]">

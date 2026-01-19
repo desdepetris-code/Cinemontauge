@@ -225,14 +225,12 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 let watchedCount = 0;
                 let completedSeasons = 0;
 
-                // We calculate accurate watched count regardless of airing
                 Object.values(progressForShow).forEach(season => {
                     Object.values(season).forEach(ep => {
                         if (ep.status === 2) watchedCount++;
                     });
                 });
 
-                // Completed seasons (only if s.episode_count is reached)
                 (details.seasons || []).forEach(s => {
                     if (s.season_number <= 0) return;
                     let seasonWatched = 0;
@@ -242,7 +240,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     if (s.episode_count > 0 && seasonWatched >= s.episode_count) completedSeasons++;
                 });
                 
-                // Use aired count for catching completion logic
                 if (airedEpisodes > 0 && watchedCount >= airedEpisodes && (details.status === 'Ended' || details.status === 'Canceled')) {
                     if (watchingIds.has(item.id)) {
                         props.onUpdateLists(item, 'watching', 'completed');
@@ -275,7 +272,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 
                 return {
                     ...item, details, nextEpisodeInfo, watchedCount, 
-                    totalEpisodes: airedEpisodes, // Denominator is now Aired Count
+                    totalEpisodes: airedEpisodes, 
                     lastWatchedTimestamp,
                     popularity: details.popularity || 0,
                     status: watchingIds.has(item.id) ? 'watching' : 'onHold',
@@ -309,7 +306,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             return true;
         });
 
-        // 1. Apply Type Filter
         if (typeFilter === 'tv') {
             results = results.filter(i => i.media_type === 'tv');
         } else if (typeFilter === 'movie') {
@@ -320,13 +316,11 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             results = results.filter(i => i.media_type === 'tv');
         }
 
-        // 2. Apply Search
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             results = results.filter(item => item.title.toLowerCase().includes(query));
         }
 
-        // 3. Sort function
         const sortFunction = (a: EnrichedMediaData, b: EnrichedMediaData): number => {
             switch (sortOption) {
                 case 'leastEpisodesLeft':
@@ -353,7 +347,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             }
         };
 
-        // Standard grouping for All/Shows/Movies
         if (typeFilter !== 'episode' && typeFilter !== 'season') {
             const watchingItems = results.filter(item => (item as EnrichedShowData).status === 'watching');
             const onHoldItems = results.filter(item => (item as EnrichedShowData).status === 'onHold');
@@ -361,7 +354,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             onHoldItems.sort(sortFunction);
             return [...watchingItems, ...onHoldItems];
         } else {
-            // For Episodes/Seasons view, don't group by status as strictly, just sort
             return results.sort(sortFunction);
         }
     }, [enrichedMedia, sortOption, searchQuery, typeFilter]);

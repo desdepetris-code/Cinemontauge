@@ -14,7 +14,6 @@ export interface EnrichedShowData extends TrackedItem {
     lastWatchedTimestamp: number;
     popularity: number;
     status: 'watching' | 'onHold';
-    // FIX: Added missing properties used in ProgressScreen.tsx to fix TypeScript errors
     completedSeasons: number;
     isPaused: boolean;
 }

@@ -56,7 +56,7 @@ interface ShowDetailProps {
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkMediaAsWatched: (item: any, date?: string) => void;
-  onUnmarkMovieWatched: (mediaId: number) => void;
+  onUnmarkMovieWatched: (mediaId: number, deleteLive?: boolean) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
@@ -88,9 +88,10 @@ interface ShowDetailProps {
   onOpenAddToListModal: (item: any) => void;
   preferences: AppPreferences;
   follows: Follows;
+  pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
 }
 
-type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'media' | 'discovery' | 'customize' | 'achievements';
+type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'media' | 'recs' | 'customize' | 'achievements';
 
 const DetailedActionButton: React.FC<{
   icon: React.ReactNode;
@@ -121,7 +122,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
-    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory
+    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -194,7 +195,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     { id: 'cast', label: 'Cast and Crew', icon: UsersIcon },
     { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
     { id: 'media', label: 'Gallery', icon: VideoCameraIcon },
-    { id: 'discovery', label: 'Discovery', icon: SparklesIcon },
+    { id: 'recs', label: 'Recs', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
     { id: 'achievements', label: 'Badges', icon: BadgeIcon },
   ], [mediaType]);
@@ -369,6 +370,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     setSelectedCommentEpisode(null);
   };
 
+  const handleUnmarkMovie = () => {
+    const movieHistory = history.filter(h => h.id === id);
+    const hasLiveSessionRecord = movieHistory.some(h => h.logId.startsWith('live-'));
+    
+    if (hasLiveSessionRecord) {
+        if (window.confirm("You have a live watch session record for this movie. Would you like to delete its history and progress as well?\n\nSelecting 'Cancel' will keep your live watch history but remove other manual logs.")) {
+            props.onUnmarkMovieWatched(id, true);
+        } else {
+            props.onUnmarkMovieWatched(id, false);
+        }
+    } else {
+        props.onUnmarkMovieWatched(id, false);
+    }
+  };
+
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -480,11 +496,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 ) : (
                   <DetailedActionButton 
-                      label={currentStatus === 'completed' ? "Watched" : "Mark Watched"} 
+                      label={currentStatus === 'completed' ? "Unmark Watched" : "Mark Watched"} 
                       className="col-span-2"
                       isActive={currentStatus === 'completed'}
-                      icon={<CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => onMarkMediaAsWatched(details)} 
+                      icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
+                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : onMarkMediaAsWatched(details)} 
                   />
                 )}
                 <DetailedActionButton 
@@ -606,7 +622,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   follows={follows} 
                 />
               )}
-              {activeTab === 'discovery' && <div className="space-y-12">{details.belongs_to_collection && <MovieCollection collectionId={details.belongs_to_collection.id} currentMovieId={id} onSelectMovie={(mid) => onSelectShow(mid, 'movie')} />}<RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} /></div>}
+              {activeTab === 'recs' && <div className="space-y-12">{details.belongs_to_collection && <MovieCollection collectionId={details.belongs_to_collection.id} currentMovieId={id} onSelectMovie={(mid) => onSelectShow(mid, 'movie')} />}<RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} /></div>}
               {activeTab === 'customize' && <div className="space-y-4"><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2><CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} /></div>}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>

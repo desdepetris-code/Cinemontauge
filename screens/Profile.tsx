@@ -138,11 +138,13 @@ interface ProfileProps {
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   setCustomLists: React.Dispatch<React.SetStateAction<CustomList[]>>;
   initialTab?: ProfileTab;
+  initialLibraryStatus?: WatchStatus;
   notificationSettings: NotificationSettings;
   setNotificationSettings: React.Dispatch<React.SetStateAction<NotificationSettings>>;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onRestoreHistoryItem: (item: DeletedHistoryItem) => void;
   onPermanentDeleteHistoryItem: (logId: string) => void;
+  onClearAllDeletedHistory: () => void;
   onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;
   setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
@@ -211,7 +213,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
@@ -317,11 +319,11 @@ const Profile: React.FC<ProfileProps> = (props) => {
       );
       case 'updates': return <UpdatesScreen userData={userData} onSelectShow={onSelectShow} onAddNotifications={onAddNotifications} />;
       case 'progress': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
-      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} />;
+      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} />;
       case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
       case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
-      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={onPermanentDeleteHistoryItem} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} />;
+      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={onPermanentDeleteHistoryItem} onClearAllDeletedHistory={onClearAllDeletedHistory} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'achievements': return <AchievementsScreen userData={userData} />;

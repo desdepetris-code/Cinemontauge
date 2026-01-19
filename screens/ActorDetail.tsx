@@ -97,6 +97,12 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
     const knownFor = useMemo(() => filmography.slice(0, 30), [filmography]);
     const watchedByUser = useMemo(() => filmography.filter(item => userData.history.some(h => h.id === item.id)), [filmography, userData.history]);
     
+    const fullFilmographySortedByDate = useMemo(() => [...filmography].sort((a,b) => {
+        const dateA = new Date(a.release_date || a.first_air_date || 0).getTime();
+        const dateB = new Date(b.release_date || b.first_air_date || 0).getTime();
+        return dateB - dateA;
+    }), [filmography]);
+
     const calculateAge = (birthday: string | null): string => {
         if (!birthday) return 'N/A';
         const birthDate = new Date(birthday);
@@ -111,6 +117,34 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         return weeklyFavorites.some(p => p.id === personId && (p.category === 'actor' || p.category === 'actress') && p.dayIndex === todayIndex);
     }, [weeklyFavorites, personId]);
 
+    const handleToggleFavorite = (item: PersonCredit) => {
+        const trackedItem: TrackedItem = { id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path, genre_ids: item.genre_ids };
+        onToggleFavoriteShow(trackedItem);
+    };
+
+    const GridDisplay: React.FC<{ items: PersonCredit[] }> = ({ items }) => {
+        if (items.length === 0) {
+            return <p className="text-text-secondary py-8 text-center">No items to display in this section.</p>;
+        }
+        return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {items.map(item => (
+                    <div key={`${item.id}-${item.credit_id}`}>
+                        <FilmographyCard
+                            item={item}
+                            isFavorite={favorites.some(f => f.id === item.id)}
+                            userRating={ratings[item.id]?.rating || 0}
+                            onSelect={() => onSelectShow(item.id, item.media_type)}
+                            onToggleFavorite={() => handleToggleFavorite(item)}
+                            onRate={() => setRatingModalState({ isOpen: true, media: item })}
+                            onShowHistory={() => setHistoryModalState({ isOpen: true, media: item })}
+                        />
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     if (loading) return <ActorDetailSkeleton />;
     if (!details) return null;
 
@@ -119,8 +153,18 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         { id: 'overview', label: 'Biography', icon: BookOpenIcon },
         { id: 'recommendations', label: 'Top Hits', icon: StarIcon },
         { id: 'watched', label: 'My History', icon: ClockIcon },
-        { id: 'filmography', label: 'Full Career', icon: PlayCircleIcon },
+        { id: 'filmography', label: 'Filmography', icon: PlayCircleIcon },
     ];
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'overview': return <p className="text-text-secondary whitespace-pre-wrap leading-relaxed max-w-3xl">{details.biography || "No biography available."}</p>;
+            case 'recommendations': return <GridDisplay items={knownFor} />;
+            case 'watched': return <GridDisplay items={watchedByUser} />;
+            case 'filmography': return <GridDisplay items={fullFilmographySortedByDate} />;
+            default: return null;
+        }
+    };
 
     return (
         <div className="animate-fade-in relative pb-20">
@@ -166,12 +210,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                         </nav>
 
                         <div className="min-h-[400px]">
-                            {activeTab === 'overview' && <p className="text-text-secondary whitespace-pre-wrap leading-relaxed max-w-3xl">{details.biography || "No biography available."}</p>}
-                            {activeTab === 'recommendations' && (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                                    {knownFor.map(item => <FilmographyCard key={item.id} item={item} isFavorite={userData.favorites.some(f => f.id === item.id)} userRating={userData.ratings[item.id]?.rating || 0} onSelect={() => onSelectShow(item.id, item.media_type)} onToggleFavorite={() => onToggleFavoriteShow({...item, title: item.title || item.name || ''})} onRate={() => setRatingModalState({ isOpen: true, media: item })} onShowHistory={() => setHistoryModalState({ isOpen: true, media: item })} />)}
-                                </div>
-                            )}
+                            {renderTabContent()}
                         </div>
                     </div>
                 </div>

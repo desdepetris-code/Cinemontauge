@@ -93,8 +93,8 @@ const WatchHistory: React.FC<{
                         <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                         
-                        {/* Date Widget Thing Overlay */}
-                        <div className="absolute top-4 right-4 flex flex-col items-center bg-backdrop/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
+                        {/* Date Widget Overlay - Changed from bg-backdrop/80 to bg-bg-primary for opacity */}
+                        <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
                             <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
                             <span className="text-xl font-black text-white leading-none">{day}</span>
                         </div>
@@ -137,8 +137,9 @@ const RecentlyDeleted: React.FC<{
     items: DeletedHistoryItem[];
     onRestore: (item: DeletedHistoryItem) => void;
     onPermanentDelete: (logId: string) => void;
+    onClearAll: () => void;
     timezone: string;
-}> = ({ items, onRestore, onPermanentDelete, timezone }) => {
+}> = ({ items, onRestore, onPermanentDelete, onClearAll, timezone }) => {
     const sortedItems = useMemo(() => [...items].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [items]);
 
     const getDaysRemaining = (deletedAt: string) => {
@@ -149,12 +150,22 @@ const RecentlyDeleted: React.FC<{
 
     return (
         <div className="space-y-6">
-            <div className="p-4 bg-primary-accent/5 rounded-2xl border border-primary-accent/10 flex items-center gap-4">
-                <InformationCircleIcon className="w-6 h-6 text-primary-accent flex-shrink-0" />
-                <p className="text-xs text-text-secondary leading-relaxed font-medium">
-                    Items deleted in the last 30 days are stored here. After 30 days, they are permanently removed automatically. 
-                    Restoring an item will place it back into your main watch history timeline.
-                </p>
+            <div className="flex justify-between items-center bg-primary-accent/5 rounded-2xl border border-primary-accent/10 p-4 gap-4">
+                <div className="flex items-center gap-4">
+                  <InformationCircleIcon className="w-6 h-6 text-primary-accent flex-shrink-0" />
+                  <p className="text-xs text-text-secondary leading-relaxed font-medium">
+                      <strong className="text-text-primary uppercase block mb-1">Your Personal Trash Bin</strong>
+                      Items stay here for 30 days as a safety measure before permanent removal. 
+                  </p>
+                </div>
+                {items.length > 0 && (
+                    <button 
+                        onClick={() => { if(window.confirm("Permanently empty your trash bin? This cannot be undone.")) onClearAll(); }}
+                        className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all flex-shrink-0 shadow-lg"
+                    >
+                        Empty Trash
+                    </button>
+                )}
             </div>
 
             {sortedItems.length > 0 ? (
@@ -198,7 +209,7 @@ const RecentlyDeleted: React.FC<{
             ) : (
                 <div className="text-center py-20 opacity-50 flex flex-col items-center">
                     <TrashIcon className="w-16 h-16 text-text-secondary/20 mb-4" />
-                    <p className="text-text-secondary font-black uppercase tracking-widest">No recently deleted items</p>
+                    <p className="text-text-secondary font-black uppercase tracking-widest">Trash is empty</p>
                 </div>
             )}
         </div>
@@ -216,13 +227,13 @@ const SearchHistory: React.FC<{
   <div className="space-y-6">
     <div className="flex justify-between items-center px-2">
         <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">Recent Activity</h2>
-        {searchHistory.length > 0 && <button onClick={() => { if(window.confirm("Clear all search history?")) onClear(); }} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline">Clear All</button>}
+        {searchHistory.length > 0 && <button type="button" onClick={() => { if(window.confirm("Clear all search history?")) onClear(); }} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline">Clear All</button>}
     </div>
     {searchHistory.length > 0 ? (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {searchHistory.map(item => (
           <div key={item.timestamp} className="relative group">
-            <button onClick={() => onDelete(item.timestamp)} className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><XMarkIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => onDelete(item.timestamp)} className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><XMarkIcon className="w-3.5 h-3.5" /></button>
             {item.item ? (
               <div className="space-y-2 cursor-pointer" onClick={() => onSelectShow(item.item!.id, item.item!.media_type)}>
                 <ActionCard item={item.item as any} onSelect={() => onSelectShow(item.item!.id, item.item!.media_type)} onOpenAddToListModal={() => {}} onMarkShowAsWatched={() => {}} onToggleFavoriteShow={() => {}} isFavorite={false} isCompleted={false} showRatings={false} showSeriesInfo="hidden" />
@@ -249,6 +260,7 @@ interface HistoryScreenProps {
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onRestoreHistoryItem?: (item: DeletedHistoryItem) => void;
   onPermanentDeleteHistoryItem?: (logId: string) => void;
+  onClearAllDeletedHistory?: () => void;
   onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;
   genres: Record<number, string>;
@@ -263,7 +275,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
     { id: 'ratings', label: 'Ratings', icon: StarIcon },
     { id: 'favorites', label: 'Favorites', icon: HeartIcon },
     { id: 'comments', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
-    { id: 'deleted', label: 'Deleted', icon: TrashIcon },
+    { id: 'deleted', label: 'Trash Bin', icon: TrashIcon },
   ];
 
   return (
@@ -282,7 +294,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
       {activeTab === 'watch' && <WatchHistory history={props.userData.history} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} timezone={props.timezone} />}
       {activeTab === 'search' && <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} onSelectShow={props.onSelectShow} timezone={props.timezone} />}
       {activeTab === 'favorites' && <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">{props.userData.favorites.map(i => <CompactShowCard key={i.id} item={i} onSelect={props.onSelectShow} />)}</div>}
-      {activeTab === 'deleted' && <RecentlyDeleted items={props.userData.deletedHistory} onRestore={props.onRestoreHistoryItem!} onPermanentDelete={props.onPermanentDeleteHistoryItem!} timezone={props.timezone} />}
+      {activeTab === 'deleted' && <RecentlyDeleted items={props.userData.deletedHistory} onRestore={props.onRestoreHistoryItem!} onPermanentDelete={props.onPermanentDeleteHistoryItem!} onClearAll={props.onClearAllDeletedHistory!} timezone={props.timezone} />}
     </div>
   );
 };

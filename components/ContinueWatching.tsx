@@ -46,7 +46,10 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
             lastWatchedTimestamp: new Date(session.pausedAt).getTime(),
         }));
 
-        const tvItems = [...inProgressWatching.map(mapToTimestampedItem), ...inProgressOnHold.map(mapToTimestampedItem)];
+        const tvItems = [
+            ...inProgressWatching.map(mapToTimestampedItem), 
+            ...inProgressOnHold.map(mapToTimestampedItem)
+        ];
         const tvItemsMap = new Map(tvItems.map(item => [item.id, item]));
 
         pausedItems.forEach(pausedItem => {

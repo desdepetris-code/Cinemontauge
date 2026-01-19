@@ -47,11 +47,9 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
     const languageName = useMemo(() => {
         if (!details.original_language) return null;
         try {
-            // Use Intl.DisplayNames to get the full language name from its code.
             const langName = new Intl.DisplayNames(['en'], { type: 'language' }).of(details.original_language);
             return langName || details.original_language.toUpperCase();
         } catch (e) {
-            // Fallback for invalid codes
             return details.original_language.toUpperCase();
         }
     }, [details.original_language]);
@@ -59,11 +57,9 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
     const countryNames = useMemo(() => {
         if (!details.origin_country || details.origin_country.length === 0) return null;
         try {
-            // Use Intl.DisplayNames to get full country names from their codes.
             const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
             return details.origin_country.map(code => regionNames.of(code) || code).join(', ');
         } catch (e) {
-            // Fallback for invalid codes
             return details.origin_country.join(', ');
         }
     }, [details.origin_country]);
@@ -83,16 +79,32 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
                     {details.media_type === 'tv' && <InfoRow label="Created By" value={details.created_by?.map(c => c.name).join(', ')} />}
                     <InfoRow label="Genres" value={details.genres?.map(g => g.name).join(', ')} />
                     {details.media_type === 'tv' && details.networks?.length > 0 && <InfoRow label="Networks" value={
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
+                        <div className="flex flex-wrap gap-2 items-center">
                             {details.networks?.map(n => n.logo_path && (
-                                <img key={n.id} src={getImageUrl(n.logo_path, 'w92')} alt={n.name} title={n.name} className="h-5 max-w-[100px] object-contain" />
+                                <div key={n.id} className="bg-white px-2 py-1.5 rounded-lg shadow-sm border border-white/20 flex items-center justify-center min-w-[50px] h-10" title={n.name}>
+                                    <img src={getImageUrl(n.logo_path, 'w92')} alt={n.name} className="max-h-full w-auto object-contain" />
+                                </div>
                             ))}
                         </div>
                     } />}
                     <InfoRow label="Release Date" value={releaseDate ? new Date(releaseDate).toLocaleDateString() : 'N/A'} />
                     <InfoRow label="Language" value={languageName} />
                     <InfoRow label="Country of Origin" value={countryNames} />
-                    <InfoRow label="Production" value={details.production_companies?.map(c => c.name).join(', ')} />
+                    <InfoRow label="Production" value={
+                        <div className="flex flex-wrap gap-2 items-center">
+                            {details.production_companies?.map(c => (
+                                <div key={c.id} className="flex items-center">
+                                    {c.logo_path ? (
+                                        <div className="bg-white px-2 py-1.5 rounded-lg shadow-sm border border-white/20 flex items-center justify-center min-w-[50px] h-10" title={c.name}>
+                                            <img src={getImageUrl(c.logo_path, 'w92')} alt={c.name} className="max-h-full w-auto object-contain" />
+                                        </div>
+                                    ) : (
+                                        <span className="text-text-primary font-bold text-xs bg-bg-secondary px-2 py-1 rounded-md border border-white/5">{c.name}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    } />
                     {details.media_type === 'tv' && <InfoRow label="Seasons" value={details.number_of_seasons} />}
                     {details.media_type === 'tv' && <InfoRow label="Episodes" value={details.number_of_episodes} />}
                     <InfoRow label={runtimeLabel} value={runtimeValue || 'N/A'} />

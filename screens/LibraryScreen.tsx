@@ -10,12 +10,19 @@ interface LibraryScreenProps {
   genres: Record<number, string>;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
   preferences: AppPreferences;
+  initialStatus?: WatchStatus;
 }
 
-const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelectShow, preferences }) => {
-  const [activeTab, setActiveTab] = useState<WatchStatus>('watching');
+const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelectShow, preferences, initialStatus }) => {
+  const [activeTab, setActiveTab] = useState<WatchStatus>(initialStatus || 'watching');
   const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(preferences.searchAlwaysExpandFilters);
+
+  useEffect(() => {
+    if (initialStatus) {
+        setActiveTab(initialStatus);
+    }
+  }, [initialStatus]);
 
   useEffect(() => {
     if (preferences.searchAlwaysExpandFilters) {

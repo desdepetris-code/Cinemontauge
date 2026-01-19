@@ -207,7 +207,8 @@ interface NewReleasesProps {
   title: string;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
-  onMarkShowAs_watched: (item: TmdbMedia, date?: string) => void;
+  // FIX: Corrected typo from onMarkShowAs_watched to onMarkShowAsWatched
+  onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   completed: TrackedItem[];
@@ -216,7 +217,8 @@ interface NewReleasesProps {
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
 }
 
-const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAs_watched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
+// FIX: Corrected typo from onMarkShowAs_watched to onMarkShowAsWatched
+const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -271,7 +273,8 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
                             item={item}
                             onSelect={onSelectShow}
                             onAdd={onOpenAddToListModal}
-                            onMarkShowAsWatched={onMarkShowAs_watched}
+                            // FIX: Corrected typo from onMarkShowAs_watched to onMarkShowAsWatched
+                            onMarkShowAsWatched={onMarkShowAsWatched}
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={favorites.some(f => f.id === item.id)}
                             isCompleted={completed.some(c => c.id === item.id)}

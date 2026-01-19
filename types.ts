@@ -27,6 +27,7 @@ export interface AppPreferences {
   searchAlwaysExpandFilters: boolean;
   searchShowFilters: boolean;
   searchShowSeriesInfo: 'expanded' | 'toggle' | 'hidden'; 
+  searchShowRecentHistory: boolean;
   dashShowStats: boolean;
   dashShowLiveWatch: boolean;
   dashShowContinueWatching: boolean;

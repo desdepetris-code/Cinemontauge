@@ -20,6 +20,7 @@ const TrendingCard: React.FC<{
     item: TmdbMedia;
     onSelect: (id: number, media_type: 'tv' | 'movie') => void;
     onAdd: (item: TmdbMedia) => void;
+    // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
     onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
     onToggleFavoriteShow: (item: TrackedItem) => void;
     isFavorite: boolean;
@@ -75,6 +76,7 @@ const TrendingCard: React.FC<{
     };
     const handleMarkWatchedClick = (e: React.MouseEvent) => {
         e.stopPropagation();
+        // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
         onMarkShowAsWatched(item);
     };
     const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -244,6 +246,7 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
                             item={item}
                             onSelect={onSelectShow}
                             onAdd={onOpenAddToListModal}
+                            // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
                             onMarkShowAsWatched={onMarkShowAsWatched}
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={favorites.some(f => f.id === item.id)}
