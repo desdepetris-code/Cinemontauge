@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMedia, TrackedItem, TmdbMediaDetails } from '../types';
-import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronDownIcon } from './Icons';
+import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronDownIcon, ClockIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { getImageUrl } from '../utils/imageUtils';
-import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
+import { isNewRelease, getRecentEpisodeCount, formatAirtime } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import { getMediaDetails } from '../services/tmdbService';
 import UserRatingStamp from './UserRatingStamp';
@@ -134,6 +134,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
         return start === end ? start : `${start} — ${end}`;
     }, [details, item.media_type]);
 
+    const formattedAirtime = useMemo(() => {
+        if (item.airtime) return formatAirtime(item.airtime);
+        return null;
+    }, [item.airtime]);
+
     const shouldShowInfoSection = showSeriesInfo !== 'hidden' && item.media_type === 'tv' && details && isInfoExpanded;
 
     return (
@@ -218,10 +223,19 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 {showSeriesInfo !== 'hidden' && (
                     <div className="mt-2 p-2 bg-bg-secondary/20 rounded-xl text-center shadow-inner border border-white/5">
                         <p className="font-black text-text-primary truncate text-xs uppercase tracking-tight">{title}</p>
-                        <div className="flex justify-center items-center space-x-3 text-[10px] font-bold text-text-secondary opacity-60 mt-0.5">
+                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-[10px] font-bold text-text-secondary opacity-60 mt-0.5">
                              <span className="uppercase tracking-widest">{item.media_type === 'tv' ? 'Series' : 'Film'}</span>
                              <span>•</span>
                              <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
+                             {formattedAirtime && (
+                                <>
+                                    <span>•</span>
+                                    <div className="flex items-center gap-1 text-primary-accent">
+                                        <ClockIcon className="w-3 h-3" />
+                                        <span>{formattedAirtime}</span>
+                                    </div>
+                                </>
+                             )}
                         </div>
                     </div>
                 )}

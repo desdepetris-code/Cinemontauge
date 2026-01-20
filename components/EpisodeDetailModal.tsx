@@ -218,7 +218,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                                 if (tag?.text?.includes('Premiere')) {
                                     return null;
                                 }
-                                return <span className="text-md text-text-secondary/70 font-semibold px-2">n/a</span>;
+                                return <span className="text-[10px] text-text-secondary/50 font-black uppercase tracking-widest px-2 py-1 bg-bg-secondary rounded-md">No Rating</span>;
                             }
                             return null;
                         })()}

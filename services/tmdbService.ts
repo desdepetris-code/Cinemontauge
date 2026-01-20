@@ -1,6 +1,7 @@
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
 import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem, NewlyPopularEpisode, CastMember, CrewMember } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
+import { getTrendingShowsFull } from './traktService';
 
 const aliasMap: Record<string, string> = {
   "svu": "Law & Order: Special Victims Unit",
@@ -368,13 +369,51 @@ export const getUpcomingMovieReleases = async (page: number): Promise<{ results:
 };
 
 export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
-    const cacheKey = `tmdb_trending_${mediaType}_week_v1`;
+    const cacheKey = `tmdb_trending_${mediaType}/week_v1`;
     const cached = getFromCache<TmdbMedia[]>(cacheKey);
     if (cached) return cached;
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`trending/${mediaType}/week`);
     const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
     setToCache(cacheKey, results, CACHE_TTL_SHORT);
     return results;
+};
+
+export const getTopPicksMixed = async (): Promise<TmdbMedia[]> => {
+    const cacheKey = 'tmdb_top_picks_30_v2';
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+        // Fetch trending shows from Trakt specifically to get precise airtimes
+        const traktTrending = await getTrendingShowsFull(30);
+        
+        // Fetch trending movies from TMDB (standard procedure)
+        const trendingMovies = await getTrending('movie');
+        
+        // Map Trakt data to TMDB format as much as possible for consistent rendering
+        // FIX: Added required backdrop_path property to mapped show objects to satisfy TmdbMedia interface.
+        const traktMappedShows: TmdbMedia[] = traktTrending.map(t => ({
+            id: t.show.ids.tmdb,
+            name: t.show.title,
+            media_type: 'tv',
+            poster_path: null, // Component will fetch poster via getMediaDetails
+            backdrop_path: null,
+            popularity: t.watchers,
+            // Custom extension for CineMontauge to hold precise time
+            airtime: t.show.airs?.time 
+        }));
+
+        const combined = [...trendingMovies, ...traktMappedShows];
+        const unique = Array.from(new Map(combined.map(i => [i.id, i])).values());
+        
+        const shuffled = unique.sort(() => Math.random() - 0.5);
+        const result = shuffled.slice(0, 30);
+        
+        setToCache(cacheKey, result, CACHE_TTL_SHORT);
+        return result;
+    } catch (e) {
+        return [];
+    }
 };
 
 export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> => {
@@ -431,6 +470,10 @@ export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): 
     const data = await fetchFromTmdb<WatchProviderResponse>(`${mediaType}/${id}/watch/providers`);
     if (data) setToCache(cacheKey, data, CACHE_TTL);
     return data;
+};
+
+export const getWatchProvidersForShow = async (id: number): Promise<WatchProviderResponse | null> => {
+    return getWatchProviders(id, 'tv');
 };
 
 export const getCollectionDetails = async (collectionId: number): Promise<TmdbCollection> => {

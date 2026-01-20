@@ -20,38 +20,47 @@ export const MAL_AUTH_BASE_URL = 'https://myanimelist.net/v1/oauth2/authorize';
 export const MAL_TOKEN_URL = 'https://myanimelist.net/v1/oauth2/token';
 export const MAL_REDIRECT_URI = window.location.origin + window.location.pathname;
 
-// --- Branded Grey and White SVG Placeholders ---
+// --- Branded B&W SVG Placeholders ---
 
 const logoSvgPart = `
-  <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#444" stroke-width="1" />
-  <path d="M50 2L65 30H35L50 2Z" fill="#888" opacity="0.2" />
-  <path d="M98 50L70 65V35L98 50Z" fill="#888" opacity="0.2" />
-  <path d="M50 98L35 70H65L50 98Z" fill="#888" opacity="0.2" />
-  <path d="M2 50L30 35V65L2 50Z" fill="#888" opacity="0.2" />
-  <circle cx="50" cy="50" r="32" fill="#000" stroke="#333" stroke-width="2" />
-  <text x="50" y="62" font-family="Arial Black, sans-serif" font-size="28" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing="-1">
-    C<tspan fill="#aaa">M</tspan>
-  </text>
-  <circle cx="35" cy="35" r="4" fill="white" opacity="0.2" />
+  <defs>
+    <linearGradient id="p-grad-main" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#444" />
+      <stop offset="100%" stop-color="#111" />
+    </linearGradient>
+    <linearGradient id="p-grad-text" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#888" />
+      <stop offset="100%" stop-color="#444" />
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="#080808" stroke="#111" stroke-width="0.5" />
+  <path d="M50 2L58 20H42L50 2Z" fill="#333" />
+  <path d="M98 50L80 58V42L98 50Z" fill="#222" />
+  <path d="M50 98L42 80H58L50 98Z" fill="#222" />
+  <path d="M2 50L20 42V58L2 50Z" fill="#222" />
+  <circle cx="50" cy="50" r="37" fill="black" stroke="url(#p-grad-main)" stroke-width="2" />
+  <path d="M50 18L51.5 22.5H56L52.5 25L54 29.5L50 27L46 29.5L47.5 25L44 22.5H48.5L50 18Z" fill="#333" />
+  <text x="50%" y="52" font-family="Arial Black, sans-serif" font-size="24" font-weight="900" fill="url(#p-grad-text)" text-anchor="middle" letter-spacing="-1">CM</text>
+  <text x="50%" y="68" font-family="Arial Black, sans-serif" font-size="5" font-weight="900" fill="#333" text-anchor="middle" letter-spacing="1.2">CineMontauge</text>
 `;
 
 const posterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 100 150" fill="none">
-  <rect width="100" height="150" fill="#0f0f0f" />
-  <g transform="translate(10 35) scale(0.8)">
+  <rect width="100" height="150" fill="#0a0a0a" />
+  <g transform="translate(0 25)">
     ${logoSvgPart}
   </g>
 </svg>`;
 
 const backdropSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 160 90" fill="none">
-  <rect width="160" height="90" fill="#0f0f0f" />
-  <g transform="translate(57.5 22.5) scale(0.45)">
+  <rect width="160" height="90" fill="#0a0a0a" />
+  <g transform="translate(45 10) scale(0.7)">
     ${logoSvgPart}
   </g>
 </svg>`;
 
 const profileSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none">
-  <rect width="100" height="100" fill="#0f0f0f" />
-  <g transform="translate(25 25) scale(0.5)">
+  <rect width="100" height="100" fill="#0a0a0a" />
+  <g transform="scale(1.0)">
     ${logoSvgPart}
   </g>
 </svg>`;

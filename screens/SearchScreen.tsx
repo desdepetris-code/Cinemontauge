@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated, discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, ArrowTrendingUpIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import RelatedRecommendations from '../components/RelatedRecommendations';
 import ActionCard from '../components/ActionCard';
 import { getImageUrl } from '../utils/imageUtils';
 import Carousel from '../components/Carousel';
+import Recommendations from './Recommendations';
 
 interface SearchScreenProps {
   onSelectShow: (id: number, media_type: 'tv' | 'movie', itemData?: TrackedItem) => void;
@@ -43,7 +44,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
     const showRecentHistory = props.preferences.searchShowRecentHistory !== false;
 
     return (
-        <div className="space-y-12 animate-fade-in">
+        <div className="space-y-12 animate-fade-in pb-20">
             {showRecentHistory && props.searchHistory.length > 0 && (
                 <section>
                     <div className="flex justify-between items-center mb-6">
@@ -68,7 +69,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
                                         className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full transition-opacity shadow-lg"
                                     >
-                                        <XMarkIcon className="w-3 h-3" />
+                                        <XMarkIcon className="w-3.5 h-3.5" />
                                     </button>
                                     {h.item ? (
                                         <div className="w-full">
@@ -88,7 +89,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                                         <button 
                                             type="button"
                                             onClick={() => (props as any).onQueryChange(h.query!)}
-                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all"
+                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all min-h-[100px]"
                                         >
                                             <p className="text-xs font-black text-text-primary uppercase tracking-tight line-clamp-2">"{h.query}"</p>
                                             <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
@@ -101,7 +102,33 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                     </Carousel>
                 </section>
             )}
-            {latestWatchedItem && <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} completed={props.userData.completed} />}
+
+            <section>
+                <div className="flex items-center gap-3 mb-8">
+                    <SparklesIcon className="w-8 h-8 text-primary-accent" />
+                    <div>
+                        <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none">Top Picks For You</h2>
+                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.3em] mt-2 opacity-60">Trending and curated discovery</p>
+                    </div>
+                </div>
+                <Recommendations 
+                    userData={props.userData} 
+                    onSelectShow={props.onSelectShow}
+                    onMarkShowAsWatched={props.onMarkShowAsWatched}
+                    onOpenAddToListModal={props.onOpenAddToListModal}
+                    onToggleFavoriteShow={props.onToggleFavoriteShow}
+                    favorites={props.favorites}
+                    completed={props.userData.completed}
+                    showRatings={props.showRatings}
+                    preferences={props.preferences}
+                />
+            </section>
+
+            {latestWatchedItem && (
+                <section className="pt-4">
+                    <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} completed={props.userData.completed} />
+                </section>
+            )}
         </div>
     );
 };
@@ -319,6 +346,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             <DiscoverView 
                 {...props} 
                 onQueryChange={onQueryChange}
+                onUpdateSearchHistory={onUpdateSearchHistory}
             />
         )}
         

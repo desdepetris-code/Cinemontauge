@@ -56,7 +56,7 @@ interface ShowDetailProps {
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number) => void;
-  // FIX: Removed duplicate onMarkSeasonWatched declaration
+  // Removed duplicate onMarkSeasonWatched declaration
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
@@ -68,7 +68,7 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
-  // FIX: Removed duplicate onAddWatchHistoryBulk declaration
+  // Removed duplicate onAddWatchHistoryBulk declaration
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
@@ -85,7 +85,7 @@ interface ShowDetailProps {
   mediaNotes?: Record<number, Note[]>;
   onSaveMediaNote: (mediaId: number, notes: Note[]) => void;
   allUserData: UserData;
-  episodeNotes?: Record<number, Record<number, Record<number, string>>>;
+  episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
   onOpenAddToListModal: (item: any) => void;
 }
 
@@ -134,6 +134,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [selectedEpisodeForDetail, setSelectedEpisodeForDetail] = useState<Episode | null>(null);
   const [activeCommentThread, setActiveCommentThread] = useState('general');
+  // nomination modal state retained but related feature removed
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
 
   const tabs: { id: TabType, label: string, icon: any }[] = useMemo(() => [
@@ -337,6 +338,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   };
 
   const handleCommentsAction = () => {
+    // FIX: Corrected state setter name from setActiveThread to setActiveCommentThread
     setActiveCommentThread('general');
     setActiveTab('discussion');
   };
@@ -484,6 +486,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   <DetailedActionButton 
                       label={isAllWatched ? "Unmark All" : "Mark All"}
                       className="col-span-2"
+                      isActive={isAllWatched}
                       icon={isAllWatched ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
                       onClick={() => isAllWatched ? props.onUnmarkAllWatched(id) : props.onMarkAllWatched(id, details as any)} 
                   />
@@ -492,7 +495,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                       label="Mark Watched" 
                       className="col-span-2"
                       icon={<CheckCircleIcon className="w-6 h-6" />} 
-                      // FIX: Corrected typo onMarkMediaAs_watched to onMarkMediaAsWatched
+                      // FIX: Corrected property name from onMarkMediaAs_watched to onMarkMediaAsWatched
                       onClick={() => props.onMarkMediaAsWatched(details)} 
                   />
                 )}
