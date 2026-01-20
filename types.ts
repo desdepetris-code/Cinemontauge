@@ -167,6 +167,7 @@ export interface Episode {
   episode_type?: string;
   crew?: CrewMember[];
   guest_stars?: CastMember[];
+  airtime?: string; // Precision timing from Trakt
 }
 
 export interface TmdbImage {
@@ -387,6 +388,12 @@ export interface Note {
   timestamp: string;
 }
 
+export interface DeletedNote extends Note {
+  deletedAt: string;
+  mediaTitle: string;
+  context: string; // e.g. "S1 E5" or "Show Overall"
+}
+
 export interface UserData {
   watching: TrackedItem[];
   planToWatch: TrackedItem[];
@@ -398,6 +405,7 @@ export interface UserData {
   watchProgress: WatchProgress;
   history: HistoryItem[];
   deletedHistory: DeletedHistoryItem[];
+  deletedNotes: DeletedNote[];
   customLists: CustomList[];
   ratings: UserRatings;
   episodeRatings: EpisodeRatings;
@@ -406,7 +414,7 @@ export interface UserData {
   searchHistory: SearchHistoryItem[];
   comments: Comment[];
   mediaNotes: Record<number, Note[]>;
-  episodeNotes: Record<number, Record<number, Record<number, string>>>;
+  episodeNotes: Record<number, Record<number, Record<number, Note[]>>>;
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
 }

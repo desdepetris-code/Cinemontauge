@@ -26,7 +26,7 @@ interface HeaderProps {
   hoverReveal?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onGoHome, onMarkShowAsWatched, query, onQueryChange, isOnSearchScreen, isHoliday, holidayName, hoverReveal }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onMarkShowAsWatched, query, onQueryChange, isOnSearchScreen, isHoliday, holidayName, hoverReveal }) => {
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   
   const hoverClasses = hoverReveal ? "opacity-0 hover:opacity-100 transition-opacity duration-300" : "opacity-100";
@@ -41,8 +41,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
             className="flex flex-col items-center cursor-pointer group flex-shrink-0"
             title="View CineMontauge Identity"
           >
-              <Logo className="h-8 w-8 md:h-10 md:w-10 transition-transform duration-500 group-hover:scale-110" />
-              <h1 className="hidden xs:block text-[8px] md:text-[10px] font-black text-text-primary tracking-[0.1em] mt-0.5 group-hover:text-primary-accent transition-colors">CineMontauge</h1>
+              <Logo className="h-10 w-10 md:h-12 md:w-12 transition-transform duration-500 group-hover:scale-110" />
           </div>
 
           <div className="flex-grow flex justify-center items-center">

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings, DeletedHistoryItem } from '../types';
-import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon } from '../components/Icons';
+import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings, DeletedHistoryItem, DeletedNote } from '../types';
+import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon } from '../components/Icons';
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
 import CompactShowCard from '../components/CompactShowCard';
@@ -133,83 +133,146 @@ const WatchHistory: React.FC<{
 };
 
 // --- RECENTLY DELETED TAB ---
+
+const DaysRemainingCircle: React.FC<{ deletedAt: string }> = ({ deletedAt }) => {
+    const diff = Date.now() - new Date(deletedAt).getTime();
+    const daysPassed = diff / (1000 * 60 * 60 * 24);
+    const daysLeft = Math.max(0, Math.ceil(30 - daysPassed));
+
+    return (
+        <div className="absolute -top-3 -right-3 w-14 h-14 rounded-full bg-red-600 border-4 border-bg-primary shadow-2xl flex flex-col items-center justify-center z-20 transition-transform hover:scale-110">
+            <span className="text-white font-black text-lg leading-none">{daysLeft}</span>
+            <span className="text-[7px] text-white/80 font-black uppercase tracking-widest leading-none mt-0.5">Days</span>
+        </div>
+    );
+};
+
 const RecentlyDeleted: React.FC<{
     items: DeletedHistoryItem[];
+    deletedNotes: DeletedNote[];
     onRestore: (item: DeletedHistoryItem) => void;
     onPermanentDelete: (logId: string) => void;
     onClearAll: () => void;
+    onRestoreNote: (note: DeletedNote) => void;
+    onPermanentDeleteNote: (noteId: string) => void;
     timezone: string;
-}> = ({ items, onRestore, onPermanentDelete, onClearAll, timezone }) => {
-    const sortedItems = useMemo(() => [...items].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [items]);
+}> = ({ items, deletedNotes, onRestore, onPermanentDelete, onClearAll, onRestoreNote, onPermanentDeleteNote, timezone }) => {
+    const sortedHistory = useMemo(() => [...items].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [items]);
+    const sortedNotes = useMemo(() => [...deletedNotes].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [deletedNotes]);
 
-    const getDaysRemaining = (deletedAt: string) => {
-        const diff = Date.now() - new Date(deletedAt).getTime();
-        const daysPassed = diff / (1000 * 60 * 60 * 24);
-        return Math.max(0, Math.ceil(30 - daysPassed));
-    };
+    const hasAnyContent = items.length > 0 || deletedNotes.length > 0;
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center bg-primary-accent/5 rounded-2xl border border-primary-accent/10 p-4 gap-4">
+        <div className="space-y-12">
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-primary-accent/5 rounded-2xl border border-primary-accent/10 p-4 gap-4">
                 <div className="flex items-center gap-4">
                   <InformationCircleIcon className="w-6 h-6 text-primary-accent flex-shrink-0" />
-                  <p className="text-xs text-text-secondary leading-relaxed font-medium">
-                      <strong className="text-text-primary uppercase block mb-1">Your Personal Trash Bin</strong>
-                      Items stay here for 30 days as a safety measure before permanent removal. 
-                  </p>
+                  <div className="text-xs text-text-secondary leading-relaxed font-medium">
+                      <strong className="text-text-primary uppercase block mb-1">Personal Trash Bin (30 Day Policy)</strong>
+                      Captures and Notes remain here for 30 days before permanent automatic removal. 
+                  </div>
                 </div>
-                {items.length > 0 && (
+                {hasAnyContent && (
                     <button 
-                        onClick={() => { if(window.confirm("Permanently empty your trash bin? This cannot be undone.")) onClearAll(); }}
-                        className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all flex-shrink-0 shadow-lg"
+                        onClick={() => { if(window.confirm("Permanently empty everything in the trash? This cannot be undone.")) onClearAll(); }}
+                        className="px-6 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all flex-shrink-0 shadow-lg"
                     >
-                        Empty Trash
+                        Empty All Trash
                     </button>
                 )}
             </div>
 
-            {sortedItems.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {sortedItems.map(item => (
-                        <div key={item.logId} className="flex gap-4 p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 group animate-fade-in opacity-80 hover:opacity-100 transition-opacity">
-                            <img src={getImageUrl(item.poster_path, 'w92')} className="w-16 h-24 rounded-lg object-cover bg-bg-secondary flex-shrink-0" alt="" />
-                            <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                <h3 className="text-text-primary font-black uppercase tracking-tight truncate">{item.title}</h3>
-                                {item.media_type === 'tv' && (
-                                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">
-                                        S{item.seasonNumber} E{item.episodeNumber}
-                                    </p>
-                                )}
-                                <div className="mt-3 flex items-center gap-2">
-                                    <div className="px-2 py-0.5 bg-red-500/10 text-red-400 rounded-md text-[9px] font-black uppercase tracking-widest border border-red-500/20">
-                                        {getDaysRemaining(item.deletedAt)} Days Left
+            {/* DELETED CAPTURES SECTION */}
+            {items.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-4 mb-6">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest whitespace-nowrap">Deleted Watch Logs</h2>
+                        <div className="h-px w-full bg-white/5"></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sortedHistory.map(item => (
+                            <div key={item.logId} className="relative flex gap-4 p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 group animate-fade-in opacity-80 hover:opacity-100 transition-opacity">
+                                <DaysRemainingCircle deletedAt={item.deletedAt} />
+                                <img src={getImageUrl(item.poster_path, 'w92')} className="w-16 h-24 rounded-lg object-cover bg-bg-secondary flex-shrink-0" alt="" />
+                                <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                    <h3 className="text-text-primary font-black uppercase tracking-tight truncate">{item.title}</h3>
+                                    {item.media_type === 'tv' && (
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">
+                                            S{item.seasonNumber} E{item.episodeNumber}
+                                        </p>
+                                    )}
+                                    <div className="mt-3">
+                                        <span className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Deleted {new Date(item.deletedAt).toLocaleDateString()}</span>
                                     </div>
-                                    <span className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Deleted {new Date(item.deletedAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex flex-col gap-2 self-center">
+                                    <button 
+                                        onClick={() => onRestore(item)}
+                                        className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-green-400 hover:bg-green-400/10 transition-all border border-white/5 shadow-md"
+                                        title="Restore Log"
+                                    >
+                                        <ArrowPathIcon className="w-5 h-5" />
+                                    </button>
+                                    <button 
+                                        onClick={() => { if(window.confirm("Permanently delete this log?")) onPermanentDelete(item.logId); }}
+                                        className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-red-500 hover:bg-red-500/10 transition-all border border-white/5 shadow-md"
+                                        title="Delete Permanently"
+                                    >
+                                        <TrashIcon className="w-5 h-5" />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-2 self-center">
-                                <button 
-                                    onClick={() => onRestore(item)}
-                                    className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-green-400 hover:bg-green-400/10 transition-all border border-white/5"
-                                    title="Restore Log"
-                                >
-                                    <ArrowPathIcon className="w-5 h-5" />
-                                </button>
-                                <button 
-                                    onClick={() => { if(window.confirm("Permanently delete this log?")) onPermanentDelete(item.logId); }}
-                                    className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-red-500 hover:bg-red-500/10 transition-all border border-white/5"
-                                    title="Delete Permanently"
-                                >
-                                    <TrashIcon className="w-5 h-5" />
-                                </button>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* DELETED NOTES SECTION */}
+            {deletedNotes.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-4 mb-6">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest whitespace-nowrap">Deleted Notes</h2>
+                        <div className="h-px w-full bg-white/5"></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {sortedNotes.map(note => (
+                            <div key={note.id} className="relative flex flex-col p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 group animate-fade-in opacity-80 hover:opacity-100 transition-opacity">
+                                <DaysRemainingCircle deletedAt={note.deletedAt} />
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="min-w-0 pr-8">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <PencilSquareIcon className="w-3.5 h-3.5 text-primary-accent" />
+                                            <h3 className="text-text-primary font-black uppercase tracking-tight truncate text-xs">{note.mediaTitle}</h3>
+                                        </div>
+                                        <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate">{note.context}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => { if(window.confirm("Permanently delete this note?")) onPermanentDeleteNote(note.id); }}
+                                            className="p-2 bg-bg-secondary rounded-lg text-text-primary hover:text-red-500 hover:bg-red-500/10 transition-all border border-white/5 shadow-sm"
+                                            title="Delete Permanently"
+                                        >
+                                            <TrashIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-yellow-100/10 dark:bg-yellow-900/10 p-3 rounded-xl border border-yellow-500/10 mb-3">
+                                    <p className="text-xs text-text-primary/90 italic leading-relaxed line-clamp-3">"{note.text}"</p>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[8px] font-black text-text-secondary/40 uppercase tracking-widest">Deleted {new Date(note.deletedAt).toLocaleDateString()}</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-20 opacity-50 flex flex-col items-center">
-                    <TrashIcon className="w-16 h-16 text-text-secondary/20 mb-4" />
-                    <p className="text-text-secondary font-black uppercase tracking-widest">Trash is empty</p>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {!hasAnyContent && (
+                <div className="text-center py-40 opacity-50 flex flex-col items-center">
+                    <TrashIcon className="w-20 h-20 text-text-secondary/20 mb-6" />
+                    <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Trash is empty</h2>
+                    <p className="mt-2 text-sm text-text-secondary uppercase tracking-widest font-bold opacity-40">Anything you remove will appear here for 30 days.</p>
                 </div>
             )}
         </div>
@@ -265,6 +328,8 @@ interface HistoryScreenProps {
   onClearSearchHistory: () => void;
   genres: Record<number, string>;
   timezone: string;
+  onPermanentDeleteNote?: (noteId: string) => void;
+  onRestoreNote?: (note: DeletedNote) => void;
 }
 
 const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
@@ -294,7 +359,18 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
       {activeTab === 'watch' && <WatchHistory history={props.userData.history} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} timezone={props.timezone} />}
       {activeTab === 'search' && <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} onSelectShow={props.onSelectShow} timezone={props.timezone} />}
       {activeTab === 'favorites' && <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">{props.userData.favorites.map(i => <CompactShowCard key={i.id} item={i} onSelect={props.onSelectShow} />)}</div>}
-      {activeTab === 'deleted' && <RecentlyDeleted items={props.userData.deletedHistory} onRestore={props.onRestoreHistoryItem!} onPermanentDelete={props.onPermanentDeleteHistoryItem!} onClearAll={props.onClearAllDeletedHistory!} timezone={props.timezone} />}
+      {activeTab === 'deleted' && (
+        <RecentlyDeleted 
+            items={props.userData.deletedHistory} 
+            deletedNotes={props.userData.deletedNotes}
+            onRestore={props.onRestoreHistoryItem!} 
+            onPermanentDelete={props.onPermanentDeleteHistoryItem!} 
+            onClearAll={props.onClearAllDeletedHistory!} 
+            onRestoreNote={props.onRestoreNote!}
+            onPermanentDeleteNote={props.onPermanentDeleteNote!}
+            timezone={props.timezone} 
+        />
+      )}
     </div>
   );
 };

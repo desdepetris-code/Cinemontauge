@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, AppPreferences } from '../types';
+import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, AppPreferences, Note } from '../types';
 import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon, EyeSlashIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, isNewRelease } from '../utils/formatUtils';
@@ -40,8 +40,8 @@ interface SeasonAccordionProps {
   onOpenCommentModal: (episode: Episode) => void;
   comments: Comment[];
   onImageClick: (src: string) => void;
-  episodeNotes?: Record<number, Record<number, Record<number, string>>>;
-  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, note: string) => void;
+  episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
+  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, notes: Note[]) => void;
   showRatings: boolean;
   seasonRatings: SeasonRatings;
   onRateSeason: (showId: number, seasonNumber: number, rating: number) => void;
@@ -186,7 +186,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   
   const isUpcoming = season.air_date && season.air_date > today;
   
-  const episodeNote = notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] || '') : '';
+  const epNotes = notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] || []) : [];
   
   const userSeasonRating = seasonRatings[showId]?.[season.season_number] || 0;
 
@@ -244,13 +244,13 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
       <NotesModal
         isOpen={notesModalState.isOpen}
         onClose={() => setNotesModalState({ isOpen: false, episode: null })}
-        onSave={(note) => {
+        onSave={(notes) => {
             if (notesModalState.episode) {
-                onSaveEpisodeNote(showId, notesModalState.episode.season_number, notesModalState.episode.episode_number, note);
+                onSaveEpisodeNote(showId, notesModalState.episode.season_number, notesModalState.episode.episode_number, notes);
             }
         }}
         mediaTitle={notesModalState.episode ? `Note for S${notesModalState.episode.season_number} E${notesModalState.episode.episode_number}: ${notesModalState.episode.name}` : ''}
-        initialNotes={episodeNote ? [{ id: 'manual', text: episodeNote, timestamp: new Date().toISOString() }] : []}
+        initialNotes={epNotes}
       />
       <MarkAsWatchedModal
         isOpen={logDateModalState.isOpen}
@@ -346,7 +346,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     const totalEpisodesInSeason = seasonDetails?.episodes?.length || season.episode_count;
                     const isLastEpisode = ep.episode_number === totalEpisodesInSeason;
                     const shouldAnimateWatch = justWatchedEpisodeId === ep.id;
-                    const hasNote = !!(episodeNotes[showId]?.[season.season_number]?.[ep.episode_number]);
+                    const epNotesList = episodeNotes[showId]?.[season.season_number]?.[ep.episode_number] || [];
+                    const hasNote = epNotesList.length > 0;
                     const episodeMediaKey = `tv-${showId}-s${ep.season_number}-e${ep.episode_number}`;
                     const existingComment = comments.find(c => c.mediaKey === episodeMediaKey);
 
@@ -411,6 +412,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                             <EyeSlashIcon className="w-8 h-8 drop-shadow-lg" />
                                         </div>
                                     )}
+                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
                                     <UserRatingStamp rating={epRating} className="absolute -top-1 -left-1" />
                                 </div>
                                 <div className="flex-grow min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-4 items-center">

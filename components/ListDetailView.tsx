@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CustomList, AppPreferences, TrackedItem } from '../types';
 import ListGrid from './ListGrid';
-import { SearchIcon, FilterIcon, ChevronDownIcon, ChevronLeftIcon, TvIcon, FilmIcon, PlayPauseIcon } from './Icons';
+import { SearchIcon, FilterIcon, ChevronDownIcon, ChevronLeftIcon, TvIcon, FilmIcon, PlayPauseIcon, PencilSquareIcon, CheckCircleIcon, XMarkIcon } from './Icons';
 
 interface ListDetailViewProps {
     list: CustomList;
@@ -10,15 +10,32 @@ interface ListDetailViewProps {
     onEdit: (list: CustomList) => void;
     onDelete: (id: string) => void;
     onRemoveItem: (listId: string, itemId: number) => void;
+    onUpdateList: (list: CustomList) => void;
     genres: Record<number, string>;
     preferences: AppPreferences;
 }
 
-const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectShow, onEdit, onDelete, onRemoveItem, genres, preferences }) => {
+const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectShow, onEdit, onDelete, onRemoveItem, onUpdateList, genres, preferences }) => {
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState<'all' | 'tv' | 'movie'>('all');
     const [genreFilter, setGenreFilter] = useState<string>('');
     const [showFilters, setShowFilters] = useState(preferences?.searchAlwaysExpandFilters || false);
+    
+    // Inline editing state
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [tempDescription, setTempDescription] = useState(list.description || '');
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        setTempDescription(list.description || '');
+    }, [list.description]);
+
+    useEffect(() => {
+        if (isEditingDescription && textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(textareaRef.current.value.length, textareaRef.current.value.length);
+        }
+    }, [isEditingDescription]);
 
     const stats = useMemo(() => {
         const tvCount = list.items.filter(i => i.media_type === 'tv').length;
@@ -35,11 +52,22 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
         });
     }, [list.items, search, typeFilter, genreFilter]);
 
+    const handleSaveDescription = () => {
+        onUpdateList({ ...list, description: tempDescription });
+        setIsEditingDescription(false);
+    };
+
+    const handleCancelDescription = () => {
+        setTempDescription(list.description || '');
+        setIsEditingDescription(false);
+    };
+
     const isWatchlist = list.id === 'watchlist';
 
     return (
         <div className="animate-fade-in space-y-8 pb-20">
-            <div className="sticky top-20 z-40 -mx-4 px-4 py-2 bg-backdrop/80 backdrop-blur-md border-b border-white/5 md:bg-transparent md:backdrop-blur-none md:border-none md:static">
+            {/* Sticky Navigation Bar */}
+            <div className="sticky top-16 md:top-2 z-40 -mx-4 px-4 py-3 bg-backdrop/80 backdrop-blur-xl border-b border-white/5 md:bg-transparent md:backdrop-blur-none md:border-none md:static">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="flex items-center gap-6">
                         <button 
@@ -48,14 +76,50 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                         >
                             <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                         </button>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-grow">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-3xl md:text-4xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
+                                <h1 className="text-2xl md:text-4xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
                                 <span className="px-2 py-0.5 bg-primary-accent text-on-accent text-[9px] font-black rounded uppercase tracking-widest flex-shrink-0">{list.items.length}</span>
                             </div>
-                            <p className="hidden md:block text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60 truncate max-w-lg">
-                                {list.description || "Personal curated collection"}
-                            </p>
+                            
+                            <div className="mt-2 group/desc relative max-w-xl">
+                                {isEditingDescription ? (
+                                    <div className="space-y-2 animate-fade-in">
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={tempDescription}
+                                            onChange={(e) => setTempDescription(e.target.value)}
+                                            className="w-full bg-bg-primary/50 text-sm font-medium text-text-primary p-3 rounded-xl border border-primary-accent/50 focus:outline-none focus:ring-2 focus:ring-primary-accent/20 min-h-[80px]"
+                                            placeholder="Enter list description..."
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <button 
+                                                onClick={handleCancelDescription}
+                                                className="px-3 py-1.5 rounded-lg bg-bg-secondary text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-primary transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                onClick={handleSaveDescription}
+                                                className="px-4 py-1.5 rounded-lg bg-accent-gradient text-on-accent text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5"
+                                            >
+                                                <CheckCircleIcon className="w-3 h-3" />
+                                                Save Description
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div 
+                                        className="flex items-start gap-2 cursor-pointer group/text"
+                                        onClick={() => setIsEditingDescription(true)}
+                                    >
+                                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 leading-relaxed">
+                                            {list.description || "Personal curated collection. Tap to add a description."}
+                                        </p>
+                                        <PencilSquareIcon className="w-4 h-4 text-primary-accent opacity-0 group-hover/text:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -71,7 +135,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                                 <span className="text-[10px] font-black text-text-primary">{stats.movieCount} <span className="text-text-secondary opacity-40">Movies</span></span>
                             </div>
                         </div>
-                        <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit</button>
+                        <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit Meta</button>
                         {!isWatchlist && (
                             <button onClick={() => onDelete(list.id)} className="p-3 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-6">Delete</button>
                         )}
@@ -80,7 +144,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
             </div>
 
             {/* Local Search and Filter Section */}
-            <section className="space-y-6">
+            <section className="space-y-6 px-4">
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                     <div className="relative flex-grow w-full">
                         <input
@@ -136,7 +200,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                 )}
             </section>
 
-            <div className="pt-4">
+            <div className="pt-4 px-4">
                 {filteredItems.length > 0 ? (
                     <ListGrid items={filteredItems} onSelect={onSelectShow} listId={list.id} onRemoveItem={onRemoveItem} />
                 ) : (

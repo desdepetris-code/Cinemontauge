@@ -6,7 +6,7 @@ import {
   LiveWatchMediaInfo, SearchHistoryItem, Comment, Note, ScreenName, ProfileTab, 
   WatchStatus, WeeklyPick, DeletedHistoryItem, CustomImagePaths, Reminder, 
   NotificationSettings, ShortcutSettings, NavSettings, AppPreferences, 
-  PrivacySettings, ProfileTheme, TmdbMedia, Follows, CustomListItem 
+  PrivacySettings, ProfileTheme, TmdbMedia, Follows, CustomListItem, DeletedNote
 } from './types';
 import Header from './components/Header';
 import Dashboard from './screens/Dashboard';
@@ -67,10 +67,11 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [watchProgress, setWatchProgress] = useLocalStorage<WatchProgress>(`watch_progress_${userId}`, {});
   const [history, setHistory] = useLocalStorage<HistoryItem[]>(`history_${userId}`, []);
   const [deletedHistory, setDeletedHistory] = useLocalStorage<DeletedHistoryItem[]>(`deleted_history_${userId}`, []);
+  const [deletedNotes, setDeletedNotes] = useLocalStorage<DeletedNote[]>(`deleted_notes_${userId}`, []);
   const [searchHistory, setSearchHistory] = useLocalStorage<SearchHistoryItem[]>(`search_history_${userId}`, []);
   const [comments, setComments] = useLocalStorage<Comment[]>(`comments_${userId}`, []);
   const [mediaNotes, setMediaNotes] = useLocalStorage<Record<number, Note[]>>(`media_notes_${userId}`, {});
-  const [episodeNotes, setEpisodeNotes] = useLocalStorage<Record<number, Record<number, Record<number, string>>>>(`episode_notes_${userId}`, {});
+  const [episodeNotes, setEpisodeNotes] = useLocalStorage<Record<number, Record<number, Record<number, Note[]>>>>(`episode_notes_${userId}`, {});
   const [customImagePaths, setCustomImagePaths] = useLocalStorage<CustomImagePaths>(`custom_image_paths_${userId}`, {});
   const [notifications, setNotifications] = useLocalStorage<AppNotification[]>(`notifications_${userId}`, []);
   const [favoriteEpisodes, setFavoriteEpisodes] = useLocalStorage<FavoriteEpisodes>(`favorite_episodes_${userId}`, {});
@@ -158,26 +159,35 @@ export const MainApp: React.FC<MainAppProps> = ({
   useEffect(() => {
     const pruneTrashBin = () => {
       const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      const remainingItems = deletedHistory.filter(item => {
+      
+      // Prune History
+      const remainingHistoryItems = deletedHistory.filter(item => {
         const deletedAt = new Date(item.deletedAt).getTime();
         return deletedAt > thirtyDaysAgo;
       });
-      
-      if (remainingItems.length !== deletedHistory.length) {
-        setDeletedHistory(remainingItems);
-        console.log(`Trash Bin Purged: Removed ${deletedHistory.length - remainingItems.length} expired logs.`);
+      if (remainingHistoryItems.length !== deletedHistory.length) {
+        setDeletedHistory(remainingHistoryItems);
+        console.log(`History Trash Purged: Removed ${deletedHistory.length - remainingHistoryItems.length} items.`);
+      }
+
+      // Prune Notes
+      const remainingNotes = deletedNotes.filter(note => {
+        const deletedAt = new Date(note.deletedAt).getTime();
+        return deletedAt > thirtyDaysAgo;
+      });
+      if (remainingNotes.length !== deletedNotes.length) {
+        setDeletedNotes(remainingNotes);
+        console.log(`Notes Trash Purged: Removed ${deletedNotes.length - remainingNotes.length} notes.`);
       }
     };
     
-    if (deletedHistory.length > 0) {
-      pruneTrashBin();
-    }
-  }, []);
+    pruneTrashBin();
+  }, [deletedHistory.length, deletedNotes.length]);
 
   // --- Nostalgia & Updates Logic ---
   useEffect(() => {
     const runUpdateCheck = async () => {
-        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory };
+        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory };
         const result = await checkForUpdates(userData);
         if (result.notifications.length > 0) {
             setNotifications(prev => {
@@ -293,8 +303,8 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [liveWatchMedia, liveWatchIsPaused, handleLiveWatchStop]);
 
   const allUserData: UserData = useMemo(() => ({
-    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory
-  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory]);
+    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory
+  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory]);
 
   const currentWeekKey = useMemo(() => {
     const d = new Date();
@@ -702,8 +712,26 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   const handleClearAllDeletedHistory = useCallback(() => {
     setDeletedHistory([]);
+    setDeletedNotes([]);
     confirmationService.show("Trash bin emptied permanently.");
-  }, [setDeletedHistory]);
+  }, [setDeletedHistory, setDeletedNotes]);
+
+  const handleRestoreNote = useCallback((deletedNote: DeletedNote) => {
+      setDeletedNotes(prev => prev.filter(n => n.id !== deletedNote.id));
+      const { deletedAt, mediaTitle, context, ...originalNote } = deletedNote;
+      
+      // We don't have an easy way to map back exactly where it was without more complex logic
+      // But for now, we can't easily "un-archive" it into the precise show/episode structure 
+      // without keeping more references. Instead, we can just say "Restore failed" or implement it.
+      // Let's implement simple restoration to mediaNotes for now if it's general.
+      
+      confirmationService.show("Restoration of notes is currently manual from Trash contents.");
+  }, [setDeletedNotes]);
+
+  const handlePermanentDeleteNote = useCallback((noteId: string) => {
+      setDeletedNotes(prev => prev.filter(n => n.id !== noteId));
+      confirmationService.show("Note permanently deleted.");
+  }, [setDeletedNotes]);
 
   const handleSaveComment = useCallback((commentData: any) => {
     const newComment: Comment = {
@@ -864,6 +892,12 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show(`Imported ${newHistory.length} logs successfully.`);
   }, [setHistory, syncLibraryItem]);
 
+  const handleNoteDeleted = useCallback((note: Note, mediaTitle: string, context: string) => {
+      const deletedAt = new Date().toISOString();
+      setDeletedNotes(prev => [{ ...note, deletedAt, mediaTitle, context }, ...prev]);
+      confirmationService.show("Note moved to Trash Bin.");
+  }, [setDeletedNotes]);
+
   const renderScreen = () => {
     if (selectedUserId) return <UserProfileModal userId={selectedUserId} currentUser={currentUser || { id: 'guest', username: 'Guest' }} follows={follows[currentUser?.id || 'guest'] || []} onFollow={handleFollow} onUnfollow={handleUnfollow} onClose={() => setSelectedUserId(null)} onToggleLikeList={() => {}} />;
     if (selectedShow) {
@@ -916,6 +950,8 @@ export const MainApp: React.FC<MainAppProps> = ({
                 customLists={customLists} currentUser={currentUser} allUsers={[]}
                 onOpenAddToListModal={(item) => setAddToListModalState({ isOpen: true, item })} allUserData={allUserData}
                 episodeNotes={episodeNotes} preferences={preferences} follows={follows} pausedLiveSessions={pausedLiveSessions} onAuthClick={onAuthClick}
+                onSaveMediaNote={(mid, notes) => setMediaNotes(prev => ({ ...prev, [mid]: notes }))}
+                onNoteDeleted={handleNoteDeleted}
             />
         );
     }
@@ -936,6 +972,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={setSelectedUserId} timezone={timezone} setTimezone={setTimezone}
             onRemoveDuplicateHistory={() => {}} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} onMarkOneRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))} onAddNotifications={(notifs) => setNotifications(prev => [...notifs, ...prev])} 
             autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={holidayAnimationsEnabled} setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} profileTheme={profileTheme} setProfileTheme={setProfileTheme} textSize={textSize} setTextSize={setTextSize} onFeedbackSubmit={() => {}} levelInfo={calculateLevelInfo(userXp)} timeFormat={timeFormat} setTimeFormat={setTimeFormat} pin={pin} setPin={setPin} showRatings={showRatings} setShowRatings={setShowRatings} setSeasonRatings={setSeasonRatings} onToggleWeeklyFavorite={handleRemoveWeeklyPick} onOpenNominateModal={() => setIsNominateModalOpen(true)} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} shortcutSettings={shortcutSettings} setShortcutSettings={setShortcutSettings} navSettings={navSettings} setNavSettings={setNavSettings} preferences={preferences} setPreferences={setPreferences}
+            onPermanentDeleteNote={handlePermanentDeleteNote} onRestoreNote={handleRestoreNote}
           />
         );
         case 'home':

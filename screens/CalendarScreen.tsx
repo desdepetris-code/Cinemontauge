@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { UserData, CalendarItem, Reminder, TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, EpisodeProgress } from '../types';
+import { UserData, CalendarItem, Reminder, TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, EpisodeProgress, TraktToken } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
+import { getMyCalendarShows, getMyCalendarMovies, getStoredToken } from '../services/traktService';
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CalendarIcon, SparklesIcon, ListBulletIcon, Squares2X2Icon } from '../components/Icons';
 import { formatDate } from '../utils/formatUtils';
 import CalendarListItem from '../components/CalendarListItem';
@@ -26,7 +27,6 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
     const [loading, setLoading] = useState(true);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-    // Personalized collection for calendar: Includes everything except what the user specifically paused or quit.
     const relevantTrackedItems = useMemo(() => {
         const excludeIds = new Set([
             ...userData.onHold.map(i => i.id),
@@ -59,13 +59,13 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
             const startOfDay = new Date(year, month, day);
             startDateStr = formatDateForApi(startOfDay);
             endDateStr = startDateStr;
-            cacheKey = `personal_calendar_v6_day_${relevantTrackedItems.length}_${startDateStr}`;
+            cacheKey = `personal_calendar_v8_day_${relevantTrackedItems.length}_${startDateStr}`;
         } else {
             const firstDayOfMonth = new Date(year, month, 1);
             const lastDayOfMonth = new Date(year, month + 1, 0);
             startDateStr = formatDateForApi(firstDayOfMonth);
             endDateStr = formatDateForApi(lastDayOfMonth);
-            cacheKey = `personal_calendar_v6_month_${relevantTrackedItems.length}_${year}-${month}`;
+            cacheKey = `personal_calendar_v8_month_${relevantTrackedItems.length}_${year}-${month}`;
         }
         
         const cached = getFromCache<Record<string, CalendarItem[]>>(cacheKey);
@@ -78,7 +78,33 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
         const shows = relevantTrackedItems.filter(i => i.media_type === 'tv');
         const movies = relevantTrackedItems.filter(i => i.media_type === 'movie');
 
-        // Batch fetch media details for all tracked items
+        // Attempt to enrich with Trakt Airstamps for precise times
+        const traktToken = getStoredToken();
+        let traktAirtimesMap = new Map<string, string>(); // key: "showId-S-E" or "movieId", val: ISO string
+
+        if (traktToken) {
+            try {
+                const days = mode === 'day' ? 1 : 31;
+                const [traktShows, traktMovies] = await Promise.all([
+                    getMyCalendarShows(traktToken, startDateStr, days),
+                    getMyCalendarMovies(traktToken, startDateStr, days)
+                ]);
+                
+                traktShows.forEach(t => {
+                    const key = `${t.show.ids.tmdb}-${t.episode.season}-${t.episode.number}`;
+                    traktAirtimesMap.set(key, t.first_aired);
+                });
+
+                traktMovies.forEach(t => {
+                    if (t.movie?.ids?.tmdb) {
+                        traktAirtimesMap.set(String(t.movie.ids.tmdb), t.released);
+                    }
+                });
+            } catch (e) {
+                console.warn("Trakt precision timing failed to load", e);
+            }
+        }
+
         const showDetailPromises = shows.map(s => getMediaDetails(s.id, 'tv').catch(() => null));
         const movieDetailPromises = movies.map(m => getMediaDetails(m.id, 'movie').catch(() => null));
         
@@ -89,18 +115,18 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
 
         const calendarItems: CalendarItem[] = [];
 
-        // Process Movie Releases
         movieDetails.forEach(details => {
             if (details?.release_date && details.release_date >= startDateStr && details.release_date <= endDateStr) {
+                const movieAirstamp = traktAirtimesMap.get(String(details.id));
                 calendarItems.push({
                     id: details.id, media_type: 'movie', poster_path: details.poster_path, title: details.title || '', date: details.release_date, 
                     episodeInfo: 'Movie Release', network: details.production_companies?.[0]?.name, overview: details.overview, 
-                    isInCollection: !!details.belongs_to_collection, runtime: details.runtime
+                    isInCollection: !!details.belongs_to_collection, runtime: details.runtime,
+                    airtime: movieAirstamp
                 });
             }
         });
 
-        // Process TV Episode Releases
         const seasonFetchPromises: Promise<{ showDetails: TmdbMediaDetails, seasonDetail: TmdbSeasonDetails } | null>[] = [];
         showDetails.forEach(details => {
             if (details?.seasons) {
@@ -121,17 +147,20 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
         fetchedSeasons.forEach(({ showDetails, seasonDetail }) => {
             seasonDetail.episodes.forEach(ep => {
                 if (ep.air_date && ep.air_date >= startDateStr && ep.air_date <= endDateStr) {
+                    const traktKey = `${showDetails.id}-${seasonDetail.season_number}-${ep.episode_number}`;
+                    const traktAirstamp = traktAirtimesMap.get(traktKey);
+                    
                     calendarItems.push({
                         id: showDetails.id, media_type: 'tv', poster_path: ep.still_path || showDetails.poster_path, still_path: ep.still_path,
                         title: showDetails.name || 'Untitled', date: ep.air_date,
                         episodeInfo: `S${seasonDetail.season_number} E${ep.episode_number}: ${ep.name}`,
                         network: showDetails.networks?.[0]?.name, overview: ep.overview, runtime: ep.runtime,
+                        airtime: traktAirstamp // Using Trakt's ISO airstamp for local conversion
                     });
                 }
             });
         });
 
-        // Inject active reminders if not already present via TMDB data
         reminders.forEach(r => {
             if (r.releaseDate >= startDateStr && r.releaseDate <= endDateStr) {
                 if (!calendarItems.some(i => i.id === r.mediaId && i.date === r.releaseDate)) {
@@ -148,7 +177,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
             return acc;
         }, {} as Record<string, CalendarItem[]>);
         
-        setToCache(cacheKey, grouped, 12 * 60 * 60 * 1000); // 12h cache
+        setToCache(cacheKey, grouped, 12 * 60 * 60 * 1000);
         setItems(grouped);
         setLoading(false);
     }, [relevantTrackedItems, reminders, hasNoData]);

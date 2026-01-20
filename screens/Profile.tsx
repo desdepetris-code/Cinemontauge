@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem } from '../types';
-import { UserIcon, StarIcon, WritingBookIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon } from '../components/Icons';
+import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
+import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -211,10 +211,12 @@ interface ProfileProps {
   setNavSettings: React.Dispatch<React.SetStateAction<NavSettings>>;
   preferences: AppPreferences;
   setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
+  onPermanentDeleteNote: (noteId: string) => void;
+  onRestoreNote: (note: DeletedNote) => void;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
@@ -273,17 +275,17 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
     { id: 'overview', label: 'Overview', icon: Squares2X2Icon },
-    { id: 'ongoing', label: 'Catch Up', icon: PlayPauseIcon },
+    { id: 'ongoing', label: 'Catch Up', icon: QueueListIcon },
     { id: 'updates', label: 'Updates', icon: FireIcon },
     { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon },
     { id: 'history', label: 'Overall History', icon: ClockIcon },
     { id: 'weeklyPicks', label: 'Weekly Picks', icon: TrophyIcon },
     { id: 'library', label: 'Library', icon: CollectionIcon },
-    { id: 'lists', label: 'Custom Lists', icon: RectangleStackIcon },
+    { id: 'lists', label: 'Custom Lists', icon: BookmarkIcon },
     { id: 'activity', label: 'Activity', icon: UserGroupIcon },
     { id: 'stats', label: 'Stats', icon: ChartPieIcon },
-    { id: 'seasonLog', label: 'Season Log', icon: ArchiveBoxIcon },
-    { id: 'journal', label: 'Journal', icon: WritingBookIcon },
+    { id: 'seasonLog', label: 'Season Log', icon: TableCellsIcon },
+    { id: 'journal', label: 'Journal', icon: PencilSquareIcon },
     { id: 'achievements', label: 'Achievements', icon: BadgeIcon },
     { id: 'imports', label: 'Import & Sync', icon: CloudArrowUpIcon },
     { id: 'settings', label: 'Settings', icon: CogIcon },
@@ -326,7 +328,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
       case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
-      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} />;
+      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} onPermanentDeleteNote={onPermanentDeleteNote} onRestoreNote={onRestoreNote} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'achievements': return <AchievementsScreen userData={userData} />;

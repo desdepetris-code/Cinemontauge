@@ -6,11 +6,13 @@ interface NotesModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (notes: Note[]) => void;
+  onNoteDeleted?: (note: Note, mediaTitle: string, context: string) => void;
   mediaTitle: string;
+  context?: string; // e.g. "S1 E5" or "Show Overall"
   initialNotes?: Note[];
 }
 
-const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, mediaTitle, initialNotes = [] }) => {
+const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, onNoteDeleted, mediaTitle, context = "Show Overall", initialNotes = [] }) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [newNoteText, setNewNoteText] = useState('');
 
@@ -36,11 +38,12 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, mediaT
     onSave(updatedNotes); // Save immediately
   };
 
-  const handleDeleteNote = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this note?")) {
-        const updatedNotes = notes.filter(n => n.id !== id);
-        setNotes(updatedNotes);
-        onSave(updatedNotes); // Save immediately
+  const handleDeleteNote = (note: Note) => {
+    const updatedNotes = notes.filter(n => n.id !== note.id);
+    setNotes(updatedNotes);
+    onSave(updatedNotes);
+    if (onNoteDeleted) {
+        onNoteDeleted(note, mediaTitle, context);
     }
   };
 
@@ -51,14 +54,14 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, mediaT
             <XMarkIcon className="w-5 h-5" />
         </button>
         <h2 className="text-2xl font-bold text-text-primary mb-2">My Notes</h2>
-        <p className="text-text-secondary mb-4 truncate">{mediaTitle}</p>
+        <p className="text-text-secondary mb-4 truncate">{mediaTitle} <span className="opacity-40 ml-1">({context})</span></p>
         
         <div className="flex-grow overflow-y-auto pr-2 space-y-3 mb-4">
             {notes.length > 0 ? notes.map(note => (
                 <div key={note.id} className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg -rotate-1 transform border border-yellow-300/50 dark:border-yellow-700/50 group">
                     <div className="flex justify-between items-start">
                         <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm flex-grow">{note.text}</p>
-                        <button onClick={() => handleDeleteNote(note.id)} className="ml-2 p-1 text-yellow-700 dark:text-yellow-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleDeleteNote(note)} className="ml-2 p-1 text-yellow-700 dark:text-yellow-300 hover:text-red-500 transition-opacity" title="Delete Note">
                             <TrashIcon className="w-4 h-4" />
                         </button>
                     </div>

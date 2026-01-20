@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, Episode, LiveWatchMediaInfo, FavoriteEpisodes, WatchProgress, JournalEntry, Comment, TmdbSeasonDetails, TrackedItem } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
+import { CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ChatBubbleOvalLeftEllipsisIcon, ClockIcon } from './Icons';
 import CommentModal from './CommentModal';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
+import { formatTimeFromDate } from '../utils/formatUtils';
 
 interface NextUpWidgetProps {
     showId: number;
@@ -23,6 +24,7 @@ interface NextUpWidgetProps {
     onSaveComment: (commentData: any) => void;
     comments: Comment[];
     onSelectShow?: (id: number, media_type: 'tv' | 'movie' | 'person') => void;
+    timezone: string;
 }
 
 const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void; disabled?: boolean; isActive?: boolean; }> = ({ icon, label, onClick, disabled, isActive }) => (
@@ -37,7 +39,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: (
 );
 
 const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
-    const { showId, details, nextEpisodeToWatch, onToggleEpisode, onOpenJournal, onOpenCommentModal, favoriteEpisodes, onToggleFavoriteEpisode, onStartLiveWatch, watchProgress, onSaveJournal, onSaveComment, comments, onSelectShow } = props;
+    const { showId, details, nextEpisodeToWatch, onToggleEpisode, onOpenJournal, onOpenCommentModal, favoriteEpisodes, onToggleFavoriteEpisode, onStartLiveWatch, watchProgress, onSaveJournal, onSaveComment, comments, onSelectShow, timezone } = props;
     
     const [episodeDetails, setEpisodeDetails] = useState<Episode | null>(null);
     const [seasonDetails, setSeasonDetails] = useState<TmdbSeasonDetails | null>(null);
@@ -132,6 +134,8 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
         };
         onStartLiveWatch(mediaInfo);
     };
+
+    const airstampText = episodeDetails.airtime ? formatTimeFromDate(episodeDetails.airtime, timezone) : null;
     
     return (
         <div className="bg-card-gradient rounded-2xl shadow-xl overflow-hidden border border-white/5 group/widget">
@@ -147,11 +151,19 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                     alt={`Still from ${episodeDetails.name}`}
                     className="relative h-full w-auto object-contain transition-transform duration-700 group-hover/widget:scale-110"
                 />
-                {tag && (
-                    <div className={`absolute top-3 left-3 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-md border border-white/10 shadow-lg ${tag.className}`}>
-                        {tag.text}
-                    </div>
-                )}
+                <div className="absolute top-3 left-3 flex flex-col gap-2">
+                    {tag && (
+                        <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-md border border-white/10 shadow-lg self-start ${tag.className}`}>
+                            {tag.text}
+                        </div>
+                    )}
+                    {airstampText && (
+                        <div className="bg-primary-accent/80 backdrop-blur-md text-on-accent text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-white/10 shadow-lg self-start flex items-center gap-1.5">
+                            <ClockIcon className="w-3 h-3" />
+                            {airstampText}
+                        </div>
+                    )}
+                </div>
             </div>
             
             <div className="p-6">

@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment, CastMember, CrewMember, AppPreferences } from '../types';
+import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment, CastMember, CrewMember, AppPreferences, Note } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, PencilSquareIcon, EyeSlashIcon, EyeIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, ChevronLeftIcon, PlayCircleIcon, ChevronRightIcon, XMarkIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, PencilSquareIcon, EyeSlashIcon, EyeIcon, ClockIcon } from './Icons';
 import { LiveWatchMediaInfo } from '../types';
-import { formatRuntime, isNewRelease } from '../utils/formatUtils';
+import { formatRuntime, isNewRelease, formatTimeFromDate } from '../utils/formatUtils';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import ScoreStar from './ScoreStar';
@@ -32,9 +32,10 @@ interface EpisodeDetailModalProps {
   onRate: () => void;
   episodeRating: number;
   onDiscuss: () => void;
-  episodeNotes?: Record<number, Record<number, Record<number, string>>>;
+  episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
   showRatings: boolean;
   preferences: AppPreferences;
+  timezone: string;
 }
 
 const CrewList: React.FC<{ crew: CrewMember[] }> = ({ crew }) => {
@@ -63,7 +64,7 @@ const GuestStarsList: React.FC<{ stars: CastMember[] }> = ({ stars }) => {
 
 
 const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
-  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onDiscuss, episodeNotes = {}, showRatings, preferences
+  isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, onSaveJournal, watchProgress, onNext, onPrevious, onAddWatchHistory, onRate, episodeRating, onDiscuss, episodeNotes = {}, showRatings, preferences, timezone
 }) => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
@@ -91,7 +92,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
 
   if (!isOpen || !episode) return null;
 
-  const episodeNote = episodeNotes[showDetails.id]?.[episode.season_number]?.[episode.episode_number];
+  const currentEpisodeNotes = episodeNotes[showDetails.id]?.[episode.season_number]?.[episode.episode_number] || [];
 
   const onTouchStart = (e: React.TouchEvent) => {
       setTouchEnd(0);
@@ -161,6 +162,8 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
 
   const showSpoilerOverlay = preferences.enableSpoilerShield && !isWatched && !isFuture && !revealOverview;
 
+  const airstampText = episode.airtime ? formatTimeFromDate(episode.airtime, timezone) : null;
+
   return (
     <>
       <MarkAsWatchedModal
@@ -220,10 +223,18 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                             return null;
                         })()}
                       </div>
-                      <div className="flex items-center flex-wrap gap-2 text-xs text-text-secondary/80 mt-1">
-                          {episode.air_date && <span>Aired: {new Date(episode.air_date + 'T00:00:00').toLocaleDateString()}</span>}
-                          {episode.runtime && episode.runtime > 0 && episode.air_date && <span>&bull;</span>}
-                          {episode.runtime && episode.runtime > 0 && <span>{formatRuntime(episode.runtime)}</span>}
+                      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs text-text-secondary/80 mt-2">
+                          <div className="flex items-center gap-1.5">
+                              <CheckCircleIcon className="w-3.5 h-3.5 opacity-50" />
+                              <span>{episode.air_date ? new Date(episode.air_date + 'T00:00:00').toLocaleDateString() : 'Unscheduled'}</span>
+                          </div>
+                          {airstampText && (
+                            <div className="flex items-center gap-1.5 bg-primary-accent/10 px-2 py-0.5 rounded border border-primary-accent/20 text-primary-accent">
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                <span className="font-black uppercase tracking-widest">{airstampText}</span>
+                            </div>
+                          )}
+                          {episode.runtime && episode.runtime > 0 && <span>&bull; {formatRuntime(episode.runtime)}</span>}
                           {ageRating && (
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm border border-white/10 ${getAgeRatingColor(ageRating)}`}>
                                     {ageRating}
@@ -250,12 +261,17 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                     )}
                   </div>
 
-                  {episodeNote && (
-                        <div className="mt-4">
-                            <div className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg -rotate-1 transform border border-yellow-300/50 dark:border-yellow-700/50">
-                                <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-1 text-sm">My Note</h4>
-                                <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm">{episodeNote}</p>
-                            </div>
+                  {currentEpisodeNotes.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            {currentEpisodeNotes.map(note => (
+                                <div key={note.id} className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg -rotate-1 transform border border-yellow-300/50 dark:border-yellow-700/50">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className="font-bold text-yellow-800 dark:text-yellow-200 text-xs uppercase tracking-widest">My Note</h4>
+                                        <span className="text-[9px] text-yellow-700 dark:text-yellow-500 font-bold opacity-60">{new Date(note.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm">{note.text}</p>
+                                </div>
+                            ))}
                         </div>
                     )}
                 <GuestStarsList stars={episode.guest_stars || []} />

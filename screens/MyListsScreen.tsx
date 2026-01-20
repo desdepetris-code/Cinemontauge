@@ -94,6 +94,12 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
     confirmationService.show(`Collection details updated.`);
   };
 
+  const handleUpdateList = (updatedList: CustomList) => {
+    setCustomLists(prev => prev.map(l => l.id === updatedList.id ? updatedList : l));
+    // Silent update if just description, or maybe a small toast? 
+    // The user action of saving is explicit enough.
+  };
+
   const handleDeleteList = (listId: string) => {
     if (listId === 'watchlist') return;
     if (window.confirm("ARE YOU SURE?\n\nDeleting this collection is permanent and cannot be undone.")) {
@@ -121,6 +127,7 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
             onEdit={(list) => { setListToEdit(list); setIsModalOpen(true); }}
             onDelete={handleDeleteList}
             onRemoveItem={handleRemoveItem}
+            onUpdateList={handleUpdateList}
             genres={genres}
             preferences={preferences}
           />

@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarItem, Reminder, ReminderType, TmdbMediaDetails } from '../types';
-import { BellIcon, CheckCircleIcon } from './Icons';
-import { formatDate, formatAirtime } from '../utils/formatUtils';
+import { BellIcon, CheckCircleIcon, ClockIcon } from './Icons';
+import { formatDate, formatAirtime, formatTimeFromDate } from '../utils/formatUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import ReminderOptionsModal from './ReminderOptionsModal';
@@ -108,8 +107,17 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
     ];
   }, [item.still_path, item.poster_path]);
 
+  // Priority: 1. ISO Airstamp from Trakt, 2. Airtime string from other source, 3. Date only
+  const displayTime = useMemo(() => {
+    if (item.airtime && item.airtime.includes('T')) {
+        // It's a full ISO airstamp
+        return formatTimeFromDate(item.airtime, timezone);
+    }
+    if (item.airtime) return formatAirtime(item.airtime);
+    return null;
+  }, [item.airtime, timezone]);
+
   const formattedDate = formatDate(item.date, timezone, { month: 'long', day: 'numeric' });
-  const formattedAirtime = formatAirtime(item.airtime);
 
   return (
     <>
@@ -119,60 +127,73 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
         onSelect={handleSelectReminderType}
       />
       <div
-        className={`relative group ${containerBgClass} rounded-lg shadow-md transition-colors hover:bg-bg-secondary/50 cursor-pointer`}
+        className={`relative group ${containerBgClass} rounded-2xl shadow-md transition-all hover:scale-[1.01] hover:bg-bg-secondary/50 cursor-pointer border border-white/5 overflow-hidden`}
         onClick={() => onSelect(item.id, item.media_type)}
       >
         <div className={`absolute left-0 top-0 bottom-0 w-2 ${stripColorClass} rounded-l-lg`}></div>
         
-        <div className="flex items-center space-x-2 p-2 pl-4">
-             {!isPast && (
-                <button
-                    onClick={handleReminderClick}
-                    className={`p-2 rounded-full transition-colors ${isReminderSet ? 'text-primary-accent bg-primary-accent/10' : 'text-text-secondary/50 hover:bg-bg-secondary'}`}
-                    aria-label={isReminderSet ? "Remove reminder" : "Add reminder"}
-                >
-                    <BellIcon filled={isReminderSet} className="w-5 h-5"/>
-                </button>
-            )}
-            {item.media_type === 'tv' && isPast && (
-                <button 
-                    onClick={handleToggleWatched}
-                    className={`p-2 rounded-full transition-colors ${isWatched ? 'text-green-400 bg-green-500/10' : 'text-text-secondary/50 hover:bg-bg-secondary'}`}
-                    aria-label={isWatched ? 'Mark as unwatched' : 'Mark as watched'}
-                >
-                    <CheckCircleIcon className="w-5 h-5" />
-                </button>
+        <div className="flex items-center justify-between p-2 pl-4">
+            <div className="flex items-center gap-2">
+                {!isPast && (
+                    <button
+                        onClick={handleReminderClick}
+                        className={`p-2 rounded-full transition-colors ${isReminderSet ? 'text-primary-accent bg-primary-accent/10' : 'text-text-secondary/50 hover:bg-bg-secondary'}`}
+                        aria-label={isReminderSet ? "Remove reminder" : "Add reminder"}
+                    >
+                        <BellIcon filled={isReminderSet} className="w-5 h-5"/>
+                    </button>
+                )}
+                {item.media_type === 'tv' && isPast && (
+                    <button 
+                        onClick={handleToggleWatched}
+                        className={`p-2 rounded-full transition-colors ${isWatched ? 'text-green-400 bg-green-500/10' : 'text-text-secondary/50 hover:bg-bg-secondary'}`}
+                        aria-label={isWatched ? 'Mark as unwatched' : 'Mark as watched'}
+                    >
+                        <CheckCircleIcon className="w-5 h-5" />
+                    </button>
+                )}
+            </div>
+            
+            {displayTime && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-primary-accent/10 border border-primary-accent/20 rounded-full mr-2">
+                    <ClockIcon className="w-3.5 h-3.5 text-primary-accent" />
+                    <span className="text-[10px] font-black text-primary-accent uppercase tracking-widest">{displayTime}</span>
+                </div>
             )}
         </div>
 
-        <div className="flex items-start p-3 pl-5 pt-0 space-x-3">
+        <div className="flex items-start p-3 pl-5 pt-0 space-x-4">
             <div className="relative flex-shrink-0">
                 <FallbackImage
                     srcs={imageSrcs}
                     placeholder={item.media_type === 'tv' ? PLACEHOLDER_STILL : PLACEHOLDER_POSTER}
                     alt={item.title}
-                    className="w-32 h-20 object-cover rounded-md bg-bg-secondary"
+                    className="w-32 h-20 object-cover rounded-xl bg-bg-secondary shadow-lg border border-white/5"
                 />
                 {ageRating && (
-                    <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded uppercase shadow-md z-10 border border-white/10 ${getAgeRatingColor(ageRating)}`}>
+                    <div className={`absolute top-1 right-1 px-1.5 py-0.5 text-[8px] font-black rounded uppercase shadow-md z-10 border border-white/10 ${getAgeRatingColor(ageRating)}`}>
                         {ageRating}
                     </div>
                 )}
             </div>
             <div className="flex-grow min-w-0">
-                <h3 className="font-bold text-text-primary truncate pr-10">{item.title}</h3>
+                <h3 className="font-black text-text-primary uppercase tracking-tight truncate pr-10">{item.title}</h3>
                 {item.media_type === 'tv' ? (
                   <>
-                      <p className="text-sm text-text-secondary truncate">{seasonEpisode}</p>
-                      {episodeName && <p className="text-sm font-semibold text-text-primary truncate">{episodeName}</p>}
+                      <p className="text-[10px] font-black text-primary-accent uppercase tracking-widest truncate">{seasonEpisode}</p>
+                      {episodeName && <p className="text-sm font-bold text-text-secondary truncate mt-0.5">{episodeName}</p>}
                   </>
                 ) : (
-                  <p className="text-sm font-semibold text-text-primary">{item.episodeInfo}</p>
+                  <p className="text-sm font-bold text-text-secondary uppercase tracking-widest mt-0.5">{item.episodeInfo}</p>
                 )}
-                <div className="text-xs text-text-secondary/80 mt-1">
+                <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[9px] font-black text-text-secondary/60 uppercase tracking-widest mt-2">
                     <span>{formattedDate}</span>
-                    {formattedAirtime && <span> &bull; {formattedAirtime}</span>}
-                    {item.network && <span> &bull; {item.network}</span>}
+                    {item.network && (
+                        <>
+                            <span className="opacity-30">•</span>
+                            <span>{item.network}</span>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

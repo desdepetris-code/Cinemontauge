@@ -1,13 +1,15 @@
 import React, { useMemo } from 'react';
 import { TmdbMediaDetails } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
-import { formatRuntime } from '../utils/formatUtils';
+import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
 import RelatedShows from './RelatedShows';
 import ScoreStar from './ScoreStar';
+import { ClockIcon } from './Icons';
 
 interface MoreInfoProps {
   details: TmdbMediaDetails | null;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
+  timezone: string;
 }
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => {
@@ -20,7 +22,7 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
     );
 };
 
-const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
+const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone }) => {
     if (!details) return <p className="text-text-secondary">More information is not available.</p>;
 
     const releaseDate = details.media_type === 'tv' ? details.first_air_date : details.release_date;
@@ -70,6 +72,12 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
     };
 
+    // Try to find precision airtime for the first episode or movie release if available in current context
+    // This is enhanced when details are enriched by Trakt in the Calendar
+    const precisionTime = details.media_type === 'movie' && (details as any).airtime 
+        ? formatTimeFromDate((details as any).airtime, timezone)
+        : null;
+
     return (
         <div className="animate-fade-in">
             <div className="bg-bg-secondary/50 rounded-lg">
@@ -88,6 +96,17 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow }) => {
                         </div>
                     } />}
                     <InfoRow label="Release Date" value={releaseDate ? new Date(releaseDate).toLocaleDateString() : 'N/A'} />
+                    {precisionTime && (
+                        <InfoRow 
+                            label="Scheduled Premiere" 
+                            value={
+                                <div className="flex items-center gap-2 text-primary-accent font-black uppercase tracking-widest text-[10px]">
+                                    <ClockIcon className="w-4 h-4" />
+                                    {precisionTime}
+                                </div>
+                            } 
+                        />
+                    )}
                     <InfoRow label="Language" value={languageName} />
                     <InfoRow label="Country of Origin" value={countryNames} />
                     <InfoRow label="Production" value={

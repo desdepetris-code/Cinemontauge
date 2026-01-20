@@ -31,9 +31,9 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
         <div 
           onClick={onGoHome}
           className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
+          title="CineMontauge Home"
         >
-            <Logo className="h-8 w-8 md:h-10 md:w-10 transition-transform duration-500 group-hover:scale-110" />
-            <h1 className="text-[10px] font-black bg-accent-gradient bg-clip-text text-transparent -mt-1 uppercase tracking-tighter">CineMontauge</h1>
+            <Logo className="h-10 w-10 md:h-12 md:w-12 transition-transform duration-500 group-hover:scale-110" />
         </div>
 
         <div className="flex-1 flex justify-center items-center">

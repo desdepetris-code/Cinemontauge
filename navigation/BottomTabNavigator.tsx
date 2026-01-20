@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon, SearchNavIcon, WritingBookIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, RectangleStackIcon, UserGroupIcon, ChartPieIcon, ArchiveBoxIcon, BadgeIcon, ArrowTrendingUpIcon, FireIcon, PlayPauseIcon } from '../components/Icons';
+import { HomeIcon, SearchNavIcon, WritingBookIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, RectangleStackIcon, UserGroupIcon, ChartPieIcon, ArchiveBoxIcon, BadgeIcon, ArrowTrendingUpIcon, FireIcon, PlayPauseIcon, QueueListIcon, BookmarkIcon, TableCellsIcon, PencilSquareIcon } from '../components/Icons';
 import { NavSettings, ProfileTab } from '../types';
 
 interface BottomTabNavigatorProps {
@@ -18,14 +18,14 @@ const iconMetadata: Record<string, { label: string; icon: React.FC<React.SVGProp
   progress: { label: 'Progress', icon: ArrowTrendingUpIcon },
   history: { label: 'History', icon: ClockIcon },
   library: { label: 'Library', icon: CollectionIcon },
-  lists: { label: 'Lists', icon: RectangleStackIcon },
+  lists: { label: 'Lists', icon: BookmarkIcon },
   activity: { label: 'Activity', icon: UserGroupIcon },
   stats: { label: 'Stats', icon: ChartPieIcon },
-  seasonLog: { label: 'Log', icon: ArchiveBoxIcon },
-  journal: { label: 'Journal', icon: WritingBookIcon },
+  seasonLog: { label: 'Log', icon: TableCellsIcon },
+  journal: { label: 'Journal', icon: PencilSquareIcon },
   achievements: { label: 'Awards', icon: BadgeIcon },
   updates: { label: 'Updates', icon: FireIcon },
-  ongoing: { label: 'Catch Up', icon: PlayPauseIcon },
+  ongoing: { label: 'Catch Up', icon: QueueListIcon },
 };
 
 const TabButton: React.FC<{

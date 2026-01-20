@@ -74,7 +74,7 @@ interface ShowDetailProps {
   genres: Record<number, string>;
   onMarkAllWatched: (showId: number, showInfo: TrackedItem) => void;
   onUnmarkAllWatched: (showId: number) => void;
-  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, note: string) => void;
+  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, notes: Note[]) => void;
   showRatings: boolean;
   seasonRatings: SeasonRatings;
   onRateSeason: (showId: number, seasonNumber: number, rating: number) => void;
@@ -84,7 +84,7 @@ interface ShowDetailProps {
   mediaNotes?: Record<number, Note[]>;
   onSaveMediaNote: (mediaId: number, notes: Note[]) => void;
   allUserData: UserData;
-  episodeNotes?: Record<number, Record<number, Record<number, string>>>;
+  episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
   onOpenAddToListModal: (item: any) => void;
   preferences: AppPreferences;
   follows: Follows;
@@ -444,7 +444,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         onSave={handleLogWatchSave} initialScope={mediaType === 'tv' ? 'show' : 'single'} mediaType={mediaType} showDetails={details}
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="posters" />
-      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.backdrops || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
+      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={(notes) => onSaveMediaNote(id, notes)} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <JournalModal 
         isOpen={isJournalModalOpen} 
