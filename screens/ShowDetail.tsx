@@ -31,6 +31,7 @@ import { confirmationService } from '../services/confirmationService';
 import NominationModal from '../components/NominationModal';
 import UserRatingStamp from '../components/UserRatingStamp';
 import { getDominantColor } from '../utils/colorUtils';
+import { getAiredEpisodeCount } from '../utils/formatUtils';
 
 interface ShowDetailProps {
   id: number;
@@ -250,13 +251,15 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [trackedLists, id]);
 
   const isAllWatched = useMemo(() => {
-    if (mediaType !== 'tv' || !details?.number_of_episodes) return false;
+    if (mediaType !== 'tv' || !details) return false;
     const progress = watchProgress[id] || {};
     let watchedCount = 0;
     Object.values(progress).forEach(s => {
       Object.values(s).forEach(e => { if ((e as EpisodeProgress).status === 2) watchedCount++; });
     });
-    return watchedCount >= details.number_of_episodes;
+    
+    // Toggle to 'Unmark All' if ANY episode is watched, as per requirements for robust cleanup
+    return watchedCount > 0;
   }, [id, mediaType, details, watchProgress]);
 
   const nextEpisodeToWatch = useMemo(() => {
@@ -406,7 +409,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const hasComment = comments.some(c => c.mediaKey === mediaKey);
 
   const getLibraryButtonText = () => {
-      if (isAllWatched || currentStatus === 'completed') return 'Completed';
+      if (currentStatus === 'completed') return 'Completed';
       if (currentStatus === 'allCaughtUp') return 'All Caught Up';
       if (currentStatus === 'watching') return 'Watching';
       if (currentStatus === 'planToWatch') return 'Plan to Watch';
@@ -441,7 +444,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         onSave={handleLogWatchSave} initialScope={mediaType === 'tv' ? 'show' : 'single'} mediaType={mediaType} showDetails={details}
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="posters" />
-      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
+      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.backdrops || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={(notes) => onSaveMediaNote(id, notes)} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <JournalModal 
         isOpen={isJournalModalOpen} 

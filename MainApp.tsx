@@ -565,11 +565,10 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [setRatings]);
 
   const handlePurgeMediaFromRegistry = useCallback((mediaId: number, mediaType: 'tv' | 'movie', deleteLive: boolean = false) => {
+    // 1. Move targeted logs to trash bin and update history
     setHistory(prev => {
         const logsToArchive = prev.filter(h => {
             if (h.id !== mediaId) return false;
-            // If deleteLive is true, we delete ALL logs.
-            // If deleteLive is false, we keep the ones starting with 'live-'.
             if (deleteLive) return true;
             return !h.logId.startsWith('live-');
         });
@@ -583,23 +582,28 @@ export const MainApp: React.FC<MainAppProps> = ({
         });
     });
     
-    // If deleteLive is requested, also purge from progress and paused sessions
     if (deleteLive) {
+        // 2. Wipe progress entirely for this show
         setWatchProgress(prev => {
             const next = { ...prev };
             delete next[mediaId];
             return next;
         });
+        // 3. Clear any paused session (Continue Watching item)
         setPausedLiveSessions(prev => {
             const next = { ...prev };
             delete next[mediaId];
             return next;
         });
+        // 4. Immediately clear automated library lists for instant UI feedback
+        setWatching(prev => prev.filter(i => i.id !== mediaId));
+        setCompleted(prev => prev.filter(i => i.id !== mediaId));
+        setAllCaughtUp(prev => prev.filter(i => i.id !== mediaId));
     }
     
-    // Force a re-sync to update library status (Completed/Watching/etc)
-    setTimeout(() => syncLibraryItem(mediaId, mediaType), 50);
-  }, [setHistory, setWatchProgress, setDeletedHistory, setPausedLiveSessions, syncLibraryItem]);
+    // 5. Force a re-sync to finalize correct library status (e.g., reverting to Plan to Watch)
+    setTimeout(() => syncLibraryItem(mediaId, mediaType), 100);
+  }, [setHistory, setWatchProgress, setDeletedHistory, setPausedLiveSessions, setWatching, setCompleted, setAllCaughtUp, syncLibraryItem]);
 
   const handleMarkPreviousEpisodesWatched = useCallback(async (showId: number, seasonNumber: number, lastEpisodeNumber: number) => {
     try {

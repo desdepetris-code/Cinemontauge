@@ -1,7 +1,6 @@
 import React from 'react';
 import { ScreenName, ProfileTab } from '../types';
-// Added QueueListIcon to imports
-import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, TvIcon, ListBulletIcon, UsersIcon, ChartPieIcon, BookOpenIcon, MountainIcon, FireIcon, CloudArrowUpIcon, TrophyIcon, QueueListIcon } from './Icons';
+import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, ArchiveBoxIcon, RectangleStackIcon, UserGroupIcon, ChartPieIcon, WritingBookIcon, ArrowTrendingUpIcon, FireIcon, CloudArrowUpIcon, TrophyIcon, PlayPauseIcon } from './Icons';
 import Carousel from './Carousel';
 
 interface ShortcutNavigationProps {
@@ -12,21 +11,20 @@ interface ShortcutNavigationProps {
 const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.ReactNode }> = {
     home: { label: 'Home', icon: <HomeIcon className="w-5 h-5" /> },
     overview: { label: 'Overview', icon: <ChartPieIcon className="w-5 h-5" /> },
-    progress: { label: 'Progress', icon: <MountainIcon className="w-5 h-5" /> },
+    progress: { label: 'Progress', icon: <ArrowTrendingUpIcon className="w-5 h-5" /> },
     history: { label: 'History', icon: <ClockIcon className="w-5 h-5" /> },
     library: { label: 'Library', icon: <CollectionIcon className="w-5 h-5" /> },
-    lists: { label: 'Custom Lists', icon: <ListBulletIcon className="w-5 h-5" /> },
-    activity: { label: 'Activity', icon: <UsersIcon className="w-5 h-5" /> },
+    lists: { label: 'Custom Lists', icon: <RectangleStackIcon className="w-5 h-5" /> },
+    activity: { label: 'Activity', icon: <UserGroupIcon className="w-5 h-5" /> },
     stats: { label: 'Stats', icon: <ChartPieIcon className="w-5 h-5" /> },
-    seasonLog: { label: 'Season Log', icon: <TvIcon className="w-5 h-5" /> },
-    journal: { label: 'Journal', icon: <BookOpenIcon className="w-5 h-5" /> },
+    seasonLog: { label: 'Log', icon: <ArchiveBoxIcon className="w-5 h-5" /> },
+    journal: { label: 'Journal', icon: <WritingBookIcon className="w-5 h-5" /> },
     achievements: { label: 'Achievements', icon: <BadgeIcon className="w-5 h-5" /> },
     imports: { label: 'Import & Sync', icon: <CloudArrowUpIcon className="w-5 h-5" /> },
     settings: { label: 'Settings', icon: <CogIcon className="w-5 h-5" /> },
     updates: { label: 'Updates', icon: <FireIcon className="w-5 h-5" /> },
     weeklyPicks: { label: 'Weekly Picks', icon: <TrophyIcon className="w-5 h-5" /> },
-    // Added missing 'ongoing' tab metadata
-    ongoing: { label: 'Catch Up', icon: <QueueListIcon className="w-5 h-5" /> },
+    ongoing: { label: 'Catch Up', icon: <PlayPauseIcon className="w-5 h-5" /> },
 };
 
 const ShortcutButton: React.FC<{

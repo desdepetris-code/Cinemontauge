@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { UserData, WeeklyPick } from '../types';
 import CompactShowCard from '../components/CompactShowCard';
@@ -34,7 +33,6 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
         };
     };
 
-    // FIX: Correctly compare timestamps of date strings for sorting
     const historyWeeks = Object.keys(weeklyFavoritesHistory).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     const formatWeekLabel = (weekKey: string) => {
@@ -68,7 +66,7 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
                 <CompactShowCard item={pick} onSelect={onSelectShow} />
                 <button 
                     onClick={(e) => { e.stopPropagation(); onRemovePick(pick); }}
-                    className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20 transform hover:scale-110"
+                    className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg transition-opacity z-20 transform hover:scale-110"
                     title="Delete Nomination"
                 >
                     <TrashIcon className="w-3.5 h-3.5" />

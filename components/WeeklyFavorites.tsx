@@ -62,7 +62,7 @@ const WeeklyFavorites: React.FC<WeeklyFavoritesProps> = ({ items, onSelectShow, 
                     {onRemovePick && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); onRemovePick(item); }}
-                            className="absolute -top-2 -right-2 z-40 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-xl hover:bg-red-600 scale-90"
+                            className="absolute -top-2 -right-2 z-40 p-2 bg-red-500 text-white rounded-full transition-all shadow-xl hover:bg-red-600 scale-90"
                             title="Remove nomination"
                         >
                             <TrashIcon className="w-4 h-4" />

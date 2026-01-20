@@ -93,7 +93,7 @@ const WatchHistory: React.FC<{
                         <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                         
-                        {/* Date Widget Overlay - Changed from bg-backdrop/80 to bg-bg-primary for opacity */}
+                        {/* Date Widget Overlay */}
                         <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
                             <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
                             <span className="text-xl font-black text-white leading-none">{day}</span>
@@ -102,7 +102,7 @@ const WatchHistory: React.FC<{
 
                     {/* Bottom Info Section */}
                     <div className="p-6 flex items-center justify-between gap-4">
-                        <div className="flex-grow min-w-0">
+                        <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
                             <h3 className="text-xl font-black text-text-primary uppercase tracking-tight truncate leading-tight group-hover:text-primary-accent transition-colors">
                                 {item.title}
                             </h3>
@@ -233,7 +233,7 @@ const SearchHistory: React.FC<{
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {searchHistory.map(item => (
           <div key={item.timestamp} className="relative group">
-            <button type="button" onClick={() => onDelete(item.timestamp)} className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><XMarkIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => onDelete(item.timestamp)} className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full transition-opacity shadow-lg"><XMarkIcon className="w-3.5 h-3.5" /></button>
             {item.item ? (
               <div className="space-y-2 cursor-pointer" onClick={() => onSelectShow(item.item!.id, item.item!.media_type)}>
                 <ActionCard item={item.item as any} onSelect={() => onSelectShow(item.item!.id, item.item!.media_type)} onOpenAddToListModal={() => {}} onMarkShowAsWatched={() => {}} onToggleFavoriteShow={() => {}} isFavorite={false} isCompleted={false} showRatings={false} showSeriesInfo="hidden" />

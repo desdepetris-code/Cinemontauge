@@ -66,7 +66,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                                     <button 
                                         type="button"
                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
-                                        className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover/h:opacity-100 transition-opacity shadow-lg"
+                                        className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full transition-opacity shadow-lg"
                                     >
                                         <XMarkIcon className="w-3 h-3" />
                                     </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeIcon, SearchNavIcon, BookOpenIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, ListBulletIcon, UsersIcon, ChartPieIcon, TvIcon, BadgeIcon, MountainIcon, FireIcon, QueueListIcon } from '../components/Icons';
+import { HomeIcon, SearchNavIcon, WritingBookIcon, UserIcon, CalendarIcon, TrophyIcon, ClockIcon, CollectionIcon, RectangleStackIcon, UserGroupIcon, ChartPieIcon, ArchiveBoxIcon, BadgeIcon, ArrowTrendingUpIcon, FireIcon, PlayPauseIcon } from '../components/Icons';
 import { NavSettings, ProfileTab } from '../types';
 
 interface BottomTabNavigatorProps {
@@ -15,17 +15,17 @@ const iconMetadata: Record<string, { label: string; icon: React.FC<React.SVGProp
   search: { label: 'Search', icon: SearchNavIcon },
   calendar: { label: 'Calendar', icon: CalendarIcon },
   profile: { label: 'Profile', icon: UserIcon },
-  progress: { label: 'Progress', icon: MountainIcon },
+  progress: { label: 'Progress', icon: ArrowTrendingUpIcon },
   history: { label: 'History', icon: ClockIcon },
   library: { label: 'Library', icon: CollectionIcon },
-  lists: { label: 'Lists', icon: ListBulletIcon },
-  activity: { label: 'Activity', icon: UsersIcon },
+  lists: { label: 'Lists', icon: RectangleStackIcon },
+  activity: { label: 'Activity', icon: UserGroupIcon },
   stats: { label: 'Stats', icon: ChartPieIcon },
-  seasonLog: { label: 'Log', icon: TvIcon },
-  journal: { label: 'Journal', icon: BookOpenIcon },
+  seasonLog: { label: 'Log', icon: ArchiveBoxIcon },
+  journal: { label: 'Journal', icon: WritingBookIcon },
   achievements: { label: 'Awards', icon: BadgeIcon },
   updates: { label: 'Updates', icon: FireIcon },
-  ongoing: { label: 'Catch Up', icon: QueueListIcon },
+  ongoing: { label: 'Catch Up', icon: PlayPauseIcon },
 };
 
 const TabButton: React.FC<{
@@ -40,7 +40,7 @@ const TabButton: React.FC<{
 }> = ({ label, icon: Icon, isActive, onPress, isProfileTab, profilePictureUrl, isVertical }) => {
     const iconContent = () => {
         if (isProfileTab && profilePictureUrl) {
-            return <img src={profilePictureUrl} alt="Profile" className={`w-6 h-6 rounded-full object-cover border-2 ${isActive ? 'border-white' : 'border-transparent'}`} />
+            return <img src={profilePictureUrl} alt="Profile" className={`w-6 h-6 rounded-full object-cover border-2 ${isActive ? 'border-white' : 'border-transparent'}`} absenteeism />
         }
         return <Icon className={`w-6 h-6 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} />;
     };

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CustomList, AppPreferences, TrackedItem } from '../types';
 import ListGrid from './ListGrid';
-import { SearchIcon, FilterIcon, ChevronDownIcon, ChevronLeftIcon, TvIcon, FilmIcon } from './Icons';
+import { SearchIcon, FilterIcon, ChevronDownIcon, ChevronLeftIcon, TvIcon, FilmIcon, PlayPauseIcon } from './Icons';
 
 interface ListDetailViewProps {
     list: CustomList;
@@ -39,43 +39,45 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
 
     return (
         <div className="animate-fade-in space-y-8 pb-20">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="flex items-center gap-6">
-                    <button 
-                        onClick={onBack}
-                        className="p-4 bg-bg-secondary/40 rounded-2xl text-text-primary hover:text-primary-accent hover:bg-bg-secondary transition-all border border-white/5 shadow-xl group"
-                    >
-                        <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter leading-none">{list.name}</h1>
-                            <span className="px-2 py-0.5 bg-primary-accent text-on-accent text-[9px] font-black rounded uppercase tracking-widest">{list.items.length}</span>
+            <div className="sticky top-20 z-40 -mx-4 px-4 py-2 bg-backdrop/80 backdrop-blur-md border-b border-white/5 md:bg-transparent md:backdrop-blur-none md:border-none md:static">
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex items-center gap-6">
+                        <button 
+                            onClick={onBack}
+                            className="p-4 bg-bg-secondary/60 backdrop-blur-xl rounded-2xl text-text-primary hover:text-primary-accent hover:bg-bg-secondary transition-all border border-white/10 shadow-2xl group flex-shrink-0"
+                        >
+                            <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+                        </button>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-3xl md:text-4xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
+                                <span className="px-2 py-0.5 bg-primary-accent text-on-accent text-[9px] font-black rounded uppercase tracking-widest flex-shrink-0">{list.items.length}</span>
+                            </div>
+                            <p className="hidden md:block text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60 truncate max-w-lg">
+                                {list.description || "Personal curated collection"}
+                            </p>
                         </div>
-                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60 truncate max-w-lg">
-                            {list.description || "Personal curated collection"}
-                        </p>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="bg-bg-secondary/30 px-4 py-2 rounded-2xl border border-white/5 flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <TvIcon className="w-4 h-4 text-red-400 opacity-60" />
-                            <span className="text-[10px] font-black text-text-primary">{stats.tvCount} <span className="text-text-secondary opacity-40">Shows</span></span>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-bg-secondary/30 px-4 py-2 rounded-2xl border border-white/5 flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <PlayPauseIcon className="w-4 h-4 text-red-400 opacity-60" />
+                                <span className="text-[10px] font-black text-text-primary">{stats.tvCount} <span className="text-text-secondary opacity-40">Shows</span></span>
+                            </div>
+                            <div className="w-px h-4 bg-white/5"></div>
+                            <div className="flex items-center gap-2">
+                                <FilmIcon className="w-4 h-4 text-blue-400 opacity-60" />
+                                <span className="text-[10px] font-black text-text-primary">{stats.movieCount} <span className="text-text-secondary opacity-40">Movies</span></span>
+                            </div>
                         </div>
-                        <div className="w-px h-4 bg-white/5"></div>
-                        <div className="flex items-center gap-2">
-                            <FilmIcon className="w-4 h-4 text-blue-400 opacity-60" />
-                            <span className="text-[10px] font-black text-text-primary">{stats.movieCount} <span className="text-text-secondary opacity-40">Movies</span></span>
-                        </div>
+                        <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit</button>
+                        {!isWatchlist && (
+                            <button onClick={() => onDelete(list.id)} className="p-3 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-6">Delete</button>
+                        )}
                     </div>
-                    <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit</button>
-                    {!isWatchlist && (
-                        <button onClick={() => onDelete(list.id)} className="p-3 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-6">Delete</button>
-                    )}
-                </div>
-            </header>
+                </header>
+            </div>
 
             {/* Local Search and Filter Section */}
             <section className="space-y-6">
