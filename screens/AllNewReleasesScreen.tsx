@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getAllNewReleasesPaginated } from '../services/tmdbService';
-import { TmdbMedia, TrackedItem } from '../types';
+import { TmdbMedia, TrackedItem, UserData } from '../types';
 import { ChevronLeftIcon } from '../components/Icons';
 import ActionCard from '../components/ActionCard';
 
@@ -13,10 +13,11 @@ interface AllNewReleasesScreenProps {
   favorites: TrackedItem[];
   completed: TrackedItem[];
   showRatings: boolean;
+  userData: UserData;
 }
 
 const AllNewReleasesScreen: React.FC<AllNewReleasesScreenProps> = (props) => {
-    const { onBack, onSelectShow, favorites, completed, showRatings } = props;
+    const { onBack, onSelectShow, favorites, completed, showRatings, userData } = props;
     const [movies, setMovies] = useState<TmdbMedia[]>([]);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ const AllNewReleasesScreen: React.FC<AllNewReleasesScreenProps> = (props) => {
                         isFavorite={favorites.some(f => f.id === movie.id)}
                         isCompleted={completed.some(c => c.id === movie.id)}
                         showRatings={showRatings}
+                        userData={userData}
                     />
                 ))}
             </div>

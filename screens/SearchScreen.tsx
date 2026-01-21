@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated, discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, ArrowTrendingUpIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, ArrowPathIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import RelatedRecommendations from '../components/RelatedRecommendations';
@@ -83,6 +83,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                                                 isCompleted={false} 
                                                 showRatings={false} 
                                                 showSeriesInfo="hidden" 
+                                                userData={props.userData}
                                             />
                                         </div>
                                     ) : (
@@ -306,6 +307,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                                 showRatings={showRatings} 
                                 showSeriesInfo={preferences.searchShowSeriesInfo} 
                                 userRating={userData.ratings[item.id]?.rating || 0}
+                                userData={userData}
                             />
                         ))}
                     </div>

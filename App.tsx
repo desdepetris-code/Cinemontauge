@@ -95,11 +95,30 @@ const App: React.FC = () => {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [passwordResetState, setPasswordResetState] = useState<{ email: string; code: string; expiry: number } | null>(null);
 
-    
+    /**
+     * Retrieves users from storage, ensuring a primary master account exists.
+     */
     const getUsers = (): StoredUser[] => {
         try {
             const usersJson = localStorage.getItem('sceneit_users');
-            return usersJson ? JSON.parse(usersJson) : [];
+            let users: StoredUser[] = usersJson ? JSON.parse(usersJson) : [];
+            
+            // PRE-SEED LOGIC: Ensure your specific account is always present in the database
+            const masterEmail = "sceneit_owner@example.com"; // Default system email
+            const hasMaster = users.some(u => u.email.toLowerCase() === masterEmail.toLowerCase());
+            
+            if (!hasMaster) {
+                const masterUser: StoredUser = {
+                    id: "user_master_001",
+                    username: "YOUR_USERNAME", // <--- REPLACE THIS
+                    email: masterEmail,
+                    hashedPassword: "YOUR_PASSWORD", // <--- REPLACE THIS
+                };
+                users.push(masterUser);
+                localStorage.setItem('sceneit_users', JSON.stringify(users));
+            }
+            
+            return users;
         } catch (error) {
             console.error("Failed to parse users from localStorage", error);
             return [];
@@ -112,7 +131,11 @@ const App: React.FC = () => {
 
     const handleLogin = useCallback(async ({ email, password, rememberMe }): Promise<string | null> => {
         const users = getUsers();
-        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        // Allow login by either email OR username
+        const user = users.find(u => 
+            u.email.toLowerCase() === email.toLowerCase() || 
+            u.username.toLowerCase() === email.toLowerCase()
+        );
 
         if (user && user.hashedPassword === password) {
             const loggedInUser = { id: user.id, username: user.username, email: user.email };
@@ -122,13 +145,13 @@ const App: React.FC = () => {
             setIsAuthModalOpen(false);
 
             if (rememberMe) {
-                localStorage.setItem('rememberedUser', JSON.stringify({ email, password }));
+                localStorage.setItem('rememberedUser', JSON.stringify({ email: user.email, password }));
             } else {
                 localStorage.removeItem('rememberedUser');
             }
             return null;
         } else {
-            return "Invalid email or password.";
+            return "Invalid username/email or password.";
         }
     }, [setCurrentUser]);
 

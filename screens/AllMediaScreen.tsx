@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { discoverMediaPaginated } from '../services/tmdbService';
-import { TmdbMedia, TrackedItem, AppPreferences } from '../types';
+import { TmdbMedia, TrackedItem, AppPreferences, UserData } from '../types';
 import { ChevronLeftIcon, FilterIcon } from '../components/Icons';
 import ActionCard from '../components/ActionCard';
 import GenreFilter from '../components/GenreFilter';
@@ -23,10 +23,11 @@ interface AllMediaScreenProps {
   genres: Record<number, string>;
   showRatings: boolean;
   preferences: AppPreferences;
+  userData: UserData;
 }
 
 const AllMediaScreen: React.FC<AllMediaScreenProps> = (props) => {
-    const { onBack, onSelectShow, favorites, completed, title, initialMediaType, initialGenreId, initialSortBy, voteCountGte, voteCountLte, showMediaTypeToggle, genres, showRatings, preferences } = props;
+    const { onBack, onSelectShow, favorites, completed, title, initialMediaType, initialGenreId, initialSortBy, voteCountGte, voteCountLte, showMediaTypeToggle, genres, showRatings, preferences, userData } = props;
     
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [page, setPage] = useState(1);
@@ -161,6 +162,7 @@ const AllMediaScreen: React.FC<AllMediaScreenProps> = (props) => {
                         isCompleted={completed.some(c => c.id === item.id)}
                         showRatings={showRatings}
                         showSeriesInfo={preferences.searchShowSeriesInfo}
+                        userData={userData}
                     />
                 ))}
             </div>

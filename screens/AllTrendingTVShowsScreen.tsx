@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTrending, discoverMedia } from '../services/tmdbService';
-import { TmdbMedia, TrackedItem } from '../types';
+import { TmdbMedia, TrackedItem, UserData } from '../types';
 import { ChevronLeftIcon } from '../components/Icons';
 import ActionCard from '../components/ActionCard';
 
@@ -13,10 +13,11 @@ interface AllTrendingTVShowsScreenProps {
   favorites: TrackedItem[];
   completed: TrackedItem[];
   showRatings: boolean;
+  userData: UserData;
 }
 
 const AllTrendingTVShowsScreen: React.FC<AllTrendingTVShowsScreenProps> = (props) => {
-    const { onBack, onSelectShow, favorites, completed, showRatings } = props;
+    const { onBack, onSelectShow, favorites, completed, showRatings, userData } = props;
     const [shows, setShows] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -76,6 +77,7 @@ const AllTrendingTVShowsScreen: React.FC<AllTrendingTVShowsScreenProps> = (props
                             isFavorite={favorites.some(f => f.id === show.id)}
                             isCompleted={completed.some(c => c.id === show.id)}
                             showRatings={showRatings}
+                            userData={userData}
                         />
                     ))}
                 </div>

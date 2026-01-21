@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarItem, Reminder, ReminderType, TmdbMediaDetails } from '../types';
 import { BellIcon, CheckCircleIcon, ClockIcon } from './Icons';
-import { formatDate, formatAirtime, formatTimeFromDate } from '../utils/formatUtils';
+import { formatDate } from '../utils/formatUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import ReminderOptionsModal from './ReminderOptionsModal';
@@ -18,7 +17,6 @@ interface CalendarListItemProps {
   isWatched: boolean;
   onToggleWatched: () => void;
   timezone: string;
-  // FIX: Added timeFormat prop to props interface
   timeFormat: '12h' | '24h';
 }
 
@@ -58,16 +56,25 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
     return 'bg-stone-500 text-white';
   };
 
-  const { seasonEpisode, episodeName } = useMemo(() => {
+  const { seasonEpisode, episodeName, episodeKey } = useMemo(() => {
     if (item.media_type === 'tv' && item.episodeInfo) {
       const parts = item.episodeInfo.split(': ');
+      const infoPart = parts[0];
+      const match = infoPart.match(/S(\d+) E(\d+)/);
+      const key = match ? `S${match[1]}E${match[2]}` : undefined;
+
       if (parts.length > 1) {
-        return { seasonEpisode: parts[0], episodeName: parts.slice(1).join(': ') };
+        return { seasonEpisode: parts[0], episodeName: parts.slice(1).join(': '), episodeKey: key };
       }
-      return { seasonEpisode: item.episodeInfo, episodeName: null };
+      return { seasonEpisode: item.episodeInfo, episodeName: null, episodeKey: key };
     }
-    return { seasonEpisode: null, episodeName: null };
+    return { seasonEpisode: null, episodeName: null, episodeKey: undefined };
   }, [item.media_type, item.episodeInfo]);
+
+  const airtimeTruth = useMemo(() => {
+      // Pass the extracted key to match owner overrides
+      return estimateStreamingTime(null, timezone, timeFormat, item.id, episodeKey);
+  }, [item.id, episodeKey, timezone, timeFormat]);
   
   const handleReminderClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -111,14 +118,6 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
     ];
   }, [item.still_path, item.poster_path]);
 
-  const displayTime = useMemo(() => {
-    if (!details?.['watch/providers']) return null;
-    // FIX: Passed 3 arguments (providers, timezone, timeFormat) to estimateStreamingTime
-    const est = estimateStreamingTime(details['watch/providers'], timezone, timeFormat);
-    if (est) return formatAirtime(est.time);
-    return null;
-  }, [details, timezone, timeFormat]);
-
   const formattedDate = formatDate(item.date, timezone, { month: 'long', day: 'numeric' });
 
   return (
@@ -155,11 +154,10 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
                     </button>
                 )}
             </div>
-            
-            {displayTime && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-primary-accent/10 border border-primary-accent/20 rounded-full mr-2">
+            {airtimeTruth && (
+                <div className="mr-4 flex items-center gap-2 px-3 py-1 bg-primary-accent/10 border border-primary-accent/20 rounded-full">
                     <ClockIcon className="w-3.5 h-3.5 text-primary-accent" />
-                    <span className="text-[10px] font-black text-primary-accent uppercase tracking-widest">{displayTime}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">{airtimeTruth.time}</span>
                 </div>
             )}
         </div>

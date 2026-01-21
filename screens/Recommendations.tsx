@@ -71,6 +71,7 @@ const Recommendations: React.FC<RecommendationsProps> = ({
                         showRatings={showRatings}
                         showSeriesInfo={preferences.searchShowSeriesInfo}
                         userRating={userData.ratings[item.id]?.rating || 0}
+                        userData={userData}
                     />
                 ))}
             </div>

@@ -6,37 +6,32 @@ interface ReportRow {
     details: string;
 }
 
-export const generateAirtimePDF = (title: string, data: ReportRow[]) => {
+/**
+ * Generates a focused PDF report.
+ * @param title Report title
+ * @param data Array of rows
+ * @param pageLimit Maximum number of pages allowed (default 10)
+ * @returns number of rows processed
+ */
+export const generateAirtimePDF = (title: string, data: ReportRow[], pageLimit: number = 10): number => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
     const tableWidth = pageWidth - (margin * 2);
     
-    // Calculate totals
-    const isEpisode = (t: string) => t.trim().startsWith('-') || t.includes('E') && !t.startsWith('>>');
-    const totalEpisodes = data.filter(r => isEpisode(r.title)).length;
-
     // Header
     doc.setFontSize(22);
-    doc.setTextColor(65, 105, 225); // Royal Blue / Branded color
+    doc.setTextColor(65, 105, 225); 
     doc.text("SceneIt Airtime Reference", margin, 22);
     
     doc.setFontSize(14);
     doc.setTextColor(100);
     doc.text(title, margin, 32);
     
-    // Total Count Badge
-    if (totalEpisodes > 0) {
-        doc.setFontSize(12);
-        doc.setTextColor(220, 38, 38); // Red-600
-        doc.setFont("helvetica", "bold");
-        doc.text(`TOTAL EPISODES MISSING: ${totalEpisodes}`, margin, 40);
-    }
-    
     doc.setFontSize(8);
     doc.setTextColor(150);
     doc.setFont("helvetica", "normal");
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, 46);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, 40);
     
     // Table Config
     const colNoWidth = 10;
@@ -53,21 +48,30 @@ export const generateAirtimePDF = (title: string, data: ReportRow[]) => {
     doc.setFontSize(10);
     doc.setTextColor(255);
     doc.setFillColor(30, 30, 30);
-    doc.rect(margin, 52, tableWidth, 8, 'F');
+    doc.rect(margin, 46, tableWidth, 8, 'F');
     
-    doc.text("#", xNo + 2, 57);
-    doc.text("Title / Episode", xTitle + 2, 57);
-    doc.text("Status / Air Date", xStatus + 2, 57);
-    doc.text("Latest Progress / ID", xDetails + 2, 57);
+    doc.text("#", xNo + 2, 51);
+    doc.text("Title / Episode", xTitle + 2, 51);
+    doc.text("Status / Air Date", xStatus + 2, 51);
+    doc.text("Latest Progress / ID", xDetails + 2, 51);
     
-    // Table Rows
-    let y = 65;
+    let y = 58;
     let episodeCounter = 0;
+    let rowsProcessed = 0;
+    let currentPageCount = 1;
     doc.setTextColor(0);
 
-    data.forEach((row, index) => {
+    const isEpisode = (t: string) => t.trim().startsWith('-') || (t.includes('E') && !t.startsWith('>>'));
+
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        
+        // Check for page break or limit
         if (y > 280) {
+            if (currentPageCount >= pageLimit) break;
+            
             doc.addPage();
+            currentPageCount++;
             y = 20;
             
             // Re-draw headers on new page
@@ -85,9 +89,9 @@ export const generateAirtimePDF = (title: string, data: ReportRow[]) => {
         const isEp = isEpisode(row.title);
         if (isEp) episodeCounter++;
 
-        // Zebra striping or background for headers
+        // Row background
         if (!isEp) {
-            doc.setFillColor(230, 235, 255); // Light blue for show headers
+            doc.setFillColor(230, 235, 255); 
             doc.rect(margin, y - 4, tableWidth, 8, 'F');
             doc.setFont("helvetica", "bold");
         } else {
@@ -98,7 +102,6 @@ export const generateAirtimePDF = (title: string, data: ReportRow[]) => {
             doc.setFont("helvetica", "normal");
         }
         
-        // Print row index if it's an episode
         if (isEp) {
             doc.setFontSize(8);
             doc.text(episodeCounter.toString(), xNo + 2, y);
@@ -110,21 +113,19 @@ export const generateAirtimePDF = (title: string, data: ReportRow[]) => {
         doc.text(row.details.substring(0, 35), xDetails + 2, y);
         
         y += 8;
-        
-        // Add extra vertical spacing (blank line) after each episode entry
-        if (isEp) {
-            y += 4;
-        }
-    });
-    
-    // Footer
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`Page ${i} of ${pageCount} | CineMontauge SceneIt`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        if (isEp) y += 4; // Spacing
+        rowsProcessed++;
     }
     
-    doc.save(`SceneIt_${title.replace(/\s+/g, '_')}.pdf`);
+    // Footer
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let j = 1; j <= totalPages; j++) {
+        doc.setPage(j);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Page ${j} of ${totalPages} | 10-Page Focus Segment`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    }
+    
+    doc.save(`SceneIt_${title.replace(/\s+/g, '_')}_Part_${Math.ceil(rowsProcessed/250) || 1}.pdf`);
+    return rowsProcessed;
 };
