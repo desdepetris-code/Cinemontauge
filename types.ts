@@ -1,3 +1,4 @@
+
 export interface NotificationSettings {
   masterEnabled: boolean;
   newEpisodes: boolean;
@@ -417,6 +418,9 @@ export interface UserData {
   episodeNotes: Record<number, Record<number, Record<number, Note[]>>>;
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
+  // Added shared settings to UserData to support child components (like ActionCard)
+  timezone?: string;
+  timeFormat?: '12h' | '24h';
 }
 
 export interface WeeklyPick extends TrackedItem {

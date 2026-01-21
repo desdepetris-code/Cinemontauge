@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { UserData, CalendarItem, Reminder, TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, EpisodeProgress, TraktToken } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
@@ -12,6 +13,8 @@ interface CalendarScreenProps {
   userData: UserData;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   timezone: string;
+  // FIX: Added timeFormat prop to CalendarScreen interface
+  timeFormat: '12h' | '24h';
   reminders: Reminder[];
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
@@ -20,7 +23,7 @@ interface CalendarScreenProps {
 
 const formatDateForApi = (date: Date) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 
-const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow, timezone, reminders, onToggleReminder, watchProgress }) => {
+const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow, timezone, timeFormat, reminders, onToggleReminder, watchProgress }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
     const [items, setItems] = useState<Record<string, CalendarItem[]>>({});
@@ -78,9 +81,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
         const shows = relevantTrackedItems.filter(i => i.media_type === 'tv');
         const movies = relevantTrackedItems.filter(i => i.media_type === 'movie');
 
-        // Attempt to enrich with Trakt Airstamps for precise times
         const traktToken = getStoredToken();
-        let traktAirtimesMap = new Map<string, string>(); // key: "showId-S-E" or "movieId", val: ISO string
+        let traktAirtimesMap = new Map<string, string>(); 
 
         if (traktToken) {
             try {
@@ -155,7 +157,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
                         title: showDetails.name || 'Untitled', date: ep.air_date,
                         episodeInfo: `S${seasonDetail.season_number} E${ep.episode_number}: ${ep.name}`,
                         network: showDetails.networks?.[0]?.name, overview: ep.overview, runtime: ep.runtime,
-                        airtime: traktAirstamp // Using Trakt's ISO airstamp for local conversion
+                        airtime: traktAirstamp 
                     });
                 }
             });
@@ -323,6 +325,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
                                                 onToggleReminder(newReminder, reminderId);
                                             }}
                                             timezone={timezone}
+                                            // FIX: Passed timeFormat to CalendarListItem
+                                            timeFormat={timeFormat}
                                             onToggleWatched={() => {}}
                                             isWatched={isEpWatched || isMovieWatched}
                                         />

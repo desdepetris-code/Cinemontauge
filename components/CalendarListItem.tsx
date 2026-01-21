@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarItem, Reminder, ReminderType, TmdbMediaDetails } from '../types';
 import { BellIcon, CheckCircleIcon, ClockIcon } from './Icons';
@@ -6,6 +7,7 @@ import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import ReminderOptionsModal from './ReminderOptionsModal';
 import { getMediaDetails } from '../services/tmdbService';
+import { estimateStreamingTime } from '../utils/streamingTimeUtils';
 
 interface CalendarListItemProps {
   item: CalendarItem;
@@ -16,9 +18,11 @@ interface CalendarListItemProps {
   isWatched: boolean;
   onToggleWatched: () => void;
   timezone: string;
+  // FIX: Added timeFormat prop to props interface
+  timeFormat: '12h' | '24h';
 }
 
-const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isReminderSet, onToggleReminder, isPast, isWatched, onToggleWatched, timezone }) => {
+const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isReminderSet, onToggleReminder, isPast, isWatched, onToggleWatched, timezone, timeFormat }) => {
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
 
@@ -107,15 +111,13 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
     ];
   }, [item.still_path, item.poster_path]);
 
-  // Priority: 1. ISO Airstamp from Trakt, 2. Airtime string from other source, 3. Date only
   const displayTime = useMemo(() => {
-    if (item.airtime && item.airtime.includes('T')) {
-        // It's a full ISO airstamp
-        return formatTimeFromDate(item.airtime, timezone);
-    }
-    if (item.airtime) return formatAirtime(item.airtime);
+    if (!details?.['watch/providers']) return null;
+    // FIX: Passed 3 arguments (providers, timezone, timeFormat) to estimateStreamingTime
+    const est = estimateStreamingTime(details['watch/providers'], timezone, timeFormat);
+    if (est) return formatAirtime(est.time);
     return null;
-  }, [item.airtime, timezone]);
+  }, [details, timezone, timeFormat]);
 
   const formattedDate = formatDate(item.date, timezone, { month: 'long', day: 'numeric' });
 

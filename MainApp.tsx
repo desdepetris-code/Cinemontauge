@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { 
-  UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
+import AuthModal from './components/AuthModal';
+import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
   EpisodeRatings, SeasonRatings, CustomList, AppNotification, FavoriteEpisodes, 
   LiveWatchMediaInfo, SearchHistoryItem, Comment, Note, ScreenName, ProfileTab, 
   WatchStatus, WeeklyPick, DeletedHistoryItem, CustomImagePaths, Reminder, 
@@ -30,6 +30,7 @@ import LiveWatchTracker from './components/LiveWatchTracker';
 import NominatePicksModal from './components/NominatePicksModal';
 import { calculateAutoStatus } from './utils/libraryLogic';
 import { checkForUpdates } from './services/updateService';
+import AirtimeManagement from './screens/AirtimeManagement';
 
 interface User {
   id: string;
@@ -108,7 +109,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     dashShowRecommendations: true,
     dashShowTrending: true,
     dashShowWeeklyGems: true, 
-    // Added missing dashShowWeeklyPicks property
     dashShowWeeklyPicks: true,
     dashShowNewSeasons: true,
     dashShowPlanToWatch: true,
@@ -134,7 +134,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [weeklyFavoritesWeekKey, setWeeklyFavoritesWeekKey] = useLocalStorage<string>(`weekly_favorites_week_${userId}`, '');
   const [weeklyFavoritesHistory, setWeeklyFavoritesHistory] = useLocalStorage<Record<string, WeeklyPick[]>>(`weekly_favorites_history_${userId}`, {});
 
-  const [activeScreen, setActiveScreen] = useState<ScreenName>('home');
+  const [activeScreen, setActiveScreen] = useState<string>('home');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
   const [initialLibraryStatus, setInitialLibraryStatus] = useState<WatchStatus | undefined>(undefined);
 
@@ -160,24 +160,20 @@ export const MainApp: React.FC<MainAppProps> = ({
     const pruneTrashBin = () => {
       const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
       
-      // Prune History
       const remainingHistoryItems = deletedHistory.filter(item => {
         const deletedAt = new Date(item.deletedAt).getTime();
         return deletedAt > thirtyDaysAgo;
       });
       if (remainingHistoryItems.length !== deletedHistory.length) {
         setDeletedHistory(remainingHistoryItems);
-        console.log(`History Trash Purged: Removed ${deletedHistory.length - remainingHistoryItems.length} items.`);
       }
 
-      // Prune Notes
       const remainingNotes = deletedNotes.filter(note => {
         const deletedAt = new Date(note.deletedAt).getTime();
         return deletedAt > thirtyDaysAgo;
       });
       if (remainingNotes.length !== deletedNotes.length) {
         setDeletedNotes(remainingNotes);
-        console.log(`Notes Trash Purged: Removed ${deletedNotes.length - remainingNotes.length} notes.`);
       }
     };
     
@@ -187,7 +183,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   // --- Nostalgia & Updates Logic ---
   useEffect(() => {
     const runUpdateCheck = async () => {
-        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory };
+        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat };
         const result = await checkForUpdates(userData);
         if (result.notifications.length > 0) {
             setNotifications(prev => {
@@ -197,9 +193,9 @@ export const MainApp: React.FC<MainAppProps> = ({
             });
         }
     };
-    const timer = setTimeout(runUpdateCheck, 2000); // Check shortly after load
+    const timer = setTimeout(runUpdateCheck, 2000); 
     return () => clearTimeout(timer);
-  }, [userId]);
+  }, [userId, timezone, timeFormat, watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory]);
 
   // --- Android Back Button Logic ---
   const lastBackClickRef = useRef<number>(0);
@@ -303,8 +299,8 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [liveWatchMedia, liveWatchIsPaused, handleLiveWatchStop]);
 
   const allUserData: UserData = useMemo(() => ({
-    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory
-  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory]);
+    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat
+  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat]);
 
   const currentWeekKey = useMemo(() => {
     const d = new Date();
@@ -436,8 +432,10 @@ export const MainApp: React.FC<MainAppProps> = ({
     setInitialLibraryStatus(undefined);
     const screenNames: string[] = ['home', 'search', 'calendar', 'progress', 'profile'];
     if (screenNames.includes(tabId)) {
-        setActiveScreen(tabId as ScreenName);
+        setActiveScreen(tabId);
         setProfileInitialTab(undefined);
+    } else if (tabId === 'airtime_management') {
+        setActiveScreen('airtime_management');
     } else {
         setActiveScreen('profile');
         setProfileInitialTab(tabId as ProfileTab);
@@ -575,7 +573,6 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [setRatings]);
 
   const handlePurgeMediaFromRegistry = useCallback((mediaId: number, mediaType: 'tv' | 'movie', deleteLive: boolean = false) => {
-    // 1. Move targeted logs to trash bin and update history
     setHistory(prev => {
         const logsToArchive = prev.filter(h => {
             if (h.id !== mediaId) return false;
@@ -593,25 +590,21 @@ export const MainApp: React.FC<MainAppProps> = ({
     });
     
     if (deleteLive) {
-        // 2. Wipe progress entirely for this show
         setWatchProgress(prev => {
             const next = { ...prev };
             delete next[mediaId];
             return next;
         });
-        // 3. Clear any paused session (Continue Watching item)
         setPausedLiveSessions(prev => {
             const next = { ...prev };
             delete next[mediaId];
             return next;
         });
-        // 4. Immediately clear automated library lists for instant UI feedback
         setWatching(prev => prev.filter(i => i.id !== mediaId));
         setCompleted(prev => prev.filter(i => i.id !== mediaId));
         setAllCaughtUp(prev => prev.filter(i => i.id !== mediaId));
     }
     
-    // 5. Force a re-sync to finalize correct library status (e.g., reverting to Plan to Watch)
     setTimeout(() => syncLibraryItem(mediaId, mediaType), 100);
   }, [setHistory, setWatchProgress, setDeletedHistory, setPausedLiveSessions, setWatching, setCompleted, setAllCaughtUp, syncLibraryItem]);
 
@@ -718,13 +711,6 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   const handleRestoreNote = useCallback((deletedNote: DeletedNote) => {
       setDeletedNotes(prev => prev.filter(n => n.id !== deletedNote.id));
-      const { deletedAt, mediaTitle, context, ...originalNote } = deletedNote;
-      
-      // We don't have an easy way to map back exactly where it was without more complex logic
-      // But for now, we can't easily "un-archive" it into the precise show/episode structure 
-      // without keeping more references. Instead, we can just say "Restore failed" or implement it.
-      // Let's implement simple restoration to mediaNotes for now if it's general.
-      
       confirmationService.show("Restoration of notes is currently manual from Trash contents.");
   }, [setDeletedNotes]);
 
@@ -755,7 +741,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     handlePurgeMediaFromRegistry(showId, 'tv', true);
   }, [handlePurgeMediaFromRegistry]);
 
-  // Handle data import from Trakt
   const handleTraktImportCompleted = useCallback((data: {
     history: HistoryItem[];
     completed: TrackedItem[];
@@ -783,7 +768,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show("Trakt data imported successfully.");
   }, [setHistory, setCompleted, setPlanToWatch, setWatchProgress, setRatings]);
 
-  // Handle data import from TMDB
   const handleTmdbImportCompleted = useCallback((data: {
     history: HistoryItem[];
     completed: TrackedItem[];
@@ -815,7 +799,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show("TMDB data imported successfully.");
   }, [setHistory, setCompleted, setPlanToWatch, setFavorites, setRatings]);
 
-  // Handle generic JSON library import
   const handleJsonImportCompleted = useCallback((data: any) => {
     if (data.history) setHistory(prev => {
         const existingIds = new Set(prev.map(h => h.logId));
@@ -859,7 +842,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     if (data.watching) data.watching.forEach((i: any) => uniqueMediaIds.add(i.id));
     
     uniqueMediaIds.forEach(id => {
-      // Find media type from existing lists if available in data
       let mediaType: 'tv' | 'movie' | null = null;
       const findItem = (list: any[]) => list?.find((i: any) => i.id === id);
       const item = findItem(data.history) || findItem(data.watching) || findItem(data.completed);
@@ -873,7 +855,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show("Full library import successful.");
   }, [setHistory, setWatchProgress, setRatings, setEpisodeRatings, setSeasonRatings, setFavoriteEpisodes, setCustomLists, setFavorites, setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp, syncLibraryItem]);
 
-  // FIX: Proper implementation for CSV/Manual imports from file
   const handleCsvImportCompleted = useCallback((newHistory: HistoryItem[], newCompleted: TrackedItem[]) => {
     setHistory(prev => {
         const existingKeys = new Set(prev.map(h => `${h.id}-${h.timestamp}`));
@@ -881,7 +862,6 @@ export const MainApp: React.FC<MainAppProps> = ({
         return [...filteredNew, ...prev];
     });
 
-    // Recalculate auto-statuses for all involved items
     const uniqueIds = Array.from(new Set([...newHistory, ...newCompleted].map(i => ({ id: i.id, type: i.media_type }))));
     uniqueIds.forEach(({ id, type }) => {
         if (type === 'tv' || type === 'movie') {
@@ -900,6 +880,12 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   const renderScreen = () => {
     if (selectedUserId) return <UserProfileModal userId={selectedUserId} currentUser={currentUser || { id: 'guest', username: 'Guest' }} follows={follows[currentUser?.id || 'guest'] || []} onFollow={handleFollow} onUnfollow={handleUnfollow} onClose={() => setSelectedUserId(null)} onToggleLikeList={() => {}} />;
+    
+    // Prioritize airtime management screen
+    if (activeScreen === 'airtime_management') {
+        return <AirtimeManagement onBack={() => setActiveScreen('profile')} userData={allUserData} />;
+    }
+
     if (selectedShow) {
         return (
             <ShowDetail 
@@ -958,7 +944,7 @@ export const MainApp: React.FC<MainAppProps> = ({
 
     switch (activeScreen) {
         case 'search': return <SearchScreen query={searchQuery} onQueryChange={setSearchQuery} onSelectShow={handleSelectShow} onSelectPerson={(id) => setSelectedPerson(id)} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={handleUpdateSearchHistory} onDeleteSearchHistoryItem={(timestamp) => setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp))} onClearSearchHistory={() => setSearchHistory([])} onMarkShowAsWatched={() => {}} onOpenAddToListModal={(item) => setAddToListModalState({ isOpen: true, item })} onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />;
-        case 'calendar': return <CalendarScreen userData={allUserData} onSelectShow={handleSelectShow} timezone={timezone} reminders={reminders} onToggleReminder={(rem, id) => setReminders(prev => rem ? [...prev, rem] : prev.filter(r => r.id !== id))} onToggleEpisode={handleToggleEpisode} watchProgress={watchProgress} />;
+        case 'calendar': return <CalendarScreen userData={allUserData} onSelectShow={handleSelectShow} timezone={timezone} timeFormat={timeFormat} reminders={reminders} onToggleReminder={(rem, id) => setReminders(prev => rem ? [...prev, rem] : prev.filter(r => r.id !== id))} onToggleEpisode={handleToggleEpisode} watchProgress={watchProgress} />;
         case 'progress': return <ProgressScreen userData={allUserData} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={() => {}} onSelectShow={handleSelectShow} onToggleEpisode={handleToggleEpisode} onUpdateLists={updateLists} currentUser={currentUser} onAuthClick={onAuthClick} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} preferences={preferences} />;
         case 'profile': return (
           <Profile 
@@ -972,7 +958,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={setSelectedUserId} timezone={timezone} setTimezone={setTimezone}
             onRemoveDuplicateHistory={() => {}} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} onMarkOneRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))} onAddNotifications={(notifs) => setNotifications(prev => [...notifs, ...prev])} 
             autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={holidayAnimationsEnabled} setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} profileTheme={profileTheme} setProfileTheme={setProfileTheme} textSize={textSize} setTextSize={setTextSize} onFeedbackSubmit={() => {}} levelInfo={calculateLevelInfo(userXp)} timeFormat={timeFormat} setTimeFormat={setTimeFormat} pin={pin} setPin={setPin} showRatings={showRatings} setShowRatings={setShowRatings} setSeasonRatings={setSeasonRatings} onToggleWeeklyFavorite={handleRemoveWeeklyPick} onOpenNominateModal={() => setIsNominateModalOpen(true)} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} shortcutSettings={shortcutSettings} setShortcutSettings={setShortcutSettings} navSettings={navSettings} setNavSettings={setNavSettings} preferences={preferences} setPreferences={setPreferences}
-            onPermanentDeleteNote={handlePermanentDeleteNote} onRestoreNote={handleRestoreNote}
+            onPermanentDeleteNote={handlePermanentDeleteNote} onRestoreNote={handleRestoreNote} onTabNavigate={handleTabPress}
           />
         );
         case 'home':
@@ -1010,7 +996,7 @@ export const MainApp: React.FC<MainAppProps> = ({
       />
       <Header currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} onGoToProfile={() => handleTabPress('profile')} onSelectShow={handleSelectShow} onGoHome={() => handleTabPress('home')} onMarkShowAsWatched={() => {}} query={searchQuery} onQueryChange={setSearchQuery} isOnSearchScreen={activeScreen === 'search'} isHoliday={false} holidayName={null} />
       <main className="container mx-auto flex-grow pt-8">{renderScreen()}</main>
-      <BottomTabNavigator activeTab={activeScreen} activeProfileTab={profileInitialTab} onTabPress={handleTabPress} profilePictureUrl={profilePictureUrl} navSettings={navSettings} />
+      <BottomTabNavigator activeTab={activeScreen as any} activeProfileTab={profileInitialTab} onTabPress={handleTabPress} profilePictureUrl={profilePictureUrl} navSettings={navSettings} />
     </div>
   );
 };

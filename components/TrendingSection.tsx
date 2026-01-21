@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { getTrending, getMediaDetails } from '../services/tmdbService';
-import { TmdbMedia, TrackedItem, TmdbMediaDetails, WatchStatus } from '../types';
+import { TmdbMedia, TrackedItem, TmdbMediaDetails, WatchStatus, UserData } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronRightIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
@@ -20,13 +19,14 @@ const TrendingCard: React.FC<{
     item: TmdbMedia;
     onSelect: (id: number, media_type: 'tv' | 'movie') => void;
     onAdd: (item: TmdbMedia) => void;
-    // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
     onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
     onToggleFavoriteShow: (item: TrackedItem) => void;
     isFavorite: boolean;
     isCompleted: boolean;
     onPlanToWatch: () => void;
-}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, onPlanToWatch }) => {
+    userData: UserData;
+    timeFormat: '12h' | '24h';
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, onPlanToWatch, userData, timeFormat }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
 
@@ -62,10 +62,10 @@ const TrendingCard: React.FC<{
         const r = rating.toUpperCase();
         if (['G', 'TV-G'].includes(r)) return 'bg-[#FFFFFF] text-black border border-gray-200';
         if (r === 'TV-Y') return 'bg-[#008000] text-white';
-        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black';
+        if (['PG', 'TV-PG'].includes(r) || r.startsWith('TV-Y7')) return 'bg-[#00FFFF] text-black font-black shadow-md';
         if (r === 'PG-13') return 'bg-[#00008B] text-white';
         if (r === 'TV-14') return 'bg-[#800000] text-white';
-        if (r === 'R') return 'bg-[#FF00FF] text-black font-black';
+        if (r === 'R') return 'bg-[#FF00FF] text-black font-black shadow-md';
         if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20';
         return 'bg-stone-500 text-white';
     };
@@ -76,7 +76,6 @@ const TrendingCard: React.FC<{
     };
     const handleMarkWatchedClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
         onMarkShowAsWatched(item);
     };
     const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -134,7 +133,7 @@ const TrendingCard: React.FC<{
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                     </div>
                     {isCompleted && (
@@ -189,9 +188,11 @@ interface TrendingSectionProps {
   completed: TrackedItem[];
   onViewMore?: () => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
+  userData: UserData;
+  timeFormat: '12h' | '24h';
 }
 
-const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, onViewMore, onUpdateLists }) => {
+const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, onViewMore, onUpdateLists, userData, timeFormat }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -246,12 +247,13 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
                             item={item}
                             onSelect={onSelectShow}
                             onAdd={onOpenAddToListModal}
-                            // FIX: Corrected typo onMarkShowAs_watched to onMarkShowAsWatched
                             onMarkShowAsWatched={onMarkShowAsWatched}
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={favorites.some(f => f.id === item.id)}
                             isCompleted={completed.some(c => c.id === item.id)}
                             onPlanToWatch={() => onUpdateLists({ id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path }, null, 'planToWatch')}
+                            userData={userData}
+                            timeFormat={timeFormat}
                         />
                     ))}
                     <div className="w-4 flex-shrink-0"></div>

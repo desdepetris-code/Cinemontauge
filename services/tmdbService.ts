@@ -1,7 +1,7 @@
+
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
 import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem, NewlyPopularEpisode, CastMember, CrewMember } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
-import { getTrendingShowsFull } from './traktService';
 
 const aliasMap: Record<string, string> = {
   "svu": "Law & Order: Special Victims Unit",
@@ -132,9 +132,11 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
   const cached = getFromCache<TmdbMediaDetails>(cacheKey);
   if (cached) return cached;
   const imageLangParam = "include_image_language=en,null";
+  const commonAppend = "images,recommendations,credits,videos,external_ids,watch/providers";
+  
   if (mediaType === 'tv') {
     const [detailsData, ratingsData] = await Promise.all([
-        fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=images,recommendations,external_ids,credits,videos&${imageLangParam}`),
+        fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=${commonAppend}&${imageLangParam}`),
         fetchFromTmdb<{ results: any[] }>(`tv/${id}/content_ratings`).catch(() => ({ results: [] }))
     ]);
     if (!detailsData) throw new Error("The resource you requested could not be found.");
@@ -143,7 +145,7 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
     setToCache(cacheKey, detailsData, CACHE_TTL);
     return detailsData;
   } else {
-    const data = await fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=images,recommendations,credits,videos,external_ids,release_dates&${imageLangParam}`);
+    const data = await fetchFromTmdb<TmdbMediaDetails>(`${mediaType}/${id}?append_to_response=${commonAppend},release_dates&${imageLangParam}`);
     if (!data) throw new Error("The resource you requested could not be found.");
     data.media_type = 'movie';
     setToCache(cacheKey, data, CACHE_TTL);
@@ -269,6 +271,9 @@ export const discoverMedia = async (mediaType: 'tv' | 'movie', filters: any): Pr
     return results;
 };
 
+/**
+ * discoverMedia with pagination support.
+ */
 export const discoverMediaPaginated = async (mediaType: 'tv' | 'movie', filters: any): Promise<{ results: TmdbMedia[], total_pages: number }> => {
     let params = `&sort_by=${filters.sortBy || 'popularity.desc'}`;
     if (filters.genre) params += `&with_genres=${filters.genre}`;
@@ -283,89 +288,13 @@ export const discoverMediaPaginated = async (mediaType: 'tv' | 'movie', filters:
     if (filters['primary_release_date.lte']) params += `&primary_release_date.lte=${filters['primary_release_date.lte']}`;
     if (filters['first_air_date.gte']) params += `&first_air_date.gte=${filters['first_air_date.gte']}`;
     if (filters['first_air_date.lte']) params += `&first_air_date.lte=${filters['first_air_date.lte']}`;
-    if (filters['with_keywords']) params += `&with_keywords=${filters['with_keywords']}`;
-    if (filters['with_release_type']) params += `&with_release_type=${filters['with_release_type']}`;
-    if (filters.region) params += `&region=${filters.region}`;
-    const cacheKey = `tmdb_discover_paginated_${mediaType}_v2_${params}`;
-    const cached = getFromCache<{ results: TmdbMedia[], total_pages: number }>(cacheKey);
-    if(cached) return cached;
+    
     const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(`discover/${mediaType}?include_adult=false&language=en-US${params}`);
-    const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
-    const response = { results, total_pages: data?.total_pages || 0 };
-    setToCache(cacheKey, response, CACHE_TTL_SHORT);
-    return response;
-};
-
-export const getNewReleases = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
-    const cacheKey = `tmdb_new_releases_v3_${mediaType}`;
-    const cached = getFromCache<TmdbMedia[]>(cacheKey);
-    if(cached) return cached;
-    const today = new Date().toISOString().split('T')[0];
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const startDate = ninetyDaysAgo.toISOString().split('T')[0];
-    const dateFilters = mediaType === 'tv' ? { 'first_air_date.gte': startDate, 'first_air_date.lte': today } : { 'primary_release_date.gte': startDate, 'primary_release_date.lte': today };
-    const results = await discoverMedia(mediaType, { sortBy: 'popularity.desc', ...dateFilters });
-    setToCache(cacheKey, results, CACHE_TTL_SHORT);
-    return results;
-};
-
-export const getNewSeasons = async (forceRefresh: boolean, timezone: string): Promise<TmdbMediaDetails[]> => {
-    const cacheKey = `tmdb_new_seasons_general_v2`;
-    if (!forceRefresh) {
-        const cached = getFromCache<TmdbMediaDetails[]>(cacheKey);
-        if (cached) return cached;
-    }
-    const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
-    const results = await discoverMedia('tv', { sortBy: 'popularity.desc', 'first_air_date.gte': startDate, 'first_air_date.lte': today });
-    const detailPromises = results.slice(0, 20).map(r => getMediaDetails(r.id, 'tv').catch(() => null));
-    const detailedResults = (await Promise.all(detailPromises)).filter((d): d is TmdbMediaDetails => d !== null);
-    setToCache(cacheKey, detailedResults, CACHE_TTL_SHORT);
-    return detailedResults;
-};
-
-export const getAllNewReleasesPaginated = async (page: number): Promise<{ results: TmdbMedia[], total_pages: number }> => {
-    const today = new Date().toISOString().split('T')[0];
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const startDate = ninetyDaysAgo.toISOString().split('T')[0];
-    const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(`discover/movie?include_adult=false&language=en-US&primary_release_date.gte=${startDate}&primary_release_date.lte=${today}&sort_by=popularity.desc&page=${page}`);
     if (!data) return { results: [], total_pages: 0 };
-    return { ...data, results: data.results.map(item => ({ ...item, media_type: 'movie' as const })) };
-};
-
-export const getUpcomingTvPremieres = async (page: number): Promise<{ results: TmdbMedia[], total_pages: number }> => {
-    const today = new Date().toISOString().split('T')[0];
-    const ninetyDaysFromNow = new Date();
-    ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
-    const endDate = ninetyDaysFromNow.toISOString().split('T')[0];
-    return await discoverMediaPaginated('tv', { page, sortBy: 'first_air_date.asc', 'first_air_date.gte': today, 'first_air_date.lte': endDate });
-};
-
-export const getUpcomingTvSeasons = async (): Promise<CalendarItem[]> => {
-    const cacheKey = 'tmdb_upcoming_seasons_v1';
-    const cached = getFromCache<CalendarItem[]>(cacheKey);
-    if (cached) return cached;
-    const [page1, page2] = await Promise.all([ discoverMedia('tv', { sortBy: 'popularity.desc', page: 1 }), discoverMedia('tv', { sortBy: 'popularity.desc', page: 2 }) ]);
-    const uniqueShows = Array.from(new Map([...page1, ...page2].map(i => [i.id, i])).values());
-    const detailed = (await Promise.all(uniqueShows.map(s => getMediaDetails(s.id, 'tv').catch(() => null)))).filter((d): d is TmdbMediaDetails => d !== null);
-    const now = new Date();
-    now.setHours(0,0,0,0);
-    const upcoming: CalendarItem[] = detailed.filter(d => d.next_episode_to_air?.episode_number === 1 && new Date(d.next_episode_to_air.air_date) >= now).map(d => ({ id: d.id, media_type: 'tv', poster_path: d.poster_path, title: d.name || 'Untitled', date: d.next_episode_to_air!.air_date, episodeInfo: `Season ${d.next_episode_to_air!.season_number} Premiere`, network: d.networks?.[0]?.name }));
-    upcoming.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    setToCache(cacheKey, upcoming, 12 * 60 * 60 * 1000);
-    return upcoming;
-};
-
-export const getUpcomingMovieReleases = async (page: number): Promise<{ results: TmdbMedia[], total_pages: number }> => {
-    const today = new Date().toISOString().split('T')[0];
-    const ninetyDaysFromNow = new Date();
-    ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
-    const endDate = ninetyDaysFromNow.toISOString().split('T')[0];
-    return await discoverMediaPaginated('movie', { page, sortBy: 'primary_release_date.asc', 'primary_release_date.gte': today, 'primary_release_date.lte': endDate, 'with_release_type': '2|3', region: 'US' });
+    return {
+        results: data.results.map(item => ({ ...item, media_type: mediaType })),
+        total_pages: data.total_pages
+    };
 };
 
 export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
@@ -379,31 +308,17 @@ export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[
 };
 
 export const getTopPicksMixed = async (): Promise<TmdbMedia[]> => {
-    const cacheKey = 'tmdb_top_picks_30_v2';
+    const cacheKey = 'tmdb_top_picks_30_v3';
     const cached = getFromCache<TmdbMedia[]>(cacheKey);
     if (cached) return cached;
 
     try {
-        // Fetch trending shows from Trakt specifically to get precise airtimes
-        const traktTrending = await getTrendingShowsFull(30);
-        
-        // Fetch trending movies from TMDB (standard procedure)
-        const trendingMovies = await getTrending('movie');
-        
-        // Map Trakt data to TMDB format as much as possible for consistent rendering
-        // FIX: Added required backdrop_path property to mapped show objects to satisfy TmdbMedia interface.
-        const traktMappedShows: TmdbMedia[] = traktTrending.map(t => ({
-            id: t.show.ids.tmdb,
-            name: t.show.title,
-            media_type: 'tv',
-            poster_path: null, // Component will fetch poster via getMediaDetails
-            backdrop_path: null,
-            popularity: t.watchers,
-            // Custom extension for CineMontauge to hold precise time
-            airtime: t.show.airs?.time 
-        }));
+        const [trendingMovies, trendingTv] = await Promise.all([
+            getTrending('movie'),
+            getTrending('tv')
+        ]);
 
-        const combined = [...trendingMovies, ...traktMappedShows];
+        const combined = [...trendingMovies, ...trendingTv];
         const unique = Array.from(new Map(combined.map(i => [i.id, i])).values());
         
         const shuffled = unique.sort(() => Math.random() - 0.5);
@@ -449,6 +364,84 @@ export const getUpcomingMovies = async (): Promise<TmdbMedia[]> => {
     const endDate = twoMonthsLater.toISOString().split('T')[0];
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/movie?primary_release_date.gte=${today}&primary_release_date.lte=${endDate}&sort_by=popularity.desc&region=US`);
     return (data?.results || []).map(i => ({ ...i, media_type: 'movie' }));
+};
+
+/**
+ * Fetches upcoming movie releases with pagination.
+ */
+export const getUpcomingMovieReleases = async (page: number = 1): Promise<{ results: TmdbMedia[], total_pages: number }> => {
+    const today = new Date().toISOString().split('T')[0];
+    const twoMonthsLater = new Date();
+    twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
+    const endDate = twoMonthsLater.toISOString().split('T')[0];
+    
+    const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(
+        `discover/movie?primary_release_date.gte=${today}&primary_release_date.lte=${endDate}&sort_by=popularity.desc&region=US&page=${page}`
+    );
+    
+    if (!data) return { results: [], total_pages: 0 };
+    return {
+        results: data.results.map(i => ({ ...i, media_type: 'movie' })),
+        total_pages: data.total_pages
+    };
+};
+
+/**
+ * Fetches recent popular releases for both movies and TV.
+ */
+export const getNewReleases = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
+    const today = new Date();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+    
+    const todayStr = today.toISOString().split('T')[0];
+    const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
+    
+    if (mediaType === 'movie') {
+        return discoverMedia('movie', {
+            'primary_release_date.gte': oneMonthAgoStr,
+            'primary_release_date.lte': todayStr,
+            'sortBy': 'popularity.desc'
+        });
+    } else {
+        return discoverMedia('tv', {
+            'first_air_date.gte': oneMonthAgoStr,
+            'first_air_date.lte': todayStr,
+            'sortBy': 'popularity.desc'
+        });
+    }
+};
+
+/**
+ * Fetches popular new releases with pagination.
+ */
+export const getAllNewReleasesPaginated = async (page: number = 1): Promise<{ results: TmdbMedia[], total_pages: number }> => {
+    const today = new Date();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+    
+    const todayStr = today.toISOString().split('T')[0];
+    const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
+
+    const data = await fetchFromTmdb<{ results: TmdbMedia[], total_pages: number }>(
+        `discover/movie?primary_release_date.gte=${oneMonthAgoStr}&primary_release_date.lte=${todayStr}&sort_by=popularity.desc&page=${page}`
+    );
+    
+    if (!data) return { results: [], total_pages: 0 };
+    return {
+        results: data.results.map(i => ({ ...i, media_type: 'movie' })),
+        total_pages: data.total_pages
+    };
+};
+
+/**
+ * Fetches shows that have aired new seasons/premieres recently.
+ */
+export const getNewSeasons = async (forceRefresh: boolean = false, timezone: string = 'UTC'): Promise<TmdbMediaDetails[]> => {
+    const trendingShows = await getTrending('tv');
+    const showDetailsPromises = trendingShows.slice(0, 20).map(s => getMediaDetails(s.id, 'tv').catch(() => null));
+    const results = await Promise.all(showDetailsPromises);
+    return results.filter((d): d is TmdbMediaDetails => d !== null);
 };
 
 export const getPersonDetails = async (personId: number): Promise<PersonDetails> => {

@@ -57,11 +57,11 @@ const ApiKeyWarning: React.FC = () => (
     </div>
 );
 
-interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences'> {}
+interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences' | 'timeFormat'> {}
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
-({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences }) => {
-    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists };
+({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat }) => {
+    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists, userData, timeFormat };
 
     return (
         <div className="space-y-8">
@@ -109,7 +109,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     fetchBackendData();
   }, [isApiKeyMissing]);
   
-  const carouselProps = useMemo(() => ({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData.completed, onUpdateLists]);
+  const carouselProps = useMemo(() => ({ 
+    onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, 
+    favorites, completed: userData.completed, onUpdateLists, userData, timeFormat 
+  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, onUpdateLists]);
 
   const recommendationSeedItems = useMemo(() => {
     return [...userData.watching].filter(item => {
@@ -159,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('library-plan-to-watch')} />
       )}
 
-      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} />}
+      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} timeFormat={timeFormat} />}
       {!isApiKeyMissing && <MyListSuggestions userData={userData} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} />}
       {isApiKeyMissing && <ApiKeyWarning />}
     </div>

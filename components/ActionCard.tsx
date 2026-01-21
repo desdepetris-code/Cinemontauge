@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { TmdbMedia, TrackedItem, TmdbMediaDetails } from '../types';
+import { TmdbMedia, TrackedItem, TmdbMediaDetails, UserData } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronDownIcon, ClockIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER } from '../constants';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { getImageUrl } from '../utils/imageUtils';
-import { isNewRelease, getRecentEpisodeCount, formatAirtime } from '../utils/formatUtils';
+import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import { getMediaDetails } from '../services/tmdbService';
 import UserRatingStamp from './UserRatingStamp';
+import { estimateStreamingTime } from '../utils/streamingTimeUtils';
 
 interface ActionCardProps {
     item: TmdbMedia;
@@ -21,6 +23,8 @@ interface ActionCardProps {
     showRatings: boolean;
     showSeriesInfo?: 'expanded' | 'toggle' | 'hidden';
     userRating?: number;
+    userData: UserData; // Added to access timezone and preferences
+    timeFormat?: '12h' | '24h';
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({ 
@@ -33,7 +37,9 @@ const ActionCard: React.FC<ActionCardProps> = ({
     isCompleted, 
     showRatings,
     showSeriesInfo = 'expanded',
-    userRating = 0
+    userRating = 0,
+    userData,
+    timeFormat = '12h'
 }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
@@ -134,10 +140,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
         return start === end ? start : `${start} — ${end}`;
     }, [details, item.media_type]);
 
-    const formattedAirtime = useMemo(() => {
-        if (item.airtime) return formatAirtime(item.airtime);
-        return null;
-    }, [item.airtime]);
+    const estimatedTime = useMemo(() => {
+        if (!details?.['watch/providers']) return null;
+        // FIX: Cast timeFormat to specific union type to satisfy estimateStreamingTime signature
+        const finalTimeFormat = (userData.timeFormat || timeFormat || '12h') as '12h' | '24h';
+        return estimateStreamingTime(details['watch/providers'], userData.timezone || 'UTC', finalTimeFormat);
+    }, [details, userData.timezone, userData.timeFormat, timeFormat]);
 
     const shouldShowInfoSection = showSeriesInfo !== 'hidden' && item.media_type === 'tv' && details && isInfoExpanded;
 
@@ -227,12 +235,12 @@ const ActionCard: React.FC<ActionCardProps> = ({
                              <span className="uppercase tracking-widest">{item.media_type === 'tv' ? 'Series' : 'Film'}</span>
                              <span>•</span>
                              <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
-                             {formattedAirtime && (
+                             {estimatedTime && (
                                 <>
                                     <span>•</span>
-                                    <div className="flex items-center gap-1 text-primary-accent">
+                                    <div className="flex items-center gap-1 text-primary-accent" title={`Estimated release on ${estimatedTime.provider}`}>
                                         <ClockIcon className="w-3 h-3" />
-                                        <span>{formattedAirtime}</span>
+                                        <span>{estimatedTime.time}</span>
                                     </div>
                                 </>
                              )}

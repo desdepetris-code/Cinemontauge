@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon } from '../components/Icons';
+// FIX: Removed ShieldCheckIcon from imports as it is not exported from Icons.tsx and not used in this file
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
 import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
@@ -11,7 +12,7 @@ import { clearApiCache } from '../utils/cacheUtils';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
     <div 
-        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50' : ''} ${disabled ? 'opacity-50' : ''}`}
+        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
         onClick={disabled ? undefined : onClick}
     >
         <div>
@@ -111,13 +112,12 @@ interface SettingsProps {
     setNavSettings: React.Dispatch<React.SetStateAction<NavSettings>>;
     preferences: AppPreferences;
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
+    onTabNavigate?: (tabId: string) => void;
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
-  const [autoBackupEnabled, setAutoBackupEnabled] = useLocalStorage('autoBackupEnabled', false);
-  const [lastLocalBackup, setLastLocalBackup] = useState<string | null>(null);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
 
   useEffect(() => {
@@ -125,7 +125,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
       alert('Data imported successfully!');
       localStorage.removeItem('sceneit_import_success');
     }
-    setLastLocalBackup(localStorage.getItem('auto_backup_last_timestamp'));
   }, []);
 
   const handleToggleNotification = (setting: keyof NotificationSettings) => {
@@ -185,6 +184,23 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
     <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
+
+        <SettingsCard title="Owner Portal">
+             <SettingsRow 
+                title="Manage Overrides" 
+                subtitle="Generate reference reports and view manual airtime entries." 
+                onClick={() => {
+                    if (onTabNavigate) {
+                        onTabNavigate('airtime_management');
+                    }
+                }}
+            >
+                <div className="flex items-center gap-2 text-primary-accent">
+                    <span className="text-[10px] font-black uppercase tracking-widest">Access Granted</span>
+                    <ChevronRightIcon className="w-6 h-6" />
+                </div>
+            </SettingsRow>
+        </SettingsCard>
         
         <SettingsCard title="Feature Visibility">
             <div className="p-4 border-b border-bg-secondary/50">
@@ -240,7 +256,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                     <ToggleSwitch enabled={preferences.dashShowTrending} onChange={() => handleTogglePreference('dashShowTrending')} />
                 </SettingsRow>
                 <SettingsRow title="Weekly Gems (Hall of Fame)" subtitle="Your curated elite picks for the week.">
-                    <ToggleSwitch enabled={preferences.dashShowWeeklyGems} onChange={() => handleTogglePreference('dashShowWeeklyGems')} />
+                    <ToggleSwitch enabled={preferences.dashShowWeeklyGems} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
                 </SettingsRow>
             </div>
         </SettingsCard>

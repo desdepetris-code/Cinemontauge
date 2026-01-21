@@ -1,5 +1,4 @@
 // TMDB API Key. For a production app, this should be in an environment variable.
-// This key is for demonstration purposes.
 export const TMDB_API_KEY = 'b7922161a07780ff1d7caf291ecfa9ec';
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
@@ -8,12 +7,11 @@ export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 export const TVDB_API_KEY = "3f17fc0f-2f0b-48b2-9dec-f7074608790f";
 export const TVDB_API_BASE_URL = 'https://api4.thetvdb.com/v4';
 
-// IMPORTANT: Credentials for the Trakt.tv API.
-export const TRAKT_API_KEY = "a4304a02576bf36fea742a910ebfc82cd3be1c38bc47fb50db7995699da81c18";
+// Trakt credentials removed per user request.
+export const TRAKT_API_KEY = "";
 export const TRAKT_API_BASE_URL = 'https://api.trakt.tv';
 export const TRAKT_REDIRECT_URI = window.location.origin + '/auth/trakt/callback';
 
-// IMPORTANT: Credentials for MyAnimeList API
 export const MAL_CLIENT_ID = 'a755b330561e298533c7c251d7cde369';
 export const MAL_API_BASE_URL = 'https://api.myanimelist.net/v2';
 export const MAL_AUTH_BASE_URL = 'https://myanimelist.net/v1/oauth2/authorize';
@@ -21,7 +19,6 @@ export const MAL_TOKEN_URL = 'https://myanimelist.net/v1/oauth2/token';
 export const MAL_REDIRECT_URI = window.location.origin + window.location.pathname;
 
 // --- Branded B&W SVG Placeholders ---
-
 const logoSvgPart = `
   <defs>
     <linearGradient id="p-grad-main" x1="0%" y1="0%" x2="100%" y2="100%">
