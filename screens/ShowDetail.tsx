@@ -94,6 +94,7 @@ interface ShowDetailProps {
   onAuthClick: () => void;
   onNoteDeleted: (note: Note, mediaTitle: string, context: string) => void;
   onDiscardRequest: (item: DeletedHistoryItem) => void;
+  onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
 }
 
 type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'media' | 'recs' | 'customize' | 'achievements';
@@ -127,7 +128,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
-    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onDiscardRequest
+    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onDiscardRequest,
+    onSetCustomEpisodeImage
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -141,6 +143,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [isBackdropSelectorOpen, setIsBackdropSelectorOpen] = useState(false);
+  const [isEpisodeSelectorOpen, setIsEpisodeSelectorOpen] = useState<{ isOpen: boolean; ep: Episode | null }>({ isOpen: false, ep: null });
   const [isLogWatchModalOpen, setIsLogWatchModalOpen] = useState(false);
   const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -511,6 +514,18 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="posters" />
       <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
+      <ImageSelectorModal 
+        isOpen={isEpisodeSelectorOpen.isOpen} 
+        onClose={() => setIsEpisodeSelectorOpen({ isOpen: false, ep: null })} 
+        posters={details.images?.posters || []} 
+        backdrops={details.images?.backdrops || []} 
+        onSelect={(type, path) => {
+            if (isEpisodeSelectorOpen.ep) {
+                onSetCustomEpisodeImage(id, isEpisodeSelectorOpen.ep.season_number, isEpisodeSelectorOpen.ep.episode_number, path);
+            }
+        }} 
+        initialTab="backdrops" 
+      />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={(notes) => onSaveMediaNote(id, notes)} onNoteDeleted={props.onNoteDeleted} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <JournalModal 
         isOpen={isJournalModalOpen} 
@@ -582,7 +597,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 ) : (
                   <DetailedActionButton 
-                      label={currentStatus === 'completed' ? "Unmark Watched" : "Mark Watched"} 
+                      label="Log Watch" 
                       className="col-span-2"
                       isActive={currentStatus === 'completed'}
                       icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
@@ -590,7 +605,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 )}
                 <DetailedActionButton 
-                    label="Weekly Gem" 
+                    label="Weekly Pick" 
                     icon={<TrophyIcon className="w-6 h-6" />} 
                     isActive={isWeeklyFavorite}
                     onClick={() => setIsNominationModalOpen(true)} 
@@ -684,7 +699,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                         showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} 
                         onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onOpenCommentModal={handleCommentOpen} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
                         showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} preferences={preferences}
-                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'}
+                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'} onEditEpisodeImage={(ep) => setIsEpisodeSelectorOpen({ isOpen: true, ep })} customEpisodeImages={allUserData.customEpisodeImages[id]}
                       />
                    )}
                    {regularSeasons.map(season => (
@@ -695,7 +710,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                         showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} 
                         onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onOpenCommentModal={handleCommentOpen} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
                         showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} preferences={preferences}
-                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'}
+                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'} onEditEpisodeImage={(ep) => setIsEpisodeSelectorOpen({ isOpen: true, ep })} customEpisodeImages={allUserData.customEpisodeImages[id]}
                       />
                    ))}
                 </div>
@@ -741,7 +756,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} />
                   </div>
               )}
-              {activeTab === 'customize' && <div className="space-y-4"><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2><CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} /></div>}
+              {activeTab === 'customize' && <div className="space-y-4"><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2><CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} /></div>}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>
           </div>

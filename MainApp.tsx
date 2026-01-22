@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import AuthModal from './components/AuthModal';
@@ -74,6 +75,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [mediaNotes, setMediaNotes] = useLocalStorage<Record<number, Note[]>>(`media_notes_${userId}`, {});
   const [episodeNotes, setEpisodeNotes] = useLocalStorage<Record<number, Record<number, Record<number, Note[]>>>>(`episode_notes_${userId}`, {});
   const [customImagePaths, setCustomImagePaths] = useLocalStorage<CustomImagePaths>(`custom_image_paths_${userId}`, {});
+  const [customEpisodeImages, setCustomEpisodeImages] = useLocalStorage<Record<number, Record<number, Record<number, string>>>>(`custom_episode_images_${userId}`, {});
   const [notifications, setNotifications] = useLocalStorage<AppNotification[]>(`notifications_${userId}`, []);
   const [favoriteEpisodes, setFavoriteEpisodes] = useLocalStorage<FavoriteEpisodes>(`favorite_episodes_${userId}`, {});
   const [episodeRatings, setEpisodeRatings] = useLocalStorage<EpisodeRatings>(`episode_ratings_${userId}`, {});
@@ -183,7 +185,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   // --- Nostalgia & Updates Logic ---
   useEffect(() => {
     const runUpdateCheck = async () => {
-        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat };
+        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages };
         const result = await checkForUpdates(userData);
         if (result.notifications.length > 0) {
             setNotifications(prev => {
@@ -195,7 +197,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     };
     const timer = setTimeout(runUpdateCheck, 2000); 
     return () => clearTimeout(timer);
-  }, [userId, timezone, timeFormat, watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory]);
+  }, [userId, timezone, timeFormat, watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, customEpisodeImages]);
 
   // --- Android Back Button Logic ---
   const lastBackClickRef = useRef<number>(0);
@@ -299,8 +301,8 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [liveWatchMedia, liveWatchIsPaused, handleLiveWatchStop]);
 
   const allUserData: UserData = useMemo(() => ({
-    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat
-  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat]);
+    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages
+  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages]);
 
   const currentWeekKey = useMemo(() => {
     const d = new Date();
@@ -883,6 +885,17 @@ export const MainApp: React.FC<MainAppProps> = ({
       confirmationService.show("Request discarded and moved to Trash.");
   }, [setDeletedHistory]);
 
+  const handleSetCustomEpisodeImage = useCallback((showId: number, season: number, episode: number, imagePath: string) => {
+      setCustomEpisodeImages(prev => {
+          const next = { ...prev };
+          if (!next[showId]) next[showId] = {};
+          if (!next[showId][season]) next[showId][season] = {};
+          next[showId][season][episode] = imagePath;
+          return next;
+      });
+      confirmationService.show("Episode art updated locally.");
+  }, [setCustomEpisodeImages]);
+
   const renderScreen = () => {
     if (selectedUserId) return <UserProfileModal userId={selectedUserId} currentUser={currentUser || { id: 'guest', username: 'Guest' }} follows={follows[currentUser?.id || 'guest'] || []} onFollow={handleFollow} onUnfollow={handleUnfollow} onClose={() => setSelectedUserId(null)} onToggleLikeList={() => {}} />;
     
@@ -943,6 +956,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onSaveMediaNote={(mid, notes) => setMediaNotes(prev => ({ ...prev, [mid]: notes }))}
                 onNoteDeleted={handleNoteDeleted}
                 onDiscardRequest={handleDiscardAirtimeRequest}
+                onSetCustomEpisodeImage={handleSetCustomEpisodeImage}
             />
         );
     }

@@ -1,6 +1,7 @@
+
 import React, { useMemo, useState } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, AppPreferences, Note } from '../types';
-import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon, EyeSlashIcon } from './Icons';
+import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon, EyeSlashIcon, PhotoIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, isNewRelease, formatTimeFromDate } from '../utils/formatUtils';
 import MarkAsWatchedModal, { LogWatchScope } from './MarkAsWatchedModal';
@@ -48,6 +49,8 @@ interface SeasonAccordionProps {
   preferences: AppPreferences;
   timezone: string;
   timeFormat: '12h' | '24h';
+  onEditEpisodeImage?: (ep: Episode) => void;
+  customEpisodeImages?: Record<number, Record<number, string>>;
 }
 
 const ActionButton: React.FC<{
@@ -98,7 +101,9 @@ const EpisodeItem: React.FC<{
     onSetNotesModalState: (st: { isOpen: boolean; episode: Episode | null }) => void;
     onSetJustWatchedEpisodeId: (id: number | null) => void;
     justWatchedEpisodeId: number | null;
-}> = ({ ep, showId, season, showDetails, seasonDetails, watchProgress, favoriteEpisodes, episodeRatings, episodeNotes, showRatings, timezone, timeFormat, todayStr, ageRating, getAgeRatingColor, onToggleEpisode, onMarkPreviousEpisodesWatched, onStartLiveWatch, onOpenJournal, onOpenEpisodeRatingModal, onOpenCommentModal, onOpenEpisodeDetail, onToggleFavoriteEpisode, onAddWatchHistory, onSetLogDateModalState, onSetNotesModalState, onSetJustWatchedEpisodeId, justWatchedEpisodeId }) => {
+    onEditImage?: () => void;
+    customImagePath?: string;
+}> = ({ ep, showId, season, showDetails, seasonDetails, watchProgress, favoriteEpisodes, episodeRatings, episodeNotes, showRatings, timezone, timeFormat, todayStr, ageRating, getAgeRatingColor, onToggleEpisode, onMarkPreviousEpisodesWatched, onStartLiveWatch, onOpenJournal, onOpenEpisodeRatingModal, onOpenCommentModal, onOpenEpisodeDetail, onToggleFavoriteEpisode, onAddWatchHistory, onSetLogDateModalState, onSetNotesModalState, onSetJustWatchedEpisodeId, justWatchedEpisodeId, onEditImage, customImagePath }) => {
     
     const epProgress = watchProgress[showId]?.[season.season_number]?.[ep.episode_number];
     const journalEntry = epProgress?.journal;
@@ -170,7 +175,7 @@ const EpisodeItem: React.FC<{
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <div className={`w-full sm:w-32 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
                     <FallbackImage 
-                        srcs={[getImageUrl(ep.still_path, 'w300', 'still'), getImageUrl(seasonDetails.poster_path, 'w300', 'poster')]}
+                        srcs={[customImagePath, getImageUrl(ep.still_path, 'w300', 'still'), getImageUrl(seasonDetails.poster_path, 'w300', 'poster')]}
                         placeholder={PLACEHOLDER_STILL} 
                         alt={ep.name} 
                         className="w-full aspect-video object-cover rounded-xl bg-bg-secondary shadow-md border border-white/5"
@@ -179,6 +184,16 @@ const EpisodeItem: React.FC<{
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-xl">
                           <CheckCircleIcon className="w-8 h-8 text-green-400 drop-shadow-md" />
                       </div>
+                    )}
+                    {!customImagePath && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onEditImage?.(); }}
+                            className="absolute bottom-2 right-2 p-3 bg-white rounded-full text-black shadow-2xl transition-all hover:scale-110 active:scale-95 z-20 border border-black/10"
+                            style={{ mixBlendMode: 'difference', filter: 'invert(1)' }}
+                            title="Edit Episode Image"
+                        >
+                            <PhotoIcon className="w-8 h-8" />
+                        </button>
                     )}
                 </div>
                 <div className="flex-grow min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-4 items-center">
@@ -261,7 +276,9 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
     seasonRatings,
     onRateSeason,
     timezone,
-    timeFormat
+    timeFormat,
+    onEditEpisodeImage,
+    customEpisodeImages = {}
   } = props;
 
   const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null; scope: LogWatchScope }>({ isOpen: false, episode: null, scope: 'single' });
@@ -270,7 +287,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
 
     if (!seasonDetails?.episodes) {
@@ -281,7 +298,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
-    const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= today);
+    const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= todayStr);
     const totalAired = airedEpisodes.length;
     
     if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: season.episode_count, totalAiredEpisodesInSeason: 0 };
@@ -460,7 +477,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
                 <div className="mt-3 flex items-center gap-4">
                     <div className="flex-grow">
                         {!isUpcoming && (
-                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
+                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden border border-white/5">
                                 <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${seasonProgressPercent}%` }}></div>
                             </div>
                         )}
@@ -522,6 +539,8 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
                         onSetNotesModalState={setNotesModalState}
                         onSetJustWatchedEpisodeId={setJustWatchedEpisodeId}
                         justWatchedEpisodeId={justWatchedEpisodeId}
+                        onEditImage={() => onEditEpisodeImage?.(ep)}
+                        customImagePath={customEpisodeImages[season.season_number]?.[ep.episode_number]}
                       />
                   ))}
               </ul>

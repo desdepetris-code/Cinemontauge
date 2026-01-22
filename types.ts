@@ -426,6 +426,7 @@ export interface UserData {
   episodeNotes: Record<number, Record<number, Record<number, Note[]>>>;
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
+  customEpisodeImages: Record<number, Record<number, Record<number, string>>>;
   // Added shared settings to UserData to support child components (like ActionCard)
   timezone?: string;
   timeFormat?: '12h' | '24h';
@@ -662,4 +663,4 @@ export interface MediaUpdate {
     details?: any;
 }
 
-export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string }>;
+export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string; gallery?: string[] }>;

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
 import { generateAirtimePDF } from '../utils/pdfExportUtils';
-import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon } from '../components/Icons';
+import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
@@ -13,7 +13,7 @@ interface AirtimeManagementProps {
     userData: UserData;
 }
 
-type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing';
+type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder';
 
 const MASTER_PIN = "999236855421340";
 const MATCH_LIMIT = 100;
@@ -31,18 +31,17 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     const [isGenerating, setIsGenerating] = useState<ReportType | null>(null);
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, matches: 0 });
 
-    // Precise offsets: which TMDB page and which result on that page was processed last
     const [reportOffsets, setReportOffsets] = useLocalStorage<Record<string, ReportOffset>>('cinemontauge_report_offsets', {
         ongoing: { page: 1, index: 0, part: 1 },
         hiatus: { page: 1, index: 0, part: 1 },
         legacy: { page: 1, index: 0, part: 1 },
         integrity: { page: 1, index: 0, part: 1 },
-        deep_ongoing: { page: 1, index: 0, part: 1 }
+        deep_ongoing: { page: 1, index: 0, part: 1 },
+        placeholder: { page: 1, index: 0, part: 1 }
     });
 
     const [pdfArchive, setPdfArchive] = useLocalStorage<DownloadedPdf[]>('cinemontauge_pdf_archive', []);
 
-    // Calculate total overridden episodes
     const totalOverriddenEpisodes = useMemo(() => {
         return Object.values(AIRTIME_OVERRIDES).reduce((acc, show) => {
             return acc + Object.keys(show.episodes || {}).length;
@@ -78,9 +77,45 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     const auditShow = async (item: TmdbMediaDetails | TrackedItem, type: string, rows: any[], dates: any) => {
         const show: TmdbMediaDetails | null = (item as any).status 
             ? (item as TmdbMediaDetails) 
-            : await getMediaDetails(item.id, 'tv').catch(() => null);
+            : await getMediaDetails(item.id, item.media_type as 'tv' | 'movie').catch(() => null);
         
         if (!show) return false;
+
+        if (type === 'placeholder') {
+            const missingPoster = !show.poster_path;
+            const missingBackdrop = !show.backdrop_path;
+            const missingStills = [];
+
+            if (show.media_type === 'tv') {
+                const seasons = show.seasons?.filter(s => s.season_number > 0) || [];
+                for (const s of seasons) {
+                    try {
+                        const sd = await getSeasonDetails(show.id, s.season_number);
+                        const epsWithNoStill = sd.episodes.filter(ep => !ep.still_path);
+                        if (epsWithNoStill.length > 0) {
+                            missingStills.push({ sNum: s.season_number, count: epsWithNoStill.length, eps: epsWithNoStill });
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (missingPoster || missingBackdrop || missingStills.length > 0) {
+                rows.push({
+                    title: `!! PLACEHOLDER GAP: ${show.name || show.title} (ID: ${show.id})`,
+                    status: show.status || 'Active',
+                    details: `${missingPoster ? 'NO POSTER ' : ''}${missingBackdrop ? 'NO BACKDROP' : ''}`
+                });
+                missingStills.forEach(ms => {
+                    rows.push({
+                        title: `   - S${ms.sNum} Missing ${ms.count} Stills`,
+                        status: `Registry Error`,
+                        details: ms.eps.map(e => `E${e.episode_number}`).join(', ')
+                    });
+                });
+                return true;
+            }
+            return false;
+        }
 
         const isDeepScan = type === 'integrity' || type === 'deep_ongoing' || type === 'legacy';
         const seasonsToScan = isDeepScan 
@@ -162,7 +197,8 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             reportTitle = type === 'legacy' ? "Legacy Archive Gaps" : 
                           type === 'ongoing' ? "Urgent Global Gaps" :
                           type === 'hiatus' ? "Global Hiatus Gaps" : 
-                          type === 'integrity' ? "Library Integrity" : "Deep Archive Gaps";
+                          type === 'integrity' ? "Library Integrity" : 
+                          type === 'placeholder' ? "Media Placeholder Gaps" : "Deep Archive Gaps";
 
             const firstPage = await discoverMediaPaginated('tv', { 
                 sortBy: 'popularity.desc', 
@@ -173,7 +209,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             const totalPages = Math.min(firstPage.total_pages, 500); 
             setScanProgress({ current: lastPage, total: totalPages, matches: 0 });
 
-            // SCAN LOOP: Stop when we find 100 matches
             for (let page = lastPage; page <= totalPages && currentMatches < MATCH_LIMIT; page++) {
                 const data = await discoverMediaPaginated('tv', { 
                     sortBy: 'popularity.desc', 
@@ -182,14 +217,13 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     with_watch_monetization_types: 'flatrate|free|ads|rent|buy' 
                 });
                 
-                // Start from the specific index on the first page of the new scan
                 const startAt = (page === lastPage) ? lastIndex : 0;
 
                 for (let i = startAt; i < data.results.length && currentMatches < MATCH_LIMIT; i++) {
                     const result = data.results[i];
                     const details = await getMediaDetails(result.id, 'tv').catch(() => null);
                     
-                    if (details && statusFilter.includes(details.status)) {
+                    if (details && (type === 'placeholder' || statusFilter.includes(details.status))) {
                         const wasMatched = await auditShow(details, type, rows, dates);
                         if (wasMatched) {
                             currentMatches++;
@@ -197,19 +231,18 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     }
                     
                     lastPage = page;
-                    lastIndex = i + 1; // Mark the next item for next time
+                    lastIndex = i + 1; 
                     setScanProgress(p => ({ ...p, current: page, matches: currentMatches }));
                 }
             }
 
             if (rows.length === 0) {
-                alert(`All caught up! No missing data found in the current segment.`);
+                alert(`All caught up! No gaps found in this segment.`);
                 return;
             }
 
             generateAirtimePDF(reportTitle, rows, offset.part);
             
-            // Save to Archive
             const newArchiveItem: DownloadedPdf = {
                 id: `pdf-${Date.now()}`,
                 title: reportTitle,
@@ -219,7 +252,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             };
             setPdfArchive(prev => [newArchiveItem, ...prev].slice(0, 20));
 
-            // Save Progress
             setReportOffsets(prev => ({
                 ...prev,
                 [type]: {
@@ -314,21 +346,21 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     <div className="space-y-3">
                         <h2 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary opacity-60 px-2">High-Priority Scans</h2>
                         
-                        {(['integrity', 'deep_ongoing'] as ReportType[]).map(type => (
+                        {(['integrity', 'placeholder', 'deep_ongoing'] as ReportType[]).map(type => (
                             <div key={type} className="relative group">
                                 <button 
                                     onClick={() => handleGenerateReport(type)}
                                     disabled={isGenerating !== null}
-                                    className={`w-full flex items-center justify-between p-6 rounded-3xl transition-all shadow-2xl relative overflow-hidden ${type === 'integrity' ? 'bg-white text-black hover:bg-slate-100' : 'bg-primary-accent text-on-accent hover:brightness-110'}`}
+                                    className={`w-full flex items-center justify-between p-6 rounded-3xl transition-all shadow-2xl relative overflow-hidden ${type === 'integrity' ? 'bg-white text-black hover:bg-slate-100' : type === 'placeholder' ? 'bg-sky-500 text-white hover:brightness-110' : 'bg-primary-accent text-on-accent hover:brightness-110'}`}
                                 >
                                     <div className="flex items-center gap-4 text-left relative z-10">
                                         <div className={`p-3 rounded-xl ${type === 'integrity' ? 'bg-black/5' : 'bg-white/10'}`}>
-                                            {type === 'integrity' ? <SparklesIcon className="w-6 h-6" /> : <ArchiveBoxIcon className="w-6 h-6" />}
+                                            {type === 'integrity' ? <SparklesIcon className="w-6 h-6" /> : type === 'placeholder' ? <PhotoIcon className="w-6 h-6" /> : <ArchiveBoxIcon className="w-6 h-6" />}
                                         </div>
                                         <div>
                                             <span className="text-sm font-black uppercase tracking-widest">{type.replace('_', ' ')} Scan</span>
                                             <p className="text-[10px] font-bold uppercase opacity-60">
-                                                {isGenerating === type ? `Scanning: ${scanProgress.matches}/${MATCH_LIMIT}` : `Part ${reportOffsets[type].part} Sequential Audit`}
+                                                {isGenerating === type ? `Scanning: ${scanProgress.matches}/${MATCH_LIMIT}` : `Part ${reportOffsets[type].part} Registry Audit`}
                                             </p>
                                         </div>
                                     </div>
@@ -373,7 +405,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 </section>
             </div>
 
-            {/* DOWNLOAD ARCHIVE */}
             <div className="mt-12">
                 <div className="flex items-center gap-4 mb-6">
                     <h2 className="text-xl font-black text-text-primary uppercase tracking-widest whitespace-nowrap">Download Archive</h2>
@@ -410,15 +441,15 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 )}
             </div>
             
-            <div className="mt-12 p-8 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5">
+            <div className="mt-12 p-8 bg-bg-secondary/10 rounded-[2.5rem] border-2 border-dashed border-white/5">
                 <h3 className="text-lg font-black text-text-primary uppercase tracking-widest flex items-center gap-2">
                     <InformationCircleIcon className="w-5 h-5 text-primary-accent" />
                     Auditing Logic
                 </h3>
-                <ol className="mt-6 space-y-4 text-sm text-text-secondary font-medium">
+                <ul className="mt-6 space-y-4 text-sm text-text-secondary font-medium">
                     <li className="flex gap-4">
                         <span className="w-6 h-6 rounded-full bg-primary-accent/20 text-primary-accent flex items-center justify-center flex-shrink-0 text-xs font-black">1</span>
-                        Global reports scan TMDB in sequence. Each PDF contains exactly <span className="text-text-primary font-bold">100 matches</span> found during the scan.
+                        The <span className="text-text-primary font-bold">Placeholder Scan</span> identifies any content missing official poster, backdrop, or episode still assets.
                     </li>
                     <li className="flex gap-4">
                         <span className="w-6 h-6 rounded-full bg-primary-accent/20 text-primary-accent flex items-center justify-center flex-shrink-0 text-xs font-black">2</span>
@@ -432,7 +463,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                         <span className="w-6 h-6 rounded-full bg-primary-accent/20 text-primary-accent flex items-center justify-center flex-shrink-0 text-xs font-black">4</span>
                         The <span className="text-text-primary font-bold">Download Archive</span> saves your last 20 reports for quick retrieval without needing a new scan.
                     </li>
-                </ol>
+                </ul>
             </div>
         </div>
     );
