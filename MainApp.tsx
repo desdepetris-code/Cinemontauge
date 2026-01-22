@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import AuthModal from './components/AuthModal';
@@ -185,7 +184,8 @@ export const MainApp: React.FC<MainAppProps> = ({
   // --- Nostalgia & Updates Logic ---
   useEffect(() => {
     const runUpdateCheck = async () => {
-        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages };
+        /* // Updated allUserData construction to include customImagePaths */
+        const userData: UserData = { watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages, customImagePaths };
         const result = await checkForUpdates(userData);
         if (result.notifications.length > 0) {
             setNotifications(prev => {
@@ -197,7 +197,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     };
     const timer = setTimeout(runUpdateCheck, 2000); 
     return () => clearTimeout(timer);
-  }, [userId, timezone, timeFormat, watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, customEpisodeImages]);
+  }, [userId, timezone, timeFormat, watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, customEpisodeImages, customImagePaths]);
 
   // --- Android Back Button Logic ---
   const lastBackClickRef = useRef<number>(0);
@@ -301,8 +301,10 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [liveWatchMedia, liveWatchIsPaused, handleLiveWatchStop]);
 
   const allUserData: UserData = useMemo(() => ({
-    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages
-  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages]);
+    watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, timezone, timeFormat, customEpisodeImages,
+    /* // Included customImagePaths in UserData context */
+    customImagePaths
+  }), [watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites, watchProgress, history, deletedHistory, deletedNotes, customLists, ratings, episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments, mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory, customEpisodeImages, customImagePaths]);
 
   const currentWeekKey = useMemo(() => {
     const d = new Date();
@@ -981,7 +983,7 @@ export const MainApp: React.FC<MainAppProps> = ({
           />
         );
         case 'home':
-        default: return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShow as any} watchProgress={watchProgress} onToggleEpisode={handleToggleEpisode} onShortcutNavigate={handleTabPress} onOpenAddToListModal={(item) => setAddToListModalState({ isOpen: true, item })} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleLiveWatchStop} onMarkShowAsWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} timeFormat={timeFormat} reminders={reminders} onToggleReminder={(rem, id) => setReminders(prev => rem ? [...prev, rem] : prev.filter(r => r.id !== id))} onUpdateLists={updateLists} shortcutSettings={shortcutSettings} preferences={preferences} onRemoveWeeklyPick={handleRemoveWeeklyPick} onOpenNominateModal={() => setIsNominateModalOpen(true)} />;
+        default: return <Dashboard userData={allUserData} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShow as any} watchProgress={watchProgress} onToggleEpisode={handleToggleEpisode} onShortcutNavigate={handleTabPress} onOpenAddToListModal={(item) => setAddToListModalState({ isOpen: false, item: null })} setCustomLists={setCustomLists} liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleLiveWatchStop} onMarkShowAsWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} timeFormat={timeFormat} reminders={reminders} onToggleReminder={(rem, id) => setReminders(prev => rem ? [...prev, rem] : prev.filter(r => r.id !== id))} onUpdateLists={updateLists} shortcutSettings={shortcutSettings} preferences={preferences} onRemoveWeeklyPick={handleRemoveWeeklyPick} onOpenNominateModal={() => setIsNominateModalOpen(true)} />;
     }
   };
 

@@ -241,6 +241,7 @@ export interface HistoryItem extends TrackedItem {
   episodeTitle?: string;
   note?: string;
   episodeStillPath?: string | null;
+  noteIds?: string[];
   seasonPosterPath?: string | null;
 }
 
@@ -426,6 +427,8 @@ export interface UserData {
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory: Record<string, WeeklyPick[]>;
   customEpisodeImages: Record<number, Record<number, Record<number, string>>>;
+  /* // Added customImagePaths to UserData to support library auditing in the Owner Portal */
+  customImagePaths: CustomImagePaths;
   // Added shared settings to UserData to support child components (like ActionCard)
   timezone?: string;
   timeFormat?: '12h' | '24h';

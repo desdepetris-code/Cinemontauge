@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf } from '../types';
+import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
 import { generateAirtimePDF } from '../utils/pdfExportUtils';
 import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon } from '../components/Icons';
@@ -15,7 +15,8 @@ interface AirtimeManagementProps {
 type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder';
 
 const MASTER_PIN = "999236855421340";
-const MATCH_LIMIT = 100;
+const DEFAULT_MATCH_LIMIT = 100;
+const PLACEHOLDER_MATCH_LIMIT = 10;
 
 interface ReportOffset {
     page: number;
@@ -47,6 +48,31 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             return acc + Object.keys(show.episodes || {}).length;
         }, 0);
     }, []);
+
+    const assetStats = useMemo(() => {
+        let stills = 0;
+        let posters = 0;
+        let backdrops = 0;
+
+        // Count custom episode images (stills)
+        if (userData.customEpisodeImages) {
+            (Object.values(userData.customEpisodeImages) as Record<number, Record<number, string>>[]).forEach(show => {
+                (Object.values(show) as Record<number, string>[]).forEach(season => {
+                    stills += Object.keys(season).length;
+                });
+            });
+        }
+
+        // Count show-level custom assets
+        if (userData.customImagePaths) {
+            (Object.values(userData.customImagePaths) as { poster_path?: string; backdrop_path?: string; gallery?: string[] }[]).forEach(paths => {
+                if (paths.poster_path) posters++;
+                if (paths.backdrop_path) backdrops++;
+            });
+        }
+
+        return { stills, posters, backdrops, total: stills + posters + backdrops };
+    }, [userData.customEpisodeImages, userData.customImagePaths]);
 
     const handlePinInput = useCallback((digit: string) => {
         setPin(prev => {
@@ -82,16 +108,30 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         if (!show) return false;
 
         if (type === 'placeholder') {
-            const missingPoster = !show.poster_path;
-            const missingBackdrop = !show.backdrop_path;
+            const hasCustomPoster = !!userData.customImagePaths?.[show.id]?.poster_path;
+            const hasCustomBackdrop = !!userData.customImagePaths?.[show.id]?.backdrop_path;
+            
+            const missingPoster = !show.poster_path && !hasCustomPoster;
+            const missingBackdrop = !show.backdrop_path && !hasCustomBackdrop;
             const missingStills: { sNum: number, count: number, eps: Episode[] }[] = [];
 
             if (show.media_type === 'tv') {
                 const seasons = show.seasons?.filter(s => s.season_number > 0) || [];
+                const localImages = userData.customEpisodeImages?.[show.id] || {};
+
                 for (const s of seasons) {
                     try {
                         const sd = await getSeasonDetails(show.id, s.season_number);
-                        const epsWithNoStill = sd.episodes.filter(ep => !ep.still_path);
+                        const seasonLocals = localImages[s.season_number] || {};
+
+                        // Filter: Must not have TMDB still_path AND must not have local replacement image
+                        // AND must have already aired
+                        const epsWithNoStill = sd.episodes.filter(ep => 
+                            !ep.still_path && 
+                            !seasonLocals[ep.episode_number] &&
+                            ep.air_date && 
+                            ep.air_date <= dates.today
+                        );
                         if (epsWithNoStill.length > 0) {
                             missingStills.push({ sNum: s.season_number, count: epsWithNoStill.length, eps: epsWithNoStill });
                         }
@@ -101,7 +141,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
 
             if (missingPoster || missingBackdrop || missingStills.length > 0) {
                 rows.push({
-                    title: `!! ${show.media_type.toUpperCase()} GAP: ${show.name || show.title} (ID: ${show.id})`,
+                    title: `>> ${show.media_type.toUpperCase()} GAP: ${show.name || show.title} (ID: ${show.id})`,
                     status: show.status || 'Active',
                     details: `${missingPoster ? 'NO_POSTER ' : ''}${missingBackdrop ? 'NO_BACKDROP' : ''}`
                 });
@@ -176,11 +216,14 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         setIsGenerating(type);
         setScanProgress({ current: 0, total: 0, matches: 0 });
 
+        const currentMatchLimit = type === 'placeholder' ? PLACEHOLDER_MATCH_LIMIT : DEFAULT_MATCH_LIMIT;
+
         try {
             let reportTitle = "";
             let rows: any[] = [];
             const now = new Date();
             const dates = {
+                today: now.toISOString().split('T')[0],
                 sevenDaysFromNow: new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)),
                 sevenDaysAgo: new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
             };
@@ -214,13 +257,11 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             const totalPages = Math.min(firstPage.total_pages, 500); 
             setScanProgress({ current: lastPage, total: totalPages, matches: 0 });
 
-            let mediaLoopFinished = false;
-
-            for (let page = lastPage; page <= totalPages && currentMatches < MATCH_LIMIT; page++) {
+            for (let page = lastPage; page <= totalPages && currentMatches < currentMatchLimit; page++) {
                 const data = await fetchMedia(page, currentMediaType);
                 const startAt = (page === lastPage) ? lastIndex : 0;
 
-                for (let i = startAt; i < data.results.length && currentMatches < MATCH_LIMIT; i++) {
+                for (let i = startAt; i < data.results.length && currentMatches < currentMatchLimit; i++) {
                     const result = data.results[i];
                     const details = await getMediaDetails(result.id, currentMediaType).catch(() => null);
                     
@@ -236,13 +277,11 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     setScanProgress(p => ({ ...p, current: page, matches: currentMatches }));
                 }
 
-                if (page === totalPages && currentMediaType === 'tv' && type === 'placeholder' && currentMatches < MATCH_LIMIT) {
+                if (page === totalPages && currentMediaType === 'tv' && type === 'placeholder' && currentMatches < currentMatchLimit) {
                     currentMediaType = 'movie';
                     lastPage = 1;
                     lastIndex = 0;
                     page = 0; // restart for movie loop
-                } else if (page === totalPages) {
-                    mediaLoopFinished = true;
                 }
             }
 
@@ -297,7 +336,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     if (!isAuthorized) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in px-6">
-                <div className="bg-bg-secondary/40 border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-2xl text-center backdrop-blur-xl">
+                <div className="bg-bg-secondary/40 border border-white/10 rounded-[3rem] p-10 w-full max-sm shadow-2xl text-center backdrop-blur-xl">
                     <div className={`w-20 h-20 rounded-3xl mx-auto mb-8 flex items-center justify-center transition-all duration-500 ${pinError ? 'bg-red-500 animate-shake' : 'bg-primary-accent shadow-[0_0_30px_rgba(var(--color-accent-primary-rgb),0.4)]'}`}>
                         <LockClosedIcon className="w-10 h-10 text-on-accent" />
                     </div>
@@ -343,10 +382,10 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     <div className="bg-primary-accent/10 border border-primary-accent/20 rounded-3xl p-8 shadow-xl">
                         <div className="flex items-center gap-4 mb-4">
                             <CheckCircleIcon className="w-8 h-8 text-primary-accent" />
-                            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tight">Episodes Overrided</h2>
+                            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tight">Truth Overrides</h2>
                         </div>
                         <p className="text-sm text-text-secondary font-medium leading-relaxed">
-                            Individual episode truths currently active in <code className="text-primary-accent">airtimeOverrides.ts</code>. These specific timestamps are excluded from all audit reports.
+                            Individual episode airtime truths currently active in <code className="text-primary-accent">airtimeOverrides.ts</code>. These specific timestamps are excluded from all audit reports.
                         </p>
                         <div className="mt-6 flex items-baseline gap-2">
                             <span className="text-5xl font-black text-text-primary">{totalOverriddenEpisodes}</span>
@@ -354,39 +393,70 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                         </div>
                     </div>
 
+                    <div className="bg-sky-500/10 border border-sky-500/20 rounded-3xl p-8 shadow-xl">
+                        <div className="flex items-center gap-4 mb-4">
+                            <PhotoIcon className="w-8 h-8 text-sky-500" />
+                            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tight">Personal Assets</h2>
+                        </div>
+                        <p className="text-sm text-text-secondary font-medium leading-relaxed">
+                            Granular breakdown of manually provided or edited cinematic assets across your library.
+                        </p>
+                        <div className="mt-6 grid grid-cols-3 gap-4">
+                            <div className="text-center">
+                                <span className="text-2xl font-black text-text-primary block">{assetStats.posters}</span>
+                                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Posters</span>
+                            </div>
+                            <div className="text-center">
+                                <span className="text-2xl font-black text-text-primary block">{assetStats.backdrops}</span>
+                                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Backdrops</span>
+                            </div>
+                            <div className="text-center">
+                                <span className="text-2xl font-black text-text-primary block">{assetStats.stills}</span>
+                                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Stills</span>
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                            <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60">Total Contributed</span>
+                            <span className="text-lg font-black text-sky-500">{assetStats.total}</span>
+                        </div>
+                    </div>
+
                     <div className="space-y-3">
                         <h2 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary opacity-60 px-2">High-Priority Scans</h2>
                         
-                        {(['integrity', 'placeholder', 'deep_ongoing'] as ReportType[]).map(type => (
-                            <div key={type} className="relative group">
-                                <button 
-                                    onClick={() => handleGenerateReport(type)}
-                                    disabled={isGenerating !== null}
-                                    className={`w-full flex items-center justify-between p-6 rounded-3xl transition-all shadow-2xl relative overflow-hidden ${type === 'integrity' ? 'bg-white text-black hover:bg-slate-100' : type === 'placeholder' ? 'bg-sky-500 text-white hover:brightness-110' : 'bg-primary-accent text-on-accent hover:brightness-110'}`}
-                                >
-                                    <div className="flex items-center gap-4 text-left relative z-10">
-                                        <div className={`p-3 rounded-xl ${type === 'integrity' ? 'bg-black/5' : 'bg-white/10'}`}>
-                                            {type === 'integrity' ? <SparklesIcon className="w-6 h-6" /> : type === 'placeholder' ? <PhotoIcon className="w-6 h-6" /> : <ArchiveBoxIcon className="w-6 h-6" />}
+                        {(['integrity', 'placeholder', 'deep_ongoing'] as ReportType[]).map(type => {
+                            const currentLimit = type === 'placeholder' ? PLACEHOLDER_MATCH_LIMIT : DEFAULT_MATCH_LIMIT;
+                            return (
+                                <div key={type} className="relative group">
+                                    <button 
+                                        onClick={() => handleGenerateReport(type)}
+                                        disabled={isGenerating !== null}
+                                        className={`w-full flex items-center justify-between p-6 rounded-3xl transition-all shadow-2xl relative overflow-hidden ${type === 'integrity' ? 'bg-white text-black hover:bg-slate-100' : type === 'placeholder' ? 'bg-sky-500 text-white hover:brightness-110' : 'bg-primary-accent text-on-accent hover:brightness-110'}`}
+                                    >
+                                        <div className="flex items-center gap-4 text-left relative z-10">
+                                            <div className={`p-3 rounded-xl ${type === 'integrity' ? 'bg-black/5' : 'bg-white/10'}`}>
+                                                {type === 'integrity' ? <SparklesIcon className="w-6 h-6" /> : type === 'placeholder' ? <PhotoIcon className="w-6 h-6" /> : <ArchiveBoxIcon className="w-6 h-6" />}
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-black uppercase tracking-widest">{type.replace('_', ' ')} Scan</span>
+                                                <p className="text-[10px] font-bold uppercase opacity-60">
+                                                    {isGenerating === type ? `Scanning: ${scanProgress.matches}/${currentLimit}` : `Part ${reportOffsets[type].part} Registry Audit`}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span className="text-sm font-black uppercase tracking-widest">{type.replace('_', ' ')} Scan</span>
-                                            <p className="text-[10px] font-bold uppercase opacity-60">
-                                                {isGenerating === type ? `Scanning: ${scanProgress.matches}/${MATCH_LIMIT}` : `Part ${reportOffsets[type].part} Registry Audit`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {isGenerating === type ? <ArrowPathIcon className="w-5 h-5 animate-spin relative z-10" /> : <CloudArrowUpIcon className="w-5 h-5 relative z-10" />}
-                                </button>
-                                <button onClick={() => handleReset(type)} className="absolute right-14 top-1/2 -translate-y-1/2 p-2 hover:bg-black/10 rounded-full z-20 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ArrowPathIcon className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ))}
+                                        {isGenerating === type ? <ArrowPathIcon className="w-5 h-5 animate-spin relative z-10" /> : <CloudArrowUpIcon className="w-5 h-5 relative z-10" />}
+                                    </button>
+                                    <button onClick={() => handleReset(type)} className="absolute right-14 top-1/2 -translate-y-1/2 p-2 hover:bg-black/10 rounded-full z-20 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <ArrowPathIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
                 <section className="space-y-3">
-                    <h2 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary opacity-60 px-2 mb-2">Global Segments (100 Matches / Part)</h2>
+                    <h2 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary opacity-60 px-2 mb-2">Global Segments ({DEFAULT_MATCH_LIMIT} Matches / Part)</h2>
                     
                     {(['ongoing', 'hiatus', 'legacy'] as ReportType[]).map(type => (
                         <div key={type} className="relative group">
@@ -402,7 +472,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                                     <div className="text-left">
                                         <span className="text-xs font-black text-text-primary uppercase tracking-widest">{type} Scans</span>
                                         <p className="text-[9px] text-text-secondary font-bold uppercase mt-0.5">
-                                            {isGenerating === type ? `Found: ${scanProgress.matches}/100` : `Resume at Part ${reportOffsets[type].part} (TMDB Pg ${reportOffsets[type].page})`}
+                                            {isGenerating === type ? `Found: ${scanProgress.matches}/${DEFAULT_MATCH_LIMIT}` : `Resume at Part ${reportOffsets[type].part} (TMDB Pg ${reportOffsets[type].page})`}
                                         </p>
                                     </div>
                                 </div>
@@ -460,7 +530,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 <ul className="mt-6 space-y-4 text-sm text-text-secondary font-medium">
                     <li className="flex gap-4">
                         <span className="w-6 h-6 rounded-full bg-primary-accent/20 text-primary-accent flex items-center justify-center flex-shrink-0 text-xs font-black">1</span>
-                        The <span className="text-text-primary font-bold">Placeholder Scan</span> identifies any content missing official poster, backdrop, or episode still assets.
+                        The <span className="text-text-primary font-bold">Placeholder Scan</span> identifies any content missing official poster, backdrop, or episode still assets. Stills are only checked for episodes that have already aired and haven't been manually replaced by the user. This scan is limited to 10 results per segment.
                     </li>
                     <li className="flex gap-4">
                         <span className="w-6 h-6 rounded-full bg-primary-accent/20 text-primary-accent flex items-center justify-center flex-shrink-0 text-xs font-black">2</span>

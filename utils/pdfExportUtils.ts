@@ -7,7 +7,7 @@ interface ReportRow {
 }
 
 /**
- * Generates a focused CineMontauge report limited to 100 entries.
+ * Generates a focused CineMontauge report with robust text wrapping for the details column.
  */
 export const generateAirtimePDF = (title: string, data: ReportRow[], part: number = 1): void => {
     const doc = new jsPDF();
@@ -31,8 +31,8 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
     
     // Table Config
     const colNoWidth = 10;
-    const colTitleWidth = 85;
-    const colStatusWidth = 40;
+    const colTitleWidth = 75;
+    const colStatusWidth = 35;
     const colDetailsWidth = tableWidth - colNoWidth - colTitleWidth - colStatusWidth;
 
     const xNo = margin;
@@ -48,7 +48,7 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
         doc.text("#", xNo + 2, y);
         doc.text("Title / Episode", xTitle + 2, y);
         doc.text("Status / Air Date", xStatus + 2, y);
-        doc.text("Library ID", xDetails + 2, y);
+        doc.text("Details / Gap Map", xDetails + 2, y);
     };
 
     drawHeader(51);
@@ -57,14 +57,18 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
     let entryCount = 0;
     doc.setTextColor(0);
 
-    const isEpisode = (t: string) => t.trim().startsWith('-') || (t.includes('E') && !t.startsWith('>>'));
+    const isEpisodeRow = (t: string) => t.trim().startsWith('-') || (t.includes('E') && !t.startsWith('>>'));
 
-    // Limit to exactly 100 primary entries (shows) or 100 total rows if requested, 
-    // but user specified 100 "Found" matches, which maps to 100 rows in this context.
     for (let i = 0; i < data.length; i++) {
         const row = data[i];
+        const isEp = isEpisodeRow(row.title);
         
-        if (y > 280) {
+        // Split details into wrapped lines
+        const wrappedDetails = doc.splitTextToSize(row.details, colDetailsWidth - 4);
+        const rowHeight = Math.max(8, wrappedDetails.length * 5);
+
+        // Check for page break
+        if (y + rowHeight > 280) {
             doc.addPage();
             y = 20;
             drawHeader(y);
@@ -72,25 +76,31 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
             doc.setTextColor(0);
         }
         
-        const isEp = isEpisode(row.title);
         if (!isEp) entryCount++;
 
-        // Highlighting for show headers
+        // Row Highlighting
         if (!isEp) {
             doc.setFillColor(230, 235, 255); 
-            doc.rect(margin, y - 4, tableWidth, 8, 'F');
+            doc.rect(margin, y - 4, tableWidth, rowHeight, 'F');
             doc.setFont("helvetica", "bold");
         } else {
             doc.setFont("helvetica", "normal");
         }
 
         doc.setFontSize(isEp ? 8 : 9);
-        doc.text(row.title.substring(0, 55), xTitle + 2, y);
-        doc.text(row.status.substring(0, 25), xStatus + 2, y);
-        doc.text(row.details.substring(0, 35), xDetails + 2, y);
         
-        y += 8;
-        if (isEp) y += 4;
+        // Render content
+        doc.text(row.title.substring(0, 55), xTitle + 2, y);
+        doc.text(row.status.substring(0, 20), xStatus + 2, y);
+        
+        // Render wrapped details
+        doc.text(wrappedDetails, xDetails + 2, y);
+        
+        y += rowHeight;
+        // Extra spacing between groups
+        if (isEp && i < data.length - 1 && !isEpisodeRow(data[i+1].title)) {
+            y += 4;
+        }
     }
     
     // Footer

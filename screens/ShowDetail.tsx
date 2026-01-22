@@ -60,10 +60,12 @@ interface ShowDetailProps {
   onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number, deleteLive?: boolean) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
+  onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
   favoriteEpisodes: FavoriteEpisodes;
   onSelectPerson: (personId: number) => void;
+  onSelectShowInModal: (id: number, media_type: 'tv' | 'movie') => void;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onClearMediaHistory: (mediaId: number, mediaType: 'tv' | 'movie') => void;
@@ -97,7 +99,7 @@ interface ShowDetailProps {
   onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
 }
 
-type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'media' | 'recs' | 'customize' | 'achievements';
+type TabType = 'seasons' | 'info' | 'cast' | 'discussion' | 'recs' | 'customize' | 'achievements';
 
 const DetailedActionButton: React.FC<{
   icon: React.ReactNode;
@@ -129,7 +131,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
     onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onDiscardRequest,
-    onSetCustomEpisodeImage
+    onSetCustomEpisodeImage, onSetCustomImage
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -201,9 +203,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const tabs: { id: TabType, label: string, icon: any }[] = useMemo(() => [
     ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Seasons', icon: ListBulletIcon }] as any : []),
     { id: 'info', label: 'Info', icon: BookOpenIcon },
-    { id: 'cast', label: 'Cast and Crew', icon: UsersIcon },
-    { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
-    { id: 'media', label: 'Gallery', icon: VideoCameraIcon },
+    { id: 'cast', label: 'Cast', icon: UsersIcon },
+    { id: 'discussion', label: 'Discussion', icon: ChatBubbleOvalLeftEllipsisIcon },
     { id: 'recs', label: 'Recommended', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
     { id: 'achievements', label: 'Badges', icon: BadgeIcon },
@@ -734,21 +735,10 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
+                  // Corrected state setter name from setActiveThread to setActiveCommentThread
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />
-              )}
-              {activeTab === 'media' && (
-                <div className="space-y-8">
-                   <section>
-                      <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4">Gallery</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                         {details.images?.backdrops?.slice(0, 12).map((img, i) => (
-                            <img key={i} src={getImageUrl(img.file_path, 'w500')} className="rounded-lg shadow-md hover:scale-105 transition-transform cursor-zoom-in" alt="Scene" />
-                         ))}
-                      </div>
-                   </section>
-                </div>
               )}
               {activeTab === 'recs' && (
                   <div className="space-y-12">
@@ -756,7 +746,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} />
                   </div>
               )}
-              {activeTab === 'customize' && <div className="space-y-4"><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2><CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} /></div>}
+              {activeTab === 'customize' && (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2>
+                  <CustomizeTab 
+                    posterUrl={posterUrl} 
+                    backdropUrl={backdropUrl} 
+                    onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} 
+                    onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} 
+                    showId={id}
+                    customImagePaths={customImagePaths}
+                    details={details}
+                    onSetCustomImage={onSetCustomImage}
+                  />
+                </div>
+              )}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>
           </div>

@@ -32,7 +32,6 @@ interface SeasonAccordionProps {
   favoriteEpisodes: FavoriteEpisodes;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
-  // Fixed duplication: Removed redundant declarations of onToggleFavoriteEpisode and onStartLiveWatch
   onSaveJournal: (showId: number, season: number, episode: number, entry: JournalEntry | null) => void;
   episodeRatings: EpisodeRatings;
   onOpenEpisodeRatingModal: (episode: Episode) => void;
@@ -170,6 +169,10 @@ const EpisodeItem: React.FC<{
         onStartLiveWatch(mediaInfo);
     };
 
+    // Instruction: Hide the change/edit button on episodes that have an episode still or replacement image.
+    // Button only shows if TMDB still_path is empty AND no custom local image is set.
+    const isStillGap = !ep.still_path && !customImagePath;
+
     return (
         <li className={`relative group p-4 transition-all hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -185,7 +188,7 @@ const EpisodeItem: React.FC<{
                           <CheckCircleIcon className="w-8 h-8 text-green-400 drop-shadow-md" />
                       </div>
                     )}
-                    {!customImagePath && (
+                    {isStillGap && (
                         <button 
                             onClick={(e) => { e.stopPropagation(); onEditImage?.(); }}
                             className="absolute bottom-2 right-2 p-3 bg-white rounded-full text-black shadow-2xl transition-all hover:scale-110 active:scale-95 z-20 border border-black/10 flex items-center justify-center"
@@ -245,7 +248,7 @@ const EpisodeItem: React.FC<{
                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                         </ActionButton>
                         <ActionButton label="Discuss" onClick={(e) => { e.stopPropagation(); onOpenCommentModal(ep); }}>
-                            <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
+                            <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4" />
                         </ActionButton>
                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); onSetLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
                             <LogWatchIcon className="w-5 h-5" />
