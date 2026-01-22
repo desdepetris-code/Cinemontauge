@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, AppPreferences, Note } from '../types';
-import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon, EyeSlashIcon, PhotoIcon } from './Icons';
+import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, Note } from '../types';
+import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
-import { formatRuntime, isNewRelease, formatTimeFromDate } from '../utils/formatUtils';
+import { formatRuntime, isNewRelease } from '../utils/formatUtils';
 import MarkAsWatchedModal, { LogWatchScope } from './MarkAsWatchedModal';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL } from '../constants';
@@ -21,7 +21,7 @@ interface SeasonAccordionProps {
   onToggle: () => void;
   seasonDetails: TmdbSeasonDetails | undefined;
   watchProgress: WatchProgress;
-  onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null) => void;
+  onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
   onOpenJournal: (season: number, episode: Episode) => void;
   onOpenEpisodeDetail: (episode: Episode) => void;
@@ -37,19 +37,14 @@ interface SeasonAccordionProps {
   onOpenEpisodeRatingModal: (episode: Episode) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
   isCollapsible?: boolean;
-  onOpenCommentModal: (episode: Episode) => void;
+  onDiscussEpisode: (seasonNumber: number, episodeNumber: number) => void;
   comments: Comment[];
   onImageClick: (src: string) => void;
   episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
-  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, notes: Note[]) => void;
+  onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, note: string) => void;
   showRatings: boolean;
   seasonRatings: SeasonRatings;
   onRateSeason: (showId: number, seasonNumber: number, rating: number) => void;
-  preferences: AppPreferences;
-  timezone: string;
-  timeFormat: '12h' | '24h';
-  onEditEpisodeImage?: (ep: Episode) => void;
-  customEpisodeImages?: Record<number, Record<number, string>>;
 }
 
 const ActionButton: React.FC<{
@@ -82,17 +77,13 @@ const EpisodeItem: React.FC<{
     episodeRatings: EpisodeRatings;
     episodeNotes: Record<number, Record<number, Record<number, Note[]>>>;
     showRatings: boolean;
-    timezone: string;
-    timeFormat: '12h' | '24h';
-    todayStr: string;
-    ageRating: string | null;
-    getAgeRatingColor: (rating: string) => string;
+    today: string;
     onToggleEpisode: SeasonAccordionProps['onToggleEpisode'];
     onMarkPreviousEpisodesWatched: SeasonAccordionProps['onMarkPreviousEpisodesWatched'];
     onStartLiveWatch: SeasonAccordionProps['onStartLiveWatch'];
     onOpenJournal: SeasonAccordionProps['onOpenJournal'];
     onOpenEpisodeRatingModal: SeasonAccordionProps['onOpenEpisodeRatingModal'];
-    onOpenCommentModal: SeasonAccordionProps['onOpenCommentModal'];
+    onDiscussEpisode: SeasonAccordionProps['onDiscussEpisode'];
     onOpenEpisodeDetail: SeasonAccordionProps['onOpenEpisodeDetail'];
     onToggleFavoriteEpisode: SeasonAccordionProps['onToggleFavoriteEpisode'];
     onAddWatchHistory: SeasonAccordionProps['onAddWatchHistory'];
@@ -100,14 +91,14 @@ const EpisodeItem: React.FC<{
     onSetNotesModalState: (st: { isOpen: boolean; episode: Episode | null }) => void;
     onSetJustWatchedEpisodeId: (id: number | null) => void;
     justWatchedEpisodeId: number | null;
-    onEditImage?: () => void;
-    customImagePath?: string;
-}> = ({ ep, showId, season, showDetails, seasonDetails, watchProgress, favoriteEpisodes, episodeRatings, episodeNotes, showRatings, timezone, timeFormat, todayStr, ageRating, getAgeRatingColor, onToggleEpisode, onMarkPreviousEpisodesWatched, onStartLiveWatch, onOpenJournal, onOpenEpisodeRatingModal, onOpenCommentModal, onOpenEpisodeDetail, onToggleFavoriteEpisode, onAddWatchHistory, onSetLogDateModalState, onSetNotesModalState, onSetJustWatchedEpisodeId, justWatchedEpisodeId, onEditImage, customImagePath }) => {
+    getAgeRatingColor: (rating: string) => string;
+    ageRating: string | null;
+}> = ({ ep, showId, season, showDetails, seasonDetails, watchProgress, favoriteEpisodes, episodeRatings, episodeNotes, showRatings, today, onToggleEpisode, onMarkPreviousEpisodesWatched, onStartLiveWatch, onOpenJournal, onOpenEpisodeRatingModal, onDiscussEpisode, onOpenEpisodeDetail, onToggleFavoriteEpisode, onAddWatchHistory, onSetLogDateModalState, onSetNotesModalState, onSetJustWatchedEpisodeId, justWatchedEpisodeId, getAgeRatingColor, ageRating }) => {
     
     const epProgress = watchProgress[showId]?.[season.season_number]?.[ep.episode_number];
     const journalEntry = epProgress?.journal;
     const isWatched = epProgress?.status === 2;
-    const isFuture = ep.air_date && ep.air_date > todayStr;
+    const isFuture = ep.air_date && ep.air_date > today;
     const isFavorited = !!favoriteEpisodes[showId]?.[season.season_number]?.[ep.episode_number];
     const tag = getEpisodeTag(ep, season, showDetails, seasonDetails);
     const isNew = isNewRelease(ep.air_date);
@@ -115,14 +106,19 @@ const EpisodeItem: React.FC<{
     const totalEpisodesInSeason = seasonDetails?.episodes?.length || season.episode_count;
     const isLastEpisode = ep.episode_number === totalEpisodesInSeason;
     const shouldAnimateWatch = justWatchedEpisodeId === ep.id;
-    const hasNote = !!(episodeNotes[showId]?.[season.season_number]?.[ep.episode_number]?.length > 0);
+    const hasNote = !!(episodeNotes[showId]?.[season.season_number]?.[ep.episode_number]);
 
+    // AIRTIME TRUTH LOGIC - RESTORED AND VERIFIED
     const airtimeTruth = useMemo(() => {
-        const override = AIRTIME_OVERRIDES[showId];
+        const override = AIRTIME_OVERRIDES[Number(showId)];
         if (!override) return null;
         const key = `S${ep.season_number}E${ep.episode_number}`;
-        const timeInfo = override.episodes?.[key];
+        
+        // Priority 1: Specific Episode Match (S27E10, etc.)
+        // Priority 2: Global Show Time Fallback
+        const timeInfo = override.episodes?.[key] || override.time;
         if (!timeInfo) return null;
+        
         return `${timeInfo} on ${override.provider}`;
     }, [showId, ep.season_number, ep.episode_number]);
 
@@ -147,10 +143,10 @@ const EpisodeItem: React.FC<{
             if (hasUnwatched && window.confirm("You've marked the last episode. Mark all previous unwatched episodes in this season as watched?")) {
                 onMarkPreviousEpisodesWatched(showId, season.season_number, ep.episode_number);
             } else {
-                onToggleEpisode(showId, season.season_number, ep.episode_number, epProgress?.status || 0, showDetails as TrackedItem, ep.name, ep.still_path, seasonDetails.poster_path);
+                onToggleEpisode(showId, season.season_number, ep.episode_number, epProgress?.status || 0, showDetails as TrackedItem, ep.name);
             }
         } else {
-            onToggleEpisode(showId, season.season_number, ep.episode_number, epProgress?.status || 0, showDetails as TrackedItem, ep.name, ep.still_path, seasonDetails.poster_path);
+            onToggleEpisode(showId, season.season_number, ep.episode_number, epProgress?.status || 0, showDetails as TrackedItem, ep.name);
         }
     };
     
@@ -170,35 +166,29 @@ const EpisodeItem: React.FC<{
     };
 
     return (
-        <li className={`relative group p-4 transition-all hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className={`w-full sm:w-32 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
-                    <FallbackImage 
-                        srcs={[customImagePath, getImageUrl(ep.still_path, 'w300', 'still'), getImageUrl(seasonDetails.poster_path, 'w300', 'poster')]}
-                        placeholder={PLACEHOLDER_STILL} 
+        <li className={`relative group p-3 transition-colors hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
+            <div className="flex items-start md:items-center space-x-4">
+                <div className={`w-32 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
+                    <img 
+                        src={getImageUrl(ep.still_path, 'w300', 'still')} 
                         alt={ep.name} 
-                        className="w-full aspect-video object-cover rounded-xl bg-bg-secondary shadow-md border border-white/5"
+                        className="w-full aspect-video object-cover rounded-md bg-bg-secondary"
                     />
-                    {isWatched && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-xl">
-                          <CheckCircleIcon className="w-8 h-8 text-green-400 drop-shadow-md" />
-                      </div>
-                    )}
                 </div>
                 <div className="flex-grow min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-4 items-center">
                     <div className={`flex flex-col ${isFuture ? 'opacity-60' : ''}`}>
                         <div className="flex items-center flex-wrap gap-x-2">
-                            <p className="font-black text-text-primary text-sm uppercase tracking-tight truncate leading-none">
+                            <p className="font-semibold text-text-primary text-sm truncate">
                                 {ep.episode_number}. {ep.name}
                             </p>
                             {showRatings && ep.vote_average !== undefined && ep.vote_average > 0 && <ScoreStar score={ep.vote_average} voteCount={ep.vote_count} size="xs" className="-my-1" />}
-                            {isNew && <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300">New</span>}
-                            {tag && <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${tag.className}`}>{tag.text}</span>}
+                            {isNew && <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-cyan-500/20 text-cyan-300">New</span>}
+                            {tag && <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${tag.className}`}>{typeof tag === 'object' ? tag.text : tag}</span>}
                         </div>
-                        
-                        <div className="flex flex-col gap-0.5 mt-2">
-                            <div className="flex items-center flex-wrap gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
-                                {ep.air_date ? <span>{new Date(ep.air_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span> : <span>TBA</span>}
+                        <div className="flex flex-col gap-1 mt-1">
+                            <div className="flex items-center flex-wrap gap-2 text-xs text-text-secondary/80">
+                                {!isFuture && ep.air_date && <span>{new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
+                                {isFuture && ep.air_date && <span>Airs: {new Date(ep.air_date + 'T00:00:00').toLocaleDateString()}</span>}
                                 {ep.runtime && ep.runtime > 0 && <span>&bull; {formatRuntime(ep.runtime)}</span>}
                                 {ageRating && (
                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter shadow-sm border border-white/10 ${getAgeRatingColor(ageRating)}`}>
@@ -207,15 +197,15 @@ const EpisodeItem: React.FC<{
                                 )}
                             </div>
                             {airtimeTruth && (
-                                <div className="flex items-center gap-1.5 text-primary-accent font-black uppercase tracking-widest text-[10px] mt-1">
+                                <div className="flex items-center gap-1.5 bg-primary-accent/10 border border-primary-accent/30 text-primary-accent font-black uppercase tracking-widest text-[9px] px-2 py-0.5 rounded-md self-start mt-0.5 shadow-sm">
                                     <ClockIcon className="w-3.5 h-3.5" />
                                     <span>{airtimeTruth}</span>
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-start md:justify-end gap-1.5 mt-3 md:mt-0" onClick={(e) => e.stopPropagation()}>
-                        <ActionButton label={isWatched ? 'Unwatch' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
+                    <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 mt-2 md:mt-0" onClick={(e) => e.stopPropagation()}>
+                        <ActionButton label={isWatched ? 'Not Watched' : 'Watch'} onClick={handleToggleWatched} disabled={isFuture} isActive={isWatched}>
                             <CheckCircleIcon className={`w-5 h-5 ${isWatched ? 'text-green-500' : ''} ${shouldAnimateWatch ? 'animate-bounce-in' : ''}`} />
                         </ActionButton>
                         <ActionButton label="Live" onClick={handleLiveWatch} disabled={isFuture}>
@@ -233,8 +223,8 @@ const EpisodeItem: React.FC<{
                         <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                         </ActionButton>
-                        <ActionButton label="Discuss" onClick={(e) => { e.stopPropagation(); onOpenCommentModal(ep); }}>
-                            <ChatBubbleOvalLeftEllipsisIcon className="w-4 h-4" />
+                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                            <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
                         </ActionButton>
                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); onSetLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
                             <LogWatchIcon className="w-5 h-5" />
@@ -246,37 +236,45 @@ const EpisodeItem: React.FC<{
     );
 };
 
-const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
-  const {
-    season,
-    showId,
-    isExpanded,
-    onToggle,
-    seasonDetails,
-    watchProgress,
-    onOpenEpisodeDetail,
-    showDetails,
-    showPosterPath,
-    onMarkSeasonWatched,
-    onUnmarkSeasonWatched,
-    isCollapsible = true,
-    onImageClick,
-    showRatings,
-    seasonRatings,
-    onRateSeason,
-    timezone,
-    timeFormat,
-    onEditEpisodeImage,
-    customEpisodeImages = {}
-  } = props;
-
+const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
+  season,
+  showId,
+  isExpanded,
+  onToggle,
+  seasonDetails,
+  watchProgress,
+  onToggleEpisode,
+  onMarkPreviousEpisodesWatched,
+  onOpenEpisodeDetail,
+  onOpenJournal,
+  showDetails,
+  showPosterPath,
+  favoriteEpisodes,
+  onToggleFavoriteEpisode,
+  onStartLiveWatch,
+  onSaveJournal,
+  onMarkSeasonWatched,
+  onUnmarkSeasonWatched,
+  episodeRatings,
+  onOpenEpisodeRatingModal,
+  onAddWatchHistory,
+  isCollapsible = true,
+  onDiscussEpisode,
+  comments,
+  onImageClick,
+  episodeNotes = {},
+  onSaveEpisodeNote,
+  showRatings,
+  seasonRatings,
+  onRateSeason
+}) => {
   const [logDateModalState, setLogDateModalState] = useState<{ isOpen: boolean; episode: Episode | null; scope: LogWatchScope }>({ isOpen: false, episode: null, scope: 'single' });
   const [justWatchedEpisodeId, setJustWatchedEpisodeId] = useState<number | null>(null);
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
     const progressForSeason = watchProgress[showId]?.[season.season_number] || {};
 
     if (!seasonDetails?.episodes) {
@@ -287,7 +285,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
-    const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= todayStr);
+    const airedEpisodes = seasonDetails.episodes.filter(ep => ep.air_date && ep.air_date <= today);
     const totalAired = airedEpisodes.length;
     
     if (totalAired === 0) return { seasonProgressPercent: 0, unwatchedCount: season.episode_count, totalAiredEpisodesInSeason: 0 };
@@ -333,7 +331,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
         .map(p => getImageUrl(p, 'w92'));
   }, [season.poster_path, showPosterPath]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
   
   const handleMarkUnmarkSeason = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -352,7 +350,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
   };
 
   const isSeasonWatched = unwatchedCount === 0 && totalAiredEpisodesInSeason > 0;
-  const isUpcoming = season.air_date && season.air_date > todayStr;
+  const isUpcoming = season.air_date && season.air_date > today;
   const userSeasonRating = seasonRatings[showId]?.[season.season_number] || 0;
 
   const handleLogSeasonWatch = (e: React.MouseEvent) => {
@@ -369,7 +367,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
     };
 
     if (data.scope === 'single' && logDateModalState.episode) {
-        props.onAddWatchHistory(showInfo, logDateModalState.episode.season_number, logDateModalState.episode.episode_number, data.date, data.note, logDateModalState.episode.name);
+        onAddWatchHistory(showInfo, logDateModalState.episode.season_number, logDateModalState.episode.episode_number, data.date, data.note, logDateModalState.episode.name);
         return;
     }
 
@@ -381,21 +379,19 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
     confirmationService.show(`Logging ${data.selectedEpisodeIds.length} episodes...`);
     try {
         const sd = seasonDetails || await getSeasonDetails(showId, season.season_number);
-        const airedEpisodes = sd.episodes.filter(ep => ep.air_date && ep.air_date <= todayStr);
+        const airedEpisodes = sd.episodes.filter(ep => ep.air_date && ep.air_date <= today);
         
         for (const ep of airedEpisodes) {
             if (data.selectedEpisodeIds.includes(ep.id)) {
-                props.onAddWatchHistory(showInfo, ep.season_number, ep.episode_number, data.date, data.note, ep.name);
+                onAddWatchHistory(showInfo, ep.season_number, ep.episode_number, data.date, data.note, ep.name);
             }
         }
-        confirmationService.show(`Logged ${data.selectedEpisodeIds.length} episodes of "${season.season_number === 0 ? 'Specials' : season.name}" for ${showDetails.name}!`);
+        confirmationService.show(`Logged ${data.selectedEpisodeIds.length} episodes of "${season.name}" for ${showDetails.name}!`);
     } catch (e) {
         console.error(e);
         confirmationService.show("Season logging failed.");
     }
   };
-
-  const seasonDisplayName = season.season_number === 0 ? 'Specials' : season.name;
 
   return (
     <>
@@ -404,23 +400,23 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
         onClose={() => setSeasonRatingModalOpen(false)}
         onSave={(rating) => onRateSeason(showId, season.season_number, rating)}
         currentRating={userSeasonRating}
-        mediaTitle={seasonDisplayName}
+        mediaTitle={season.name}
       />
       <NotesModal
         isOpen={notesModalState.isOpen}
         onClose={() => setNotesModalState({ isOpen: false, episode: null })}
-        onSave={(notes) => {
+        onSave={(note) => {
             if (notesModalState.episode) {
-                props.onSaveEpisodeNote(showId, notesModalState.episode.season_number, notesModalState.episode.episode_number, notes);
+                onSaveEpisodeNote(showId, notesModalState.episode.season_number, notesModalState.episode.episode_number, note);
             }
         }}
         mediaTitle={notesModalState.episode ? `Note for S${notesModalState.episode.season_number} E${notesModalState.episode.episode_number}: ${notesModalState.episode.name}` : ''}
-        initialNotes={notesModalState.episode ? (props.episodeNotes?.[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] || []) : []}
+        initialNotes={notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] ? [{ id: 'manual', text: (episodeNotes[showId][notesModalState.episode.season_number][notesModalState.episode.episode_number] as unknown as string), timestamp: new Date().toISOString() }] : []) : []}
       />
       <MarkAsWatchedModal
         isOpen={logDateModalState.isOpen}
         onClose={() => setLogDateModalState({ isOpen: false, episode: null, scope: 'single' })}
-        mediaTitle={logDateModalState.episode ? `S${logDateModalState.episode.season_number} E${logDateModalState.episode.episode_number}: ${logDateModalState.episode.name}` : seasonDisplayName}
+        mediaTitle={logDateModalState.episode ? `S${logDateModalState.episode.season_number} E${logDateModalState.episode.episode_number}: ${logDateModalState.episode.name}` : season.name}
         onSave={handleBulkLogSave}
         initialScope={logDateModalState.scope}
         mediaType="tv"
@@ -432,18 +428,16 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
              <div className="p-4">
                 <div className="flex items-start justify-between cursor-pointer" onClick={onToggle}>
                     <div className="flex items-start flex-grow min-w-0">
-                        <div className="relative flex-shrink-0">
-                            <FallbackImage 
-                                srcs={seasonPosterSrcs} 
-                                placeholder={PLACEHOLDER_POSTER} 
-                                alt={seasonDisplayName} 
-                                className="w-12 h-18 object-cover rounded-md flex-shrink-0 cursor-pointer" 
-                                onClick={(e) => { e.stopPropagation(); onImageClick(getImageUrl(season.poster_path, 'original')); }}
-                            />
-                        </div>
+                        <FallbackImage 
+                            srcs={seasonPosterSrcs} 
+                            placeholder={PLACEHOLDER_POSTER} 
+                            alt={season.name} 
+                            className="w-12 h-18 object-cover rounded-md flex-shrink-0 cursor-pointer" 
+                            onClick={(e) => { e.stopPropagation(); onImageClick(getImageUrl(season.poster_path, 'original')); }}
+                        />
                         <div className="flex-grow ml-4 min-w-0">
                             <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-lg text-text-primary truncate">{seasonDisplayName}</h3>
+                                <h3 className="font-bold text-lg text-text-primary truncate">{season.name}</h3>
                                 {showRatings && season.vote_average && season.vote_average > 0 && <ScoreStar score={season.vote_average} size="xs" />}
                             </div>
                             <p className="text-sm text-text-secondary">{season.episode_count} Episodes</p>
@@ -466,7 +460,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
                 <div className="mt-3 flex items-center gap-4">
                     <div className="flex-grow">
                         {!isUpcoming && (
-                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden border border-white/5">
+                            <div className="w-full bg-bg-secondary rounded-full h-2">
                                 <div className="bg-accent-gradient h-2 rounded-full transition-all duration-500" style={{ width: `${seasonProgressPercent}%` }}></div>
                             </div>
                         )}
@@ -475,7 +469,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
                         <button
                             onClick={(e) => { e.stopPropagation(); setSeasonRatingModalOpen(true); }}
                             className={`relative p-2 rounded-full transition-colors border border-primary-accent/10 ${userSeasonRating > 0 ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`}
-                            title={userSeasonRating > 0 ? `Your Rating: ${userSeasonRating}/10` : 'Rate Season'}
+                            title={userSeasonRating > 0 ? `Your Rating: ${userSeasonRating}/5` : 'Rate Season'}
                         >
                             <StarIcon filled={userSeasonRating > 0} className="h-5 w-5" />
                         </button>
@@ -494,7 +488,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
         {isExpanded && (
           <div className={`${isCollapsible ? 'border-t border-bg-secondary' : ''}`}>
             {!seasonDetails ? (
-              <div className="p-10 text-center text-text-secondary animate-pulse uppercase font-black tracking-widest text-xs">Loading episodes...</div>
+              <div className="p-4 text-center text-text-secondary">Loading episodes...</div>
             ) : (
               <ul className="divide-y divide-bg-secondary">
                   {(seasonDetails?.episodes || []).filter(Boolean).map(ep => (
@@ -506,30 +500,26 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = (props) => {
                         showDetails={showDetails}
                         seasonDetails={seasonDetails}
                         watchProgress={watchProgress}
-                        favoriteEpisodes={props.favoriteEpisodes}
-                        episodeRatings={props.episodeRatings}
-                        episodeNotes={props.episodeNotes || {}}
+                        favoriteEpisodes={favoriteEpisodes}
+                        episodeRatings={episodeRatings}
+                        episodeNotes={episodeNotes}
                         showRatings={showRatings}
-                        timezone={timezone}
-                        timeFormat={timeFormat}
-                        todayStr={todayStr}
-                        ageRating={ageRating}
-                        getAgeRatingColor={getAgeRatingColor}
-                        onToggleEpisode={props.onToggleEpisode}
-                        onMarkPreviousEpisodesWatched={props.onMarkPreviousEpisodesWatched}
-                        onStartLiveWatch={props.onStartLiveWatch}
-                        onOpenJournal={props.onOpenJournal}
-                        onOpenEpisodeRatingModal={props.onOpenEpisodeRatingModal}
-                        onOpenCommentModal={props.onOpenCommentModal}
+                        today={today}
+                        onToggleEpisode={onToggleEpisode}
+                        onMarkPreviousEpisodesWatched={onMarkPreviousEpisodesWatched}
+                        onStartLiveWatch={onStartLiveWatch}
+                        onOpenJournal={onOpenJournal}
+                        onOpenEpisodeRatingModal={onOpenEpisodeRatingModal}
+                        onDiscussEpisode={onDiscussEpisode}
                         onOpenEpisodeDetail={onOpenEpisodeDetail}
-                        onToggleFavoriteEpisode={props.onToggleFavoriteEpisode}
-                        onAddWatchHistory={props.onAddWatchHistory}
+                        onToggleFavoriteEpisode={onToggleFavoriteEpisode}
+                        onAddWatchHistory={onAddWatchHistory}
                         onSetLogDateModalState={setLogDateModalState}
                         onSetNotesModalState={setNotesModalState}
                         onSetJustWatchedEpisodeId={setJustWatchedEpisodeId}
                         justWatchedEpisodeId={justWatchedEpisodeId}
-                        onEditImage={() => props.onEditEpisodeImage?.(ep)}
-                        customImagePath={customEpisodeImages[season.season_number]?.[ep.episode_number]}
+                        getAgeRatingColor={getAgeRatingColor}
+                        ageRating={ageRating}
                       />
                   ))}
               </ul>

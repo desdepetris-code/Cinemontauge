@@ -36,7 +36,7 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
     <button
         onClick={() => !disabled && onChange(!enabled)}
         disabled={disabled}
-        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'pointer-events-auto cursor-pointer'}`}
     >
         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${enabled ? 'translate-x-5' : ''}`}/>
     </button>
@@ -131,27 +131,57 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
         }
 
         return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {themesToRender.map(theme => {
-                    const isSelected = baseThemeId === theme.id;
-                    const borderColor = isSelected 
-                        ? 'border-primary-accent shadow-[0_0_10px_rgba(var(--color-accent-primary-rgb),0.3)]' 
-                        : theme.base === 'dark' 
-                            ? 'border-white/10' 
-                            : 'border-black/10';
-                    return (
-                        <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group">
-                            <div 
-                                style={{ backgroundImage: theme.colors.bgGradient }}
-                                className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${borderColor}`}
-                            >
+            <div className="space-y-6">
+                {activeTab === 'holiday' && (
+                    <div className="bg-bg-secondary/20 rounded-2xl p-4 border border-white/5 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="text-sm font-black text-text-primary uppercase tracking-widest">Automated Holiday Experience</h4>
+                                <p className="text-[10px] text-text-secondary font-bold uppercase opacity-60">Sync app theme with upcoming global celebrations</p>
                             </div>
-                            <p className={`text-center text-sm mt-2 font-semibold transition-colors ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                {theme.name}
-                            </p>
+                            <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
                         </div>
-                    );
-                })}
+                        
+                        {currentHolidayName ? (
+                            <div className="p-3 bg-primary-accent/10 border border-primary-accent/20 rounded-xl flex items-center gap-3 animate-fade-in">
+                                <SparklesIcon className="w-5 h-5 text-primary-accent" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary-accent">
+                                    {currentHolidayName} Override Active
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="p-3 bg-bg-primary/40 border border-white/5 rounded-xl flex items-center gap-3">
+                                <InformationCircleIcon className="w-4 h-4 text-text-secondary/50" />
+                                <p className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-tighter">
+                                    Next celebration: {nextHoliday.name} ({nextHoliday.date.toLocaleDateString()})
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {themesToRender.map(theme => {
+                        const isSelected = baseThemeId === theme.id;
+                        const borderColor = isSelected 
+                            ? 'border-primary-accent shadow-[0_0_10px_rgba(var(--color-accent-primary-rgb),0.3)]' 
+                            : theme.base === 'dark' 
+                                ? 'border-white/10' 
+                                : 'border-black/10';
+                        return (
+                            <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group">
+                                <div 
+                                    style={{ backgroundImage: theme.colors.bgGradient }}
+                                    className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${borderColor}`}
+                                >
+                                </div>
+                                <p className={`text-center text-sm mt-2 font-semibold transition-colors ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
+                                    {theme.name}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         );
     };
@@ -188,36 +218,10 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomTh
                     {renderThemes()}
                 </div>
                 <div className="border-t border-bg-secondary/50">
-                    <SettingsRow title="Auto Apply Holiday Themes" subtitle="Switch to holiday themes automatically during celebrations.">
-                        <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
-                    </SettingsRow>
-
-                    <div className="px-4 pb-4">
-                        {currentHolidayName ? (
-                            <div className="p-3 bg-primary-accent/10 border border-primary-accent/20 rounded-xl flex items-center gap-3 animate-fade-in">
-                                <SparklesIcon className="w-5 h-5 text-primary-accent" />
-                                <p className="text-xs font-black uppercase tracking-widest text-primary-accent">
-                                    Override Active: {currentHolidayName} Theme
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="p-3 bg-bg-secondary/30 border border-white/5 rounded-xl flex items-center gap-3">
-                                <InformationCircleIcon className="w-5 h-5 text-text-secondary/50" />
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                                        {autoHolidayThemesEnabled ? 'Auto-apply is ready' : 'Auto-apply is paused'}
-                                    </p>
-                                    {nextHoliday && (
-                                        <p className="text-[9px] font-bold text-text-secondary/60 uppercase tracking-tighter truncate mt-0.5">
-                                            Next celebration: {nextHoliday.name} ({nextHoliday.date.toLocaleDateString()})
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <SettingsRow title="Holiday Theme Animations" subtitle="Enable or disable animated holiday decorations.">
+                    <SettingsRow 
+                        title="Holiday Theme Animations" 
+                        subtitle="Enable or disable animated holiday decorations like snow, hearts, and stars."
+                    >
                         <ToggleSwitch enabled={holidayAnimationsEnabled} onChange={setHolidayAnimationsEnabled} />
                     </SettingsRow>
                 </div>

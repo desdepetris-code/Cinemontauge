@@ -86,6 +86,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
         const stillSrcs = [
             getImageUrl(episodeDetails.still_path, 'w500', 'still'),
             getImageUrl(season?.poster_path, 'w500', 'poster'),
+            // FIX: Change showDetails to details as it is the name used in props
             getImageUrl(details.poster_path, 'w500', 'poster'),
         ];
         return {
@@ -96,7 +97,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
     
     const airtimeTruth = useMemo(() => {
         if (!episodeDetails) return null;
-        const override = AIRTIME_OVERRIDES[showId];
+        const override = AIRTIME_OVERRIDES[Number(showId)];
         if (!override) return null;
         const key = `S${episodeDetails.season_number}E${episodeDetails.episode_number}`;
         const timeInfo = override.episodes?.[key];
@@ -180,7 +181,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-accent mb-1">
                         S{episodeDetails.season_number} E{episodeDetails.episode_number}
                     </p>
-                    <h4 className="font-black text-xl text-text-primary uppercase tracking-tighter truncate leading-none">{episodeDetails.name}</h4>
+                    <h4 className="font-black text-xl text-text-primary uppercase tracking-tighter leading-none">{episodeDetails.name}</h4>
                 </div>
                 
                 <p className="text-xs text-text-secondary/70 line-clamp-2 leading-relaxed mb-6 font-medium">{episodeDetails.overview || "No preview available for this episode."}</p>

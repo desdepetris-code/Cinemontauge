@@ -8,7 +8,6 @@ import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import TimezoneSettings from '../components/TimezoneSettings';
 import { clearApiCache } from '../utils/cacheUtils';
-// Added missing import
 import { confirmationService } from '../services/confirmationService';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
@@ -114,76 +113,13 @@ interface SettingsProps {
     preferences: AppPreferences;
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
     onTabNavigate?: (tabId: string) => void;
-    setGlobalPlaceholders: React.Dispatch<React.SetStateAction<UserData['globalPlaceholders']>>;
 }
 
-const PlaceholderManager: React.FC<{ 
-    type: 'poster' | 'backdrop' | 'still'; 
-    current?: string; 
-    onSave: (val: string | undefined) => void 
-}> = ({ type, current, onSave }) => {
-    const [url, setUrl] = useState(current || '');
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                onSave(reader.result as string);
-                setUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    return (
-        <div className="flex flex-col gap-2 p-4 bg-bg-secondary/20 rounded-xl border border-white/5">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-primary">{type} Placeholder</span>
-                {current && (
-                    <button onClick={() => { onSave(undefined); setUrl(''); }} className="text-[9px] font-black text-red-400 uppercase hover:underline">Reset Default</button>
-                )}
-            </div>
-            <div className="flex gap-2">
-                <div className="relative flex-grow">
-                    <input 
-                        type="text" 
-                        placeholder="Paste Image URL..." 
-                        value={url.startsWith('data:') ? '[Local Image Selected]' : url}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            setUrl(val);
-                            if (!val.trim()) onSave(undefined);
-                            else onSave(val);
-                        }}
-                        className="w-full pl-8 pr-3 py-2 bg-bg-primary text-xs rounded-lg border border-white/10 focus:outline-none"
-                    />
-                    <PhotoIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary opacity-50" />
-                </div>
-                <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-2 bg-bg-primary rounded-lg border border-white/10 text-primary-accent hover:brightness-125 transition-all"
-                >
-                    <CloudArrowUpIcon className="w-5 h-5" />
-                </button>
-                <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
-            </div>
-            {current && (
-                <div className={`mt-2 rounded-lg overflow-hidden border border-white/10 shadow-lg ${type === 'poster' ? 'w-16 h-24' : 'w-full aspect-video'}`}>
-                    <img src={current} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-            )}
-        </div>
-    );
-};
-
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, setGlobalPlaceholders } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
 
-  // Define missing helper variables and functions
   const mandatoryNavIds = ['home', 'search', 'calendar', 'profile'];
 
   const handleTogglePreference = (key: keyof AppPreferences) => {
@@ -225,11 +161,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
       setNavSettings({ ...navSettings, tabs: [...navSettings.tabs, tabId] });
   };
 
-  const handleUpdateGlobalPlaceholder = (type: 'poster' | 'backdrop' | 'still', val: string | undefined) => {
-      setGlobalPlaceholders(prev => ({ ...prev, [type]: val }));
-      confirmationService.show(`Global ${type} asset updated.`);
-  };
-
   if (activeView === 'legal') return <Legal onBack={() => setActiveView('settings')} />;
 
   return (
@@ -237,33 +168,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
     <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
-
-        <SettingsCard title="Global Registry Assets">
-            <div className="p-4 space-y-4">
-                <p className="text-sm text-text-secondary leading-relaxed mb-4">
-                    Change the default image used for items missing official TMDB artwork. This applies app-wide to all posters, banners, and stills.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <PlaceholderManager 
-                        type="poster" 
-                        current={userData.globalPlaceholders?.poster} 
-                        onSave={(val) => handleUpdateGlobalPlaceholder('poster', val)} 
-                    />
-                    <PlaceholderManager 
-                        type="backdrop" 
-                        current={userData.globalPlaceholders?.backdrop} 
-                        onSave={(val) => handleUpdateGlobalPlaceholder('backdrop', val)} 
-                    />
-                    <div className="md:col-span-2">
-                        <PlaceholderManager 
-                            type="still" 
-                            current={userData.globalPlaceholders?.still} 
-                            onSave={(val) => handleUpdateGlobalPlaceholder('still', val)} 
-                        />
-                    </div>
-                </div>
-            </div>
-        </SettingsCard>
 
         <SettingsCard title="Owner Portal">
              <SettingsRow 
@@ -462,7 +366,19 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </SettingsRow>
         </SettingsCard>
 
-        <ThemeSettings customThemes={props.customThemes} setCustomThemes={setCustomThemes} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={false} setHolidayAnimationsEnabled={() => {}} profileTheme={profileTheme} setProfileTheme={setProfileTheme} setTheme={setTheme} baseThemeId={props.baseThemeId} currentHolidayName={props.currentHolidayName}/>
+        <ThemeSettings 
+            customThemes={props.customThemes} 
+            setCustomThemes={setCustomThemes} 
+            autoHolidayThemesEnabled={autoHolidayThemesEnabled} 
+            setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} 
+            holidayAnimationsEnabled={holidayAnimationsEnabled} 
+            setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} 
+            profileTheme={profileTheme} 
+            setProfileTheme={setProfileTheme} 
+            setTheme={setTheme} 
+            baseThemeId={props.baseThemeId} 
+            currentHolidayName={props.currentHolidayName}
+        />
 
         <SettingsCard title="Localization">
             <SettingsRow title="Time Format" subtitle="Display times in 12-hour or 24-hour format.">

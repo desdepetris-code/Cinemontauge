@@ -3,6 +3,7 @@ import { ParticleEffectName } from '../types';
 
 interface BackgroundParticleEffectsProps {
   effect: ParticleEffectName[] | undefined;
+  enabled: boolean;
 }
 
 const particleConfig = {
@@ -19,9 +20,9 @@ const particleConfig = {
     eggs: { content: ['🥚', '🐣'], count: 25, minSize: 15, maxSize: 25 },
 };
 
-const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ effect }) => {
+const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ effect, enabled }) => {
     const particles = useMemo(() => {
-        if (!effect || effect.length === 0) return [];
+        if (!enabled || !effect || effect.length === 0) return [];
         
         let allParticles: any[] = [];
         let particleIdCounter = 0;
@@ -40,11 +41,9 @@ const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ e
                     fontSize: `${size}px`,
                 };
 
-                // Default fall animation
                 const duration = Math.random() * 8 + 8;
                 const delay = Math.random() * -16;
                 const animationName = ['leaves'].includes(effectName) ? 'sway-and-fall' : 'fall';
-                // FIX: Cast style object to React.CSSProperties to allow for custom CSS properties like '--sway-amount'.
                 style = {
                     ...style,
                     left: `${Math.random() * 100}vw`,
@@ -92,9 +91,9 @@ const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ e
         });
         
         return allParticles;
-    }, [effect]);
+    }, [effect, enabled]);
 
-    if (!effect || particles.length === 0) return null;
+    if (!enabled || !effect || particles.length === 0) return null;
 
     return (
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">

@@ -32,6 +32,7 @@ import NominatePicksModal from './components/NominatePicksModal';
 import { calculateAutoStatus } from './utils/libraryLogic';
 import { checkForUpdates } from './services/updateService';
 import AirtimeManagement from './screens/AirtimeManagement';
+import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 
 interface User {
   id: string;
@@ -991,6 +992,7 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
+      <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={holidayAnimationsEnabled} />
       <AnimationContainer />
       <ConfirmationContainer />
       <NominatePicksModal isOpen={isNominateModalOpen} onClose={() => setIsNominateModalOpen(false)} userData={allUserData} currentPicks={weeklyFavorites} onNominate={handleNominateWeeklyPick} onRemovePick={handleRemoveWeeklyPick} />
@@ -1017,7 +1019,7 @@ export const MainApp: React.FC<MainAppProps> = ({
         onMarkWatched={(info) => { if (info.media_type === 'movie') handleMarkMovieAsWatched(info); else handleToggleEpisode(info.id, info.seasonNumber!, info.episodeNumber!, 0, info as any, info.episodeTitle); handleLiveWatchStop(); }}
         onAddToList={(info) => setAddToListModalState({ isOpen: true, item: info as any })}
       />
-      <Header currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} onGoToProfile={() => handleTabPress('profile')} onSelectShow={handleSelectShow} onGoHome={() => handleTabPress('home')} onMarkShowAsWatched={() => {}} query={searchQuery} onQueryChange={setSearchQuery} isOnSearchScreen={activeScreen === 'search'} isHoliday={false} holidayName={null} />
+      <Header currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} onGoToProfile={() => handleTabPress('profile')} onSelectShow={handleSelectShow} onGoHome={() => handleTabPress('home')} onMarkShowAsWatched={() => {}} query={searchQuery} onQueryChange={setSearchQuery} isOnSearchScreen={activeScreen === 'search'} isHoliday={!!currentHolidayName} holidayName={currentHolidayName} />
       <main className="container mx-auto flex-grow pt-8">{renderScreen()}</main>
       <BottomTabNavigator activeTab={activeScreen as any} activeProfileTab={profileInitialTab} onTabPress={handleTabPress} profilePictureUrl={profilePictureUrl} navSettings={navSettings} />
     </div>

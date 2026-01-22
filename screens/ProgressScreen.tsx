@@ -46,7 +46,7 @@ const EpisodeProgressCard: React.FC<{
                 )}
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
             </div>
-            <div className="flex-grow min-w-0 flex flex-col justify-center">
+            <div className="flex-grow min-w-0 flex-grow flex flex-col justify-center">
                 <p className="text-[9px] font-black text-primary-accent uppercase tracking-[0.2em] mb-0.5 truncate">{show.title}</p>
                 <h3 className="text-sm font-black text-text-primary uppercase tracking-tight truncate">
                     S{ep.season_number} E{ep.episode_number}: {ep.name}
@@ -227,16 +227,17 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
 
                 Object.values(progressForShow).forEach(season => {
                     Object.values(season).forEach(ep => {
-                        if (ep.status === 2) watchedCount++;
+                        if ((ep as EpisodeProgress).status === 2) watchedCount++;
                     });
                 });
 
                 (details.seasons || []).forEach(s => {
                     if (s.season_number <= 0) return;
                     let seasonWatched = 0;
-                    for (let i = 1; i <= s.episode_count; i++) {
-                        if (progressForShow[s.season_number]?.[i]?.status === 2) seasonWatched++;
-                    }
+                    const seasonProgress = progressForShow[s.season_number] || {};
+                    Object.values(seasonProgress).forEach(ep => {
+                        if ((ep as EpisodeProgress).status === 2) seasonWatched++;
+                    });
                     if (s.episode_count > 0 && seasonWatched >= s.episode_count) completedSeasons++;
                 });
                 
@@ -414,7 +415,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3 font-bold shadow-2xl"
                             />
-                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
+                            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
                         </div>
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                             <div className="relative flex-grow sm:min-w-[200px]">

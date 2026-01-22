@@ -88,7 +88,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
     }, [details]);
 
     const filmography = useMemo(() => {
-        const castCredits = details?.combined_credits?.cast || [];
+        const castCredits = (details?.combined_credits?.cast || []) as PersonCredit[];
         return Array.from(new Map(castCredits.map(item => [item.id, item])).values())
             .filter((item: PersonCredit) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
             .sort((a: PersonCredit, b: PersonCredit) => (b.popularity || 0) - (a.popularity || 0));
@@ -97,7 +97,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
     const knownFor = useMemo(() => filmography.slice(0, 30), [filmography]);
     const watchedByUser = useMemo(() => filmography.filter(item => userData.history.some(h => h.id === item.id)), [filmography, userData.history]);
     
-    const fullFilmographySortedByDate = useMemo(() => [...filmography].sort((a,b) => {
+    const fullFilmographySortedByDate = useMemo(() => [...filmography].sort((a: PersonCredit, b: PersonCredit) => {
         const dateA = new Date(a.release_date || a.first_air_date || 0).getTime();
         const dateB = new Date(b.release_date || b.first_air_date || 0).getTime();
         return dateB - dateA;
@@ -128,7 +128,7 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
         }
         return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {items.map(item => (
+                {items.map((item: PersonCredit) => (
                     <div key={`${item.id}-${item.credit_id}`}>
                         <FilmographyCard
                             item={item}
@@ -136,8 +136,8 @@ const ActorDetail: React.FC<ActorDetailProps> = (props) => {
                             userRating={ratings[item.id]?.rating || 0}
                             onSelect={() => onSelectShow(item.id, item.media_type)}
                             onToggleFavorite={() => handleToggleFavorite(item)}
-                            onRate={() => setRatingModalState({ isOpen: true, media: item })}
-                            onShowHistory={() => setHistoryModalState({ isOpen: true, media: item })}
+                            onRate={() => setRatingModalState({ isOpen: true, media: item as any })}
+                            onShowHistory={() => setHistoryModalState({ isOpen: true, media: item as any })}
                         />
                     </div>
                 ))}

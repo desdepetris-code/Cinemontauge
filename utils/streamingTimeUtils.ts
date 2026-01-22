@@ -13,13 +13,13 @@ export const estimateStreamingTime = (
     seasonEpisodeKey?: string // e.g. "S1E1"
 ): { time: string; provider: string } | null => {
     
-    if (tmdbId && AIRTIME_OVERRIDES[tmdbId]) {
-        const override = AIRTIME_OVERRIDES[tmdbId];
+    if (tmdbId && AIRTIME_OVERRIDES[Number(tmdbId)]) {
+        const override = AIRTIME_OVERRIDES[Number(tmdbId)];
         
-        let timeToUse: string | undefined = override.time;
-        if (seasonEpisodeKey && override.episodes?.[seasonEpisodeKey]) {
-            timeToUse = override.episodes[seasonEpisodeKey];
-        }
+        // Priority 1: Episode Specific Time
+        // Priority 2: Show Default Time
+        const timeToUse = (seasonEpisodeKey && override.episodes?.[seasonEpisodeKey]) 
+            || override.time;
 
         if (!timeToUse) return null;
 
