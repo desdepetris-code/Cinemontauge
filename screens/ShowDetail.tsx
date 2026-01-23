@@ -529,7 +529,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const regularSeasons = details.seasons?.filter(s => s.season_number > 0) || [];
 
   return (
-    <div className="animate-fade-in relative">
+    <div className="animate-fade-in relative pb-20">
       <RatingModal 
         isOpen={isRatingModalOpen} 
         onClose={() => { setIsRatingModalOpen(false); setSelectedRatingEpisode(null); }} 
@@ -555,7 +555,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         initialFrequency={currentReminder?.frequency}
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="posters" />
-      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.backdrops || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
+      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path)} initialTab="backdrops" />
       <ImageSelectorModal 
         isOpen={isEpisodeSelectorOpen.isOpen} 
         onClose={() => setIsEpisodeSelectorOpen({ isOpen: false, ep: null })} 
@@ -644,7 +644,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                       className="col-span-2"
                       isActive={currentStatus === 'completed'}
                       icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : onMarkMediaAsWatched(details)} 
+                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : props.onMarkMediaAsWatched(details)} 
                   />
                 )}
                 {isUpcomingContent ? (
@@ -723,7 +723,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             {nextEpisodeToWatch && (
               <section className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
                 <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center"><PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />Continue Journey</h2>
-                <NextUpWidget {...props} details={details} showId={id} nextEpisodeToWatch={nextEpisodeToWatch} onOpenJournal={handleJournalOpen} onOpenCommentModal={handleCommentOpen} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'} />
+                <NextUpWidget {...props} details={details} showId={id} nextEpisodeToWatch={nextEpisodeToWatch} onOpenJournal={handleJournalOpen} onOpenCommentModal={handleCommentOpen} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
               </section>
             )}
 
@@ -751,9 +751,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                         seasonDetails={seasonDetailsMap[specialsSeason.season_number]} watchProgress={watchProgress} onToggleEpisode={props.onToggleEpisode} onMarkPreviousEpisodesWatched={onMarkPreviousEpisodesWatched} 
                         onOpenJournal={handleJournalOpen} onOpenEpisodeDetail={setSelectedEpisodeForDetail} showPosterPath={details.poster_path} onMarkSeasonWatched={onMarkSeasonWatched} onUnmarkSeasonWatched={onUnmarkSeasonWatched} 
                         showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} 
-                        onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onOpenCommentModal={handleCommentOpen} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
-                        showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} preferences={preferences}
-                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'} onEditEpisodeImage={(ep) => setIsEpisodeSelectorOpen({ isOpen: true, ep })} customEpisodeImages={allUserData.customEpisodeImages[id]}
+                        onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onDiscussEpisode={(s, e) => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${s}-e${e}`); }} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
+                        showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes}
                       />
                    )}
                    {regularSeasons.map(season => (
@@ -762,9 +761,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                         seasonDetails={seasonDetailsMap[season.season_number]} watchProgress={watchProgress} onToggleEpisode={props.onToggleEpisode} onMarkPreviousEpisodesWatched={onMarkPreviousEpisodesWatched} 
                         onOpenJournal={handleJournalOpen} onOpenEpisodeDetail={setSelectedEpisodeForDetail} showPosterPath={details.poster_path} onMarkSeasonWatched={onMarkSeasonWatched} onUnmarkSeasonWatched={onUnmarkSeasonWatched} 
                         showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} 
-                        onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onOpenCommentModal={handleCommentOpen} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
-                        showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} preferences={preferences}
-                        timezone={props.allUserData.timezone} timeFormat={props.allUserData.timeFormat || '12h'} onEditEpisodeImage={(ep) => setIsEpisodeSelectorOpen({ isOpen: true, ep })} customEpisodeImages={allUserData.customEpisodeImages[id]}
+                        onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} onDiscussEpisode={(s, e) => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${s}-e${e}`); }} comments={comments} onImageClick={(src) => {}} onSaveEpisodeNote={onSaveEpisodeNote} 
+                        showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes}
                       />
                    ))}
                 </div>

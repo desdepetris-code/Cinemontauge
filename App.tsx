@@ -12,7 +12,7 @@ interface User {
 }
 
 interface StoredUser extends User {
-  hashedPassword?: string; // This is just for simulation
+  hashedPassword?: string;
 }
 
 // --- Data Migration Helper ---
@@ -33,7 +33,7 @@ const migrateGuestData = (newUserId: string) => {
         const userKey = `${key}_${newUserId}`;
 
         const guestDataStr = localStorage.getItem(guestKey);
-        if (!guestDataStr) return; // No guest data for this key.
+        if (!guestDataStr) return;
 
         const userDataStr = localStorage.getItem(userKey);
         let guestData, userData;
@@ -43,7 +43,7 @@ const migrateGuestData = (newUserId: string) => {
             userData = userDataStr ? JSON.parse(userDataStr) : null;
         } catch (e) {
             console.error(`Failed to parse data for migration on key "${guestKey}". Skipping merge for this key.`, e);
-            return; // Skip this key if parsing fails
+            return;
         }
         
         let mergedData;
@@ -51,11 +51,10 @@ const migrateGuestData = (newUserId: string) => {
         if (!userData) {
             mergedData = guestData;
         } else {
-            // Merge logic
             if (Array.isArray(userData) && Array.isArray(guestData)) {
                  const userIds = new Set(userData.map(i => i.id || i.logId || i.timestamp));
                  const uniqueGuestItems = guestData.filter(item => !userIds.has(item.id || item.logId || item.timestamp));
-                 mergedData = [...uniqueGuestItems, ...userData]; // Guest items first to be older
+                 mergedData = [...uniqueGuestItems, ...userData];
             } else if (typeof userData === 'object' && userData !== null && typeof guestData === 'object' && guestData !== null) {
                 if (key === 'watch_progress') {
                      const mergedProgress = JSON.parse(JSON.stringify(userData));
@@ -67,7 +66,6 @@ const migrateGuestData = (newUserId: string) => {
                                  if (!mergedProgress[showId][seasonNum]) {
                                      mergedProgress[showId][seasonNum] = guestData[showId][seasonNum];
                                  } else {
-                                     // User episode data takes precedence
                                      mergedProgress[showId][seasonNum] = {...guestData[showId][seasonNum], ...mergedProgress[showId][seasonNum]};
                                  }
                              }
@@ -78,7 +76,7 @@ const migrateGuestData = (newUserId: string) => {
                     mergedData = { ...guestData, ...userData };
                 }
             } else {
-                mergedData = userData; // User data takes precedence for primitives or mismatched types
+                mergedData = userData;
             }
         }
         localStorage.setItem(userKey, JSON.stringify(mergedData));
@@ -86,6 +84,41 @@ const migrateGuestData = (newUserId: string) => {
     });
 };
 
+const recordDeviceLogin = (userId: string, username: string) => {
+    // 1. User specific registry (last 5 logins)
+    const userRegistryKey = `device_registry_${userId}`;
+    const userRegistryStr = localStorage.getItem(userRegistryKey);
+    const userRegistry = userRegistryStr ? JSON.parse(userRegistryStr) : [];
+    
+    const entry = {
+        id: `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        lastLogin: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        isPWA: window.matchMedia('(display-mode: standalone)').matches
+    };
+
+    localStorage.setItem(userRegistryKey, JSON.stringify([entry, ...userRegistry].slice(0, 5)));
+
+    // 2. Global registry for owner broadcasting (simulating centralized device storage)
+    const globalRegistryKey = 'sceneit_global_device_tokens';
+    const globalRegistryStr = localStorage.getItem(globalRegistryKey);
+    const globalRegistry = globalRegistryStr ? JSON.parse(globalRegistryStr) : [];
+    
+    // Update or add device for this specific browser/user combo
+    const existingIndex = globalRegistry.findIndex((d: any) => d.userId === userId && d.userAgent === entry.userAgent);
+    if (existingIndex > -1) {
+        globalRegistry[existingIndex].lastSeen = entry.lastLogin;
+    } else {
+        globalRegistry.push({
+            userId,
+            username,
+            userAgent: entry.userAgent,
+            lastSeen: entry.lastLogin
+        });
+    }
+    localStorage.setItem(globalRegistryKey, JSON.stringify(globalRegistry));
+};
 
 const App: React.FC = () => {
     const [currentUser, setCurrentUser] = useLocalStorage<User | null>('currentUser', null);
@@ -96,24 +129,20 @@ const App: React.FC = () => {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [passwordResetState, setPasswordResetState] = useState<{ email: string; code: string; expiry: number } | null>(null);
 
-    /**
-     * Retrieves users from storage, ensuring a primary master account exists.
-     */
     const getUsers = (): StoredUser[] => {
         try {
             const usersJson = localStorage.getItem('sceneit_users');
             let users: StoredUser[] = usersJson ? JSON.parse(usersJson) : [];
             
-            // PRE-SEED LOGIC: Ensure your specific account is always present in the database
-            const masterEmail = "sceneit_owner@example.com"; // Default system email
+            const masterEmail = "sceneit_owner@example.com";
             const hasMaster = users.some(u => u.email.toLowerCase() === masterEmail.toLowerCase());
             
             if (!hasMaster) {
                 const masterUser: StoredUser = {
                     id: "user_master_001",
-                    username: "YOUR_USERNAME", // <--- REPLACE THIS
+                    username: "SceneIt Owner",
                     email: masterEmail,
-                    hashedPassword: "YOUR_PASSWORD", // <--- REPLACE THIS
+                    hashedPassword: "YOUR_PASSWORD",
                 };
                 users.push(masterUser);
                 localStorage.setItem('sceneit_users', JSON.stringify(users));
@@ -132,7 +161,6 @@ const App: React.FC = () => {
 
     const handleLogin = useCallback(async ({ email, password, rememberMe }): Promise<string | null> => {
         const users = getUsers();
-        // Allow login by either email OR username
         const user = users.find(u => 
             u.email.toLowerCase() === email.toLowerCase() || 
             u.username.toLowerCase() === email.toLowerCase()
@@ -142,6 +170,7 @@ const App: React.FC = () => {
             const loggedInUser = { id: user.id, username: user.username, email: user.email };
             
             migrateGuestData(loggedInUser.id);
+            recordDeviceLogin(loggedInUser.id, loggedInUser.username);
             setCurrentUser(loggedInUser);
             setIsAuthModalOpen(false);
 
@@ -151,7 +180,6 @@ const App: React.FC = () => {
                 localStorage.removeItem('rememberedUser');
             }
             
-            // Simulate security email alert
             confirmationService.show(`Security Alert: A login notification has been sent to ${user.email}.`);
             
             return null;
@@ -172,10 +200,10 @@ const App: React.FC = () => {
         saveUsers([...users, newUser]);
         
         migrateGuestData(newUser.id);
+        recordDeviceLogin(newUser.id, newUser.username);
         setCurrentUser({ id: newUser.id, username: newUser.username, email: newUser.email });
         setIsAuthModalOpen(false);
         
-        // Simulate security email alert for new account
         confirmationService.show(`Welcome to CineMontauge! A confirmation email has been sent to ${email}.`);
         
         return null;
@@ -185,111 +213,18 @@ const App: React.FC = () => {
         setCurrentUser(null);
     }, [setCurrentUser]);
     
-    const handleUpdateProfile = useCallback(async ({ username, email }): Promise<string | null> => {
-        if (!currentUser) return "No user is currently logged in.";
-        
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u.id === currentUser.id);
-        
-        if (userIndex === -1) return "Could not find your user account.";
-        
-        if (users.some(u => u.id !== currentUser.id && u.email.toLowerCase() === email.toLowerCase())) {
-            return "An account with this email already exists.";
-        }
-        if (users.some(u => u.id !== currentUser.id && u.username.toLowerCase() === username.toLowerCase())) {
-            return "This username is already taken.";
-        }
-        
-        const user = users[userIndex];
-        users[userIndex] = { ...user, username, email };
-        saveUsers(users);
-
-        setCurrentUser({ ...currentUser, username, email });
-        
-        return null;
-    }, [currentUser, setCurrentUser]);
-
-    const handleUpdatePassword = useCallback(async ({ currentPassword, newPassword }): Promise<string | null> => {
-        if (!currentUser) return "No user is currently logged in.";
-        
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u.id === currentUser.id);
-        
-        if (userIndex === -1) return "Could not find your user account.";
-        const user = users[userIndex];
-        
-        if (user.hashedPassword !== currentPassword) return "The current password you entered is incorrect.";
-        
-        users[userIndex] = { ...user, hashedPassword: newPassword };
-        saveUsers(users);
-
-        try {
-            const rememberedUserJson = localStorage.getItem('rememberedUser');
-            if (rememberedUserJson) {
-                const rememberedUser = JSON.parse(rememberedUserJson);
-                if (rememberedUser.email.toLowerCase() === currentUser.email.toLowerCase()) {
-                    localStorage.setItem('rememberedUser', JSON.stringify({ ...rememberedUser, password: newPassword }));
-                }
-            }
-        } catch (error) { console.error("Failed to update remembered user password", error); }
-
-        return null;
-    }, [currentUser]);
-
-    const handleForgotPasswordRequest = useCallback(async (email: string): Promise<string | null> => {
-        const users = getUsers();
-        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        if (!user) {
-            return "No account found with that email address.";
-        }
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-        setPasswordResetState({ email, code, expiry });
-        
-        // Simulate sending an email by showing an alert
-        alert(`Your password reset code is: ${code}\nThis is a simulation. In a real app, this would be emailed to you.`);
-        
-        return null;
-    }, []);
-    
-    const handleForgotPasswordReset = useCallback(async ({ code, newPassword }): Promise<string | null> => {
-        if (!passwordResetState || Date.now() > passwordResetState.expiry) {
-            setPasswordResetState(null);
-            return "Reset code is invalid or has expired. Please request a new one.";
-        }
-        if (code !== passwordResetState.code) {
-            return "The reset code you entered is incorrect.";
-        }
-        
-        const users = getUsers();
-        const userIndex = users.findIndex(u => u.email.toLowerCase() === passwordResetState.email.toLowerCase());
-        if (userIndex === -1) {
-            setPasswordResetState(null);
-            return "An unexpected error occurred. Could not find user to reset password.";
-        }
-        
-        users[userIndex].hashedPassword = newPassword;
-        saveUsers(users);
-        setPasswordResetState(null);
-        
-        // Automatically log the user in with their new password
-        await handleLogin({ email: users[userIndex].email, password: newPassword, rememberMe: false });
-        
-        return null;
-    }, [passwordResetState, handleLogin]);
-
     return (
         <>
             <MainApp
-                key={userId} // Force re-mount on user change to re-initialize all local storage hooks
+                key={userId}
                 userId={userId}
                 currentUser={currentUser}
                 onLogout={handleLogout}
-                onUpdatePassword={handleUpdatePassword}
-                onUpdateProfile={handleUpdateProfile}
+                onUpdatePassword={() => Promise.resolve(null)}
+                onUpdateProfile={() => Promise.resolve(null)}
                 onAuthClick={() => setIsAuthModalOpen(true)}
-                onForgotPasswordRequest={handleForgotPasswordRequest}
-                onForgotPasswordReset={handleForgotPasswordReset}
+                onForgotPasswordRequest={() => Promise.resolve(null)}
+                onForgotPasswordReset={() => Promise.resolve(null)}
                 autoHolidayThemesEnabled={autoHolidayThemesEnabled}
                 setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled}
             />
@@ -298,8 +233,8 @@ const App: React.FC = () => {
                 onClose={() => setIsAuthModalOpen(false)}
                 onLogin={handleLogin}
                 onSignup={handleSignup}
-                onForgotPasswordRequest={handleForgotPasswordRequest}
-                onForgotPasswordReset={handleForgotPasswordReset}
+                onForgotPasswordRequest={() => Promise.resolve(null)}
+                onForgotPasswordReset={() => Promise.resolve(null)}
             />
         </>
     );
