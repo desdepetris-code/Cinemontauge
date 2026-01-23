@@ -66,8 +66,10 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
     return (
         <div className="space-y-8">
           {preferences.dashShowUpcoming && (
-            <><UpcomingPremieresCarousel title="📺 Upcoming TV Premieres" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} onViewMore={() => onShortcutNavigate('calendar')} />
-            <UpcomingMoviesCarousel title="🎬 Upcoming Movie Releases" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} onViewMore={() => onShortcutNavigate('calendar')} /></>
+            <>
+              <UpcomingPremieresCarousel title="📺 Upcoming TV Premieres" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} />
+              <UpcomingMoviesCarousel title="🎬 Upcoming Movie Releases" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} />
+            </>
           )}
           {preferences.dashShowTrending && (
             <><NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" {...carouselProps} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} />
@@ -130,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="animate-fade-in space-y-8">
-      <HeroBanner history={userData.history} onSelectShow={onSelectShow} globalPlaceholders={userData.globalPlaceholders} />
+      <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
       <DateTimeDisplay timezone={timezone} timeFormat={timeFormat} />
       {shortcutSettings.show && <ShortcutNavigation onShortcutNavigate={onShortcutNavigate} selectedTabs={shortcutSettings.tabs} />}
       {preferences.dashShowStats && <StatsWidget userData={userData} genres={genres} />}
@@ -138,7 +140,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {!backendLoading && backendShows.length > 0 && <GenericCarousel title="Featured TV Shows" fetcher={() => Promise.resolve(backendShows)} {...carouselProps} />}
       {preferences.dashShowLiveWatch && (
           <section className="px-6">
-            {liveWatchMedia ? <LiveWatchControls mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={onLiveWatchTogglePause} onStop={onLiveWatchStop} isDashboardWidget={true} /> : <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center"><h3 className="text-xl font-bold text-text-primary">No Live Session Active</h3><p className="text-text-secondary mt-2">Start a session from any page.</p></div>}
+            {liveWatchMedia ? <LiveWatchControls mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={onLiveWatchTogglePause} onStop={onLiveWatchStop} isDashboardWidget={true} /> : <div className="bg-card-gradient rounded-lg shadow-md p-6 text-center"><h3 className="text-xl font-bold text-text-primary">No Live Session Active</h3><p className="text-sm text-text-secondary mt-2">Start a session from any page.</p></div>}
           </section>
       )}
       {preferences.dashShowContinueWatching && <ContinueWatching watching={userData.watching} onHold={userData.onHold} watchProgress={watchProgress} history={userData.history} onSelectShow={onSelectShow} onToggleEpisode={onToggleEpisode} pausedLiveSessions={pausedLiveSessions} globalPlaceholders={userData.globalPlaceholders} />}

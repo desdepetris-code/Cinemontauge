@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { XMarkIcon, InformationCircleIcon } from './Icons';
 
@@ -37,12 +36,12 @@ const PriorEpisodesModal: React.FC<PriorEpisodesModalProps> = ({ isOpen, onClose
                 <header className="p-6 bg-card-gradient border-b border-white/10 flex justify-between items-start">
                     <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">Watch Logic</h2>
+                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">CineMontauge Logic</h2>
                             <button onClick={() => setShowInfo(!showInfo)} className={`p-1 rounded-full transition-colors ${showInfo ? 'bg-primary-accent text-on-accent' : 'text-text-secondary hover:text-text-primary'}`}>
                                 <InformationCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
-                        <p className="text-sm text-text-secondary">There are prior episodes not marked as watched for <strong className="text-text-primary">{showTitle}</strong>.</p>
+                        <p className="text-sm text-text-secondary">Unwatched episodes found in your journey for <strong className="text-text-primary">{showTitle}</strong>.</p>
                     </div>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10 text-text-secondary"><XMarkIcon className="w-6 h-6" /></button>
                 </header>
@@ -50,23 +49,23 @@ const PriorEpisodesModal: React.FC<PriorEpisodesModalProps> = ({ isOpen, onClose
                 <div className="p-6 space-y-3">
                     <ActionButton 
                         action={1} 
-                        label="Mark all prior episodes as watched" 
+                        label="Synchronize: Mark all prior watched" 
                         description="This will automatically mark every episode before S{season} E{episode} as 'Watched' in your library, skipping any you've already marked."
                     />
                     <ActionButton 
                         action={2} 
-                        label={`Unmark current episode (S${season} E${episode})`} 
+                        label={`Revert: Unmark current (S${season} E${episode})`} 
                         description="Cancels the watch action for this episode. Nothing else will be changed."
                     />
                     <ActionButton 
                         action={3} 
-                        label="Continue as is" 
+                        label="Override: Continue as is" 
                         description="Marks only this episode as watched. Prior episodes will remain unmarked."
                     />
                     {hasFuture && (
                         <ActionButton 
                             action={4} 
-                            label="Unmark this episode and all future marked episodes" 
+                            label="Revert Future: Clear this and later logs" 
                             description="This will clear the 'Watched' status for this episode AND any episodes scheduled after it that you previously marked."
                         />
                     )}
@@ -77,10 +76,10 @@ const PriorEpisodesModal: React.FC<PriorEpisodesModalProps> = ({ isOpen, onClose
                         onClick={() => { onDisablePopup(); onClose(); }}
                         className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] hover:text-primary-accent transition-colors"
                     >
-                        Don't show this popup again
+                        Disable Logic Popup
                     </button>
                     <p className="text-[9px] text-text-secondary/40 mt-1 uppercase tracking-widest text-center px-8 leading-tight">
-                        You can re-enable this popup anytime in Settings under "Display Preferences".
+                        You can re-enable this intelligence anytime in Settings under "Display Preferences".
                     </p>
                 </footer>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, TrashIcon } from './Icons';
+import { XMarkIcon, TrashIcon, PencilSquareIcon } from './Icons';
 import { Note } from '../types';
 
 interface NotesModalProps {
@@ -35,7 +35,7 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, onNote
     const updatedNotes = [newNote, ...notes];
     setNotes(updatedNotes);
     setNewNoteText('');
-    onSave(updatedNotes); // Save immediately
+    onSave(updatedNotes); 
   };
 
   const handleDeleteNote = (note: Note) => {
@@ -49,50 +49,53 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, onNote
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-lg h-[80vh] flex flex-col p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
+      <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg h-[80vh] flex flex-col p-8 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
             <XMarkIcon className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-text-primary mb-2">My Notes</h2>
-        <p className="text-text-secondary mb-4 truncate">{mediaTitle} <span className="opacity-40 ml-1">({context})</span></p>
+        <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-1">Vault Notes</h2>
+        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate mb-6">{mediaTitle} &bull; {context}</p>
         
-        <div className="flex-grow overflow-y-auto pr-2 space-y-3 mb-4">
+        <div className="flex-grow overflow-y-auto pr-2 space-y-4 mb-6 custom-scrollbar">
             {notes.length > 0 ? notes.map(note => (
-                <div key={note.id} className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg -rotate-1 transform border border-yellow-300/50 dark:border-yellow-700/50 group">
+                <div key={note.id} className="bg-yellow-100 dark:bg-yellow-900/20 p-4 rounded-2xl -rotate-1 transform border border-yellow-300/30 dark:border-yellow-500/20 group relative transition-all hover:rotate-0">
                     <div className="flex justify-between items-start">
-                        <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm flex-grow">{note.text}</p>
-                        <button onClick={() => handleDeleteNote(note)} className="ml-2 p-1 text-yellow-700 dark:text-yellow-300 hover:text-red-500 transition-opacity" title="Delete Note">
-                            <TrashIcon className="w-4 h-4" />
+                        <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm leading-relaxed font-medium flex-grow pr-6">{note.text}</p>
+                        <button onClick={() => handleDeleteNote(note)} className="absolute top-4 right-4 p-1.5 bg-red-600/10 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:text-white" title="Delete Note">
+                            <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                     </div>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-2 text-right">{new Date(note.timestamp).toLocaleString()}</p>
+                    <p className="text-[9px] font-black text-yellow-700/60 dark:text-yellow-500/40 uppercase tracking-widest mt-4 text-right">Captured {new Date(note.timestamp).toLocaleDateString()}</p>
                 </div>
             )) : (
-                <p className="text-text-secondary text-center py-8">No notes yet. Add your first note below!</p>
+                <div className="flex flex-col items-center justify-center h-full opacity-20">
+                    <PencilSquareIcon className="w-12 h-12 mb-2" />
+                    <p className="text-xs font-black uppercase tracking-widest">No notes in the vault</p>
+                </div>
             )}
         </div>
         
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 space-y-4 pt-4 border-t border-white/5">
             <textarea
               value={newNoteText}
               onChange={e => setNewNoteText(e.target.value)}
-              placeholder="Add a new note..."
-              className="w-full h-24 p-3 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+              placeholder="Scribble something down..."
+              className="w-full h-24 p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-bold text-sm leading-relaxed"
             />
 
-            <div className="flex justify-end space-x-4 mt-4">
+            <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="px-6 py-2 rounded-md text-text-primary bg-bg-secondary hover:brightness-125 transition-all"
+                className="flex-1 py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[10px] hover:text-text-primary transition-all"
               >
                 Close
               </button>
               <button
                 onClick={handleAddNote}
                 disabled={!newNoteText.trim()}
-                className="px-6 py-2 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex-[2] py-4 rounded-2xl text-white bg-accent-gradient font-black uppercase tracking-widest text-xs hover:opacity-90 transition-opacity disabled:opacity-50 shadow-xl"
               >
-                Add Note
+                Archive Note
               </button>
             </div>
         </div>

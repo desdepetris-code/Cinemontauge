@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, Episode, LiveWatchMediaInfo, FavoriteEpisodes, WatchProgress, JournalEntry, Comment, TmdbSeasonDetails, TrackedItem } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ChatBubbleOvalLeftEllipsisIcon, ClockIcon } from './Icons';
+import { CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ChatBubbleLeftRightIcon, ClockIcon } from './Icons';
 import CommentModal from './CommentModal';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
@@ -107,7 +107,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
     if (isLoading) {
         return (
             <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden animate-pulse">
-                <div className="w-full h-40 bg-bg-secondary"></div>
+                <div className="w-full h-44 bg-bg-secondary"></div>
                 <div className="p-4 space-y-3">
                     <div className="h-4 bg-bg-secondary rounded w-3/4"></div>
                     <div className="h-3 bg-bg-secondary rounded w-1/2"></div>
@@ -160,16 +160,10 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                     alt={`Still from ${episodeDetails.name}`}
                     className="relative h-full w-auto object-contain transition-transform duration-700 group-hover/widget:scale-110"
                 />
-                <div className="absolute top-3 left-3 flex flex-col gap-2">
+                <div className="absolute top-3 left-3">
                     {tag && (
                         <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-md border border-white/10 shadow-lg self-start ${tag.className}`}>
                             {tag.text}
-                        </div>
-                    )}
-                    {airtimeTruth && (
-                        <div className="bg-primary-accent text-on-accent text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-white/10 shadow-xl self-start flex items-center gap-1.5 transition-transform group-hover/widget:scale-105">
-                            <ClockIcon className="w-3 h-3" />
-                            {airtimeTruth}
                         </div>
                     )}
                 </div>
@@ -177,9 +171,17 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
             
             <div className="p-6">
                 <div className="mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-accent mb-1">
-                        S{episodeDetails.season_number} E{episodeDetails.episode_number}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary-accent">
+                            S{episodeDetails.season_number} E{episodeDetails.episode_number}
+                        </p>
+                        {airtimeTruth && (
+                            <div className="bg-primary-accent text-black text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-white/10 shadow-lg flex items-center gap-1.5 animate-fade-in">
+                                <ClockIcon className="w-3 h-3 text-black" />
+                                {airtimeTruth}
+                            </div>
+                        )}
+                    </div>
                     <h4 className="font-black text-xl text-text-primary uppercase tracking-tighter leading-none">{episodeDetails.name}</h4>
                 </div>
                 
@@ -204,7 +206,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                         isActive={hasJournal}
                     />
                     <ActionButton 
-                        icon={<ChatBubbleOvalLeftEllipsisIcon className={`w-5 h-5 ${existingComment ? 'text-sky-400' : ''}`} />} 
+                        icon={<ChatBubbleLeftRightIcon className={`w-5 h-5 ${existingComment ? 'text-sky-400' : ''}`} />} 
                         label="Comments" 
                         onClick={handleOpenComment}
                         isActive={!!existingComment}

@@ -55,15 +55,15 @@ const WatchlistModal: React.FC<WatchlistModalProps> = ({ isOpen, onClose, onUpda
                             onClick={() => { onUpdateList(list.id); onClose(); }}
                             className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all border text-left ${
                             isActive 
-                                ? 'bg-accent-gradient text-on-accent border-transparent shadow-lg' 
+                                ? 'bg-white border-black shadow-lg' 
                                 : 'bg-bg-secondary/40 border-white/5 text-text-primary hover:bg-bg-secondary'
                             }`}
                         >
                             <div className="min-w-0">
-                                <span className="uppercase tracking-widest text-[11px] font-black block">{list.name}</span>
-                                <span className={`text-[9px] font-medium opacity-60 block truncate ${isActive ? 'text-white' : ''}`}>{list.desc}</span>
+                                <span className={`uppercase tracking-widest text-[11px] font-black block ${isActive ? 'text-black' : 'text-text-primary'}`}>{list.name}</span>
+                                <span className={`text-[9px] font-medium opacity-60 block truncate ${isActive ? 'text-black/70' : 'text-text-secondary'}`}>{list.desc}</span>
                             </div>
-                            {isActive && <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />}
+                            {isActive && <CheckCircleIcon className="w-5 h-5 flex-shrink-0 text-black" />}
                         </button>
                         );
                     })}
@@ -84,15 +84,15 @@ const WatchlistModal: React.FC<WatchlistModalProps> = ({ isOpen, onClose, onUpda
                                     key={list.id}
                                     className={`w-full p-3 rounded-2xl border transition-all ${
                                         isActive 
-                                            ? 'bg-primary-accent/10 border-primary-accent text-primary-accent' 
+                                            ? 'bg-white border-black text-black' 
                                             : 'bg-bg-secondary/10 border-white/5 text-text-secondary opacity-40'
                                     }`}
                                 >
                                     <div className="flex items-center justify-between">
-                                        <span className="uppercase tracking-widest text-[10px] font-black">{list.name}</span>
-                                        {isActive && <CheckCircleIcon className="w-4 h-4" />}
+                                        <span className={`uppercase tracking-widest text-[10px] font-black ${isActive ? 'text-black' : ''}`}>{list.name}</span>
+                                        {isActive && <CheckCircleIcon className="w-4 h-4 text-black" />}
                                     </div>
-                                    {isActive && <span className="text-[9px] font-medium mt-1 block leading-tight">{list.desc}</span>}
+                                    {isActive && <span className="text-[9px] font-medium mt-1 block leading-tight text-black/70">{list.desc}</span>}
                                 </div>
                             );
                         })}

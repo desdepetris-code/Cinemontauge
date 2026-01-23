@@ -9,598 +9,262 @@ export const AIRTIME_OVERRIDES: Record<number, {
     time?: string;
     episodes?: Record<string, string>;
 }> = {
-    // Law & Order: Special Victims Unit (NBC)
-    2734: { 
-        provider: "NBC",
-        episodes: {
-            "S26E10": "9:00 pm ET / 6:00 pm PT",
-            "S26E11": "9:00 pm ET / 6:00 pm PT",
-            "S26E12": "9:00 pm ET / 6:00 pm PT",
-            "S27E10": "9:00 pm ET / 6:00 pm PT",
-            "S27E11": "9:00 pm ET / 6:00 pm PT",
-            "S27E12": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // Grey's Anatomy (ABC)
-    1416: { 
-        provider: "ABC",
-        episodes: {
-            "S21E8": "10:00 pm ET / 7:00 pm PT",
-            "S21E9": "10:00 pm ET / 7:00 pm PT",
-            "S21E10": "10:00 pm ET / 7:00 pm PT",
-            "S22E8": "10:00 pm ET / 7:00 pm PT",
-            "S22E9": "10:00 pm ET / 7:00 pm PT",
-            "S22E10": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // Law & Order (NBC)
-    549: {
-        provider: "NBC",
-        episodes: {
-            "S24E10": "8:00 pm ET / 5:00 pm PT",
-            "S24E11": "8:00 pm ET / 5:00 pm PT",
-            "S24E12": "8:00 pm ET / 5:00 pm PT",
-            "S25E10": "8:00 pm ET / 5:00 pm PT",
-            "S25E11": "8:00 pm ET / 5:00 pm PT",
-            "S25E12": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // Chicago Med (NBC)
-    62650: {
-        provider: "NBC",
-        episodes: {
-            "S10E10": "8:00 pm ET / 7:00 pm CT",
-            "S10E11": "8:00 pm ET / 7:00 pm CT",
-            "S11E10": "8:00 pm ET / 7:00 pm CT",
-            "S11E11": "8:00 pm ET / 7:00 pm CT"
-        }
-    },
-    // Murdoch Mysteries (CBC / BritBox)
-    12786: {
-        provider: "CBC / BritBox",
-        episodes: {
-            "S18E12": "8:00 pm ET / 5:00 pm PT",
-            "S18E13": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // Tell Me Lies (Hulu)
-    130464: {
-        provider: "Hulu",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S2E4": "12:00 am ET / 9:00 pm PT",
-            "S2E5": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // Saturday Night Live (NBC)
-    1667: {
-        provider: "NBC / Peacock",
-        episodes: {
-            "S50E10": "11:29 pm ET / 8:29 pm PT",
-            "S50E11": "11:29 pm ET / 8:29 pm PT",
-            "S51E10": "11:29 pm ET / 8:29 pm PT",
-            "S51E11": "11:29 pm ET / 8:29 pm PT"
-        }
-    },
-    // The Pitt (HBO Max)
-    250307: {
-        provider: "HBO Max",
-        episodes: {
-            "S2E2": "9:00 pm ET / 6:00 pm PT",
-            "S2E3": "9:00 pm ET / 6:00 pm PT",
-            "S2E4": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // The Late Show with Stephen Colbert (CBS)
-    63770: {
-        provider: "CBS",
-        episodes: {
-            "S11E62": "11:35 pm ET / 10:35 pm CT",
-            "S11E63": "11:35 pm ET / 10:35 pm CT",
-            "S11E64": "11:35 pm ET / 10:35 pm CT"
-        }
-    },
-    // Late Night with Seth Meyers (NBC)
-    61818: {
-        provider: "NBC / Peacock",
-        episodes: {
-            "S14E54": "12:35 am ET / 11:35 pm CT",
-            "S14E55": "12:35 am ET / 9:35 pm PT",
-            "S14E56": "12:35 am ET / 9:35 pm PT",
-            "S14E57": "12:35 am ET / 9:35 pm PT",
-            "S14E58": "12:35 am ET / 9:35 pm PT",
-            "S14E59": "12:35 am ET / 9:35 pm PT",
-            "S14E60": "12:35 am ET / 9:35 pm PT"
-        }
-    },
-    // Pokémon Horizons (Netflix)
-    220150: {
-        provider: "Netflix",
-        time: "3:00 am ET / 12:00 am PT",
-        episodes: {
-            "S1E124": "9:00 am ET / 6:00 am PT"
-        }
-    },
-    // Primal (Adult Swim / Max)
-    89456: {
-        provider: "Adult Swim / Max",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S3E2": "12:00 am ET / 9:00 pm PT",
-            "S3E3": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // The Daily Show (Comedy Central)
-    2224: {
-        provider: "Comedy Central / Paramount+",
-        time: "11:00 pm ET / 8:00 pm PT",
-        episodes: {
-            "S31E9": "11:00 pm ET / 8:00 pm PT",
-            "S31E10": "11:00 pm ET / 8:00 pm PT",
-            "S31E11": "11:00 pm ET / 8:00 pm PT",
-            "S31E12": "11:00 pm ET / 8:00 pm PT",
-            "S31E13": "11:00 pm ET / 8:00 pm PT",
-            "S31E14": "11:00 pm ET / 8:00 pm PT",
-            "S31E15": "11:00 pm ET / 8:00 pm PT"
-        }
-    },
-    // Chicago P.D. (NBC)
-    58841: {
-        provider: "NBC / Peacock",
-        time: "10:00 pm ET / 7:00 pm PT",
-        episodes: {
-            "S12E10": "10:00 pm ET / 7:00 pm PT",
-            "S12E11": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // Watch What Happens Live (Bravo)
-    22: {
-        provider: "Bravo / Peacock",
-        time: "11:00 pm ET / 8:00 pm PT",
-        episodes: {
-            "S22E10": "11:00 pm ET / 8:00 pm PT",
-            "S22E11": "11:00 pm ET / 8:00 pm PT",
-            "S22E12": "11:00 pm ET / 8:00 pm PT",
-            "S22E13": "11:00 pm ET / 8:00 pm PT",
-            "S22E14": "11:00 pm ET / 8:00 pm PT",
-            "S22E15": "11:00 pm ET / 8:00 pm PT",
-            "S22E16": "11:00 pm ET / 8:00 pm PT"
-        }
-    },
-    // 9-1-1 (FOX)
-    75219: {
-        provider: "FOX / Hulu",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S8E9": "8:00 pm ET / 5:00 pm PT",
-            "S8E10": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // Tomorrow is Ours (TF1)
-    72879: {
-        provider: "TF1 / MyTF1",
-        time: "6:00 pm ET / 3:00 pm PT",
-        episodes: {
-            "S9E100": "6:00 pm ET / 3:00 pm PT",
-            "S9E101": "6:00 pm ET / 3:00 pm PT",
-            "S9E102": "6:00 pm ET / 3:00 pm PT",
-            "S9E103": "6:00 pm ET / 3:00 pm PT",
-            "S9E104": "6:00 pm ET / 3:00 pm PT",
-            "S9E105": "6:00 pm ET / 3:00 pm PT"
-        }
-    },
-    // Dinastía Casillas (VIX)
-    302463: {
-        provider: "TelevisaUnivision / VIX",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S1E68": "7:00 pm ET / 4:00 pm PT",
-            "S1E69": "7:00 pm ET / 4:00 pm PT",
-            "S1E70": "7:00 pm ET / 4:00 pm PT",
-            "S1E71": "7:00 pm ET / 4:00 pm PT",
-            "S1E72": "7:00 pm ET / 4:00 pm PT",
-            "S1E73": "7:00 pm ET / 4:00 pm PT"
-        }
-    },
-    // Men on a Mission (KBS)
-    70672: {
-        provider: "KBS / KBS World",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E514": "8:00 pm ET / 5:00 pm PT",
-            "S1E515": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // The Night Manager (AMC)
-    61859: {
-        provider: "AMC / Streaming",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S2E4": "9:00 pm ET / 6:00 pm PT",
-            "S2E5": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // The Graham Norton Show (BBC)
-    1220: {
-        provider: "BBC One / BritBox",
-        time: "10:00 pm ET / 7:00 pm PT",
-        episodes: {
-            "S32E14": "10:00 pm ET / 7:00 pm PT",
-            "S32E15": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // Good Mythical Morning (YouTube)
-    65701: {
-        provider: "YouTube",
-        time: "9:00 am ET / 6:00 am PT",
-        episodes: {
-            "S27E10": "9:00 am ET / 6:00 am PT",
-            "S27E11": "9:00 am ET / 6:00 am PT",
-            "S27E12": "9:00 am ET / 6:00 am PT",
-            "S27E13": "9:00 am ET / 6:00 am PT",
-            "S27E14": "9:00 am ET / 6:00 am PT",
-            "S27E15": "9:00 am ET / 6:00 am PT"
-        }
-    },
-    // Jeopardy! (Syndication)
-    2912: {
-        provider: "Syndication / Hulu",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S42E95": "7:00 pm ET / 4:00 pm PT",
-            "S42E96": "7:00 pm ET / 4:00 pm PT",
-            "S42E97": "7:00 pm ET / 4:00 pm PT",
-            "S42E98": "7:00 pm ET / 4:00 pm PT",
-            "S42E99": "7:00 pm ET / 4:00 pm PT",
-            "S42E100": "7:00 pm ET / 4:00 pm PT",
-            "S42E101": "7:00 pm ET / 4:00 pm PT",
-            "S42E102": "7:00 pm ET / 4:00 pm PT",
-            "S42E103": "7:00 pm ET / 4:00 pm PT",
-            "S42E104": "7:00 pm ET / 4:00 pm PT"
-        }
-    },
-    // HITORI NO SHITA - THE OUTCAST (Crunchyroll)
-    67063: {
-        provider: "Crunchyroll",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S1E4": "12:00 am ET / 9:00 pm PT",
-            "S1E5": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // SHRINKING (Apple TV+)
-    136311: {
-        provider: "Apple TV+",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S1E1": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // IDOL I (Crunchyroll)
-    285278: {
-        provider: "Streaming / Crunchyroll",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S1E9": "12:00 am ET / 9:00 pm PT",
-            "S1E10": "12:00 am ET / 9:00 pm PT",
-            "S1E11": "12:00 am ET / 9:00 pm PT",
-            "S1E12": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // WWE NXT (USA Network)
-    31991: {
-        provider: "USA Network / Peacock",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E3": "8:00 pm ET / 5:00 pm PT",
-            "S1E4": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // ICI TOUT COMMENCE (TF1)
-    112470: {
-        provider: "TF1 / MyTF1",
-        time: "6:00 pm ET / 3:00 pm PT",
-        episodes: {
-            "S1E100": "6:00 pm ET / 3:00 pm PT",
-            "S1E101": "6:00 pm ET / 3:00 pm PT",
-            "S1E102": "6:00 pm ET / 3:00 pm PT",
-            "S1E103": "6:00 pm ET / 3:00 pm PT",
-            "S1E104": "6:00 pm ET / 3:00 pm PT",
-            "S1E105": "6:00 pm ET / 3:00 pm PT"
-        }
-    },
-    // JIMMY KIMMEL LIVE! (ABC)
-    1489: {
-        provider: "ABC / Hulu",
-        time: "11:35 pm ET / 8:35 pm PT",
-        episodes: {
-            "S1E61": "11:35 pm ET / 8:35 pm PT",
-            "S1E62": "11:35 pm ET / 8:35 pm PT",
-            "S1E63": "11:35 pm ET / 8:35 pm PT",
-            "S1E64": "11:35 pm ET / 8:35 pm PT"
-        }
-    },
-    // CHEF & MY FRIDGE (tvN)
-    73036: {
-        provider: "Streaming / tvN",
-        time: "7:30 pm ET / 4:30 pm PT",
-        episodes: {
-            "S1E56": "7:30 pm ET / 4:30 pm PT",
-            "S1E57": "7:30 pm ET / 4:30 pm PT"
-        }
-    },
-    // THEATRE OF DARKNESS: YAMISHIBAI (Crunchyroll)
-    56559: {
-        provider: "Crunchyroll",
-        time: "12:15 am ET / 9:15 pm PT",
-        episodes: {
-            "S1E2": "12:15 am ET / 9:15 pm PT",
-            "S1E3": "12:15 am ET / 9:15 pm PT"
-        }
-    },
-    // 20/20 (ABC)
-    2035: {
-        provider: "ABC / Hulu",
-        time: "10:00 pm ET / 7:00 pm PT",
-        episodes: {
-            "S1E13": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // GRANTCHESTER (PBS)
-    61457: {
-        provider: "PBS / Streaming",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S1E4": "9:00 pm ET / 6:00 pm PT",
-            "S1E5": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // NO TAIL TO TELL (Crunchyroll)
-    270420: {
-        provider: "Streaming / Crunchyroll",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E1": "8:00 pm ET / 5:00 pm PT",
-            "S1E2": "8:00 pm ET / 5:00 pm PT",
-            "S1E3": "8:00 pm ET / 5:00 pm PT",
-            "S1E4": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // CHRONICLES OF THE SUN (Crunchyroll)
-    81329: {
-        provider: "Crunchyroll",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S1E28": "12:00 am ET / 9:00 pm PT",
-            "S1E29": "12:00 am ET / 9:00 pm PT",
-            "S1E30": "12:00 am ET / 9:00 pm PT",
-            "S1E31": "12:00 am ET / 9:00 pm PT",
-            "S1E32": "12:00 am ET / 9:00 pm PT",
-            "S1E33": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // THE MANAGER (KBS World)
-    80736: {
-        provider: "Streaming / KBS World",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S1E381": "7:00 pm ET / 4:00 pm PT",
-            "S1E382": "7:00 pm ET / 4:00 pm PT",
-            "S1E383": "7:00 pm ET / 4:00 pm PT"
-        }
-    },
-    // BEYBLADE X (Disney XD)
-    226688: {
-        provider: "Disney XD / Streaming",
-        time: "8:00 am ET / 5:00 am PT",
-        episodes: {
-            "S1E112": "8:00 am ET / 5:00 am PT",
-            "S1E113": "8:00 am ET / 5:00 am PT"
-        }
-    },
-    // 2 DAYS AND 1 NIGHT (KBS2)
-    30801: {
-        provider: "KBS2 / Streaming",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E310": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // ABBOTT ELEMENTARY (ABC)
-    125935: {
-        provider: "ABC / Hulu",
-        time: "9:30 pm ET / 6:30 pm PT",
-        episodes: {
-            "S4E11": "9:30 pm ET / 6:30 pm PT",
-            "S4E12": "9:30 pm ET / 6:30 pm PT"
-        }
-    },
-    // IMPRACTICAL JOKERS (TruTV)
-    59186: {
-        provider: "TruTV / Streaming",
-        time: "10:00 pm ET / 7:00 pm PT",
-        episodes: {
-            "S11E11": "10:00 pm ET / 7:00 pm PT",
-            "S11E12": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // WHEN CALLS THE HEART (Hallmark)
-    61865: {
-        provider: "Hallmark / Streaming",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S12E3": "8:00 pm ET / 5:00 pm PT",
-            "S12E4": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // BEAT BOBBY FLAY (Food Network)
-    62481: {
-        provider: "Food Network / Streaming",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S37E2": "8:00 pm ET / 5:00 pm PT",
-            "S37E3": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // CASUALTY (BBC One)
-    1021: {
-        provider: "BBC One / Streaming",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E2": "8:00 pm ET / 5:00 pm PT",
-            "S1E3": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // THE HUNTING PARTY (AXN)
-    247723: {
-        provider: "Streaming / AXN",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S1E3": "9:00 pm ET / 6:00 pm PT",
-            "S1E4": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // MY HERO ACADEMIA: VIGILANTES (Crunchyroll)
-    280110: {
-        provider: "Crunchyroll",
-        time: "12:00 am ET / 9:00 pm PT",
-        episodes: {
-            "S1E16": "12:00 am ET / 9:00 pm PT",
-            "S1E17": "12:00 am ET / 9:00 pm PT"
-        }
-    },
-    // TAMON'S B-SIDE (Crunchyroll)
-    276393: {
-        provider: "Streaming / Crunchyroll",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E3": "8:00 pm ET / 5:00 pm PT",
-            "S1E4": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // ANUPAMAA (StarPlus)
-    116479: {
-        provider: "StarPlus / Streaming",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S1E1899": "7:00 pm ET / 4:00 pm PT",
-            "S1E1900": "7:00 pm ET / 4:00 pm PT",
-            "S1E1901": "7:00 pm ET / 4:00 pm PT",
-            "S1E1902": "7:00 pm ET / 4:00 pm PT",
-            "S1E1903": "7:00 pm ET / 4:00 pm PT",
-            "S1E1904": "7:00 pm ET / 4:00 pm PT",
-            "S1E1905": "7:00 pm ET / 4:00 pm PT",
-            "S1E1906": "7:00 pm ET / 4:00 pm PT",
-            "S1E1907": "7:00 pm ET / 4:00 pm PT",
-            "S1E1908": "7:00 pm ET / 4:00 pm PT"
-        }
-    },
-    // ALL ELITE WRESTLING: DYNAMITE (TBS)
-    91555: {
-        provider: "TBS / Streaming",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E3": "8:00 pm ET / 5:00 pm PT",
-            "S1E4": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // FATHER MATTEO (RAI)
-    21220: {
-        provider: "RAI / Streaming",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S14E3": "9:00 pm ET / 6:00 pm PT",
-            "S14E4": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // THE IMPERIAL CORONER (ITV)
-    124595: {
-        provider: "Streaming / ITV",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E6": "8:00 pm ET / 5:00 pm PT",
-            "S1E7": "8:00 pm ET / 5:00 pm PT",
-            "S1E8": "8:00 pm ET / 5:00 pm PT",
-            "S1E9": "8:00 pm ET / 5:00 pm PT",
-            "S1E10": "8:00 pm ET / 5:00 pm PT",
-            "S1E11": "8:00 pm ET / 5:00 pm PT",
-            "S1E12": "8:00 pm ET / 5:00 pm PT",
-            "S1E13": "8:00 pm ET / 5:00 pm PT",
-            "S1E14": "8:00 pm ET / 5:00 pm PT",
-            "S1E15": "8:00 pm ET / 5:00 pm PT",
-            "S1E16": "8:00 pm ET / 5:00 pm PT",
-            "S1E17": "8:00 pm ET / 5:00 pm PT",
-            "S1E18": "8:00 pm ET / 5:00 pm PT",
-            "S1E19": "8:00 pm ET / 5:00 pm PT",
-            "S1E20": "8:00 pm ET / 5:00 pm PT",
-            "S1E21": "8:00 pm ET / 5:00 pm PT",
-            "S1E22": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // SPIDEY AND HIS AMAZING FRIENDS (Disney Junior)
-    127635: {
-        provider: "Disney Junior / Streaming",
-        time: "8:00 am ET / 5:00 am PT",
-        episodes: {
-            "S3E33": "8:00 am ET / 5:00 am PT",
-            "S3E34": "8:00 am ET / 5:00 am PT",
-            "S3E35": "8:00 am ET / 5:00 am PT",
-            "S3E36": "8:00 am ET / 5:00 am PT"
-        }
-    },
-    // UNDERCOVER MISS HONG (KBS World)
-    293608: {
-        provider: "Streaming / KBS World",
-        time: "9:00 pm ET / 6:00 pm PT",
-        episodes: {
-            "S1E1": "9:00 pm ET / 6:00 pm PT",
-            "S1E2": "9:00 pm ET / 6:00 pm PT",
-            "S1E3": "9:00 pm ET / 6:00 pm PT",
-            "S1E4": "9:00 pm ET / 6:00 pm PT"
-        }
-    },
-    // TOJIMA WANTS TO BE A KAMEN RIDER (TV Asahi)
-    285788: {
-        provider: "Streaming / TV Asahi",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S1E15": "7:00 pm ET / 4:00 pm PT",
-            "S1E16": "7:00 pm ET / 4:00 pm PT"
-        }
-    },
-    // DROPS OF GOD (Fuji TV)
-    218961: {
-        provider: "Fuji TV / Streaming",
-        time: "10:00 pm ET / 7:00 pm PT",
-        episodes: {
-            "S1E1": "10:00 pm ET / 7:00 pm PT",
-            "S1E2": "10:00 pm ET / 7:00 pm PT"
-        }
-    },
-    // PAPÁS POR CONVENIENCIA (Telefe)
-    247885: {
-        provider: "Streaming / Telefe",
-        time: "8:00 pm ET / 5:00 pm PT",
-        episodes: {
-            "S1E70": "8:00 pm ET / 5:00 pm PT",
-            "S1E71": "8:00 pm ET / 5:00 pm PT",
-            "S1E72": "8:00 pm ET / 5:00 pm PT",
-            "S1E73": "8:00 pm ET / 5:00 pm PT",
-            "S1E74": "8:00 pm ET / 5:00 pm PT",
-            "S1E75": "8:00 pm ET / 5:00 pm PT",
-            "S1E76": "8:00 pm ET / 5:00 pm PT",
-            "S1E77": "8:00 pm ET / 5:00 pm PT",
-            "S1E78": "8:00 pm ET / 5:00 pm PT",
-            "S1E79": "8:00 pm ET / 5:00 pm PT"
-        }
-    },
-    // HOW DO YOU PLAY? (KBS World)
-    91121: {
-        provider: "Streaming / KBS World",
-        time: "7:00 pm ET / 4:00 pm PT",
-        episodes: {
-            "S1E313": "7:00 pm ET / 4:00 pm PT",
-            "S1E314": "7:00 pm ET / 4:00 pm PT"
-        }
-    }
+    // --- PREVIOUSLY REGISTERED ---
+    2734: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" },
+    1416: { provider: "ABC", time: "10:00 pm ET / 7:00 pm PT" },
+    549: { provider: "NBC", time: "8:00 pm ET / 5:00 pm PT" },
+    62650: { provider: "NBC", time: "8:00 pm ET / 7:00 pm CT" },
+    12786: { provider: "CBC / BritBox", time: "8:00 pm ET / 5:00 pm PT" },
+    130464: { provider: "Hulu", time: "12:00 am ET / 9:00 pm PT" },
+    1667: { provider: "NBC / Peacock", time: "11:29 pm ET / 8:29 pm PT" },
+    250307: { provider: "HBO Max", time: "9:00 pm ET / 6:00 pm PT" },
+    63770: { provider: "CBS", time: "11:35 pm ET / 10:35 pm CT" },
+    61818: { provider: "NBC / Peacock", time: "12:35 am ET / 9:35 pm PT" },
+    220150: { provider: "Netflix", time: "3:00 am ET / 12:00 am PT" },
+    89456: { provider: "Adult Swim / Max", time: "12:00 am ET / 9:00 pm PT" },
+    2224: { provider: "Comedy Central / Paramount+", time: "11:00 pm ET / 8:00 pm PT" },
+    58841: { provider: "NBC / Peacock", time: "10:00 pm ET / 7:00 pm PT" },
+    22: { provider: "Bravo / Peacock", time: "11:00 pm ET / 8:00 pm PT" },
+    75219: { provider: "FOX / Hulu", time: "8:00 pm ET / 5:00 pm PT" },
+    72879: { provider: "TF1 / MyTF1", time: "6:00 pm ET / 3:00 pm PT" },
+    302463: { provider: "TelevisaUnivision / vIX", time: "7:00 pm ET / 4:00 pm PT" },
+    70672: { provider: "KBS / KBS World", time: "8:00 pm ET / 5:00 pm PT" },
+    61859: { provider: "AMC / Streaming", time: "9:00 pm ET / 6:00 pm PT" },
+    1220: { provider: "BBC One / BritBox", time: "10:00 pm ET / 7:00 pm PT" },
+    65701: { provider: "YouTube", time: "9:00 am ET / 6:00 am PT" },
+    2912: { provider: "Syndication / Hulu", time: "7:00 pm ET / 4:00 pm PT" },
+    67063: { provider: "Crunchyroll", time: "12:00 am ET / 9:00 pm PT" },
+    136311: { provider: "Apple TV+", time: "9:00 pm ET / 6:00 pm PT" },
+    285278: { provider: "Streaming / Crunchyroll", time: "12:00 am ET / 9:00 pm PT" },
+    31991: { provider: "USA Network / Peacock", time: "8:00 pm ET / 5:00 pm PT" },
+    112470: { provider: "TF1 / MyTF1", time: "6:00 pm ET / 3:00 pm PT" },
+    1489: { provider: "ABC / Hulu", time: "11:35 pm ET / 8:35 pm PT" },
+    73036: { provider: "Streaming / tvN", time: "7:30 pm ET / 4:30 pm PT" },
+    56559: { provider: "Crunchyroll", time: "12:15 am ET / 9:15 pm PT" },
+    2035: { provider: "ABC / Hulu", time: "10:00 pm ET / 7:00 pm PT" },
+    61457: { provider: "PBS / Streaming", time: "9:00 pm ET / 6:00 pm PT" },
+    270420: { provider: "Streaming / Crunchyroll", time: "8:00 pm ET / 5:00 pm PT" },
+    81329: { provider: "Crunchyroll", time: "12:00 am ET / 9:00 pm PT" },
+    80736: { provider: "Streaming / KBS World", time: "7:00 pm ET / 4:00 pm PT" },
+    226688: { provider: "Disney XD / Streaming", time: "8:00 am ET / 5:00 am PT" },
+    30801: { provider: "KBS2 / Streaming", time: "8:00 pm ET / 5:00 pm PT" },
+    125935: { provider: "ABC / Hulu", time: "9:30 pm ET / 6:30 pm PT" },
+    59186: { provider: "TruTV / Streaming", time: "10:00 pm ET / 7:00 pm PT" },
+    61865: { provider: "Hallmark / Streaming", time: "8:00 pm ET / 5:00 pm PT" },
+    62481: { provider: "Food Network / Streaming", time: "8:00 pm ET / 5:00 pm PT" },
+    1021: { provider: "BBC One / Streaming", time: "8:00 pm ET / 5:00 pm PT" },
+    247723: { provider: "Streaming / AXN", time: "9:00 pm ET / 6:00 pm PT" },
+    280110: { provider: "Crunchyroll", time: "12:00 am ET / 9:00 pm PT" },
+    276393: { provider: "Streaming / Crunchyroll", time: "8:00 pm ET / 5:00 pm PT" },
+    116479: { provider: "StarPlus / Streaming", time: "7:00 pm ET / 4:00 pm PT" },
+    91555: { provider: "TBS / Streaming", time: "8:00 pm ET / 5:00 pm PT" },
+    21220: { provider: "RAI / Streaming", time: "9:00 pm ET / 6:00 pm PT" },
+    124595: { provider: "Streaming / ITV", time: "8:00 pm ET / 5:00 pm PT" },
+    127635: { provider: "Disney Junior / Streaming", time: "8:00 am ET / 5:00 am PT" },
+    293608: { provider: "Streaming / KBS World", time: "9:00 pm ET / 6:00 pm PT" },
+    285788: { provider: "Streaming / TV Asahi", time: "7:00 pm ET / 4:00 pm PT" },
+    218961: { provider: "Fuji TV / Streaming", time: "10:00 pm ET / 7:00 pm PT" },
+    247885: { provider: "Streaming / Telefe", time: "8:00 pm ET / 5:00 pm PT" },
+    91121: { provider: "Streaming / KBS World", time: "7:00 pm ET / 4:00 pm PT" },
+    66732: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    224372: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    79744: { provider: "ABC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1622: { provider: "The WB", time: "9:00 pm ET / 6:00 pm PT" }, 
+    456: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, 
+    4614: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, 
+    95479: { provider: "MBS / Crunchyroll", time: "12:00 am ET / 9:00 pm PT" }, 
+    1399: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    106379: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    1408: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, 
+    240459: { provider: "STARZ", time: "9:00 pm ET / 6:00 pm PT" }, 
+    4057: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1434: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    71712: { provider: "ABC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    34307: { provider: "Showtime", time: "9:00 pm ET / 6:00 pm PT" }, 
+    157741: { provider: "Paramount+", time: "12:00 am ET / 9:00 pm PT" }, 
+    1405: { provider: "Showtime", time: "9:00 pm ET / 6:00 pm PT" }, 
+    46952: { provider: "NBC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    764: { provider: "ITV1", time: "8:00 pm ET / 5:00 pm PT" }, 
+    1396: { provider: "AMC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    4607: { provider: "ABC", time: "8:00 pm ET / 5:00 pm PT" }, 
+    1668: { provider: "NBC", time: "8:00 pm ET / 5:00 pm PT" }, 
+    209867: { provider: "Nippon TV", time: "11:00 pm ET / 8:00 pm PT" }, 
+    60735: { provider: "The CW", time: "8:00 pm ET / 5:00 pm PT" }, 
+    4604: { provider: "The WB", time: "8:00 pm ET / 5:00 pm PT" },
+    1407: { provider: "Showtime", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1431: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    279136: { provider: "iQiyi", time: "12:00 am ET / 9:00 pm PT" }, 
+    1402: { provider: "AMC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    2316: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1421: { provider: "ABC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    2661: { provider: "TV Asahi", time: "9:00 am ET / 6:00 am PT" }, 
+    4087: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    5920: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    60622: { provider: "FX", time: "10:00 pm ET / 7:00 pm PT" }, 
+    2190: { provider: "Comedy Central", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1911: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, 
+    44217: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    308482: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    57532: { provider: "Nickelodeon", time: "12:00 pm ET / 9:00 am PT" }, 
+    1433: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    18165: { provider: "The CW", time: "8:00 pm ET / 5:00 pm PT" }, 
+    59941: { provider: "NBC", time: "11:35 pm ET / 8:35 pm PT" }, 
+    60574: { provider: "BBC One", time: "9:00 pm ET / 6:00 pm PT" }, 
+    4656: { provider: "USA Network", time: "8:00 pm ET / 5:00 pm PT" }, 
+    60572: { provider: "TV Tokyo", time: "6:00 pm ET / 3:00 pm PT" }, 
+    2261: { provider: "NBC", time: "11:30 pm ET / 8:30 pm PT" }, 
+    37680: { provider: "USA Network", time: "9:00 pm ET / 6:00 pm PT" }, 
+    57243: { provider: "BBC One", time: "8:00 pm ET / 5:00 pm PT" }, 
+    15226: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    259731: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    1398: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    223530: { provider: "Paramount+", time: "12:00 am ET / 9:00 pm PT" }, 
+    4629: { provider: "Showtime", time: "8:00 pm ET / 5:00 pm PT" }, 
+    2288: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    73586: { provider: "Paramount Network", time: "8:00 pm ET / 5:00 pm PT" }, 
+    63174: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    124364: { provider: "Epix", time: "9:00 pm ET / 6:00 pm PT" }, 
+    2691: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    117465: { provider: "TV Tokyo", time: "12:00 am ET / 9:00 pm PT" }, 
+    44006: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    71790: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    60625: { provider: "Adult Swim", time: "11:00 pm ET / 8:00 pm PT" }, 
+    80240: { provider: "Caracol TV", time: "9:00 pm ET / 6:00 pm PT" }, 
+    46296: { provider: "STARZ", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1413: { provider: "FX", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1400: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1419: { provider: "ABC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    65334: { provider: "TF1", time: "10:00 am ET / 7:00 am PT" }, 
+    15260: { provider: "Cartoon Network", time: "7:00 pm ET / 4:00 pm PT" }, 
+    32692: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    22980: { provider: "Bravo", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1973: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    229891: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    200875: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    250505: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    85552: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    32798: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    71728: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, 
+    873: { provider: "ABC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    80748: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1403: { provider: "ABC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    60059: { provider: "AMC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    693: { provider: "ABC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    31132: { provider: "Cartoon Network", time: "8:00 pm ET / 5:00 pm PT" }, 
+    502: { provider: "PBS", time: "9:00 am ET / 6:00 am PT" }, 
+    78191: { provider: "Lifetime", time: "10:00 pm ET / 7:00 pm PT" }, 
+    76479: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    1412: { provider: "The CW", time: "8:00 pm ET / 5:00 pm PT" }, 
+    45094: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    34524: { provider: "MTV", time: "10:00 pm ET / 7:00 pm PT" }, 
+    790: { provider: "ITV1", time: "9:00 pm ET / 6:00 pm PT" }, 
+    41956: { provider: "BBC One", time: "9:00 pm ET / 6:00 pm PT" }, 
+    120089: { provider: "TV Tokyo", time: "11:00 pm ET / 8:00 pm PT" }, 
+    1620: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    108978: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    5092: { provider: "MBC", time: "6:00 pm ET / 3:00 pm PT" }, 
+    269: { provider: "The WB", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1695: { provider: "USA Network", time: "9:00 pm ET / 6:00 pm PT" }, 
+    91239: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" },
+    90: { provider: "Channel 5", time: "9:00 pm ET / 6:00 pm PT" }, 
+    93405: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    1450: { provider: "TNT", time: "9:00 pm ET / 6:00 pm PT" }, 
+    42009: { provider: "Channel 4", time: "9:00 pm ET / 6:00 pm PT" }, 
+    71912: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    1981: { provider: "The WB", time: "8:00 pm ET / 5:00 pm PT" }, 
+    30984: { provider: "TV Tokyo", time: "11:00 pm ET / 8:00 pm PT" }, 
+    12971: { provider: "Fuji TV", time: "7:00 pm ET / 4:00 pm PT" }, 
+    113962: { provider: "Paramount+", time: "12:00 am ET / 9:00 pm PT" }, 
+    111803: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    48866: { provider: "The CW", time: "8:00 pm ET / 5:00 pm PT" }, 
+    1100: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, 
+    1950: { provider: "The WB", time: "9:00 pm ET / 6:00 pm PT" }, 
+    39351: { provider: "NBC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    246386: { provider: "Sky Atlantic", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1920: { provider: "ABC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    32726: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    30983: { provider: "YTV", time: "6:00 pm ET / 3:00 pm PT" }, 
+    1415: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    119051: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    4177: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    82873: { provider: "Syndication", time: "3:00 pm ET / 12:00 pm PT" }, 
+    301507: { provider: "Crave", time: "12:00 am ET / 9:00 pm PT" }, 
+    1409: { provider: "FX", time: "10:00 pm ET / 7:00 pm PT" }, 
+    32415: { provider: "TBS", time: "11:00 pm ET / 8:00 pm PT" },
+    46648: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    3778: { provider: "TV Tokyo", time: "8:00 am JST" }, 
+    1357: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    94997: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, 
+    655: { provider: "Syndication", time: "7:00 pm ET" }, 
+    1435: { provider: "CBS", time: "9:00 pm ET / 6:00 pm PT" }, 
+    236873: { provider: "ABC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    17610: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    13916: { provider: "Nickelodeon", time: "10:00 am ET / 7:00 am PT" }, 
+    2191: { provider: "Channel 5", time: "7:00 am GMT" }, 
+    153312: { provider: "Paramount+", time: "12:00 am ET / 9:00 pm PT" }, 
+    120998: { provider: "Hulu", time: "12:00 am ET / 9:00 pm PT" }, 
+    5122: { provider: "ORF 1", time: "8:15 pm CET" }, 
+    33458: { provider: "SBS", time: "6:20 pm KST" }, 
+    45781: { provider: "Life OK", time: "8:00 pm IST" }, 
+    42921: { provider: "SBS", time: "10:00 pm KST" }, 
+    48891: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    253: { provider: "NBC", time: "8:00 pm ET / 5:00 pm PT" }, 
+    212034: { provider: "Gunma TV", time: "12:00 am JST" }, 
+    15631: { provider: "Disney XD", time: "5:00 pm ET / 2:00 pm PT" }, 
+    1855: { provider: "UPN", time: "8:00 pm ET / 5:00 pm PT" }, 
+    4589: { provider: "The WB", time: "8:00 pm ET / 5:00 pm PT" }, 
+    76669: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    4473: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    3341: { provider: "NBC", time: "8:00 pm ET / 5:00 pm PT" }, 
+    62410: { provider: "MBC", time: "9:00 pm AST" }, 
+    3044: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" },
+    1439: { provider: "USA Network", time: "10:00 pm ET / 7:00 pm PT" }, 
+    2004: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, 
+    2710: { provider: "FX", time: "10:00 pm ET / 7:00 pm PT" }, 
+    1395: { provider: "The CW", time: "9:00 pm ET / 6:00 pm PT" }, 
+    1418: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, 
+    84773: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    73375: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    34539: { provider: "Cartoon Network", time: "9:00 am ET / 6:00 am PT" }, 
+    61254: { provider: "TV Land", time: "10:00 pm ET / 7:00 pm PT" }, 
+    205626: { provider: "Apple TV+", time: "12:00 am ET / 9:00 pm PT" }, 
+    2898: { provider: "AMC", time: "10:00 pm ET / 7:00 pm PT" }, 
+    31737: { provider: "MBC", time: "11:10 pm KST" }, 
+    67323: { provider: "Prime Video", time: "12:00 am ET / 9:00 pm PT" }, 
+    1411: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    103348: { provider: "Kan 11", time: "9:00 pm IST" }, 
+    4011: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    156947: { provider: "iQiyi", time: "12:00 am ET / 9:00 pm PT" }, 
+    4194: { provider: "Cartoon Network", time: "8:00 pm ET / 5:00 pm PT" }, 
+    1761: { provider: "CBS", time: "10:00 pm ET / 7:00 pm PT" }, 
+    42444: { provider: "Cartoon Network", time: "6:00 pm ET / 3:00 pm PT" }, 
+    34503: { provider: "Cartoon Network", time: "4:00 pm ET / 1:00 pm PT" }, 
+    2470: { provider: "FOX", time: "9:00 pm ET / 6:00 pm PT" }, 
+    70523: { provider: "Netflix", time: "12:00 am ET / 9:00 pm PT" }, 
+    485: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, 
+    34: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    4556: { provider: "NBC", time: "9:00 pm ET / 6:00 pm PT" }, 
+    60708: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" },
+
+    // --- NEW BATCH 3 (81-100) ---
+    2700: { provider: "CBS", time: "9:30 pm ET / 6:30 pm PT" }, // The Amazing Race
+    615: { provider: "Hulu / FOX", time: "9:00 pm ET / 6:00 pm PT" }, // Futurama
+    2011: { provider: "FOX / Hulu", time: "8:30 pm ET / 5:30 pm PT" }, // King of the Hill
+    218204: { provider: "Nippon TV / Crunchyroll", time: "12:55 am JST" }, // The Apothecary Diaries
+    121: { provider: "BBC One", time: "7:00 pm GMT" }, // Doctor Who (Classic)
+    60573: { provider: "STARZ", time: "9:00 pm ET / 6:00 pm PT" }, // Outlander
+    46298: { provider: "Nippon TV", time: "10:55 am JST" }, // Hunter x Hunter
+    2098: { provider: "FOX", time: "4:30 pm ET / 1:30 pm PT" }, // Batman: The Animated Series
+    4609: { provider: "CBS", time: "8:00 pm ET / 5:00 pm PT" }, // Survivor
+    4626: { provider: "HBO", time: "10:00 pm ET / 7:00 pm PT" }, // Curb Your Enthusiasm
+    84958: { provider: "Disney+", time: "12:00 am ET / 9:00 pm PT" }, // Loki
+    99966: { provider: "HBO", time: "9:00 pm ET / 6:00 pm PT" }, // The Last of Us
+    2351: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, // Beverly Hills, 90210
+    11210: { provider: "TV Asahi", time: "7:00 pm JST" }, // Sailor Moon
+    46260: { provider: "TV Tokyo", time: "7:30 pm JST" }, // Naruto
+    69050: { provider: "The CW", time: "8:00 pm ET / 5:00 pm PT" }, // Riverdale
+    62286: { provider: "AMC", time: "9:00 pm ET / 6:00 pm PT" }, // Fear the Walking Dead
+    85934: { provider: "Angel Studios / Prime Video", time: "12:00 am ET / 9:00 pm PT" }, // The Chosen
+    74016: { provider: "FOX", time: "8:00 pm ET / 5:00 pm PT" }, // The Resident
+    71789: { provider: "CBS / Paramount+", time: "9:00 pm ET / 6:00 pm PT" } // SEAL Team
 };

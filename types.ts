@@ -243,6 +243,9 @@ export interface HistoryItem extends TrackedItem {
   episodeStillPath?: string | null;
   noteIds?: string[];
   seasonPosterPath?: string | null;
+  startTime?: string;
+  endTime?: string;
+  pauseCount?: number;
 }
 
 export interface DeletedHistoryItem extends HistoryItem {
@@ -272,13 +275,15 @@ export type WatchProgress = Record<number, ShowProgress>;
 
 export interface CustomListItem extends TrackedItem {}
 
+export type ListVisibility = 'public' | 'followers' | 'private';
+
 export interface CustomList {
   id: string;
   name: string;
   description: string;
   items: CustomListItem[];
   createdAt: string;
-  isPublic: boolean;
+  visibility: ListVisibility;
   likes: string[]; // User IDs who liked this list
 }
 
@@ -510,10 +515,26 @@ export interface Reminder {
   title: string;
   poster_path: string | null;
   episodeInfo?: string;
-  reminderType: ReminderType;
+  selectedTypes: ReminderType[];
+  frequency: 'first' | 'all';
 }
 
-export type ReminderType = 'release' | 'day_before' | 'week_before';
+export type ReminderType = 
+  | 'release'
+  | 'hour_before'
+  | 'hour_after'
+  | '5min_before'
+  | '5min_after'
+  | 'day_before'
+  | 'day_after'
+  | '2days_before'
+  | '2days_after'
+  | 'week_before'
+  | 'week_after'
+  | '2weeks_before'
+  | '2weeks_after'
+  | 'daily_7_before'
+  | 'daily_7_after';
 
 export interface LiveWatchMediaInfo {
   id: number;
@@ -670,4 +691,4 @@ export interface MediaUpdate {
 
 export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string; gallery?: string[] }>;
 
-export type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_episodes' | 'library';
+export type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_episodes' | 'library' | 'no_recommendations' | 'placeholder_people';

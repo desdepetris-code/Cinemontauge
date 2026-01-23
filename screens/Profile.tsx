@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
-import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon } from '../components/Icons';
+import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -25,6 +25,7 @@ import ProgressScreen from './ProgressScreen';
 import UpdatesScreen from './UpdatesScreen';
 import OngoingShowsScreen from './OngoingShowsScreen';
 import { PLACEHOLDER_PROFILE } from '../constants';
+import Carousel from '../components/Carousel';
 
 interface User {
   id: string;
@@ -214,10 +215,12 @@ interface ProfileProps {
   onPermanentDeleteNote: (noteId: string) => void;
   onRestoreNote: (note: DeletedNote) => void;
   onTabNavigate?: (tabId: string) => void;
+  viewerId?: string; 
+  isFollowerOfProfile?: boolean;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote, onTabNavigate } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote, onTabNavigate, viewerId, isFollowerOfProfile } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
@@ -225,9 +228,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const stats = useCalculatedStats(userData);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
     if (initialTab) {
@@ -237,36 +237,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
-  const checkScrollability = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (el) {
-      const isScrollable = el.scrollWidth > el.clientWidth;
-      setCanScrollLeft(el.scrollLeft > 0);
-      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
-    }
-  }, []);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (el) {
-      checkScrollability();
-      el.addEventListener('scroll', checkScrollability);
-      window.addEventListener('resize', checkScrollability);
-      return () => {
-        el.removeEventListener('scroll', checkScrollability);
-        window.removeEventListener('resize', checkScrollability);
-      };
-    }
-  }, [checkScrollability]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    const el = scrollContainerRef.current;
-    if (el) {
-      const scrollAmount = el.clientWidth * 0.8;
-      el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
-
   const { followers, following } = useMemo(() => {
     if (!currentUser) return { followers: [], following: [] };
     const followingList = follows[currentUser.id] || [];
@@ -274,19 +244,20 @@ const Profile: React.FC<ProfileProps> = (props) => {
     return { followers: followerList, following: followingList };
   }, [currentUser, follows]);
 
+  // UPDATED: Icons for Overview, Catch Up, Updates, Weekly Picks, Library, Custom Lists, Season Log, Journal, History, Stats.
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
-    { id: 'overview', label: 'Overview', icon: Squares2X2Icon },
-    { id: 'ongoing', label: 'Catch Up', icon: QueueListIcon },
-    { id: 'updates', label: 'Updates', icon: FireIcon },
+    { id: 'overview', label: 'Overview', icon: PushPinIcon },
+    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon },
+    { id: 'updates', label: 'Updates', icon: CurlyLoopIcon },
+    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon },
+    { id: 'library', label: 'Library', icon: CabinetIcon },
+    { id: 'lists', label: 'Custom Lists', icon: TagIcon },
+    { id: 'seasonLog', label: 'Season Log', icon: ScrollIcon },
+    { id: 'journal', label: 'Journal', icon: QuillIcon },
+    { id: 'history', label: 'Overall History', icon: WavesIcon },
     { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon },
-    { id: 'history', label: 'Overall History', icon: ClockIcon },
-    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TrophyIcon },
-    { id: 'library', label: 'Library', icon: CollectionIcon },
-    { id: 'lists', label: 'Custom Lists', icon: BookmarkIcon },
     { id: 'activity', label: 'Activity', icon: UserGroupIcon },
-    { id: 'stats', label: 'Stats', icon: ChartPieIcon },
-    { id: 'seasonLog', label: 'Season Log', icon: TableCellsIcon },
-    { id: 'journal', label: 'Journal', icon: PencilSquareIcon },
+    { id: 'stats', label: 'Stats', icon: MagnifyingGlassIcon },
     { id: 'achievements', label: 'Achievements', icon: BadgeIcon },
     { id: 'imports', label: 'Import & Sync', icon: CloudArrowUpIcon },
     { id: 'settings', label: 'Settings', icon: CogIcon },
@@ -317,7 +288,14 @@ const Profile: React.FC<ProfileProps> = (props) => {
           <div className="lg:col-span-1 space-y-6">
             <RecentActivityWidget history={userData.history} onSelectShow={onSelectShow} />
             <AchievementsWidget userData={userData} onNavigate={() => setActiveTab('achievements')} />
-            <ListsWidget watching={userData.watching} planToWatch={userData.planToWatch} onNavigate={() => setActiveTab('lists')} />
+            <ListsWidget 
+                watching={userData.watching} 
+                planToWatch={userData.planToWatch} 
+                customLists={userData.customLists}
+                isOwnProfile={!viewerId || viewerId === currentUser?.id}
+                isFollower={isFollowerOfProfile}
+                onNavigate={() => setActiveTab('lists')} 
+            />
             <JournalWidget userData={userData} onSelectShow={onSelectShow} onNavigate={() => setActiveTab('journal')} />
           </div>
         </div>
@@ -325,10 +303,10 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'ongoing': return <OngoingShowsScreen userData={userData} onSelectShow={onSelectShow as any} />;
       case 'updates': return <UpdatesScreen userData={userData} onSelectShow={onSelectShow} onAddNotifications={onAddNotifications} />;
       case 'progress': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
-      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} />;
+      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
       case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
-      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
+      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} onUpdateList={props.onUpdateList as any} />;
       case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} onPermanentDeleteNote={onPermanentDeleteNote} onRestoreNote={onRestoreNote} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
@@ -422,20 +400,20 @@ const Profile: React.FC<ProfileProps> = (props) => {
         </div>
         
         <div className="mb-6 relative">
-            {canScrollLeft && <button onClick={() => scroll('left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full text-white"><ChevronLeftIcon className="w-6 h-6"/></button>}
-            <div ref={scrollContainerRef} className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center space-x-2 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${activeTab === tab.id ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary hover:brightness-125'}`}
-                    >
-                        <tab.icon className="w-5 h-5" />
-                        <span>{tab.label}</span>
-                    </button>
-                ))}
-            </div>
-            {canScrollRight && <button onClick={() => scroll('right')} className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 bg-backdrop rounded-full text-white"><ChevronRightIcon className="w-6 h-6"/></button>}
+            <Carousel>
+                <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center space-x-2 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${activeTab === tab.id ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary hover:brightness-125'}`}
+                        >
+                            <tab.icon className="w-5 h-5" />
+                            <span>{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </Carousel>
         </div>
 
         {renderContent()}

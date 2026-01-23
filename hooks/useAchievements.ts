@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useEffect } from 'react';
 import { UserData, UserAchievementStatus } from '../types';
 import { allAchievements } from '../achievements';
@@ -18,6 +17,7 @@ export function useAchievements(data: UserData): { achievements: UserAchievement
 
         const newStatuses = allAchievements.map(ach => {
             const { progress, goal } = ach.check(data, extendedStats);
+            // unlocked is re-evaluated every time the hook runs, ensuring it relocks if progress drops.
             const unlocked = progress >= goal;
             return { ...ach, unlocked, progress, goal };
         });

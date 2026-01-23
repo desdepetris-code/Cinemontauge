@@ -154,8 +154,8 @@ const CalendarListItem: React.FC<CalendarListItemProps> = ({ item, onSelect, isR
                 )}
             </div>
             {airtimeTruth && (
-                <div className="mr-4 flex items-center gap-2 px-3 py-1 bg-primary-accent text-on-accent rounded-full shadow-lg border border-white/10">
-                    <ClockIcon className="w-3.5 h-3.5" />
+                <div className="mr-4 flex items-center gap-2 px-3 py-1 bg-primary-accent text-black rounded-full shadow-lg border border-white/10">
+                    <ClockIcon className="w-3.5 h-3.5 text-black" />
                     <span className="text-[10px] font-black uppercase tracking-widest">{airtimeTruth.time}</span>
                 </div>
             )}

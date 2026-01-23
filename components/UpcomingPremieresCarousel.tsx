@@ -83,10 +83,6 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                     {media.map(item => {
                         const isCompleted = completed.some(c => c.id === item.id);
-                        const releaseDate = item.first_air_date || item.release_date;
-                        const reminderId = releaseDate ? `rem-tv-${item.id}-${releaseDate}` : '';
-                        const isReminderSet = reminders.some(r => r.id === reminderId);
-                        
                         return (
                             <PremiereCard 
                                 key={`${item.id}-${item.media_type}`}
@@ -94,15 +90,8 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
                                 onSelect={onSelectShow}
                                 onAddToList={() => onOpenAddToListModal(item)}
                                 isCompleted={isCompleted}
-                                isReminderSet={isReminderSet}
-                                onToggleReminder={(type) => {
-                                    const newReminder: Reminder | null = type ? {
-                                        id: reminderId, mediaId: item.id, mediaType: 'tv',
-                                        releaseDate: releaseDate!, title: item.name || 'Untitled', poster_path: item.poster_path,
-                                        episodeInfo: 'Series Premiere', reminderType: type,
-                                    } : null;
-                                    onToggleReminder(newReminder, reminderId);
-                                }}
+                                reminders={reminders}
+                                onToggleReminder={onToggleReminder}
                             />
                         );
                     })}

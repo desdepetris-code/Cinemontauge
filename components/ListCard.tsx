@@ -1,7 +1,7 @@
 import React from 'react';
 import { CustomList } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
-import { GlobeAltIcon, LockClosedIcon, ListBulletIcon } from './Icons';
+import { GlobeAltIcon, LockClosedIcon, ListBulletIcon, UsersIcon } from './Icons';
 
 interface ListCardProps {
     list: CustomList;
@@ -44,12 +44,18 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
                 
                 {/* Privacy Badge */}
                 <div className="absolute top-4 left-4 z-10">
-                    {list.isPublic ? (
-                        <div className="p-2 bg-sky-500/20 backdrop-blur-md rounded-xl border border-sky-400/30 text-sky-400">
+                    {list.visibility === 'public' && (
+                        <div className="p-2 bg-sky-500/20 backdrop-blur-md rounded-xl border border-sky-400/30 text-sky-400" title="Public: Discoverable by anyone.">
                             <GlobeAltIcon className="w-4 h-4" />
                         </div>
-                    ) : (
-                        <div className="p-2 bg-bg-primary/60 backdrop-blur-md rounded-xl border border-white/10 text-text-secondary">
+                    )}
+                    {list.visibility === 'followers' && (
+                        <div className="p-2 bg-amber-500/20 backdrop-blur-md rounded-xl border border-amber-400/30 text-amber-400" title="Followers: Discovery limited to followers.">
+                            <UsersIcon className="w-4 h-4" />
+                        </div>
+                    )}
+                    {list.visibility === 'private' && (
+                        <div className="p-2 bg-bg-primary/60 backdrop-blur-md rounded-xl border border-white/10 text-text-secondary" title="Private: Only visible to you.">
                             <LockClosedIcon className="w-4 h-4" />
                         </div>
                     )}

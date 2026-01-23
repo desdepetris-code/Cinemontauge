@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HistoryItem } from '../../types';
 import { getImageUrl } from '../../utils/imageUtils';
@@ -18,15 +17,16 @@ const RecentActivityWidget: React.FC<RecentActivityWidgetProps> = ({ history, on
                 <div className="divide-y divide-bg-secondary">
                     {recentHistory.map(item => {
                         const imageToUse = item.episodeStillPath || item.seasonPosterPath || item.poster_path;
+                        const displayTitle = item.title || (item as any).name || 'Untitled';
                         return (
                             <div 
                                 key={item.timestamp} 
                                 onClick={() => onSelectShow(item.id, item.media_type)}
                                 className="flex items-center p-3 cursor-pointer hover:bg-bg-secondary/50"
                             >
-                                <img src={getImageUrl(imageToUse, 'w92', item.episodeStillPath ? 'still' : 'poster')} alt={item.title} className="w-10 h-15 rounded-md flex-shrink-0 object-cover"/>
+                                <img src={getImageUrl(imageToUse, 'w92', item.episodeStillPath ? 'still' : 'poster')} alt={displayTitle} className="w-10 h-15 rounded-md flex-shrink-0 object-cover"/>
                                 <div className="ml-4 flex-grow min-w-0">
-                                    <p className="font-semibold text-text-primary truncate">{item.title}</p>
+                                    <p className="font-semibold text-text-primary truncate">{displayTitle}</p>
                                     <p className="text-sm text-text-secondary">
                                         {item.media_type === 'tv' ? `S${item.seasonNumber} E${item.episodeNumber}` : 'Movie'}
                                     </p>

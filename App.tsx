@@ -3,6 +3,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
 import AuthModal from './components/AuthModal';
 import { UserData, WatchProgress, Theme } from './types';
+import { confirmationService } from './services/confirmationService';
 
 interface User {
   id: string;
@@ -149,6 +150,10 @@ const App: React.FC = () => {
             } else {
                 localStorage.removeItem('rememberedUser');
             }
+            
+            // Simulate security email alert
+            confirmationService.show(`Security Alert: A login notification has been sent to ${user.email}.`);
+            
             return null;
         } else {
             return "Invalid username/email or password.";
@@ -169,6 +174,10 @@ const App: React.FC = () => {
         migrateGuestData(newUser.id);
         setCurrentUser({ id: newUser.id, username: newUser.username, email: newUser.email });
         setIsAuthModalOpen(false);
+        
+        // Simulate security email alert for new account
+        confirmationService.show(`Welcome to CineMontauge! A confirmation email has been sent to ${email}.`);
+        
         return null;
     }, [setCurrentUser]);
 

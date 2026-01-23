@@ -31,7 +31,6 @@ const Carousel: React.FC<CarouselProps> = ({ children }) => {
 
       // Also observe children for content changes that might affect scroll width
       Array.from(el.children).forEach(child => {
-        // FIX: Add a type guard to ensure that the child element passed to ResizeObserver is of type Element.
         if (child instanceof Element) {
           resizeObserver.observe(child);
         }
@@ -55,28 +54,29 @@ const Carousel: React.FC<CarouselProps> = ({ children }) => {
     }
   };
   
-  // FIX: Cast the child to 'React.ReactElement<any>' to resolve a TypeScript error with 'cloneElement' and the 'ref' prop.
   const child = React.Children.only(children) as React.ReactElement<any>;
   const enhancedChild = React.cloneElement(child, {
       ref: scrollContainerRef
   });
 
   return (
-    <div className="relative group">
+    <div className="relative group/carousel">
       {canScrollLeft && (
         <button 
-          onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          onClick={(e) => { e.stopPropagation(); scroll('left'); }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-30 p-2 bg-backdrop/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary hover:scale-110 transition-all shadow-2xl border border-white/10 hidden md:flex items-center justify-center"
           aria-label="Scroll left"
         >
           <ChevronLeftIcon className="w-6 h-6" />
         </button>
       )}
+      
       {enhancedChild}
+      
       {canScrollRight && (
          <button 
-          onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-backdrop backdrop-blur-sm rounded-full text-text-primary hover:bg-bg-secondary transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0"
+          onClick={(e) => { e.stopPropagation(); scroll('right'); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-30 p-2 bg-backdrop/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary hover:scale-110 transition-all shadow-2xl border border-white/10 hidden md:flex items-center justify-center"
           aria-label="Scroll right"
         >
           <ChevronRightIcon className="w-6 h-6" />

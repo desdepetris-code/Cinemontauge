@@ -1,4 +1,3 @@
-
 import { Achievement } from './types';
 
 export const allAchievements: Achievement[] = [
@@ -70,8 +69,26 @@ export const allAchievements: Achievement[] = [
   { id: 'librarian', name: 'Librarian', description: 'Add 10 items to a single custom list.', difficulty: 'Easy', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 10 }) },
   { id: 'emotional_rollercoaster', name: 'Emotional Rollercoaster', description: 'Use 5 different moods in your journal entries.', difficulty: 'Easy', check: (d, s) => ({ progress: s.distinctMoodsCount, goal: 5 }) },
   { id: 'double_feature', name: 'Double Feature', description: 'Watch 2 movies in a single day. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 2 }) },
-
-  // --- More Achievements ---
+  { 
+    id: 'decade_show', 
+    name: '10-Year Legacy', 
+    description: 'Complete every season of a show with 10 or more seasons.', 
+    difficulty: 'Hard', 
+    check: (d, s) => {
+        let found = false;
+        Object.entries(d.watchProgress).forEach(([showId, seasons]) => {
+            const seasonNums = Object.keys(seasons).map(Number).filter(n => n > 0);
+            if (seasonNums.length >= 10) {
+                const completedCount = seasonNums.filter(sNum => {
+                    const season = seasons[sNum];
+                    return Object.values(season).every(ep => ep.status === 2);
+                }).length;
+                if (completedCount >= 10) found = true;
+            }
+        });
+        return { progress: found ? 1 : 0, goal: 1 };
+    } 
+  },
   { id: 'collector', name: 'Collector', description: 'Create 5 custom lists.', difficulty: 'Medium', check: (d, s) => ({ progress: s.customListsCount, goal: 5 }) },
   { id: 'archivist', name: 'Archivist', description: 'Create 10 custom lists.', difficulty: 'Hard', check: (d, s) => ({ progress: s.customListsCount, goal: 10 }) },
   { id: 'mega_list', name: 'Mega List', description: 'Add 50 items to a single custom list.', difficulty: 'Medium', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 50 }) },
@@ -82,49 +99,7 @@ export const allAchievements: Achievement[] = [
   // Hours watched
   { id: 'hours_100', name: 'Time Well Spent', description: 'Watch 100 hours of content. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 100 })},
   { id: 'hours_250', name: 'Couch Potato', description: 'Watch 250 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 250 })},
-  { id: 'hours_500', name: 'Screen Fiend', description: 'Watch 500 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 500 })},
+  { id: 'hours_500', name: 'Screen Fiend', description: 'Watch 50 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 500 })},
   { id: 'hours_1000', name: 'Time Lord', description: 'Watch 1,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 1000 })},
   { id: 'hours_2000', name: 'Eternity Viewer', description: 'Watch 2,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 2000 })},
-  
-  // Genre Mastery (Easy)
-  { id: 'genre_comedy_1', name: 'Comedy Apprentice', description: 'Watch 25 Comedies. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[35] || 0, goal: 25 })},
-  { id: 'genre_drama_1', name: 'Drama Dabbler', description: 'Watch 25 Dramas. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[18] || 0, goal: 25 })},
-  { id: 'genre_action_1', name: 'Action Aspirant', description: 'Watch 25 Action titles. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[28] || 0, goal: 25 })},
-  { id: 'genre_scifi_1', name: 'Sci-Fi Scout', description: 'Watch 25 Sci-Fi titles. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[878] || 0, goal: 25 })},
-  { id: 'genre_horror_1', name: 'Horror Hound', description: 'Watch 25 Horror titles. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[27] || 0, goal: 25 })},
-  { id: 'genre_romance_1', name: 'Romance Rookie', description: 'Watch 25 Romances. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[10749] || 0, goal: 25 })},
-  { id: 'genre_animation_1', name: 'Animation Admirer', description: 'Watch 25 Animations. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.genreDistributionAllTime[16] || 0, goal: 25 })},
-  
-  // Genre Mastery (Medium)
-  { id: 'genre_comedy_2', name: 'Comedy Connoisseur', description: 'Watch 75 Comedies. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.genreDistributionAllTime[35] || 0, goal: 75 })},
-  { id: 'genre_drama_2', name: 'Drama Devotee', description: 'Watch 75 Dramas. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.genreDistributionAllTime[18] || 0, goal: 75 })},
-  { id: 'genre_action_2', name: 'Action Aficionado', description: 'Watch 75 Action titles. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.genreDistributionAllTime[28] || 0, goal: 75 })},
-  { id: 'genre_scifi_2', name: 'Sci-Fi Specialist', description: 'Watch 75 Sci-Fi titles. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.genreDistributionAllTime[878] || 0, goal: 75 })},
-  
-  // Specific show types
-  { id: 'long_runner', name: 'Long Runner', description: 'Complete a TV show with over 100 episodes.', difficulty: 'Medium', check: (d,s) => ({ progress: 0, goal: 1 })}, // Note: requires more complex check logic
-  { id: 'epic_saga', name: 'Epic Saga', description: 'Complete a TV show with 10 or more seasons.', difficulty: 'Hard', check: (d,s) => ({ progress: 0, goal: 1 })}, // Note: requires more complex check logic
-  
-  // Time travel
-  { id: 'decade_60s', name: 'Swinging Sixties', description: 'Watch a movie released in the 1960s.', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  { id: 'decade_70s', name: 'Funky Seventies', description: 'Watch a movie released in the 1970s.', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  { id: 'decade_80s', name: 'Awesome Eighties', description: 'Watch a movie released in the 1980s.', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  { id: 'decade_90s', name: 'Nostalgic Nineties', description: 'Watch a movie released in the 1990s.', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  
-  // Special Days
-  { id: 'new_year_watch', name: 'New Year, New Show', description: 'Watch something on New Year\'s Day (Jan 1st).', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  { id: 'halloween_watch', name: 'Spooky Session', description: 'Watch something on Halloween (Oct 31st).', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-  { id: 'christmas_watch', name: 'Festive Flix', description: 'Watch something on Christmas Day (Dec 25th).', difficulty: 'Easy', check: (d,s) => ({ progress: 0, goal: 1})},
-
-  // More interaction
-  { id: 'favorite_show', name: 'Got a Favorite?', description: 'Add your first item to Favorites.', difficulty: 'Easy', check: (d,s) => ({ progress: d.favorites.length, goal: 1})},
-  { id: 'favorite_collection', name: 'Top Tier', description: 'Add 10 items to your Favorites list.', difficulty: 'Medium', check: (d,s) => ({ progress: d.favorites.length, goal: 10})},
-  { id: 'favorite_episode', name: 'That One Scene', description: 'Mark an episode as a favorite.', difficulty: 'Easy', check: (d,s) => ({ progress: Object.keys(d.favoriteEpisodes).length, goal: 1})},
-  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
-  { id: 'episode_connoisseur', name: 'Episode Connoisseur', description: 'Mark 20 episodes as favorites.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.favoriteEpisodes).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 20})},
-  { id: 'first_rating', name: 'First Opinion', description: 'Rate any movie or show.', difficulty: 'Easy', check: (d,s) => ({ progress: s.ratedItemsCount, goal: 1})},
-  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
-  { id: 'episode_rater', name: 'Episode Rater', description: 'Rate 10 individual episodes.', difficulty: 'Easy', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 10})},
-  // FIX: Added type assertions to 'acc' and the inner reduce result to fix 'Operator + cannot be applied to types number and unknown' errors.
-  { id: 'prolific_episode_rater', name: 'Detailed Critic', description: 'Rate 50 individual episodes.', difficulty: 'Medium', check: (d,s) => ({ progress: Object.values(d.episodeRatings).reduce((acc: number, seasons: any) => acc + (Object.values(seasons).reduce((sAcc: number, eps: any) => sAcc + Object.keys(eps).length, 0) as number), 0), goal: 50})},
 ];

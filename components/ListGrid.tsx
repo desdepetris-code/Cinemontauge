@@ -20,8 +20,12 @@ const ListGrid: React.FC<ListGridProps> = ({ items, onSelect, listId, onRemoveIt
                 <div key={item.id} className="relative group">
                     <CompactShowCard item={item as TrackedItem} onSelect={onSelect} showAddedAt={showAddedAt} />
                     {listId && onRemoveItem && (
-                        <button onClick={() => onRemoveItem(listId, item.id)} className="absolute -top-2 -right-2 z-10 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            <TrashIcon className="w-3 h-3" />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onRemoveItem(listId, item.id); }} 
+                            className="absolute -top-2 -right-2 z-20 p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-500 transition-all scale-90 sm:scale-100"
+                            title="Remove from list"
+                        >
+                            <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>

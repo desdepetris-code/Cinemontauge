@@ -1,10 +1,6 @@
-/**
- * CineMontauge Season Accordion Component
- * Displays episodes with progress tracking and truth overrides.
- */
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, Note } from '../types';
-import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
+import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleLeftRightIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, isNewRelease } from '../utils/formatUtils';
 import MarkAsWatchedModal, { LogWatchScope } from './MarkAsWatchedModal';
@@ -36,6 +32,7 @@ interface SeasonAccordionProps {
   favoriteEpisodes: FavoriteEpisodes;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
+  onToggleEpisodeRatingModal: (episode: Episode) => void;
   onSaveJournal: (showId: number, season: number, episode: number, entry: JournalEntry | null) => void;
   episodeRatings: EpisodeRatings;
   onOpenEpisodeRatingModal: (episode: Episode) => void;
@@ -197,8 +194,8 @@ const EpisodeItem: React.FC<{
                                 )}
                             </div>
                             {airtimeTruth && (
-                                <div className="flex items-center gap-1.5 bg-primary-accent text-on-accent font-black uppercase tracking-widest text-[9px] px-3 py-1 rounded-full self-start mt-1 shadow-[0_2px_10px_rgba(var(--color-accent-primary-rgb),0.3)]">
-                                    <ClockIcon className="w-3 h-3" />
+                                <div className="flex items-center gap-1.5 bg-primary-accent text-black font-black uppercase tracking-widest text-[9px] px-3 py-1 rounded-full self-start mt-1 shadow-[0_2px_10px_rgba(var(--color-accent-primary-rgb),0.3)]">
+                                    <ClockIcon className="w-3 h-3 text-black" />
                                     <span>{airtimeTruth}</span>
                                 </div>
                             )}
@@ -224,7 +221,7 @@ const EpisodeItem: React.FC<{
                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                         </ActionButton>
                         <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
-                            <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
+                            <ChatBubbleLeftRightIcon className="w-5 h-5" />
                         </ActionButton>
                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); onSetLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
                             <LogWatchIcon className="w-5 h-5" />

@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { UserData, CalendarItem, Reminder, TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, EpisodeProgress, TraktToken } from '../types';
+import { UserData, CalendarItem, Reminder, TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, EpisodeProgress, TraktToken,
+    /* // Added ReminderType to imports */
+    ReminderType
+} from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { getMyCalendarShows, getMyCalendarMovies, getStoredToken } from '../services/traktService';
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, CalendarIcon, SparklesIcon, ListBulletIcon, Squares2X2Icon } from '../components/Icons';
@@ -276,7 +278,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
                                 : currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })
                             }
                         </span>
-                        <ChevronDownIcon className="w-4 h-4 text-text-secondary opacity-40 group-hover:opacity-100 transition-opacity" />
+                        <ChevronDownIcon className="w-4 h-4 text-text-secondary opacity-40 group-hover:opacity-100 transition-all" />
                     </button>
                 </div>
                 <button onClick={handleNext} className="p-3 bg-bg-primary rounded-2xl text-text-primary hover:text-primary-accent transition-all shadow-md">
@@ -317,10 +319,11 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ userData, onSelectShow,
                                             isPast={new Date(`${item.date}T23:59:59`) < new Date()}
                                             isReminderSet={reminders.some(r => r.id === reminderId)}
                                             onToggleReminder={(type) => {
+                                                /* // Corrected reminder object literal to match Reminder interface */
                                                 const newReminder: Reminder | null = type ? {
                                                     id: reminderId, mediaId: item.id, mediaType: item.media_type,
                                                     releaseDate: item.date, title: item.title, poster_path: item.poster_path,
-                                                    episodeInfo: item.episodeInfo, reminderType: type,
+                                                    episodeInfo: item.episodeInfo, selectedTypes: [type], frequency: 'all',
                                                 } : null;
                                                 onToggleReminder(newReminder, reminderId);
                                             }}

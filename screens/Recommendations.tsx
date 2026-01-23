@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { TmdbMedia, TrackedItem, UserData, AppPreferences } from '../types';
-import { getTopPicksMixed } from '../services/tmdbService';
+import { getTopPicksMixed, getTrending } from '../services/tmdbService';
 import ActionCard from '../components/ActionCard';
-import { FireIcon } from '../components/Icons';
 
 interface RecommendationsProps {
+  mediaType?: 'movie' | 'tv';
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
   onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
@@ -14,9 +14,11 @@ interface RecommendationsProps {
   showRatings: boolean;
   preferences: AppPreferences;
   userData: UserData;
+  columns?: number;
 }
 
 const Recommendations: React.FC<RecommendationsProps> = ({ 
+    mediaType,
     onSelectShow, 
     onOpenAddToListModal, 
     onMarkShowAsWatched, 
@@ -25,31 +27,37 @@ const Recommendations: React.FC<RecommendationsProps> = ({
     completed, 
     showRatings, 
     preferences,
-    userData 
+    userData,
+    columns = 2
 }) => {
-    const [topPicks, setTopPicks] = useState<TmdbMedia[]>([]);
+    const [items, setItems] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchTopPicks = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const results = await getTopPicksMixed();
-                setTopPicks(results);
+                if (mediaType) {
+                    const results = await getTrending(mediaType);
+                    setItems(results.slice(0, 10));
+                } else {
+                    const results = await getTopPicksMixed();
+                    setItems(results);
+                }
             } catch (e) {
                 console.error("Failed to fetch discovery items", e);
             } finally {
                 setLoading(false);
             }
         };
-        fetchTopPicks();
-    }, []);
+        fetchData();
+    }, [mediaType]);
 
     if (loading) {
         return (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {[...Array(12)].map((_, i) => (
-                    <div key={i} className="aspect-[2/3] bg-bg-secondary/40 rounded-3xl animate-pulse"></div>
+            <div className={`grid grid-cols-${columns} gap-4`}>
+                {[...Array(4)].map((_, i) => (
+                    <div key={i} className="aspect-[2/3] bg-bg-secondary/40 rounded-2xl animate-pulse"></div>
                 ))}
             </div>
         );
@@ -57,8 +65,8 @@ const Recommendations: React.FC<RecommendationsProps> = ({
 
     return (
         <div className="animate-fade-in">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8">
-                {topPicks.map((item) => (
+            <div className={`grid grid-cols-${columns} gap-4 md:gap-6`}>
+                {items.map((item) => (
                     <ActionCard 
                         key={`${item.id}-${item.media_type}`} 
                         item={item} 
@@ -69,7 +77,7 @@ const Recommendations: React.FC<RecommendationsProps> = ({
                         isFavorite={favorites.some(f => f.id === item.id)}
                         isCompleted={completed.some(c => c.id === item.id)}
                         showRatings={showRatings}
-                        showSeriesInfo={preferences.searchShowSeriesInfo}
+                        showSeriesInfo="hidden"
                         userRating={userData.ratings[item.id]?.rating || 0}
                         userData={userData}
                     />

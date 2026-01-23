@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { TmdbMedia, TrackedItem, ReminderType, TmdbMediaDetails } from '../types';
+import { TmdbMedia, TrackedItem, ReminderType, TmdbMediaDetails, Reminder } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, BellIcon, HeartIcon } from './Icons';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_BACKDROP } from '../constants';
@@ -18,12 +18,12 @@ interface PremiereCardProps {
     item: TmdbMedia;
     onSelect: (id: number, media_type: 'tv' | 'movie') => void;
     onAddToList: () => void;
-    onToggleReminder: (type: ReminderType | null) => void;
-    isReminderSet: boolean;
+    onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
+    reminders: Reminder[];
     isCompleted: boolean;
 }
 
-const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList, onToggleReminder, isReminderSet, isCompleted }) => {
+const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList, onToggleReminder, reminders, isCompleted }) => {
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
     
@@ -34,6 +34,11 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
         }).catch(() => {});
         return () => { isMounted = false; };
     }, [item.id, item.media_type]);
+
+    const releaseDate = item.first_air_date || item.release_date;
+    const reminderId = releaseDate ? `rem-${item.media_type}-${item.id}-${releaseDate}` : '';
+    const currentReminder = reminders.find(r => r.id === reminderId);
+    const isReminderSet = !!currentReminder;
 
     const ageRating = useMemo(() => {
         if (!details) return null;
@@ -74,14 +79,25 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
     const handleReminderClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isReminderSet) {
-            onToggleReminder(null);
+            onToggleReminder(null, reminderId);
         } else {
             setIsReminderModalOpen(true);
         }
     };
-    const handleSelectReminderType = (type: ReminderType) => {
-        onToggleReminder(type);
-        setIsReminderModalOpen(false);
+
+    const handleSaveReminder = (selectedTypes: ReminderType[], frequency: 'first' | 'all') => {
+        const newReminder: Reminder = {
+            id: reminderId,
+            mediaId: item.id,
+            mediaType: item.media_type,
+            releaseDate: releaseDate!,
+            title: title,
+            poster_path: item.poster_path,
+            episodeInfo: item.media_type === 'tv' ? 'Series Premiere' : 'Theatrical Release',
+            selectedTypes,
+            frequency
+        };
+        onToggleReminder(newReminder, reminderId);
     };
 
     return (
@@ -89,7 +105,10 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
             <ReminderOptionsModal
                 isOpen={isReminderModalOpen}
                 onClose={() => setIsReminderModalOpen(false)}
-                onSelect={handleSelectReminderType}
+                onSave={handleSaveReminder}
+                mediaType={item.media_type as 'tv' | 'movie'}
+                initialTypes={currentReminder?.selectedTypes}
+                initialFrequency={currentReminder?.frequency}
             />
             <div className="w-72 flex-shrink-0 h-full">
                 <div 

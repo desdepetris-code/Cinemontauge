@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const TermsOfService: React.FC = () => {
@@ -25,7 +24,7 @@ const TermsOfService: React.FC = () => {
         <li className="text-text-secondary ml-6 mb-2 list-disc">Attempt to disrupt or interfere with our servers or networks.</li>
       </ul>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">4. Third-Party Services &amp; Data Attribution</h2>
+      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">4. Third-Party Services & Data Attribution</h2>
       <p className="text-text-secondary mb-4">CineMontauge is a personal tracking tool and does not host, stream, or provide links to any copyrighted media files. To provide rich media information, we utilize several third-party APIs. The distinction in their usage is as follows:</p>
 
       <ul className="list-disc ml-6 space-y-4 text-text-secondary">
@@ -43,7 +42,7 @@ const TermsOfService: React.FC = () => {
       </ul>
 
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">5. Intellectual Property &amp; DMCA Policy</h2>
+      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">5. Intellectual Property & DMCA Policy</h2>
       <p className="text-text-secondary mb-4">CineMontauge respects the intellectual property rights of others and expects its users to do the same. We comply with the Digital Millennium Copyright Act (DMCA).</p>
       
       <h3 className="text-xl font-bold text-text-primary mt-4 mb-2">DMCA & Copyright Policy</h3>
@@ -51,55 +50,27 @@ const TermsOfService: React.FC = () => {
       
       <div className="p-4 bg-bg-secondary rounded-lg space-y-2 mb-4">
         <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Preferred Contact (Email only if possible):</strong> <a href="mailto:sceneit623@gmail.com" className="text-primary-accent underline">sceneit623@gmail.com</a>
+          <strong className="font-semibold text-text-primary">Preferred Contact (Email only):</strong> <a href="mailto:cinemontauge623@gmail.com" className="text-primary-accent underline">cinemontauge623@gmail.com</a>
         </p>
         <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Mailing Address:</strong> For privacy reasons, our mailing address for formal legal correspondence is available upon request via email. Email remains the preferred method for all notices.
+          <strong className="font-semibold text-text-primary">Mailing Address:</strong> Available upon request via email.
         </p>
         <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Phone (optional):</strong> (229) 392-9884
+          <strong className="font-semibold text-text-primary">Phone:</strong> (229) 392-9884
         </p>
       </div>
 
-      <p className="text-text-secondary mb-4">Please include in your notice:</p>
-      <ol className="list-decimal ml-6 space-y-2 text-text-secondary">
-        <li>Description of the copyrighted work.</li>
-        <li>Location of the infringing material in the app.</li>
-        <li>Your contact info.</li>
-        <li>Statement of good faith belief that use is unauthorized.</li>
-        <li>Statement under penalty of perjury that info is accurate and you are the owner or authorized agent.</li>
-        <li>Your signature (electronic or physical).</li>
-      </ol>
-
-      <blockquote className="mt-4 p-4 border-l-4 border-primary-accent bg-bg-secondary/50 text-text-secondary italic">
-        Note: Official DMCA agent registration is pending due to temporary U.S. Copyright Office closure. CineMontauge strongly prefers email contact for all notices.
-      </blockquote>
-
-      <p className="text-text-secondary mt-4">CineMontauge will review and remove infringing material promptly in compliance with the DMCA.</p>
-
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">6. User-Generated Content</h2>
-      <p className="text-text-secondary mb-4">If you post content (such as journal entries or custom images), you grant CineMontauge a license to use it in connection with operating the service. You are solely responsible for the content you post and must ensure you have the rights to use it. We do not permit uploading video or audio files.</p>
+      <p className="text-text-secondary mb-4">If you post content (such as journal entries or custom images), you grant CineMontauge a license to use it in connection with operating the service. You are solely responsible for the content you post.</p>
       
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">7. Data Storage &amp; Loss</h2>
-      <p className="text-text-secondary mb-4">CineMontauge primarily stores your data (watch history, progress, lists, journal entries) locally in your web browser's storage. This means:</p>
-      <ul>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">You are responsible for your data.</strong> Clearing your browser's cache or site data will permanently delete your CineMontauge information.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Data will not automatically sync across your devices unless you use an optional cloud sync feature (like Google Drive).</li>
-      </ul>
-      <p className="text-text-secondary mb-4">We are not responsible for any data loss resulting from clearing browser storage or device failure. We strongly encourage you to use the available backup and sync features in the Settings menu to protect your data.</p>
+      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">7. Data Storage & Loss</h2>
+      <p className="text-text-secondary mb-4">CineMontauge primarily stores your data (watch history, progress, lists, journal entries) locally in your web browser's storage. Clearing your browser's cache or site data will permanently delete your information.</p>
       
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">8. Termination</h2>
-      <p className="text-text-secondary mb-4">We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may do so from the Settings page.</p>
+      <p className="text-text-secondary mb-4">We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever. Upon termination, your right to use the Service will immediately cease.</p>
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">9. Service Availability and Disclaimers</h2>
       <p className="text-text-secondary mb-4">The Service is provided on an "AS IS" and "AS AVAILABLE" basis. We do not warrant that the service will be uninterrupted, secure, or error-free.</p>
-      <p className="text-text-secondary mb-4"><strong className="font-semibold text-text-primary">Disclaimer of Data Accuracy:</strong> The movie and TV show information provided through CineMontauge is supplied by third-party APIs (such as TMDB). We do not guarantee the accuracy, completeness, or timeliness of this information and are not liable for any errors or omissions in the content.</p>
-
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">10. Governing Law</h2>
-      <p className="text-text-secondary mb-4">These Terms shall be governed and construed in accordance with the laws of the United States, without regard to its conflict of law provisions.</p>
-      
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">11. Changes to Terms</h2>
-      <p className="text-text-secondary mb-4">We may modify these terms at any time. We will notify you of any changes by posting the new Terms of Service in the app.</p>
     </div>
   );
 };

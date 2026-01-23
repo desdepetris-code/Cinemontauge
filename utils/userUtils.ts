@@ -1,4 +1,3 @@
-
 import { PublicUser, PublicCustomList, CustomList } from '../types';
 
 interface StoredUser {
@@ -61,7 +60,8 @@ export const searchPublicLists = (query: string, currentUserId: string | null): 
             if (listsJson) {
                 const lists: CustomList[] = JSON.parse(listsJson);
                 const matchingLists = lists
-                    .filter(list => list.isPublic && list.name.toLowerCase().includes(lowerCaseQuery))
+                    // FIX: Changed 'list.isPublic' to 'list.visibility === 'public'' to align with CustomList type
+                    .filter(list => list.visibility === 'public' && list.name.toLowerCase().includes(lowerCaseQuery))
                     .map(list => ({
                         ...list,
                         user: { id: user.id, username: user.username }

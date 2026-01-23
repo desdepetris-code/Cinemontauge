@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, WatchStatus, AppPreferences } from '../types';
+import { UserData, WatchStatus, AppPreferences, TrackedItem } from '../types';
 import ListGrid from '../components/ListGrid';
 import GenreFilter from '../components/GenreFilter';
 import Carousel from '../components/Carousel';
@@ -9,11 +9,12 @@ interface LibraryScreenProps {
   userData: UserData;
   genres: Record<number, string>;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
+  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   preferences: AppPreferences;
   initialStatus?: WatchStatus;
 }
 
-const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelectShow, preferences, initialStatus }) => {
+const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelectShow, onUpdateLists, preferences, initialStatus }) => {
   const [activeTab, setActiveTab] = useState<WatchStatus>(initialStatus || 'watching');
   const [selectedGenreId, setSelectedGenreId] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(preferences.searchAlwaysExpandFilters);
@@ -45,6 +46,13 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelec
     if (!selectedGenreId) return itemsForTab;
     return itemsForTab.filter(item => item.genre_ids?.includes(selectedGenreId));
   }, [itemsForTab, selectedGenreId]);
+
+  const handleRemoveFromLibrary = (listId: string, itemId: number) => {
+      const item = itemsForTab.find(i => i.id === itemId);
+      if (item && window.confirm(`Remove "${item.title}" from your ${activeTab} list?`)) {
+          onUpdateLists(item, activeTab, null);
+      }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -91,6 +99,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ userData, genres, onSelec
       <ListGrid 
         items={filteredItems} 
         onSelect={onSelectShow} 
+        listId={activeTab}
+        onRemoveItem={handleRemoveFromLibrary}
         showAddedAt={activeTab === 'planToWatch'} 
       />
     </div>

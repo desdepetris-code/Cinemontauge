@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScreenName, ProfileTab } from '../types';
-import { HomeIcon, ClockIcon, BadgeIcon, CogIcon, CollectionIcon, ArchiveBoxIcon, RectangleStackIcon, UserGroupIcon, ChartPieIcon, WritingBookIcon, ArrowTrendingUpIcon, FireIcon, CloudArrowUpIcon, TrophyIcon, PlayPauseIcon } from './Icons';
+import { HomeIcon, ArrowTrendingUpIcon, UserGroupIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, BadgeIcon, CloudArrowUpIcon, CogIcon } from './Icons';
 import Carousel from './Carousel';
 
 interface ShortcutNavigationProps {
@@ -10,21 +10,21 @@ interface ShortcutNavigationProps {
 
 const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.ReactNode }> = {
     home: { label: 'Home', icon: <HomeIcon className="w-5 h-5" /> },
-    overview: { label: 'Overview', icon: <ChartPieIcon className="w-5 h-5" /> },
+    overview: { label: 'Overview', icon: <PushPinIcon className="w-5 h-5" /> },
     progress: { label: 'Progress', icon: <ArrowTrendingUpIcon className="w-5 h-5" /> },
-    history: { label: 'History', icon: <ClockIcon className="w-5 h-5" /> },
-    library: { label: 'Library', icon: <CollectionIcon className="w-5 h-5" /> },
-    lists: { label: 'Custom Lists', icon: <RectangleStackIcon className="w-5 h-5" /> },
+    history: { label: 'History', icon: <WavesIcon className="w-5 h-5" /> },
+    library: { label: 'Library', icon: <CabinetIcon className="w-5 h-5" /> },
+    lists: { label: 'Lists', icon: <TagIcon className="w-5 h-5" /> },
     activity: { label: 'Activity', icon: <UserGroupIcon className="w-5 h-5" /> },
-    stats: { label: 'Stats', icon: <ChartPieIcon className="w-5 h-5" /> },
-    seasonLog: { label: 'Log', icon: <ArchiveBoxIcon className="w-5 h-5" /> },
-    journal: { label: 'Journal', icon: <WritingBookIcon className="w-5 h-5" /> },
+    stats: { label: 'Stats', icon: <MagnifyingGlassIcon className="w-5 h-5" /> },
+    seasonLog: { label: 'Log', icon: <ScrollIcon className="w-5 h-5" /> },
+    journal: { label: 'Journal', icon: <QuillIcon className="w-5 h-5" /> },
     achievements: { label: 'Achievements', icon: <BadgeIcon className="w-5 h-5" /> },
     imports: { label: 'Import & Sync', icon: <CloudArrowUpIcon className="w-5 h-5" /> },
     settings: { label: 'Settings', icon: <CogIcon className="w-5 h-5" /> },
-    updates: { label: 'Updates', icon: <FireIcon className="w-5 h-5" /> },
-    weeklyPicks: { label: 'Weekly Picks', icon: <TrophyIcon className="w-5 h-5" /> },
-    ongoing: { label: 'Catch Up', icon: <PlayPauseIcon className="w-5 h-5" /> },
+    updates: { label: 'Updates', icon: <CurlyLoopIcon className="w-5 h-5" /> },
+    weeklyPicks: { label: 'Weekly Picks', icon: <TargetIcon className="w-5 h-5" /> },
+    ongoing: { label: 'Catch Up', icon: <HourglassIcon className="w-5 h-5" /> },
 };
 
 const ShortcutButton: React.FC<{

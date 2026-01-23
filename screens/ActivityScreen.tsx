@@ -162,7 +162,8 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
             if (listsJson) {
                 const lists: CustomList[] = JSON.parse(listsJson);
                 lists.forEach(l => {
-                    if (l.isPublic) {
+                    // FIX: Changed 'l.isPublic' to 'l.visibility === 'public'' to align with CustomList type
+                    if (l.visibility === 'public') {
                         userActivities.push({
                             user, timestamp: l.createdAt, type: 'CREATED_LIST',
                             listName: l.name, media: l.items[0] // Use first item for poster

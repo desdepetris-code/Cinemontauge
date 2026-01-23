@@ -1,4 +1,3 @@
-
 import { Episode, TmdbMediaDetails, TmdbSeasonDetails, EpisodeTag } from '../types';
 
 export function getEpisodeTag(
@@ -12,38 +11,20 @@ export function getEpisodeTag(
   let tagText: string | null = null;
   let className = 'bg-gray-600 text-white';
 
-  // --- Priority 1: Check if it's the sequence-based finale ---
-  // The user requested that the last episode in the season would be the season finale.
-  const isLastInSeason = seasonDetails && episode.episode_number === seasonDetails.episodes.length;
-
-  if (isLastInSeason) {
-      const isLatestSeason = season.season_number === showDetails.number_of_seasons;
-      if (isLatestSeason && (showDetails.status === 'Ended' || showDetails.status === 'Canceled')) {
-          tagText = "Series Finale";
-          className = 'bg-black text-white';
-      } else {
-          tagText = "Season Finale";
-          className = 'bg-red-600 text-white';
-      }
+  // --- Strictly use TMDb Metadata for Finales ---
+  // The user requested: "If an episode is not labeled as season finale or series finale in tmdb it should not be labeled as that on the episode on this site."
+  if (episode.episode_type === 'series_finale') {
+    tagText = "Series Finale";
+    className = 'bg-black text-white';
+  } else if (episode.episode_type === 'season_finale') {
+    tagText = "Season Finale";
+    className = 'bg-red-600 text-white';
+  } else if (episode.episode_type === 'midseason_finale') {
+    tagText = "Mid-Season Finale";
+    className = 'bg-orange-600 text-white';
   }
 
-  // --- Priority 2: TMDb Metadata (only if not already marked as finale by sequence) ---
-  if (!tagText) {
-    if (episode.episode_type === 'series_finale') {
-      tagText = "Series Finale";
-      className = 'bg-black text-white';
-    } else if (episode.episode_type === 'season_finale') {
-      // We only apply this if it's actually the last episode to prevent premature labeling
-      // unless the sequence check already caught it.
-      tagText = "Season Finale";
-      className = 'bg-red-600 text-white';
-    } else if (episode.episode_type === 'midseason_finale') {
-      tagText = "Mid-Season Finale";
-      className = 'bg-orange-600 text-white';
-    }
-  }
-
-  // --- Priority 3: Premiere Logic ---
+  // --- Priority 2: Premiere Logic (only if not a finale) ---
   if (!tagText && episode.episode_number === 1) {
     if (season.season_number === 1) {
       tagText = "Series Premiere";

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-/* FIX: Added missing ArrowPathIcon import */
 import { XMarkIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, CheckCircleIcon, TrashIcon, ArrowPathIcon } from './Icons';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
@@ -56,8 +55,9 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
             type: step === 'timezone' ? 'Timezone Issue' : 'Missing Airdate',
             timezone: selectedTimezone,
             episodes: Array.from(selectedEpisodes).map(id => {
-                /* FIX: Explicitly cast Object.values(seasonMap) to Episode[][] to resolve 'Property find does not exist on type unknown' error */
-                for (const s of Object.values(seasonMap) as Episode[][]) {
+                const seasons = Object.values(seasonMap) as (Episode[] | undefined)[];
+                for (const s of seasons) {
+                    if (!s) continue;
                     const ep = s.find(e => e.id === id);
                     if (ep) return `S${ep.season_number} E${ep.episode_number}: ${ep.name}`;
                 }
@@ -73,10 +73,10 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
             <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/10 flex flex-col relative" onClick={e => e.stopPropagation()}>
                 <header className="p-8 bg-card-gradient border-b border-white/5 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter leading-none">Airtime Request</h2>
-                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-60">Help improve the SceneIt database</p>
+                        <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter leading-none">Airtime Correction</h2>
+                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-60">Refine the CineMontauge Truth Database</p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-text-secondary transition-colors"><XMarkIcon className="w-6 h-6" /></button>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-text-secondary transition-colors"><XMarkIcon className="w-5 h-6" /></button>
                 </header>
 
                 <div className="p-8 flex-grow overflow-y-auto custom-scrollbar max-h-[60vh]">
@@ -91,8 +91,8 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
                                         <ClockIcon className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <span className="text-sm font-black text-text-primary uppercase tracking-widest">Timezone Discrepancy</span>
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase opacity-50">Local times don't match broadcast</p>
+                                        <span className="text-sm font-black text-text-primary uppercase tracking-widest">Timezone Mismatch</span>
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase opacity-50">Local clock drift detected</p>
                                     </div>
                                 </div>
                                 <ChevronDownIcon className="w-5 h-5 -rotate-90 text-text-secondary opacity-20 group-hover:opacity-100" />
@@ -107,8 +107,8 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
                                         <ListBulletIcon className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <span className="text-sm font-black text-text-primary uppercase tracking-widest">Missing Airdates</span>
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase opacity-50">Episodes are missing "The Truth"</p>
+                                        <span className="text-sm font-black text-text-primary uppercase tracking-widest">Gap in Registry</span>
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase opacity-50">Airdates missing for specific episodes</p>
                                     </div>
                                 </div>
                                 <ChevronDownIcon className="w-5 h-5 -rotate-90 text-text-secondary opacity-20 group-hover:opacity-100" />
@@ -118,14 +118,14 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
 
                     {step === 'timezone' && (
                         <div className="space-y-6">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">Select Correct Broadcast Timezone</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">Correct Broadcast Region</label>
                             <div className="relative">
                                 <select 
                                     value={selectedTimezone}
                                     onChange={(e) => setSelectedTimezone(e.target.value)}
                                     className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary font-bold focus:outline-none border border-white/10 appearance-none"
                                 >
-                                    <option value="">Choose Timezone...</option>
+                                    <option value="">Select Region...</option>
                                     {allTimezones.map(tz => (
                                         <option key={tz.id} value={tz.id}>{tz.name}</option>
                                     ))}
@@ -137,7 +137,7 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
 
                     {step === 'episodes' && (
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">Select Episodes with Issues</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">Audit Affected Episodes</label>
                             <div className="space-y-2">
                                 {showDetails.seasons?.filter(s => s.season_number > 0).map(s => (
                                     <div key={s.id} className="bg-bg-secondary/20 rounded-2xl border border-white/5 overflow-hidden">
@@ -149,7 +149,7 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
                                             <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedSeason === s.season_number ? 'rotate-180' : ''}`} />
                                         </button>
                                         {expandedSeason === s.season_number && (
-                                            <div className="p-2 space-y-1 bg-black/20 border-t border-white/5">
+                                            <div className="p-2 space-y-1 bg-black/10 border-t border-white/5">
                                                 {loadingSeason ? (
                                                     <div className="py-4 text-center animate-pulse"><ArrowPathIcon className="w-5 h-5 animate-spin mx-auto text-primary-accent" /></div>
                                                 ) : (
@@ -185,7 +185,7 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
                             disabled={step === 'type' || (step === 'timezone' && !selectedTimezone) || (step === 'episodes' && selectedEpisodes.size === 0)}
                             className="flex-grow py-4 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-30 disabled:hover:scale-100"
                         >
-                            Send Request
+                            Submit Correction
                         </button>
                     </div>
                     <button 
@@ -193,7 +193,7 @@ const AirtimeRequestModal: React.FC<AirtimeRequestModalProps> = ({ isOpen, onClo
                         className="w-full flex items-center justify-center gap-2 py-3 text-[9px] font-black uppercase tracking-[0.3em] text-red-500/60 hover:text-red-500 transition-colors group"
                     >
                         <TrashIcon className="w-3 h-3" />
-                        <span>Discard Request</span>
+                        <span>Discard Audit</span>
                     </button>
                 </footer>
             </div>

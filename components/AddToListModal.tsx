@@ -55,7 +55,7 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[110] p-4" onClick={resetAndClose}>
-            <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in relative border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-sm p-8 animate-fade-in relative border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
                 <button onClick={resetAndClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
                     <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -85,12 +85,12 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
                                             onClick={() => handleAdd(list.id)}
                                             className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
                                                 isAlreadyInList 
-                                                    ? 'bg-primary-accent/10 border-primary-accent shadow-md' 
+                                                    ? 'bg-white border-black shadow-md' 
                                                     : 'bg-bg-secondary/20 border-white/5 text-text-primary hover:bg-bg-secondary'
                                             }`}
                                         >
-                                            <span className={`text-xs font-bold uppercase tracking-tight ${isAlreadyInList ? 'text-primary-accent' : 'text-text-primary'}`}>{list.name}</span>
-                                            {isAlreadyInList && <CheckCircleIcon className="w-5 h-5 text-primary-accent" />}
+                                            <span className={`text-xs font-bold uppercase tracking-tight ${isAlreadyInList ? 'text-black' : 'text-text-primary'}`}>{list.name}</span>
+                                            {isAlreadyInList && <CheckCircleIcon className="w-5 h-5 text-black" />}
                                         </button>
                                     );
                                 })

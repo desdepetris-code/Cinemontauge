@@ -55,7 +55,7 @@ interface ShowDetailProps {
   // removed duplicate onToggleFavoriteShow definition
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkMediaAsWatched: (item: any, date?: string) => void;
-  onUnmarkMovieWatched: (mediaId: number) => void;
+  onUnmarkMovieWatched: (mediaId: number, deleteLive?: boolean) => void;
   // Removed duplicate onMarkSeasonWatched declaration
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
@@ -337,6 +337,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     }
   };
 
+  const handleUnmarkMovie = () => {
+    const movieHistory = history.filter(h => h.id === id);
+    const hasLiveSessionRecord = movieHistory.some(h => h.logId.startsWith('live-'));
+    
+    if (hasLiveSessionRecord) {
+        if (window.confirm("You have a live watch session record for this movie in history. Would you like to delete its history and progress as well?\n\nClick OK to 'remove' it from history, progress, and Continue Watching.\nClick Cancel to 'Don't remove' it (only manual finished logs will be removed).")) {
+            props.onUnmarkMovieWatched(id, true);
+        } else {
+            props.onUnmarkMovieWatched(id, false);
+        }
+    } else {
+        props.onUnmarkMovieWatched(id, false);
+    }
+  };
+
   const handleCommentsAction = () => {
     // FIX: Corrected state setter name from setActiveThread to setActiveCommentThread
     setActiveCommentThread('general');
@@ -492,11 +507,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 ) : (
                   <DetailedActionButton 
-                      label="Mark Watched" 
+                      label={currentStatus === 'completed' ? "Unmark Watch" : "Mark Watch"}
                       className="col-span-2"
-                      icon={<CheckCircleIcon className="w-6 h-6" />} 
-                      // FIX: Corrected property name from onMarkMediaAs_watched to onMarkMediaAsWatched
-                      onClick={() => props.onMarkMediaAsWatched(details)} 
+                      isActive={currentStatus === 'completed'}
+                      icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
+                      {/* FIX: Added props. prefix to onMarkMediaAsWatched to fix "Cannot find name 'onMarkMediaAsWatched'" error */}
+                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : props.onMarkMediaAsWatched(details)} 
                   />
                 )}
                 <DetailedActionButton 

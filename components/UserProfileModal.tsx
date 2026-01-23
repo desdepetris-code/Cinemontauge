@@ -52,7 +52,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ userId, currentUser
                 const listsJson = localStorage.getItem(`custom_lists_${userId}`);
                 if (listsJson) {
                     const allLists: CustomList[] = JSON.parse(listsJson);
-                    setPublicLists(allLists.filter(list => list.isPublic));
+                    // FIX: Changed 'list.isPublic' to 'list.visibility === 'public'' to align with CustomList type
+                    setPublicLists(allLists.filter(list => list.visibility === 'public'));
                 }
             }
         }

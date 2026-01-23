@@ -1,3 +1,4 @@
+
 // TMDB API Key. For a production app, this should be in an environment variable.
 export const TMDB_API_KEY = 'b7922161a07780ff1d7caf291ecfa9ec';
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
@@ -37,8 +38,8 @@ const logoSvgPart = `
   <path d="M2 50L20 42V58L2 50Z" fill="#222" />
   <circle cx="50" cy="50" r="37" fill="black" stroke="url(#p-grad-main)" stroke-width="2" />
   <path d="M50 18L51.5 22.5H56L52.5 25L54 29.5L50 27L46 29.5L47.5 25L44 22.5H48.5L50 18Z" fill="#333" />
-  <text x="50%" y="52" font-family="Arial Black, sans-serif" font-size="24" font-weight="900" fill="url(#p-grad-text)" text-anchor="middle" letter-spacing="-1">CM</text>
-  <text x="50%" y="68" font-family="Arial Black, sans-serif" font-size="5" font-weight="900" fill="#333" text-anchor="middle" letter-spacing="1.2">CineMontauge</text>
+  <text x="50" y="52" font-family="Arial Black, sans-serif" font-size="24" font-weight="900" fill="url(#p-grad-text)" text-anchor="middle" letter-spacing="-1">CM</text>
+  <text x="50" y="68" font-family="Arial Black, sans-serif" font-size="5" font-weight="900" fill="#333" text-anchor="middle" letter-spacing="1.2">CineMontauge</text>
 `;
 
 const posterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 100 150" fill="none">
@@ -50,7 +51,7 @@ const posterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="3
 
 const backdropSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 160 90" fill="none">
   <rect width="160" height="90" fill="#0a0a0a" />
-  <g transform="translate(45 10) scale(0.7)">
+  <g transform="translate(42.5 7.5) scale(0.75)">
     ${logoSvgPart}
   </g>
 </svg>`;

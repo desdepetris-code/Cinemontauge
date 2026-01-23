@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings, DeletedHistoryItem, DeletedNote } from '../types';
-import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon } from '../components/Icons';
+import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon, PlayPauseIcon } from '../components/Icons';
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
 import CompactShowCard from '../components/CompactShowCard';
@@ -14,6 +14,7 @@ type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments' | 'd
 // --- WATCH HISTORY TAB ---
 type WatchHistoryFilter = 'all' | 'shows' | 'movies' | 'seasons' | 'episodes' | 'movies_episodes' | 'movies_seasons';
 
+// Component to render the watch history list with filters
 const WatchHistory: React.FC<{
   history: HistoryItem[];
   onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
@@ -29,7 +30,7 @@ const WatchHistory: React.FC<{
     if (selectedDate) items = items.filter(i => new Date(i.timestamp).toISOString().split('T')[0] === selectedDate);
     if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        items = items.filter(i => i.title.toLowerCase().includes(query) || i.episodeTitle?.toLowerCase().includes(query));
+        items = items.filter(i => (i.title || (i as any).name || '').toLowerCase().includes(query) || i.episodeTitle?.toLowerCase().includes(query));
     }
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -60,11 +61,11 @@ const WatchHistory: React.FC<{
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-grow">
-                <input type="text" placeholder="Search history..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 font-bold" />
+                <input type="text" placeholder="Search history..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-bg-secondary rounded-xl text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent border border-white/5 font-bold shadow-inner" />
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
             </div>
             <div className="relative min-w-[180px]">
-                <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full pl-10 pr-10 py-3 text-xs font-black uppercase tracking-widest cursor-pointer" />
+                <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full pl-10 pr-10 py-3 bg-bg-secondary rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer text-text-primary focus:outline-none border border-white/5 shadow-inner" />
                 <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-accent pointer-events-none" />
                 {selectedDate && <button onClick={() => setSelectedDate('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary"><XMarkIcon className="w-5 h-5" /></button>}
             </div>
@@ -72,7 +73,7 @@ const WatchHistory: React.FC<{
         <Carousel>
             <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
                 {(['all', 'shows', 'movies', 'seasons', 'episodes'] as const).map(id => (
-                    <button key={id} onClick={() => setActiveFilter(id)} className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all type-box-filter ${activeFilter === id ? 'bg-accent-gradient text-on-accent' : 'bg-bg-primary text-text-primary/70'}`}>
+                    <button key={id} onClick={() => setActiveFilter(id)} className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeFilter === id ? 'bg-accent-gradient text-on-accent shadow-lg' : 'bg-bg-primary text-text-primary/70 border border-white/5'}`}>
                         <span>{id}</span>
                     </button>
                 ))}
@@ -85,44 +86,76 @@ const WatchHistory: React.FC<{
             const watchDate = new Date(item.timestamp);
             const month = watchDate.toLocaleString('default', { month: 'short' });
             const day = watchDate.getDate();
+            const isLiveLog = item.startTime && item.endTime;
+            const displayTitle = item.title || (item as any).name || 'Untitled';
 
             return (
                 <div key={item.logId} className="bg-bg-secondary/20 rounded-[2rem] border border-white/5 overflow-hidden flex flex-col shadow-2xl animate-fade-in group">
-                    {/* Top Image Section */}
                     <div className="w-full aspect-video relative cursor-pointer overflow-hidden" onClick={() => onSelectShow(item.id, item.media_type)}>
-                        <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={displayTitle} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                         
-                        {/* Date Widget Overlay */}
                         <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
                             <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
                             <span className="text-xl font-black text-white leading-none">{day}</span>
                         </div>
+
+                        {isLiveLog && (
+                            <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white shadow-xl">
+                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                                <span className="text-[8px] font-black uppercase tracking-widest">Live Session Record</span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Bottom Info Section */}
-                    <div className="p-6 flex items-center justify-between gap-4">
-                        <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
-                            <h3 className="text-xl font-black text-text-primary uppercase tracking-tight truncate leading-tight group-hover:text-primary-accent transition-colors">
-                                {item.title}
-                            </h3>
-                            {item.media_type === 'tv' && (
-                                <p className="text-xs font-black text-primary-accent/80 uppercase tracking-[0.1em] mt-1">
-                                    S{item.seasonNumber} E{item.episodeNumber} {item.episodeTitle && <span className="text-text-secondary opacity-60 ml-1"> &bull; {item.episodeTitle}</span>}
-                                </p>
-                            )}
-                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-2 opacity-50">
-                                {formatDateTime(item.timestamp, timezone)}
-                            </p>
+                    <div className="p-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
+                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tight truncate leading-tight group-hover:text-primary-accent transition-colors">
+                                    {displayTitle}
+                                </h3>
+                                {item.media_type === 'tv' && (
+                                    <p className="text-xs font-black text-primary-accent/80 uppercase tracking-[0.1em] mt-1">
+                                        S{item.seasonNumber} E{item.episodeNumber} {item.episodeTitle && <span className="text-text-secondary opacity-60 ml-1"> &bull; {item.episodeTitle}</span>}
+                                    </p>
+                                )}
+                            </div>
+
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }}
+                                className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0"
+                                title="Delete this capture"
+                            >
+                                <TrashIcon className="w-6 h-6" />
+                            </button>
                         </div>
 
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }}
-                            className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20"
-                            title="Delete this capture"
-                        >
-                            <TrashIcon className="w-6 h-6" />
-                        </button>
+                        {isLiveLog ? (
+                            <div className="mt-4 p-4 bg-bg-primary/40 rounded-2xl border border-white/5 space-y-3">
+                                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-text-secondary">
+                                    <div className="flex items-center gap-2">
+                                        <ClockIcon className="w-3.5 h-3.5 text-primary-accent" />
+                                        <span>Session Duration</span>
+                                    </div>
+                                    <span className="text-text-primary">{formatTimeFromDate(item.startTime!, timezone)} — {formatTimeFromDate(item.endTime!, timezone)}</span>
+                                </div>
+                                {item.pauseCount && item.pauseCount > 0 ? (
+                                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-text-secondary border-t border-white/5 pt-2">
+                                        <div className="flex items-center gap-2">
+                                            <PlayPauseIcon className="w-3.5 h-3.5 text-amber-500" />
+                                            <span>Interruptions</span>
+                                        </div>
+                                        <span className="text-amber-500">{item.pauseCount} Pauses</span>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : (
+                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-4 opacity-50">
+                                {formatDateTime(item.timestamp, timezone)}
+                            </p>
+                        )}
+                        
+                        {item.note && <p className="text-xs text-text-secondary italic mt-4 p-3 bg-bg-secondary/30 rounded-xl whitespace-pre-wrap border border-white/5">"{item.note}"</p>}
                     </div>
                 </div>
             );
@@ -132,244 +165,212 @@ const WatchHistory: React.FC<{
   );
 };
 
-// --- RECENTLY DELETED TAB ---
-
-const DaysRemainingCircle: React.FC<{ deletedAt: string }> = ({ deletedAt }) => {
-    const diff = Date.now() - new Date(deletedAt).getTime();
-    const daysPassed = diff / (1000 * 60 * 60 * 24);
-    const daysLeft = Math.max(0, Math.ceil(30 - daysPassed));
-
-    return (
-        <div className="absolute -top-3 -right-3 w-14 h-14 rounded-full bg-red-600 border-4 border-bg-primary shadow-2xl flex flex-col items-center justify-center z-20 transition-transform hover:scale-110">
-            <span className="text-white font-black text-lg leading-none">{daysLeft}</span>
-            <span className="text-[7px] text-white/80 font-black uppercase tracking-widest leading-none mt-0.5">Days</span>
-        </div>
-    );
-};
-
-const RecentlyDeleted: React.FC<{
-    items: DeletedHistoryItem[];
-    deletedNotes: DeletedNote[];
-    onRestore: (item: DeletedHistoryItem) => void;
-    onPermanentDelete: (logId: string) => void;
-    onClearAll: () => void;
-    onRestoreNote: (note: DeletedNote) => void;
-    onPermanentDeleteNote: (noteId: string) => void;
-    timezone: string;
-}> = ({ items, deletedNotes, onRestore, onPermanentDelete, onClearAll, onRestoreNote, onPermanentDeleteNote, timezone }) => {
-    const sortedHistory = useMemo(() => [...items].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [items]);
-    const sortedNotes = useMemo(() => [...deletedNotes].sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()), [deletedNotes]);
-
-    const hasAnyContent = items.length > 0 || deletedNotes.length > 0;
-
-    return (
-        <div className="space-y-12">
-            <div className="flex flex-col sm:flex-row justify-between items-center bg-primary-accent/5 rounded-2xl border border-primary-accent/10 p-4 gap-4">
-                <div className="flex items-center gap-4">
-                  <InformationCircleIcon className="w-6 h-6 text-primary-accent flex-shrink-0" />
-                  <div className="text-xs text-text-secondary leading-relaxed font-medium">
-                      <strong className="text-text-primary uppercase block mb-1">Personal Trash Bin (30 Day Policy)</strong>
-                      Captures and Notes remain here for 30 days before permanent automatic removal. 
-                  </div>
-                </div>
-                {hasAnyContent && (
-                    <button 
-                        onClick={() => { if(window.confirm("Permanently empty everything in the trash? This cannot be undone.")) onClearAll(); }}
-                        className="px-6 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all flex-shrink-0 shadow-lg"
-                    >
-                        Empty All Trash
-                    </button>
-                )}
-            </div>
-
-            {/* DELETED CAPTURES SECTION */}
-            {items.length > 0 && (
-                <section>
-                    <div className="flex items-center gap-4 mb-6">
-                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest whitespace-nowrap">Deleted Watch Logs</h2>
-                        <div className="h-px w-full bg-white/5"></div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {sortedHistory.map(item => (
-                            <div key={item.logId} className="relative flex gap-4 p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 group animate-fade-in opacity-80 hover:opacity-100 transition-opacity">
-                                <DaysRemainingCircle deletedAt={item.deletedAt} />
-                                <img src={getImageUrl(item.poster_path, 'w92')} className="w-16 h-24 rounded-lg object-cover bg-bg-secondary flex-shrink-0" alt="" />
-                                <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                    <h3 className="text-text-primary font-black uppercase tracking-tight truncate">{item.title}</h3>
-                                    {item.media_type === 'tv' && (
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">
-                                            S{item.seasonNumber} E{item.episodeNumber}
-                                        </p>
-                                    )}
-                                    <div className="mt-3">
-                                        <span className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Deleted {new Date(item.deletedAt).toLocaleDateString()}</span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2 self-center">
-                                    <button 
-                                        onClick={() => onRestore(item)}
-                                        className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-green-400 hover:bg-green-400/10 transition-all border border-white/5 shadow-md"
-                                        title="Restore Log"
-                                    >
-                                        <ArrowPathIcon className="w-5 h-5" />
-                                    </button>
-                                    <button 
-                                        onClick={() => { if(window.confirm("Permanently delete this log?")) onPermanentDelete(item.logId); }}
-                                        className="p-3 bg-bg-secondary rounded-xl text-text-primary hover:text-red-500 hover:bg-red-500/10 transition-all border border-white/5 shadow-md"
-                                        title="Delete Permanently"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {/* DELETED NOTES SECTION */}
-            {deletedNotes.length > 0 && (
-                <section>
-                    <div className="flex items-center gap-4 mb-6">
-                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest whitespace-nowrap">Deleted Notes</h2>
-                        <div className="h-px w-full bg-white/5"></div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {sortedNotes.map(note => (
-                            <div key={note.id} className="relative flex flex-col p-4 bg-bg-secondary/20 rounded-2xl border border-white/5 group animate-fade-in opacity-80 hover:opacity-100 transition-opacity">
-                                <DaysRemainingCircle deletedAt={note.deletedAt} />
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="min-w-0 pr-8">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <PencilSquareIcon className="w-3.5 h-3.5 text-primary-accent" />
-                                            <h3 className="text-text-primary font-black uppercase tracking-tight truncate text-xs">{note.mediaTitle}</h3>
-                                        </div>
-                                        <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate">{note.context}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => { if(window.confirm("Permanently delete this note?")) onPermanentDeleteNote(note.id); }}
-                                            className="p-2 bg-bg-secondary rounded-lg text-text-primary hover:text-red-500 hover:bg-red-500/10 transition-all border border-white/5 shadow-sm"
-                                            title="Delete Permanently"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="bg-yellow-100/10 dark:bg-yellow-900/10 p-3 rounded-xl border border-yellow-500/10 mb-3">
-                                    <p className="text-xs text-text-primary/90 italic leading-relaxed line-clamp-3">"{note.text}"</p>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[8px] font-black text-text-secondary/40 uppercase tracking-widest">Deleted {new Date(note.deletedAt).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {!hasAnyContent && (
-                <div className="text-center py-40 opacity-50 flex flex-col items-center">
-                    <TrashIcon className="w-20 h-20 text-text-secondary/20 mb-6" />
-                    <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Trash is empty</h2>
-                    <p className="mt-2 text-sm text-text-secondary uppercase tracking-widest font-bold opacity-40">Anything you remove will appear here for 30 days.</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
 // --- SEARCH HISTORY TAB ---
+// Component to render search history logs
 const SearchHistory: React.FC<{
-  searchHistory: SearchHistoryItem[];
-  onDelete: (timestamp: string) => void;
-  onClear: () => void;
-  onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
-  timezone: string;
-}> = ({ searchHistory, onDelete, onClear, onSelectShow, timezone }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center px-2">
-        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">Recent Activity</h2>
-        {searchHistory.length > 0 && <button type="button" onClick={() => { if(window.confirm("Clear all search history?")) onClear(); }} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline">Clear All</button>}
-    </div>
-    {searchHistory.length > 0 ? (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {searchHistory.map(item => (
-          <div key={item.timestamp} className="relative group">
-            <button type="button" onClick={() => onDelete(item.timestamp)} className="absolute -top-2 -right-2 z-30 p-1.5 bg-red-500 text-white rounded-full transition-opacity shadow-lg"><XMarkIcon className="w-3.5 h-3.5" /></button>
-            {item.item ? (
-              <div className="space-y-2 cursor-pointer" onClick={() => onSelectShow(item.item!.id, item.item!.media_type)}>
-                <ActionCard item={item.item as any} onSelect={() => onSelectShow(item.item!.id, item.item!.media_type)} onOpenAddToListModal={() => {}} onMarkShowAsWatched={() => {}} onToggleFavoriteShow={() => {}} isFavorite={false} isCompleted={false} showRatings={false} showSeriesInfo="hidden" />
-                <p className="text-[8px] font-black text-text-secondary/40 uppercase tracking-widest text-center">{formatDate(item.timestamp, timezone, { month: 'short', day: 'numeric' })}</p>
-              </div>
+    history: SearchHistoryItem[];
+    onDelete: (timestamp: string) => void;
+    onClear: () => void;
+    onQueryChange: (query: string) => void;
+    onSelectShow: (id: number, type: 'tv' | 'movie') => void;
+    userData: UserData;
+}> = ({ history, onDelete, onClear, onQueryChange, onSelectShow, userData }) => {
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center px-2">
+                <h2 className="text-xl font-bold text-text-primary uppercase tracking-widest">Recent Searches</h2>
+                <button onClick={onClear} className="text-xs font-black uppercase text-red-500 hover:text-red-400 transition-colors">Clear All</button>
+            </div>
+            {history.length === 0 ? (
+                <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
+                    <p className="text-text-secondary font-bold uppercase tracking-widest text-xs">No search history found.</p>
+                </div>
             ) : (
-              <div className="bg-bg-secondary/30 rounded-2xl p-4 h-full flex flex-col justify-center items-center text-center border border-white/5 hover:bg-bg-secondary/50 transition-all cursor-default group-hover:border-primary-accent/30">
-                <SearchIcon className="w-6 h-6 text-primary-accent mb-2 opacity-60" />
-                <p className="text-sm text-text-primary font-black uppercase tracking-tight line-clamp-2">"{item.query}"</p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-3">{formatDate(item.timestamp, timezone, { month: 'short', day: 'numeric' })}</p>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {history.map(h => (
+                        <div key={h.timestamp} className="bg-bg-secondary/20 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary-accent/30 transition-all shadow-lg">
+                            <div className="flex-grow min-w-0">
+                                {h.item ? (
+                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSelectShow(h.item!.id, h.item!.media_type as any)}>
+                                        <img src={getImageUrl(h.item.poster_path, 'w92')} className="w-10 h-14 object-cover rounded-lg shadow-md border border-white/10" alt="" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-black text-text-primary truncate uppercase">{h.item.title || (h.item as any).name}</p>
+                                            <p className="text-[10px] text-text-secondary uppercase tracking-widest opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="cursor-pointer px-2" onClick={() => onQueryChange(h.query || '')}>
+                                        <p className="text-sm font-bold text-text-primary truncate italic">"{h.query}"</p>
+                                        <p className="text-[10px] text-text-secondary uppercase tracking-widest opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {/* FIX: Ensure delete button is prominent and always visible */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete(h.timestamp); }} 
+                                className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md border border-red-500/20 ml-4 flex-shrink-0"
+                                title="Delete search capture"
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
             )}
-          </div>
-        ))}
-      </div>
-    ) : <div className="text-center py-20 opacity-50"><p className="text-text-secondary font-black uppercase tracking-widest">No history found</p></div>}
-  </div>
-);
+        </div>
+    );
+};
 
-// --- MAIN SCREEN ---
 interface HistoryScreenProps {
   userData: UserData;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
-  onRestoreHistoryItem?: (item: DeletedHistoryItem) => void;
-  onPermanentDeleteHistoryItem?: (logId: string) => void;
-  onClearAllDeletedHistory?: () => void;
+  onRestoreHistoryItem: (item: DeletedHistoryItem) => void;
+  onPermanentDeleteHistoryItem: (logId: string) => void;
+  onClearAllDeletedHistory: () => void;
   onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;
   genres: Record<number, string>;
   timezone: string;
-  onPermanentDeleteNote?: (noteId: string) => void;
-  onRestoreNote?: (note: DeletedNote) => void;
+  onPermanentDeleteNote: (noteId: string) => void;
+  onRestoreNote: (note: DeletedNote) => void;
 }
 
+// Main History Screen component that manages tabs
 const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
   const [activeTab, setActiveTab] = useState<HistoryTab>('watch');
-  const tabs: { id: HistoryTab, label: string, icon: any }[] = [
-    { id: 'watch', label: 'Timeline', icon: ClockIcon },
-    { id: 'search', label: 'Searches', icon: SearchIcon },
+
+  const tabs: { id: HistoryTab; label: string; icon: any }[] = [
+    { id: 'watch', label: 'Watching', icon: PlayPauseIcon },
+    { id: 'search', label: 'Search', icon: SearchIcon },
     { id: 'ratings', label: 'Ratings', icon: StarIcon },
     { id: 'favorites', label: 'Favorites', icon: HeartIcon },
     { id: 'comments', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
-    { id: 'deleted', label: 'Trash Bin', icon: TrashIcon },
+    { id: 'deleted', label: 'Trash', icon: TrashIcon },
   ];
 
   return (
-    <div className="animate-fade-in max-w-6xl mx-auto px-4 pb-20">
-      <header className="mb-8">
-        <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Your Legacy</h1>
-      </header>
-      <div className="mb-8 flex p-1 bg-bg-secondary/50 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl overflow-x-auto hide-scrollbar">
-          {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center justify-center gap-2 px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex-1 ${activeTab === tab.id ? 'bg-accent-gradient text-on-accent' : 'text-text-secondary hover:text-text-primary'}`}>
-                  <tab.icon className="w-4 h-4" />
-                  {tab.label}
-              </button>
-          ))}
+    <div className="animate-fade-in space-y-8 pb-20">
+      <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar border-b border-white/5">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+              activeTab === tab.id
+                ? 'bg-accent-gradient text-on-accent shadow-xl scale-105'
+                : 'bg-bg-secondary/40 text-text-primary/60 border border-white/5 hover:bg-bg-secondary hover:text-text-primary'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
-      {activeTab === 'watch' && <WatchHistory history={props.userData.history} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} timezone={props.timezone} />}
-      {activeTab === 'search' && <SearchHistory searchHistory={props.userData.searchHistory} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} onSelectShow={props.onSelectShow} timezone={props.timezone} />}
-      {activeTab === 'favorites' && <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">{props.userData.favorites.map(i => <CompactShowCard key={i.id} item={i} onSelect={props.onSelectShow} />)}</div>}
-      {activeTab === 'deleted' && (
-        <RecentlyDeleted 
-            items={props.userData.deletedHistory} 
-            deletedNotes={props.userData.deletedNotes}
-            onRestore={props.onRestoreHistoryItem!} 
-            onPermanentDelete={props.onPermanentDeleteHistoryItem!} 
-            onClearAll={props.onClearAllDeletedHistory!} 
-            onRestoreNote={props.onRestoreNote!}
-            onPermanentDeleteNote={props.onPermanentDeleteNote!}
-            timezone={props.timezone} 
+
+      {activeTab === 'watch' && (
+        <WatchHistory 
+          history={props.userData.history} 
+          onSelectShow={props.onSelectShow} 
+          onDeleteHistoryItem={props.onDeleteHistoryItem} 
+          timezone={props.timezone} 
         />
+      )}
+      
+      {activeTab === 'search' && (
+        <SearchHistory 
+          history={props.userData.searchHistory} 
+          onDelete={props.onDeleteSearchHistoryItem}
+          onClear={props.onClearSearchHistory}
+          onQueryChange={() => {}} 
+          onSelectShow={(id, type) => props.onSelectShow(id, type)}
+          userData={props.userData}
+        />
+      )}
+
+      {activeTab === 'ratings' && (
+          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
+              <StarIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
+              <p className="font-black uppercase tracking-widest text-[10px]">Rating history module arriving in registry update</p>
+          </div>
+      )}
+
+      {activeTab === 'favorites' && (
+          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
+              <HeartIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
+              <p className="font-black uppercase tracking-widest text-[10px]">Favorites collection module implementation pending</p>
+          </div>
+      )}
+
+      {activeTab === 'comments' && (
+          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
+              <ChatBubbleOvalLeftEllipsisIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
+              <p className="font-black uppercase tracking-widest text-[10px]">Comment archive module arriving soon</p>
+          </div>
+      )}
+      
+      {activeTab === 'deleted' && (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center mb-4 px-2">
+                <div>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-tighter">Trash Bin</h2>
+                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60">30-day retention period active</p>
+                </div>
+                <button 
+                    onClick={props.onClearAllDeletedHistory}
+                    className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl shadow-lg"
+                >
+                    Purge All Data
+                </button>
+            </div>
+
+            {props.userData.deletedHistory.length === 0 && props.userData.deletedNotes.length === 0 ? (
+                <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-40">
+                    <TrashIcon className="w-12 h-12 mx-auto mb-4" />
+                    <p className="font-black uppercase tracking-widest text-[10px]">Registry trash is empty</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {props.userData.deletedHistory.map(item => {
+                        const displayTitle = item.title || (item as any).name || 'Untitled';
+                        return (
+                            <div key={item.logId} className="bg-bg-secondary/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary-accent/30 transition-all shadow-xl">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <img src={getImageUrl(item.poster_path, 'w92')} className="w-12 h-18 object-cover rounded-xl shadow-lg border border-white/10" alt="" />
+                                    <div className="min-w-0">
+                                        <h3 className="font-black text-text-primary uppercase tracking-tight truncate leading-tight">{displayTitle}</h3>
+                                        {item.media_type === 'tv' && (
+                                            <p className="text-[9px] text-text-secondary uppercase tracking-[0.2em] font-bold opacity-60 mt-1">S{item.seasonNumber} E{item.episodeNumber}</p>
+                                        )}
+                                        <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest mt-2 italic">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 ml-4">
+                                    <button onClick={() => props.onRestoreHistoryItem(item)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md" title="Restore"><ArrowPathIcon className="w-5 h-5" /></button>
+                                    <button onClick={() => props.onPermanentDeleteHistoryItem(item.logId)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md" title="Destroy Permanently"><TrashIcon className="w-5 h-5" /></button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {props.userData.deletedNotes.map(note => (
+                        <div key={note.id} className="bg-yellow-900/10 p-4 rounded-2xl border border-yellow-500/20 flex items-center justify-between group hover:border-yellow-500/40 transition-all shadow-xl">
+                            <div className="min-w-0 flex-grow pr-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <PencilSquareIcon className="w-4 h-4 text-yellow-500 opacity-60" />
+                                    <h3 className="font-black text-yellow-500 uppercase tracking-tighter text-xs truncate">{note.mediaTitle}</h3>
+                                </div>
+                                <p className="text-[10px] text-text-primary font-bold line-clamp-1 opacity-80 italic">"{note.text}"</p>
+                                <p className="text-[8px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-50">Context: {note.context}</p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                                <button onClick={() => props.onRestoreNote(note)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md" title="Restore"><ArrowPathIcon className="w-5 h-5" /></button>
+                                <button onClick={() => props.onPermanentDeleteNote(note.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md" title="Destroy Permanently"><TrashIcon className="w-5 h-5" /></button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
       )}
     </div>
   );

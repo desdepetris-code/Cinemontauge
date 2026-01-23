@@ -1,4 +1,3 @@
-
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
 import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem, NewlyPopularEpisode, CastMember, CrewMember } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
@@ -128,9 +127,15 @@ export const findByTvdbId = async (tvdbId: number): Promise<TmdbFindResponse | n
 
 export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Promise<TmdbMediaDetails> => {
   if (!id || isNaN(id)) throw new Error("Valid ID required");
+  if (mediaType !== 'tv' && mediaType !== 'movie') {
+    console.error(`getMediaDetails called with invalid mediaType: ${mediaType}`);
+    throw new Error("The resource you requested could not be found.");
+  }
+  
   const cacheKey = `tmdb_details_v4_${mediaType}_${id}`;
   const cached = getFromCache<TmdbMediaDetails>(cacheKey);
   if (cached) return cached;
+  
   const imageLangParam = "include_image_language=en,null";
   const commonAppend = "images,recommendations,credits,videos,external_ids,watch/providers";
   
@@ -140,8 +145,8 @@ export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Pr
         fetchFromTmdb<{ results: any[] }>(`tv/${id}/content_ratings`).catch(() => ({ results: [] }))
     ]);
     if (!detailsData) throw new Error("The resource you requested could not be found.");
-    detailsData.content_ratings = ratingsData || { results: [] };
     detailsData.media_type = 'tv';
+    detailsData.content_ratings = ratingsData || { results: [] };
     setToCache(cacheKey, detailsData, CACHE_TTL);
     return detailsData;
   } else {
@@ -461,6 +466,10 @@ export const getPersonDetails = async (personId: number): Promise<PersonDetails>
 
 export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): Promise<WatchProviderResponse | null> => {
     if (!id || isNaN(id)) throw new Error("Valid ID required");
+    if (mediaType !== 'tv' && mediaType !== 'movie') {
+        console.warn(`getWatchProviders called with invalid mediaType: ${mediaType}`);
+        return null;
+    }
     const cacheKey = `tmdb_providers_${mediaType}_${id}`;
     const cached = getFromCache<WatchProviderResponse>(cacheKey);
     if (cached) return cached;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { searchMediaPaginated, searchPeoplePaginated, discoverMedia } from '../services/tmdbService';
+import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, ArrowPathIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, EyeSlashIcon, EyeIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import RelatedRecommendations from '../components/RelatedRecommendations';
@@ -34,18 +34,26 @@ interface SearchScreenProps {
   preferences: AppPreferences;
 }
 
-const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' | 'onUpdateSearchHistory'>> = (props) => {
+const DiscoverView: React.FC<SearchScreenProps> = (props) => {
+    const { 
+        userData, searchHistory, preferences, onClearSearchHistory, 
+        onDeleteSearchHistoryItem, onSelectShow, onQueryChange,
+        onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow,
+        favorites, showRatings
+    } = props;
+
     const latestWatchedItem = useMemo(() => {
-        return [...props.userData.history]
+        if (!userData.history || userData.history.length === 0) return null;
+        return [...userData.history]
           .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .find(h => !h.logId.startsWith('live-'));
-    }, [props.userData.history]);
+    }, [userData.history]);
     
-    const showRecentHistory = props.preferences.searchShowRecentHistory !== false;
+    const showRecentHistory = preferences.searchShowRecentHistory !== false;
 
     return (
         <div className="space-y-12 animate-fade-in pb-20">
-            {showRecentHistory && props.searchHistory.length > 0 && (
+            {showRecentHistory && searchHistory && searchHistory.length > 0 && (
                 <section>
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
@@ -54,7 +62,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                         </div>
                         <button 
                             type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onClearSearchHistory(); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClearSearchHistory(); }}
                             className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors"
                         >
                             Clear All
@@ -62,35 +70,36 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                     </div>
                     <Carousel>
                         <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar">
-                            {props.searchHistory.map((h) => (
+                            {searchHistory.map((h) => (
                                 <div key={h.timestamp} className="relative group/h flex-shrink-0 w-48">
                                     <button 
                                         type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); props.onDeleteSearchHistoryItem(h.timestamp); }}
-                                        className="absolute -top-2 -right-2 z-20 p-1.5 bg-red-500 text-white rounded-full transition-opacity shadow-lg"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteSearchHistoryItem(h.timestamp); }}
+                                        className="absolute -top-1 -right-1 z-20 p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-500 transition-all scale-90"
+                                        title="Delete search from history"
                                     >
-                                        <XMarkIcon className="w-3.5 h-3.5" />
+                                        <TrashIcon className="w-4 h-4" />
                                     </button>
                                     {h.item ? (
                                         <div className="w-full">
                                             <ActionCard 
                                                 item={h.item as any} 
-                                                onSelect={() => props.onSelectShow(h.item!.id, h.item!.media_type as any)} 
-                                                onOpenAddToListModal={() => {}} 
-                                                onMarkShowAsWatched={() => {}} 
-                                                onToggleFavoriteShow={() => {}} 
-                                                isFavorite={false} 
-                                                isCompleted={false} 
-                                                showRatings={false} 
+                                                onSelect={() => onSelectShow(h.item!.id, h.item!.media_type as any)} 
+                                                onOpenAddToListModal={onOpenAddToListModal} 
+                                                onMarkShowAsWatched={onMarkShowAsWatched} 
+                                                onToggleFavoriteShow={onToggleFavoriteShow} 
+                                                isFavorite={favorites.some(f => f.id === h.item!.id)} 
+                                                isCompleted={userData.completed.some(c => c.id === h.item!.id)} 
+                                                showRatings={showRatings} 
                                                 showSeriesInfo="hidden" 
-                                                userData={props.userData}
+                                                userData={userData}
                                             />
                                         </div>
                                     ) : (
                                         <button 
                                             type="button"
-                                            onClick={() => (props as any).onQueryChange(h.query!)}
-                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all min-h-[100px]"
+                                            onClick={() => onQueryChange(h.query || '')}
+                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all min-h-[100px] flex flex-col justify-center"
                                         >
                                             <p className="text-xs font-black text-text-primary uppercase tracking-tight line-clamp-2">"{h.query}"</p>
                                             <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
@@ -109,25 +118,56 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
                     <SparklesIcon className="w-8 h-8 text-primary-accent" />
                     <div>
                         <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none">Top Picks For You</h2>
-                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.3em] mt-2 opacity-60">Trending and curated discovery</p>
+                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.3em] mt-2 opacity-60">Separated by category for your convenience</p>
                     </div>
                 </div>
-                <Recommendations 
-                    userData={props.userData} 
-                    onSelectShow={props.onSelectShow}
-                    onMarkShowAsWatched={props.onMarkShowAsWatched}
-                    onOpenAddToListModal={props.onOpenAddToListModal}
-                    onToggleFavoriteShow={props.onToggleFavoriteShow}
-                    favorites={props.favorites}
-                    completed={props.userData.completed}
-                    showRatings={props.showRatings}
-                    preferences={props.preferences}
-                />
+
+                <div className="grid grid-cols-2 gap-6 lg:gap-12">
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                            <FilmIcon className="w-5 h-5 text-sky-400" />
+                            <h3 className="text-lg font-black text-text-primary uppercase tracking-widest">Top Movies</h3>
+                        </div>
+                        <Recommendations 
+                            mediaType="movie"
+                            onSelectShow={onSelectShow}
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onOpenAddToListModal={onOpenAddToListModal}
+                            onToggleFavoriteShow={onToggleFavoriteShow}
+                            favorites={favorites}
+                            completed={userData.completed}
+                            showRatings={showRatings}
+                            preferences={preferences}
+                            userData={userData}
+                            columns={1}
+                        />
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                            <TvIcon className="w-5 h-5 text-rose-500" />
+                            <h3 className="text-lg font-black text-text-primary uppercase tracking-widest">Top Shows</h3>
+                        </div>
+                        <Recommendations 
+                            mediaType="tv"
+                            onSelectShow={onSelectShow}
+                            onMarkShowAsWatched={onMarkShowAsWatched}
+                            onOpenAddToListModal={onOpenAddToListModal}
+                            onToggleFavoriteShow={onToggleFavoriteShow}
+                            favorites={favorites}
+                            completed={userData.completed}
+                            showRatings={showRatings}
+                            preferences={preferences}
+                            userData={userData}
+                            columns={1}
+                        />
+                    </div>
+                </div>
             </section>
 
             {latestWatchedItem && (
                 <section className="pt-4">
-                    <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} completed={props.userData.completed} />
+                    <RelatedRecommendations seedItems={[latestWatchedItem]} {...props} />
                 </section>
             )}
         </div>
@@ -137,7 +177,7 @@ const DiscoverView: React.FC<Omit<SearchScreenProps, 'query' | 'onQueryChange' |
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, onSelectUser, searchHistory, onUpdateSearchHistory, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onMarkPreviousEpisodesWatched, onToggleFavoriteShow, favorites, genres, userData, currentUser, onToggleLikeList, timezone, showRatings, preferences } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences } = props;
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
@@ -153,6 +193,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const [genreFilter, setGenreFilter] = useState<string>('');
   const [yearFilter, setYearFilter] = useState<string>('');
   const [sortFilter, setSortFilter] = useState<string>('popularity.desc');
+  const [hideWatched, setHideWatched] = useState(false);
 
   useEffect(() => {
     if (preferences.searchAlwaysExpandFilters) {
@@ -200,6 +241,15 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     if (mediaTypeFilter !== 'all') results = results.filter(item => item.media_type === mediaTypeFilter);
     if (genreFilter) results = results.filter(item => item.genre_ids?.includes(Number(genreFilter)));
     if (yearFilter && yearFilter.length === 4) results = results.filter(i => (i.release_date || i.first_air_date || '').substring(0, 4) === yearFilter);
+    
+    if (hideWatched) {
+        results = results.filter(i => {
+            const isCompleted = userData.completed.some(c => c.id === i.id);
+            const isCaughtUp = userData.allCaughtUp.some(c => c.id === i.id);
+            return !isCompleted && !isCaughtUp;
+        });
+    }
+
     results.sort((a, b) => {
       switch (sortFilter) {
         case 'release_date.desc': return new Date(b.release_date || b.first_air_date || 0).getTime() - new Date(a.release_date || a.first_air_date || 0).getTime();
@@ -209,7 +259,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
       }
     });
     return results;
-  }, [mediaResults, mediaTypeFilter, genreFilter, yearFilter, sortFilter]);
+  }, [mediaResults, mediaTypeFilter, genreFilter, yearFilter, sortFilter, hideWatched, userData.completed, userData.allCaughtUp]);
 
   const handleItemSelect = (id: number, media_type: 'tv' | 'movie', item: TmdbMedia) => {
     const tracked: TrackedItem = { id: item.id, title: item.title || item.name || 'Untitled', media_type: item.media_type, poster_path: item.poster_path, genre_ids: item.genre_ids };
@@ -227,9 +277,19 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     switch (activeTab) {
         case 'media': return (
             <div className="space-y-6">
-                {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && (
-                    <div className="flex justify-end items-center mb-4">
-                        {!preferences.searchAlwaysExpandFilters && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                    <div className="flex-grow w-full md:w-auto">
+                        <button 
+                            onClick={() => setHideWatched(!hideWatched)}
+                            className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl transition-all border shadow-lg ${hideWatched ? 'bg-accent-gradient text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
+                        >
+                            {hideWatched ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                            <span className="text-xs font-black uppercase tracking-widest">Hide Watched</span>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && !preferences.searchAlwaysExpandFilters && (
                             <button 
                                 onClick={() => setShowFiltersToggle(!showFiltersToggle)}
                                 className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
@@ -239,7 +299,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             </button>
                         )}
                     </div>
-                )}
+                </div>
 
                 {(showFiltersToggle || preferences.searchAlwaysExpandFilters) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-bg-secondary/20 rounded-3xl border border-white/5 animate-fade-in shadow-inner">
@@ -347,8 +407,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         {query.length > 0 ? renderSearchResults() : (
             <DiscoverView 
                 {...props} 
-                onQueryChange={onQueryChange}
-                onUpdateSearchHistory={onUpdateSearchHistory}
             />
         )}
         

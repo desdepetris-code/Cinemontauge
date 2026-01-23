@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { getUpcomingMovieReleases } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, Reminder, ReminderType, WatchStatus } from '../types';
@@ -72,10 +71,6 @@ const UpcomingMoviesCarousel: React.FC<UpcomingMoviesCarouselProps> = (props) =>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                     {media.map(item => {
                         const isCompleted = completed.some(c => c.id === item.id);
-                        const releaseDate = item.release_date;
-                        const reminderId = releaseDate ? `rem-movie-${item.id}-${releaseDate}` : '';
-                        const isReminderSet = reminders.some(r => r.id === reminderId);
-                        
                         return (
                             <PremiereCard 
                                 key={`${item.id}-${item.media_type}`}
@@ -83,15 +78,8 @@ const UpcomingMoviesCarousel: React.FC<UpcomingMoviesCarouselProps> = (props) =>
                                 onSelect={onSelectShow}
                                 onAddToList={() => onOpenAddToListModal(item)}
                                 isCompleted={isCompleted}
-                                isReminderSet={isReminderSet}
-                                onToggleReminder={(type) => {
-                                    const newReminder: Reminder | null = type ? {
-                                        id: reminderId, mediaId: item.id, mediaType: 'movie',
-                                        releaseDate: releaseDate!, title: item.title || 'Untitled', poster_path: item.poster_path,
-                                        episodeInfo: 'Theatrical Release', reminderType: type,
-                                    } : null;
-                                    onToggleReminder(newReminder, reminderId);
-                                }}
+                                reminders={reminders}
+                                onToggleReminder={onToggleReminder}
                             />
                         );
                     })}

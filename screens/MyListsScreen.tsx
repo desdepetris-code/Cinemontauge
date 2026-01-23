@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, CustomList, CustomListItem, AppPreferences } from '../types';
+import { UserData, CustomList, CustomListItem, AppPreferences, ListVisibility } from '../types';
 import ListCard from '../components/ListCard';
 import ListDetailView from '../components/ListDetailView';
-import { PlusIcon, ListBulletIcon } from '../components/Icons';
+import { PlusIcon, ListBulletIcon, GlobeAltIcon, UsersIcon, LockClosedIcon, CheckCircleIcon } from '../components/Icons';
 import { confirmationService } from '../services/confirmationService';
 
 // --- Reusable Modal ---
 
-const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name: string, description: string, isPublic: boolean) => void; listToEdit?: CustomList | null }> = ({ isOpen, onClose, onSave, listToEdit }) => {
+const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name: string, description: string, visibility: ListVisibility) => void; listToEdit?: CustomList | null }> = ({ isOpen, onClose, onSave, listToEdit }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [isPublic, setIsPublic] = useState(false);
+    const [visibility, setVisibility] = useState<ListVisibility>('public');
 
     useEffect(() => {
         if (isOpen) {
             setName(listToEdit?.name || '');
             setDescription(listToEdit?.description || '');
-            setIsPublic(listToEdit?.isPublic || false);
+            setVisibility(listToEdit?.visibility || 'public');
         }
     }, [isOpen, listToEdit]);
 
@@ -24,15 +24,22 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
     
     const handleSave = () => {
         if (!name.trim()) return alert("List name cannot be empty.");
-        onSave(name, description, isPublic);
+        onSave(name, description, visibility);
         onClose();
     };
 
+    const visibilityOptions: { id: ListVisibility; label: string; icon: any; desc: string }[] = [
+        { id: 'public', label: 'Public', icon: GlobeAltIcon, desc: 'Visible to everyone on overview.' },
+        { id: 'followers', label: 'Followers', icon: UsersIcon, desc: 'Only you and followers see this on overview.' },
+        { id: 'private', label: 'Private', icon: LockClosedIcon, desc: 'Hidden from overview entirely.' },
+    ];
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[200] p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 border border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-6">{listToEdit ? 'Edit Collection' : 'New Collection'}</h2>
-                <div className="space-y-4">
+                
+                <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2">
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Display Name</label>
                         <input type="text" placeholder="e.g. 90s Noir..." value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-bold" disabled={listToEdit?.id === 'watchlist'} />
@@ -41,20 +48,31 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Description (Optional)</label>
                         <textarea placeholder="Tell the story of this collection..." value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-medium leading-relaxed" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-bg-secondary/40 rounded-2xl border border-white/5">
-                        <div className="min-w-0 pr-4">
-                            <span className="text-xs font-black uppercase tracking-widest text-text-primary block">Public Sync</span>
-                            <p className="text-[9px] text-text-secondary font-bold uppercase tracking-widest opacity-60 leading-tight mt-0.5">Allow other users to discover and like this list.</p>
+                    
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Privacy & Overview Visibility</label>
+                        <div className="grid grid-cols-1 gap-2">
+                            {visibilityOptions.map(opt => (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => setVisibility(opt.id)}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${visibility === opt.id ? 'bg-primary-accent/20 border-primary-accent shadow-lg' : 'bg-bg-secondary/40 border-white/5 hover:border-white/10'}`}
+                                >
+                                    <div className={`p-2 rounded-xl ${visibility === opt.id ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-text-secondary'}`}>
+                                        <opt.icon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-grow min-w-0">
+                                        <span className={`text-xs font-black uppercase tracking-widest block ${visibility === opt.id ? 'text-primary-accent' : 'text-text-primary'}`}>{opt.label}</span>
+                                        <p className="text-[9px] text-text-secondary font-bold uppercase tracking-tighter opacity-60">{opt.desc}</p>
+                                    </div>
+                                    {visibility === opt.id && <CheckCircleIcon className="w-5 h-5 text-primary-accent" />}
+                                </button>
+                            ))}
                         </div>
-                        <input 
-                            type="checkbox" 
-                            checked={isPublic} 
-                            onChange={e => setIsPublic(e.target.checked)}
-                            className="h-6 w-6 rounded-lg border-white/10 text-primary-accent bg-bg-primary focus:ring-primary-accent" 
-                        />
                     </div>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8">
+
+                <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 flex-shrink-0">
                     <button onClick={onClose} className="px-8 py-3 rounded-full text-text-secondary font-black uppercase tracking-widest text-xs hover:text-text-primary transition-colors">Cancel</button>
                     <button onClick={handleSave} className="px-10 py-3 rounded-full text-on-accent bg-accent-gradient font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-105 transition-transform">Save Collection</button>
                 </div>
@@ -82,22 +100,20 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
     return userData.customLists.find(l => l.id === activeListId);
   }, [userData.customLists, activeListId]);
 
-  const handleCreateList = (name: string, description: string, isPublic: boolean) => {
-    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), isPublic, likes: [] };
+  const handleCreateList = (name: string, description: string, visibility: ListVisibility) => {
+    const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), visibility, likes: [] };
     setCustomLists(prev => [newList, ...prev]);
     confirmationService.show(`Collection "${name}" added.`);
   };
     
-  const handleEditList = (name: string, description: string, isPublic: boolean) => {
+  const handleEditList = (name: string, description: string, visibility: ListVisibility) => {
     if (!listToEdit) return;
-    setCustomLists(prev => prev.map(l => l.id === listToEdit.id ? { ...l, name, description, isPublic } : l));
+    setCustomLists(prev => prev.map(l => l.id === listToEdit.id ? { ...l, name, description, visibility } : l));
     confirmationService.show(`Collection details updated.`);
   };
 
   const handleUpdateList = (updatedList: CustomList) => {
     setCustomLists(prev => prev.map(l => l.id === updatedList.id ? updatedList : l));
-    // Silent update if just description, or maybe a small toast? 
-    // The user action of saving is explicit enough.
   };
 
   const handleDeleteList = (listId: string) => {
