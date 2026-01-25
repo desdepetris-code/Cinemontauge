@@ -57,21 +57,30 @@ const App: React.FC = () => {
     }, []);
 
     const handleSignup = useCallback(async ({ username, email, password }): Promise<string | null> => {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: { username }
             }
         });
+
         if (error) return error.message;
         
-        // Profiles are usually handled by a trigger, but we ensure one exists
-        // (RLS allows owner insert)
-        await supabase.from('profiles').insert([{ id: (await supabase.auth.getUser()).data.user?.id, username, user_xp: 0 }]);
+        // If a session exists immediately (email confirmation is OFF), create the profile
+        if (data.session) {
+            await supabase.from('profiles').upsert({ 
+                id: data.user?.id, 
+                username, 
+                user_xp: 0 
+            });
+            confirmationService.show(`Account created! Welcome, ${username}.`);
+        } else {
+            // Email confirmation is likely ON
+            confirmationService.show(`Registration successful! Please check your email (${email}) to confirm your account before logging in.`);
+        }
         
         setIsAuthModalOpen(false);
-        confirmationService.show(`Welcome to CineMontauge! Please check your email for a confirmation link.`);
         return null;
     }, []);
 
