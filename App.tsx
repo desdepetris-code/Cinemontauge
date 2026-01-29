@@ -22,7 +22,9 @@ const App: React.FC = () => {
     useEffect(() => {
         // Initial session check
         supabase.auth.getSession().then(({ data: { session }, error }) => {
-            if (error) console.error("Supabase Session Error:", error.message);
+            if (error) {
+                console.error("Supabase Session Error:", error.message, error.status);
+            }
             if (session) {
                 setCurrentUser({
                     id: session.user.id,
@@ -35,7 +37,7 @@ const App: React.FC = () => {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.debug("Auth Event:", event);
+            console.debug("Supabase Auth Event:", event);
             if (session) {
                 setCurrentUser({
                     id: session.user.id,
@@ -53,14 +55,32 @@ const App: React.FC = () => {
     const handleLogin = useCallback(async ({ email, password }): Promise<string | null> => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-            console.error("Login Error:", error);
+            console.error("Supabase Login Error:", error);
             return error.message;
         }
         setIsAuthModalOpen(false);
         return null;
     }, []);
 
+    const handleGoogleLogin = useCallback(async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                },
+            }
+        });
+        if (error) {
+            console.error("Google Auth Error:", error.message);
+            alert("Google Sign-In failed: " + error.message);
+        }
+    }, []);
+
     const handleSignup = useCallback(async ({ username, email, password }): Promise<string | null> => {
+        console.debug("Attempting signup for:", email);
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -70,10 +90,14 @@ const App: React.FC = () => {
         });
 
         if (error) {
-            console.error("Signup Error Details:", error);
-            // If the error is specifically about the API key, it might be a network/CORS issue or a project-level setting
+            console.error("Supabase Signup Error Details:", {
+                message: error.message,
+                status: error.status,
+                name: error.name
+            });
+            
             if (error.message.toLowerCase().includes('api key')) {
-                return "The server rejected the API key. Please ensure 'Enable Signup' is active in your Supabase Auth settings.";
+                return "Authentication Registry Error: The server rejected the API key. Ensure VITE_ environment variables are correctly set in Vercel.";
             }
             return error.message;
         }
@@ -110,7 +134,7 @@ const App: React.FC = () => {
     if (loading) return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
         <div className="w-16 h-16 border-4 border-primary-accent border-t-transparent rounded-full animate-spin mb-4"></div>
-        <div className="font-black uppercase tracking-widest animate-pulse text-sm">Synchronizing Registry...</div>
+        <div className="font-black uppercase tracking-widest animate-pulse text-sm text-primary-accent">Verifying Connection...</div>
       </div>
     );
     
@@ -133,6 +157,7 @@ const App: React.FC = () => {
                 isOpen={isAuthModalOpen}
                 onClose={() => setIsAuthModalOpen(false)}
                 onLogin={handleLogin}
+                onGoogleLogin={handleGoogleLogin}
                 onSignup={handleSignup}
                 onForgotPasswordRequest={handleForgotPasswordRequest}
                 onForgotPasswordReset={() => Promise.resolve(null)}
