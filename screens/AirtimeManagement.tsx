@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
 import { generateAirtimePDF, generateSupabaseSpecPDF } from '../utils/pdfExportUtils';
@@ -9,6 +9,7 @@ import { confirmationService } from '../services/confirmationService';
 import * as pushNotificationService from '../services/pushNotificationService';
 import BroadcastModal from '../components/BroadcastModal';
 import { supabase } from '../services/supabaseClient';
+import Logo from '../components/Logo';
 
 interface AirtimeManagementProps {
     onBack: () => void;
@@ -26,6 +27,9 @@ interface ReportOffset {
     mediaType: 'tv' | 'movie';
 }
 
+/**
+ * Owner portal for registry truth database auditing and system management.
+ */
 const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData }) => {
     const [pin, setPin] = useState('');
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -34,6 +38,9 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, matches: 0 });
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [downloadedPdfs, setDownloadedPdfs] = useLocalStorage<DownloadedPdf[]>('cinemontauge_reports', []);
+
+    // Brand Asset Capture
+    const logoRef = useRef<SVGSVGElement>(null);
 
     // Connection Test State
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -58,6 +65,54 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         const globalRegistry = globalRegistryStr ? JSON.parse(globalRegistryStr) : [];
         return globalRegistry.length;
     }, []);
+
+    const handleDownloadLogo = () => {
+        if (!logoRef.current) {
+            console.error("Logo ref is missing");
+            return;
+        }
+        
+        try {
+            const svg = logoRef.current;
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement("canvas");
+            
+            // Set high resolution for the exported image (1000x1000)
+            const exportSize = 1000;
+            canvas.width = exportSize;
+            canvas.height = exportSize;
+            
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+
+            // Fill background with black for the JPEG
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const img = new Image();
+            const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, exportSize, exportSize);
+                const jpgUrl = canvas.toDataURL("image/jpeg", 0.95); // High quality
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.href = jpgUrl;
+                downloadLink.download = 'cinemontauge-brand-asset.jpg';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                
+                URL.revokeObjectURL(url);
+                confirmationService.show("Logo exported as 1000px JPEG.");
+            };
+            img.src = url;
+        } catch (error) {
+            console.error("Failed to download logo:", error);
+            alert("JPEG Export failed. Your browser might be restricting canvas operations.");
+        }
+    };
 
     const handleTestConnection = async () => {
         setConnectionStatus('testing');
@@ -164,7 +219,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     if (currentMatches >= DEFAULT_MATCH_LIMIT) {
                         setReportOffsets(prev => ({
                             ...prev,
-                            [type]: { ...prev[type], page: currentPage, index: i + 1, part: prev[type].part + 1 }
+                            [type]: { ...prev[type], page: currentPage, index: i + 1 }
                         }));
                         break;
                     }
@@ -173,311 +228,164 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 currentPage++;
             }
 
-            if (rows.length > 0) {
-                generateAirtimePDF(label, rows, offset.part);
-                const newReport: DownloadedPdf = {
-                    id: `rep-${Date.now()}`,
-                    title: `${label} (Part ${offset.part})`,
-                    timestamp: new Date().toISOString(),
-                    part: offset.part,
-                    rows: rows
-                };
-                setDownloadedPdfs(prev => [newReport, ...prev].slice(0, 20));
-                confirmationService.show(`Registry Report Generated: ${rows.length} entries.`);
-            } else {
-                confirmationService.show("No gaps found in this block.");
-            }
+            generateAirtimePDF(label, rows, offset.part);
+            setDownloadedPdfs(prev => [{
+                id: `rep-${Date.now()}`,
+                title: label,
+                timestamp: new Date().toISOString(),
+                part: offset.part,
+                rows
+            }, ...prev]);
+
+            setReportOffsets(prev => ({
+                ...prev,
+                [type]: { ...prev[type], part: prev[type].part + 1 }
+            }));
+
+            confirmationService.show(`${label} Generated!`);
         } catch (e) {
             console.error(e);
-            confirmationService.show("Audit failed.");
+            alert("Report generation failed.");
         } finally {
             setIsGenerating(null);
         }
     };
 
-    const handleExportSupabaseSpec = () => {
-        confirmationService.show("Generating Backend Specification...");
-        generateSupabaseSpecPDF();
-    };
-
-    const handleDeletePdf = (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        if (window.confirm("Remove this report from history?")) {
-            setDownloadedPdfs(prev => prev.filter(p => p.id !== id));
-        }
-    };
-
-    const handlePinInput = useCallback((digit: string) => {
-        setPin(prev => {
-            if (prev.length >= 15) return prev;
-            const newPin = prev + digit;
-            if (newPin.length === 15) {
-                if (newPin === MASTER_PIN) setIsAuthorized(true);
-                else {
-                    setPinError(true);
-                    setTimeout(() => { setPin(''); setPinError(false); }, 1000);
-                }
-            }
-            return newPin;
-        });
-    }, []);
-
-    useEffect(() => {
-        if (isAuthorized) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (/^\d$/.test(e.key)) handlePinInput(e.key);
-            else if (e.key === 'Backspace') setPin(prev => prev.slice(0, -1));
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isAuthorized, handlePinInput]);
-
-    const libraryStats = useMemo(() => {
-        const combined = [...userData.watching, ...userData.onHold, ...userData.allCaughtUp, ...userData.completed];
-        const unique = Array.from(new Map(combined.map(i => [i.id, i])).values());
-        const tv = unique.filter(i => i.media_type === 'tv');
-        const truthVerified = tv.filter(show => !!AIRTIME_OVERRIDES[show.id]);
-        return {
-            totalShows: tv.length,
-            truthVerified: truthVerified.length,
-            missingTruths: tv.length - truthVerified.length
-        };
-    }, [userData]);
-
     if (!isAuthorized) {
         return (
-            <div className="flex flex-col items-center justify-center h-[70vh] px-4 animate-fade-in">
-                <div className="w-full max-w-sm text-center">
-                    <div className="mb-8 flex justify-center">
-                        <div className={`p-6 rounded-[2rem] bg-bg-secondary/40 border-4 transition-all duration-500 ${pinError ? 'border-red-500 scale-95 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'border-primary-accent/20 shadow-2xl shadow-primary-accent/10'}`}>
-                            <LockClosedIcon className={`w-12 h-12 ${pinError ? 'text-red-500 animate-shake' : 'text-primary-accent'}`} />
-                        </div>
-                    </div>
-                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-2">CineMontauge Admin</h2>
-                    <p className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] mb-8 opacity-60">Enter Master Token Sequence</p>
-                    <div className="flex justify-center gap-3 mb-10">
-                        {Array.from({ length: 15 }).map((_, i) => (
-                            <div key={i} className={`w-2 h-2 rounded-full transition-all duration-300 ${pin.length > i ? 'bg-primary-accent scale-125 shadow-[0_0_8px_var(--color-accent-primary)]' : 'bg-bg-secondary border border-white/10'}`}></div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => (
-                            <button key={d} onClick={() => handlePinInput(String(d))} className="py-4 text-xl font-black rounded-2xl bg-bg-secondary/30 border border-white/5 text-text-primary hover:bg-bg-secondary transition-all active:scale-95 shadow-md">{d}</button>
-                        ))}
-                        <button onClick={() => setPin('')} className="py-4 text-xs font-black uppercase text-red-500 hover:bg-red-500/10 rounded-2xl transition-all">Clear</button>
-                        <button onClick={() => handlePinInput('0')} className="py-4 text-xl font-black rounded-2xl bg-bg-secondary/30 border border-white/5 text-text-primary hover:bg-bg-secondary transition-all active:scale-95 shadow-md">0</button>
-                        <button onClick={onBack} className="py-4 text-xs font-black uppercase text-text-secondary hover:bg-bg-secondary/10 rounded-2xl transition-all">Exit</button>
-                    </div>
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+                <Logo className="w-24 h-24 mb-8" />
+                <h1 className="text-3xl font-black mb-2 uppercase tracking-tighter">OWNER ACCESS</h1>
+                <p className="text-text-secondary mb-8 text-[10px] uppercase tracking-[0.3em]">Registry Clearance Required</p>
+                <div className="w-full max-w-xs space-y-4">
+                    <input 
+                        type="password" 
+                        value={pin}
+                        onChange={e => { setPin(e.target.value); setPinError(false); }}
+                        placeholder="•••••••••••••••"
+                        className={`w-full bg-bg-secondary border-2 ${pinError ? 'border-red-500 animate-shake' : 'border-white/10'} rounded-2xl p-4 text-center text-xl tracking-[0.5em] focus:outline-none transition-all shadow-inner`}
+                    />
+                    <button 
+                        onClick={() => { if (pin === MASTER_PIN) setIsAuthorized(true); else setPinError(true); }}
+                        className="w-full py-4 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-transform"
+                    >
+                        Verify Identity
+                    </button>
+                    <button onClick={onBack} className="w-full py-2 text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] hover:text-white transition-colors">Return to App</button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="animate-fade-in max-w-4xl mx-auto px-6 pb-40">
+        <div className="animate-fade-in space-y-12 px-6 pb-20 max-w-7xl mx-auto">
+             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex items-center gap-6">
+                    <button onClick={onBack} className="p-4 bg-bg-secondary/40 rounded-2xl text-text-primary hover:text-primary-accent border border-white/5 transition-all shadow-xl group">
+                        <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+                    </button>
+                    <div>
+                        <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Owner Portal</h1>
+                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-1 opacity-60">Registry Management & Overrides</p>
+                    </div>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* Audit & Reports */}
+                <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-8 lg:col-span-2">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                            <ArchiveBoxIcon className="w-6 h-6 text-primary-accent" />
+                            Truth Audit Pipeline
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={() => runAuditReport('ongoing', 'Missing Truth (Ongoing)')}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <div className="flex items-center justify-between w-full mb-4">
+                                <div className={`p-3 rounded-2xl ${isGenerating === 'ongoing' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-amber-400'}`}>
+                                    {isGenerating === 'ongoing' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <ClockIcon className="w-5 h-5" />}
+                                </div>
+                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.ongoing.part}</span>
+                            </div>
+                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Ongoing Audit</span>
+                         </button>
+                    </div>
+                    
+                    {isGenerating && (
+                        <div className="bg-bg-primary/60 rounded-2xl p-6 border border-primary-accent/20 animate-fade-in shadow-inner">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">Pipeline Scanning...</span>
+                                <span className="text-[10px] font-black text-text-secondary">{scanProgress.matches} matches</span>
+                            </div>
+                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden shadow-inner">
+                                <div className="bg-accent-gradient h-full rounded-full transition-all duration-300" style={{ width: `${(scanProgress.current / (scanProgress.total || 1)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* System Controls & Brand Assets */}
+                <div className="space-y-8">
+                    {/* Brand Identity Card */}
+                    <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                            <SparklesIcon className="w-6 h-6 text-primary-accent" />
+                            Brand Identity
+                        </h2>
+                        <div className="bg-black/60 rounded-2xl p-6 border border-white/5 flex flex-col items-center">
+                            <Logo className="w-32 h-32 mb-6" />
+                            <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest text-center mb-6 leading-relaxed">
+                                High-res JPEG capture for Google OAuth<br/>Consent & Social Profiles.
+                            </p>
+                            <button 
+                                onClick={handleDownloadLogo}
+                                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-primary-accent/10 border border-primary-accent/20 text-primary-accent font-black uppercase tracking-widest text-[10px] hover:bg-primary-accent hover:text-on-accent transition-all shadow-lg active:scale-95"
+                            >
+                                <DownloadIcon className="w-4 h-4" />
+                                Download 1000px JPEG
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-8">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                            <BoltIcon className="w-6 h-6 text-yellow-500" />
+                            Live Hub
+                        </h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            <button 
+                                onClick={() => setIsBroadcastModalOpen(true)}
+                                className="w-full flex items-center gap-4 p-4 bg-bg-secondary/40 rounded-2xl border border-white/5 hover:bg-bg-secondary transition-all group"
+                            >
+                                <div className="p-3 bg-red-500/10 rounded-xl text-red-500 group-hover:bg-red-500 group-hover:text-on-accent transition-all">
+                                    <MegaphoneIcon className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <span className="text-xs font-black uppercase tracking-widest text-text-primary block">Global Broadcast</span>
+                                    <span className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40">Targeting {deviceCount} Devices</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <BroadcastModal 
                 isOpen={isBroadcastModalOpen}
                 onClose={() => setIsBroadcastModalOpen(false)}
                 onSend={handleGlobalBroadcast}
                 deviceCount={deviceCount}
             />
-
-            <header className="flex items-center mb-10 relative">
-                <button onClick={onBack} className="absolute left-0 p-3 bg-bg-secondary rounded-full text-text-primary hover:text-primary-accent transition-all"><ChevronLeftIcon className="h-6 w-6" /></button>
-                <h1 className="text-4xl font-black text-text-primary text-center w-full uppercase tracking-tighter">Admin Portal</h1>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <section className="space-y-6">
-                    {/* DATABASE CONNECTIVITY TEST */}
-                    <div className="bg-bg-secondary/40 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-green-500/20 rounded-2xl text-green-400 shadow-inner">
-                                <BoltIcon className="w-8 h-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter leading-none">Supabase Health</h3>
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-60">Verification Tool</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-bg-primary/40 rounded-2xl p-5 border border-white/5 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Status</span>
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                    connectionStatus === 'success' ? 'bg-green-500/20 text-green-400' :
-                                    connectionStatus === 'error' ? 'bg-red-500/20 text-red-400' :
-                                    'bg-bg-secondary text-text-secondary opacity-40'
-                                }`}>
-                                    {connectionStatus === 'idle' ? 'Ready' : connectionStatus}
-                                </span>
-                            </div>
-                            <div className="text-[9px] font-mono text-text-secondary bg-black/40 p-3 rounded-xl break-all max-h-[100px] overflow-y-auto custom-scrollbar">
-                                {connectionStatus === 'idle' ? `Target ID: ${TEST_PROFILE_ID}` : JSON.stringify(testResult || 'Testing...')}
-                            </div>
-                        </div>
-
-                        <button 
-                            onClick={handleTestConnection}
-                            disabled={connectionStatus === 'testing'}
-                            className="w-full flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
-                        >
-                            <ArrowPathIcon className={`w-4 h-4 ${connectionStatus === 'testing' ? 'animate-spin' : ''}`} />
-                            Run Connectivity Test
-                        </button>
-                    </div>
-
-                    {/* GLOBAL BROADCAST CONSOLE */}
-                    <div className="bg-card-gradient p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-yellow-500/20 rounded-2xl text-yellow-500 shadow-inner">
-                                <MegaphoneIcon className="w-8 h-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter leading-none">Global Broadcast</h3>
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-60">Dispatch alerts to all devices</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-4 bg-bg-primary/40 rounded-2xl border border-white/5">
-                                <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest mb-1">Devices</p>
-                                <p className="text-2xl font-black text-text-primary">{deviceCount}</p>
-                            </div>
-                            <div className="p-4 bg-bg-primary/40 rounded-2xl border border-white/5">
-                                <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest mb-1">Status</p>
-                                <p className="text-2xl font-black text-green-400">ONLINE</p>
-                            </div>
-                        </div>
-
-                        <button 
-                            onClick={() => setIsBroadcastModalOpen(true)}
-                            className="w-full flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-yellow-500 text-black font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-[1.02] active:scale-95 transition-all group overflow-hidden relative"
-                        >
-                            <SparklesIcon className="w-4 h-4 animate-pulse" />
-                            Dispatch System Alert
-                            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                        </button>
-                    </div>
-
-                    <div className="bg-card-gradient p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary-accent/20 rounded-2xl text-primary-accent shadow-inner">
-                                <ArchiveBoxIcon className="w-8 h-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter leading-none">Registry Archives</h3>
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-60">Generated Reports & Audits</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                            {downloadedPdfs.length > 0 ? downloadedPdfs.map(pdf => (
-                                <div key={pdf.id} className="flex items-center justify-between p-4 bg-bg-primary/40 rounded-2xl border border-white/5 group hover:border-primary-accent/30 transition-all">
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-black text-text-primary uppercase tracking-tight truncate">{pdf.title}</p>
-                                        <p className="text-[8px] font-bold text-text-secondary uppercase opacity-50 mt-0.5">{new Date(pdf.timestamp).toLocaleString()}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            onClick={() => generateAirtimePDF(pdf.title, pdf.rows, pdf.part)}
-                                            className="p-2 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all"
-                                            title="Re-download PDF"
-                                        >
-                                            <DownloadIcon className="w-4 h-4" />
-                                        </button>
-                                        <button 
-                                            onClick={(e) => handleDeletePdf(e, pdf.id)}
-                                            className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
-                                            title="Delete Archive"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="py-10 text-center opacity-30">
-                                    <InformationCircleIcon className="w-8 h-8 mx-auto mb-2" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No reports archived</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                <section className="space-y-6">
-                    {/* BACKEND EXPORT CONSOLE */}
-                    <div className="bg-bg-secondary/40 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-sky-500/20 rounded-2xl text-sky-400 shadow-inner">
-                                <CircleStackIcon className="w-8 h-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter leading-none">Backend Architect</h3>
-                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-60">Blueprint for Supabase Migration</p>
-                            </div>
-                        </div>
-                        <p className="text-xs text-text-secondary font-medium leading-relaxed">
-                            Generating this blueprint provides an LLM (like ChatGPT) with the exact SQL schema, RLS policies, and data mappings required to build the CineMontauge Supabase backend.
-                        </p>
-                        <button 
-                            onClick={handleExportSupabaseSpec}
-                            className="w-full flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
-                        >
-                            <DownloadIcon className="w-4 h-4" />
-                            Export Supabase Spec
-                        </button>
-                    </div>
-
-                    <div className="p-8 bg-primary-accent/10 border border-primary-accent/20 rounded-[2.5rem] shadow-xl">
-                        <div className="flex items-center gap-4 mb-4">
-                            <CheckCircleIcon className="w-8 h-8 text-primary-accent" />
-                            <h2 className="text-2xl font-black text-text-primary uppercase tracking-tight">Coverage</h2>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                            <div className="p-4 bg-bg-primary/40 rounded-2xl border border-white/5">
-                                <span className="text-2xl font-black text-text-primary block">{libraryStats.truthVerified}</span>
-                                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Verified</span>
-                            </div>
-                            <div className="p-4 bg-bg-primary/40 rounded-2xl border border-white/5">
-                                <span className="text-2xl font-black text-red-500 block">{libraryStats.missingTruths}</span>
-                                <span className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Truth Gaps</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-bg-secondary/40 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
-                        <h3 className="text-sm font-black text-text-primary uppercase tracking-[0.2em]">Diagnostic Scanners</h3>
-                        <div className="grid grid-cols-1 gap-2">
-                            <button 
-                                onClick={() => runAuditReport('ongoing', 'Gap Audit: Ongoing')}
-                                disabled={!!isGenerating}
-                                className="w-full flex items-center justify-between p-4 rounded-2xl bg-bg-primary/60 border border-white/5 hover:border-primary-accent/50 transition-all group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <ArrowPathIcon className={`w-5 h-5 text-primary-accent ${isGenerating === 'ongoing' ? 'animate-spin' : ''}`} />
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-text-primary">Ongoing Gap Scan</span>
-                                </div>
-                                <span className="text-[9px] font-bold text-text-secondary opacity-40">Block: {reportOffsets.ongoing.part}</span>
-                            </button>
-                            
-                            {isGenerating && (
-                                <div className="p-4 bg-primary-accent/10 rounded-2xl border border-primary-accent/20 animate-pulse">
-                                    <div className="flex justify-between items-center text-[10px] font-black text-primary-accent uppercase tracking-widest mb-2">
-                                        <span>Analyzing Block...</span>
-                                        <span>{scanProgress.matches} found</span>
-                                    </div>
-                                    <div className="w-full bg-bg-primary rounded-full h-1.5 overflow-hidden">
-                                        <div 
-                                            className="bg-primary-accent h-full transition-all duration-300"
-                                            style={{ width: `${(scanProgress.current / (scanProgress.total || 20)) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
+            
+            {/* High-res off-screen logo for JPEG generation */}
+            <div className="fixed -left-[4000px] top-0 pointer-events-none opacity-0">
+                <Logo ref={logoRef} className="w-[1000px] h-[1000px]" />
             </div>
         </div>
     );

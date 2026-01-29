@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 
 interface LogoProps {
   className?: string;
+  id?: string;
 }
 
-const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
+const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", id }, ref) => {
   return (
     <svg 
+      ref={ref}
+      id={id}
       className={className}
       viewBox="0 0 100 100" 
       fill="none" 
@@ -72,16 +75,16 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
       {/* Outer Lens Housing */}
       <circle cx="50" cy="50" r="48" fill="black" stroke="#111" strokeWidth="0.5" />
       
-      {/* 4 Compass Points - ENLARGED as requested */}
+      {/* 4 Compass Points */}
       <path d="M50 2L58 20H42L50 2Z" fill="url(#grad-n)" />
       <path d="M98 50L80 58V42L98 50Z" fill="url(#grad-e)" />
       <path d="M50 98L42 80H58L50 98Z" fill="url(#grad-s)" />
       <path d="M2 50L20 42V58L2 50Z" fill="url(#grad-w)" />
       
-      {/* Inner Ring - Keeping the larger size (r=37) */}
+      {/* Inner Ring */}
       <circle cx="50" cy="50" r="37" fill="black" stroke="url(#grad-dark-ring-complex)" strokeWidth="2.5" />
       
-      {/* Silver Star - Positioned above CM monogram */}
+      {/* Silver Star */}
       <path 
         d="M50 18L51.5 22.5H56L52.5 25L54 29.5L50 27L46 29.5L47.5 25L44 22.5H48.5L50 18Z" 
         fill="url(#grad-silver)" 
@@ -102,7 +105,7 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
         CM
       </text>
 
-      {/* Upper Sleek Line - Framing the name */}
+      {/* Upper Sleek Line */}
       <rect 
         x="28" 
         y="58" 
@@ -111,10 +114,9 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
         fill="url(#grad-sleek-line)" 
         opacity="0.8"
       />
-      {/* Subtle diamond point on the line */}
       <path d="M50 57.5L51 58.5L50 59.5L49 58.5Z" fill="white" opacity="0.6" />
 
-      {/* Spelled out name - CineMontauge */}
+      {/* Spelled out name */}
       <text
         x="50%"
         y="68"
@@ -129,7 +131,7 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
         CineMontauge
       </text>
       
-      {/* Lower Sleek Line - Framing the name */}
+      {/* Lower Sleek Line */}
       <rect 
         x="28" 
         y="72" 
@@ -138,11 +140,9 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
         fill="url(#grad-sleek-line)" 
         opacity="0.8"
       />
-      {/* Subtle diamond point on the line */}
       <path d="M50 71.5L51 72.5L50 73.5L49 72.5Z" fill="white" opacity="0.6" />
-
     </svg>
   );
-};
+});
 
 export default Logo;
