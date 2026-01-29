@@ -29,5 +29,6 @@ if (import.meta.env.DEV) {
   // eslint-disable-next-line no-console
   console.debug('Supabase project URL:', SUPABASE_URL);
 }
-
+console.log("Supabase URL:", SUPABASE_URL);
+console.log("Anon Key Loaded:", !!SUPABASE_ANON_KEY);
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
