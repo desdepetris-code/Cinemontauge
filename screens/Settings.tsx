@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon } from '../components/Icons';
+// FIX: Added missing PencilSquareIcon to imports
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
 import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
+import UpdateProfileModal from '../components/UpdateProfileModal';
 import TimezoneSettings from '../components/TimezoneSettings';
-// Fix: Use correct exported function name from cacheUtils
 import { clearAllApiCache } from '../utils/cacheUtils';
 import { confirmationService } from '../services/confirmationService';
 
@@ -83,6 +84,7 @@ interface SettingsProps {
     setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
     onLogout: () => void;
     onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
+    onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
     onForgotPasswordRequest: (email: string) => Promise<string | null>;
     onForgotPasswordReset: (data: { code: string; newPassword: string; }) => Promise<string | null>;
     currentUser: User | null;
@@ -117,9 +119,10 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
 
   const mandatoryNavIds = ['home', 'search', 'calendar', 'profile'];
 
@@ -167,6 +170,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
   return (
     <>
     <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
+    <UpdateProfileModal isOpen={isUpdateProfileModalOpen} onClose={() => setIsUpdateProfileModalOpen(false)} onSave={onUpdateProfile} currentUser={currentUser} />
     <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
 
@@ -186,6 +190,37 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 </div>
             </SettingsRow>
         </SettingsCard>
+
+        {currentUser && (
+            <SettingsCard title="Account Registry">
+                <SettingsRow title="Unique Username" subtitle="Your handle within the CineMontauge community.">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-black text-primary-accent uppercase">@{currentUser.username}</span>
+                        <button onClick={() => setIsUpdateProfileModalOpen(true)} className="p-2 rounded-xl bg-bg-secondary hover:brightness-125 transition-all">
+                            <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </SettingsRow>
+                <SettingsRow title="Email Address" subtitle="Primary contact and authentication email.">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-text-secondary">{currentUser.email}</span>
+                        <button onClick={() => setIsUpdateProfileModalOpen(true)} className="p-2 rounded-xl bg-bg-secondary hover:brightness-125 transition-all">
+                            <EnvelopeIcon className="w-4 h-4" />
+                        </button>
+                    </div>
+                </SettingsRow>
+                <SettingsRow title="Security Credentials" subtitle="Update your access password.">
+                    <button onClick={() => setIsResetPasswordModalOpen(true)} className="px-4 py-2 rounded-xl bg-bg-secondary text-text-primary font-black uppercase text-[10px] tracking-widest hover:brightness-125 transition-all border border-white/5 shadow-md">
+                        Change Password
+                    </button>
+                </SettingsRow>
+                <SettingsRow title="Account Access" subtitle="Terminate your current session." isDestructive>
+                     <button onClick={onLogout} className="px-4 py-2 rounded-xl bg-red-500/10 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-md">
+                        Log Out
+                     </button>
+                </SettingsRow>
+            </SettingsCard>
+        )}
         
         <SettingsCard title="Feature Visibility">
             <div className="p-4 border-b border-bg-secondary/50">
@@ -337,20 +372,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 <ToggleSwitch enabled={navSettings.hoverRevealHeader} onChange={(val) => setNavSettings({...navSettings, hoverRevealHeader: val})} />
             </SettingsRow>
         </SettingsCard>
-
-        {currentUser && (
-            <SettingsCard title="Account">
-                <SettingsRow title="Logged In As" subtitle={currentUser.email}>
-                    <span className="text-sm font-semibold">{currentUser.username}</span>
-                </SettingsRow>
-                <SettingsRow title="Reset Password" subtitle="Change your current password.">
-                    <button onClick={() => setIsResetPasswordModalOpen(true)} className="text-sm font-semibold text-primary-accent hover:underline">Change</button>
-                </SettingsRow>
-                <SettingsRow title="Log Out" subtitle="Sign out of your account.">
-                     <button onClick={onLogout} className="text-sm font-semibold text-red-500 hover:underline">Log Out</button>
-                </SettingsRow>
-            </SettingsCard>
-        )}
 
         <SettingsCard title="Display Preferences">
              <SettingsRow title="Show Ratings & Scores" subtitle="Display TMDB and user scores throughout the app.">

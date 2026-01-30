@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
 import AuthModal from './components/AuthModal';
+import CompleteProfileModal from './components/CompleteProfileModal';
 import { confirmationService } from './services/confirmationService';
 import { supabase } from './services/supabaseClient';
 
@@ -14,45 +15,62 @@ interface User {
 const App: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
     const userId = currentUser ? currentUser.id : 'guest';
 
     const [autoHolidayThemesEnabled, setAutoHolidayThemesEnabled] = useLocalStorage<boolean>(`autoHolidayThemesEnabled_${userId}`, true);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+    const checkProfileStatus = useCallback(async (supabaseUser: any) => {
+        if (!supabaseUser) return;
+
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', supabaseUser.id)
+            .single();
+
+        // If no profile or no username, the user needs to complete their registration (common for first-time Google signups)
+        if (error || !profile || !profile.username) {
+            setNeedsProfileCompletion(true);
+        } else {
+            setNeedsProfileCompletion(false);
+            setCurrentUser({
+                id: supabaseUser.id,
+                email: supabaseUser.email || '',
+                username: profile.username
+            });
+        }
+    }, []);
+
     useEffect(() => {
         // Initial session check
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             if (error) {
-                console.error("Supabase Session Error:", error.message, error.status);
+                console.error("Supabase Session Error:", error.message);
             }
             if (session) {
-                setCurrentUser({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'User'
-                });
+                checkProfileStatus(session.user);
             }
             setLoading(false);
         });
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.debug("Supabase Auth Event:", event);
             if (session) {
-                setCurrentUser({
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'User'
-                });
+                if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+                    checkProfileStatus(session.user);
+                }
             } else {
                 setCurrentUser(null);
+                setNeedsProfileCompletion(false);
             }
         });
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [checkProfileStatus]);
 
-    const handleLogin = useCallback(async ({ email, password }): Promise<string | null> => {
+    const handleLogin = useCallback(async ({ email, password }: any): Promise<string | null> => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             console.error("Supabase Login Error:", error);
@@ -79,8 +97,7 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const handleSignup = useCallback(async ({ username, email, password }): Promise<string | null> => {
-        console.debug("Attempting signup for:", email);
+    const handleSignup = useCallback(async ({ username, email, password }: any): Promise<string | null> => {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -89,20 +106,8 @@ const App: React.FC = () => {
             }
         });
 
-        if (error) {
-            console.error("Supabase Signup Error Details:", {
-                message: error.message,
-                status: error.status,
-                name: error.name
-            });
-            
-            if (error.message.toLowerCase().includes('api key')) {
-                return "Authentication Registry Error: The server rejected the API key. Ensure VITE_ environment variables are correctly set in Vercel.";
-            }
-            return error.message;
-        }
+        if (error) return error.message;
         
-        // If the session is immediate (confirmation disabled)
         if (data.session) {
             const { error: profileError } = await supabase.from('profiles').upsert({ 
                 id: data.user?.id, 
@@ -113,23 +118,98 @@ const App: React.FC = () => {
             if (profileError) console.error("Error creating profile:", profileError);
             confirmationService.show(`Welcome to SceneIt, ${username}!`);
         } else {
-            confirmationService.show(`Registration successful! Please confirm your email (${email}) to activate your account.`);
+            confirmationService.show(`Registration successful! Please confirm your email to activate.`);
         }
         
         setIsAuthModalOpen(false);
         return null;
     }, []);
 
+    const handleCompleteProfile = useCallback(async ({ username, password }: any): Promise<string | null> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return "User session not found.";
+
+        // 1. Set the password for the account so they can log in via email/pass later
+        const { error: authError } = await supabase.auth.updateUser({ password });
+        if (authError) return authError.message;
+
+        // 2. Create the profile record
+        const { error: profileError } = await supabase.from('profiles').upsert({ 
+            id: user.id, 
+            username, 
+            email: user.email,
+            user_xp: 0 
+        });
+        
+        if (profileError) {
+            if (profileError.code === '23505') return "Username already taken.";
+            return profileError.message;
+        }
+
+        setNeedsProfileCompletion(false);
+        setCurrentUser({
+            id: user.id,
+            email: user.email || '',
+            username: username
+        });
+        
+        confirmationService.show(`Profile secured! Welcome to CineMontauge, ${username}.`);
+        return null;
+    }, []);
+
+    const handleUpdatePassword = useCallback(async (passwords: { currentPassword: string; newPassword: string; }): Promise<string | null> => {
+        const { error } = await supabase.auth.updateUser({ password: passwords.newPassword });
+        if (error) return error.message;
+        confirmationService.show("Security credentials updated.");
+        return null;
+    }, []);
+
+    const handleUpdateProfile = useCallback(async (details: { username: string; email: string; }): Promise<string | null> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return "No active session.";
+
+        // 1. Handle Email Change (Auth Level)
+        if (details.email !== user.email) {
+            const { error: emailError } = await supabase.auth.updateUser({ email: details.email });
+            if (emailError) return emailError.message;
+            confirmationService.show("Check your emails to confirm the address change.");
+        }
+
+        // 2. Handle Username Change (Database Level)
+        const { error: dbError } = await supabase
+            .from('profiles')
+            .update({ username: details.username, email: details.email })
+            .eq('id', user.id);
+
+        if (dbError) {
+            if (dbError.code === '23505') return "Username is already registered.";
+            return dbError.message;
+        }
+
+        setCurrentUser(prev => prev ? { ...prev, username: details.username, email: details.email } : null);
+        confirmationService.show("Registry identity updated.");
+        return null;
+    }, []);
+
+    const handleForgotPasswordRequest = useCallback(async (email: string): Promise<string | null> => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
+        if (error) return error.message;
+        return null;
+    }, []);
+
+    const handleForgotPasswordReset = useCallback(async (data: { code: string; newPassword: string }): Promise<string | null> => {
+        const { error } = await supabase.auth.updateUser({ password: data.newPassword });
+        if (error) return error.message;
+        return null;
+    }, []);
+
     const handleLogout = useCallback(async () => {
         await supabase.auth.signOut();
         setCurrentUser(null);
-        window.location.reload(); // Hard reset to clear memory state
+        window.location.reload();
     }, []);
-
-    const handleForgotPasswordRequest = async (email: string) => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        return error ? error.message : null;
-    };
 
     if (loading) return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
@@ -145,11 +225,11 @@ const App: React.FC = () => {
                 userId={userId}
                 currentUser={currentUser}
                 onLogout={handleLogout}
-                onUpdatePassword={() => Promise.resolve(null)}
-                onUpdateProfile={() => Promise.resolve(null)}
+                onUpdatePassword={handleUpdatePassword}
+                onUpdateProfile={handleUpdateProfile}
                 onAuthClick={() => setIsAuthModalOpen(true)}
                 onForgotPasswordRequest={handleForgotPasswordRequest}
-                onForgotPasswordReset={() => Promise.resolve(null)}
+                onForgotPasswordReset={handleForgotPasswordReset}
                 autoHolidayThemesEnabled={autoHolidayThemesEnabled}
                 setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled}
             />
@@ -160,7 +240,11 @@ const App: React.FC = () => {
                 onGoogleLogin={handleGoogleLogin}
                 onSignup={handleSignup}
                 onForgotPasswordRequest={handleForgotPasswordRequest}
-                onForgotPasswordReset={() => Promise.resolve(null)}
+                onForgotPasswordReset={handleForgotPasswordReset}
+            />
+            <CompleteProfileModal 
+                isOpen={needsProfileCompletion}
+                onComplete={handleCompleteProfile}
             />
         </>
     );

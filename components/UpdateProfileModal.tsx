@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from './Icons';
+// FIX: Added missing CheckCircleIcon to imports
+import { XMarkIcon, UserIcon, EnvelopeIcon, SparklesIcon, CheckCircleIcon } from './Icons';
+import Logo from './Logo';
 
 interface UpdateProfileModalProps {
   isOpen: boolean;
@@ -34,40 +36,96 @@ const UpdateProfileModal: React.FC<UpdateProfileModalProps> = ({ isOpen, onClose
         const result = await onSave({ username, email });
         if (result) {
             setError(result);
+            setLoading(false);
         } else {
-            alert("Profile updated successfully!");
             onClose();
         }
-        setLoading(false);
     };
 
+    const inputClass = "w-full p-4 pl-12 bg-bg-secondary rounded-2xl text-text-primary placeholder-text-secondary/50 focus:outline-none border border-white/10 focus:border-primary-accent transition-all font-bold shadow-inner";
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-sm p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary">
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[300] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-bg-primary rounded-[3rem] shadow-2xl w-full max-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-0 left-0 w-full h-1 bg-accent-gradient"></div>
+                <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
                     <XMarkIcon className="w-5 h-5" />
                 </button>
-                <h2 className="text-xl font-bold mb-4">Update Profile</h2>
-
-                {error && <p className="text-red-400 text-sm text-center bg-red-500/20 p-3 rounded-lg mb-4">{error}</p>}
                 
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-text-secondary mb-1 block">Username</label>
-                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full p-2 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent" />
+                <div className="text-center mb-8">
+                    <Logo className="w-16 h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.5)]" />
+                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none mb-2">Update Identity</h2>
+                    <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60">Manage your Registry details</p>
+                </div>
+
+                <div className="space-y-6">
+                    {error && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                            <p className="text-xs font-bold text-red-400">{error}</p>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary ml-2 block">Username Handle</label>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                value={username} 
+                                onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} 
+                                className={inputClass} 
+                                placeholder="new_handle"
+                            />
+                            <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary/50" />
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-sm font-medium text-text-secondary mb-1 block">Email</label>
-                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent" />
+
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary ml-2 block">Email Address</label>
+                        <div className="relative">
+                            <input 
+                                type="email" 
+                                value={email} 
+                                onChange={e => setEmail(e.target.value)} 
+                                className={inputClass} 
+                                placeholder="email@example.com"
+                            />
+                            <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary/50" />
+                        </div>
+                    </div>
+
+                    <div className="bg-primary-accent/5 rounded-2xl p-4 border border-primary-accent/10">
+                        <p className="text-[10px] text-text-secondary leading-relaxed font-medium italic text-center">
+                            Note: Changing your email will require confirmation on both the old and new addresses.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-4">
+                        <button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="w-full py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-2xl transform transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <CheckCircleIcon className="w-4 h-4" />
+                                    Save Changes
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[9px] hover:text-text-primary transition-all"
+                        >
+                            Cancel
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex justify-end space-x-2 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 rounded-md bg-bg-secondary text-text-primary">Cancel</button>
-                    <button onClick={handleSave} disabled={loading} className="px-4 py-2 rounded-md bg-accent-gradient text-on-accent disabled:opacity-50">
-                        {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
+                <p className="mt-8 text-[8px] font-black text-text-secondary/30 uppercase tracking-[0.3em] text-center">
+                    Registry Verification System v3.0
+                </p>
             </div>
         </div>
     );

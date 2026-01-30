@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon } from './Icons';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleOvalLeftEllipsisIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import SeasonAccordion from './SeasonAccordion';
@@ -28,7 +28,6 @@ import WatchlistModal from './WatchlistModal';
 import ReportIssueModal from './ReportIssueModal';
 import CommentModal from './CommentModal';
 import { confirmationService } from '../services/confirmationService';
-/* Removed NominationModal import as it is no longer a module */
 import UserRatingStamp from './UserRatingStamp';
 
 interface ShowDetailProps {
@@ -52,11 +51,9 @@ interface ShowDetailProps {
   onOpenCustomListModal: (item: any) => void;
   ratings: UserRatings;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
-  // removed duplicate onToggleFavoriteShow definition
   onRateItem: (mediaId: number, rating: number) => void;
   onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number, deleteLive?: boolean) => void;
-  // Removed duplicate onMarkSeasonWatched declaration
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
   onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
@@ -68,7 +65,6 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
-  // Removed duplicate onAddWatchHistoryBulk declaration
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
@@ -134,14 +130,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [selectedEpisodeForDetail, setSelectedEpisodeForDetail] = useState<Episode | null>(null);
   const [activeCommentThread, setActiveCommentThread] = useState('general');
-  // nomination modal state retained but related feature removed
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
 
   const tabs: { id: TabType, label: string, icon: any }[] = useMemo(() => [
     ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Seasons', icon: ListBulletIcon }] as any : []),
     { id: 'info', label: 'Info', icon: BookOpenIcon },
     { id: 'cast', label: 'Cast', icon: PlayCircleIcon },
-    { id: 'discussion', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
+    { id: 'discussion', label: 'Comments', icon: ChatBubbleLeftRightIcon },
     { id: 'media', label: 'Gallery', icon: VideoCameraIcon },
     { id: 'discovery', label: 'Discovery', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
@@ -269,7 +264,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     const categoryDayCount = weeklyFavorites.filter(p => p.dayIndex === todayIndex && p.category === mediaType).length;
     
     if (isWeeklyFavorite) {
-        /* NominationModal is deleted, so we fallback to direct toggle or simple message */
         onToggleWeeklyFavorite(details as any);
     } else if (categoryDayCount < 5) {
         onToggleWeeklyFavorite({
@@ -281,7 +275,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             dayIndex: todayIndex
         });
     } else {
-        /* Fallback for when category count is full but modal is missing */
         confirmationService.show("Selection limit (5) for this category reached for today.");
     }
   };
@@ -353,7 +346,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   };
 
   const handleCommentsAction = () => {
-    // FIX: Corrected state setter name from setActiveThread to setActiveCommentThread
     setActiveCommentThread('general');
     setActiveTab('discussion');
   };
@@ -389,7 +381,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     <div className="animate-fade-in relative">
       <RatingModal isOpen={isRatingModalOpen} onClose={() => setIsRatingModalOpen(false)} onSave={(r) => onRateItem(id, r)} currentRating={userRating} mediaTitle={details.title || details.name || ''} />
       <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} history={history.filter(h => h.id === id)} mediaTitle={details.title || details.name || ''} mediaDetails={details} onDeleteHistoryItem={props.onDeleteHistoryItem} onClearMediaHistory={props.onClearMediaHistory} />
-      {/* NominationModal usage removed since the file is no longer a module */}
+      
       <MarkAsWatchedModal 
         isOpen={isLogWatchModalOpen} 
         onClose={() => setIsLogWatchModalOpen(false)} 
@@ -446,361 +438,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             watchProgress[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number]?.status || 0, 
             details as any, 
             selectedEpisodeForDetail.name,
-            // FIX: Use selectedEpisodeForDetail.still_path instead of undefined variable selectedEpisodeStillPath
             selectedEpisodeForDetail.still_path,
             seasonDetailsMap[selectedEpisodeForDetail.season_number]?.poster_path
         )}
         onOpenJournal={() => {}}
-        isFavorited={!!props.favoriteEpisodes[id]?.[selectedEpisodeForDetail?.season_number || 0]?.[selectedEpisodeForDetail?.episode_number || 0]}
-        onToggleFavorite={() => selectedEpisodeForDetail && props.onToggleFavoriteEpisode(id, selectedEpisodeForDetail.season_number, selectedEpisodeForDetail.episode_number)}
-        onStartLiveWatch={props.onStartLiveWatch}
-        onSaveJournal={props.onSaveJournal as any}
-        watchProgress={watchProgress}
-        onNext={() => {}}
-        onPrevious={() => {}}
-        onAddWatchHistory={props.onAddWatchHistory}
-        onRate={() => {}}
-        episodeRating={selectedEpisodeForDetail ? episodeRatings[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number] || 0 : 0}
-        onDiscuss={() => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${selectedEpisodeForDetail?.season_number}-e${selectedEpisodeForDetail?.episode_number}`); }}
-        showRatings={showRatings}
-        episodeNotes={episodeNotes}
-      />
-
-      <div className="relative h-[40vh] md:h-[60vh] overflow-hidden">
-        <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
-        <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent"></div>
-        <button onClick={onBack} className="absolute top-6 left-6 p-3 bg-backdrop/50 backdrop-blur-sm rounded-full text-white hover:bg-bg-secondary transition-all z-20">
-            <ChevronLeftIcon className="w-6 h-6" />
-        </button>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 -mt-32 relative z-10 pb-20">
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-80 flex-shrink-0">
-            <div className="relative group">
-              <img src={posterUrl} className="rounded-2xl shadow-2xl w-full aspect-[2/3] object-cover border-4 border-bg-primary" alt="Poster" />
-              <UserRatingStamp rating={userRating} size="lg" className="absolute -top-4 -left-4" />
-              {showRatings && details.vote_average && (
-                <div className="absolute -top-4 -right-4">
-                  <ScoreStar score={details.vote_average} size="md" />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <button 
-                onClick={() => setIsWatchlistModalOpen(true)}
-                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-bold text-lg bg-bg-secondary/40 border border-primary-accent/30 hover:bg-bg-secondary/60 hover:border-primary-accent/50 transition-all text-text-primary shadow-lg group"
-              >
-                <span className="uppercase tracking-widest">{getLibraryButtonText()}</span>
-                <ChevronDownIcon className="w-5 h-5 text-text-secondary" />
-              </button>
-              
-              <div className="grid grid-cols-4 gap-2">
-                {mediaType === 'tv' ? (
-                  <DetailedActionButton 
-                      label={isAllWatched ? "Unmark All" : "Mark All"}
-                      className="col-span-2"
-                      isActive={isAllWatched}
-                      icon={isAllWatched ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => isAllWatched ? props.onUnmarkAllWatched(id) : props.onMarkAllWatched(id, details as any)} 
-                  />
-                ) : (
-                  <DetailedActionButton 
-                      label={currentStatus === 'completed' ? "Unmark Watch" : "Mark Watch"}
-                      className="col-span-2"
-                      isActive={currentStatus === 'completed'}
-                      icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
-                      {/* FIX: Added props. prefix to onMarkMediaAsWatched to fix "Cannot find name 'onMarkMediaAsWatched'" error */}
-                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : props.onMarkMediaAsWatched(details)} 
-                  />
-                )}
-                <DetailedActionButton 
-                    label="Weekly Pick" 
-                    icon={<TrophyIcon className="w-6 h-6" />} 
-                    isActive={isWeeklyFavorite}
-                    onClick={handleWeeklyGemToggle} 
-                />
-                <DetailedActionButton 
-                    label="Favorite" 
-                    icon={<HeartIcon filled={isFavorited} className="w-6 h-6" />} 
-                    onClick={() => onToggleFavoriteShow(details as any)} 
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 gap-2">
-                <DetailedActionButton 
-                    label="Rate" 
-                    icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} 
-                    onClick={() => setIsRatingModalOpen(true)} 
-                />
-                <DetailedActionButton 
-                    label="History" 
-                    icon={<ClockIcon className="w-6 h-6" />} 
-                    onClick={() => setIsHistoryModalOpen(true)} 
-                />
-                <DetailedActionButton 
-                    label="Add to List" 
-                    icon={<ListBulletIcon className="w-6 h-6" />} 
-                    onClick={() => props.onOpenAddToListModal(details)} 
-                />
-                <DetailedActionButton 
-                    label="Comments" 
-                    icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />} 
-                    isActive={hasComment}
-                    onClick={handleCommentsAction} 
-                />
-
-                {mediaType === 'tv' ? (
-                  <>
-                    <DetailedActionButton 
-                        label="Journal" 
-                        icon={<BookOpenIcon className="w-6 h-6" />} 
-                        onClick={() => setIsJournalModalOpen(true)} 
-                    />
-                    <DetailedActionButton 
-                        label="Notes" 
-                        icon={<PencilSquareIcon className="w-6 h-6" />} 
-                        onClick={() => setIsNotesModalOpen(true)} 
-                    />
-
-                    <DetailedActionButton 
-                        label="Refresh" 
-                        icon={<ArrowPathIcon className="w-6 h-6" />} 
-                        onClick={handleRefresh} 
-                    />
-                    <DetailedActionButton 
-                        label="Log a Watch" 
-                        icon={<LogWatchIcon className="w-6 h-6" />} 
-                        onClick={() => setIsLogWatchModalOpen(true)} 
-                    />
-                  </>
-                ) : (
-                  <>
-                    <DetailedActionButton 
-                        label="Log Watch" 
-                        icon={<LogWatchIcon className="w-6 h-6" />} 
-                        onClick={() => setIsLogWatchModalOpen(true)} 
-                    />
-                    <DetailedActionButton 
-                        label="Live Watch" 
-                        icon={<PlayCircleIcon className="w-6 h-6" />} 
-                        onClick={handleStartLiveWatch} 
-                    />
-                    <DetailedActionButton 
-                        label="Journal" 
-                        icon={<BookOpenIcon className="w-6 h-6" />} 
-                        onClick={() => setIsJournalModalOpen(true)} 
-                    />
-                    <DetailedActionButton 
-                        label="Notes" 
-                        icon={<PencilSquareIcon className="w-6 h-6" />} 
-                        onClick={() => setIsNotesModalOpen(true)} 
-                    />
-                    <DetailedActionButton 
-                        label="Refresh" 
-                        className="col-start-1"
-                        icon={<ArrowPathIcon className="w-6 h-6" />} 
-                        onClick={handleRefresh} 
-                    />
-                  </>
-                )}
-                
-                <DetailedActionButton 
-                    label="Report Issue" 
-                    className={mediaType === 'tv' ? "col-start-1" : "col-start-2"}
-                    icon={<QuestionMarkCircleIcon className="w-6 h-6" />} 
-                    onClick={() => setIsReportIssueModalOpen(true)} 
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-grow space-y-8 min-w-0">
-            <header>
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                {showStatus && (
-                  <span className={`px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${getStatusBadgeStyle(showStatus.text)}`}>
-                    {showStatus.text}
-                  </span>
-                )}
-                {ageRating && (
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${getAgeRatingColor(ageRating)}`}>
-                    {ageRating}
-                  </span>
-                )}
-                <span className="text-text-secondary font-bold flex items-center">
-                    <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
-                    <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4)}</span>
-                </span>
-                
-                {mediaType === 'tv' && (
-                  <button 
-                    onClick={() => setIsDescriptionModalOpen(true)}
-                    className="ml-auto group flex items-center space-x-2 text-primary-accent hover:text-primary-accent/80 transition-colors bg-primary-accent/10 px-4 py-1.5 rounded-full border border-primary-accent/20"
-                  >
-                    <InformationCircleIcon className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.1em]">Show Description</span>
-                  </button>
-                )}
-              </div>
-              <h1 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter mb-4">{details.title || details.name}</h1>
-              <p className="text-lg text-text-secondary leading-relaxed max-w-3xl italic line-clamp-2">"{details.tagline || details.overview}"</p>
-            </header>
-
-            {nextEpisodeToWatch && (
-              <section className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-                <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center">
-                  <PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />
-                  Continue Journey
-                </h2>
-                <NextUpWidget {...props} details={details} showId={id} nextEpisodeToWatch={nextEpisodeToWatch} onSaveJournal={props.onSaveJournal as any} />
-              </section>
-            )}
-
-            {mediaType === 'tv' && <OverallProgress details={details} watchProgress={watchProgress} />}
-
-            <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 overflow-x-auto hide-scrollbar">
-              <div className="flex space-x-8 whitespace-nowrap min-w-max">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 text-sm font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}
-                  >
-                    <span className="flex items-center gap-2">
-                        <tab.icon className="w-4 h-4" />
-                        {tab.label}
-                    </span>
-                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full"></div>}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 min-h-[400px]">
-              {activeTab === 'seasons' && mediaType === 'tv' && (
-                <div className="space-y-4">
-                   {details.seasons?.filter(s => s.season_number > 0).map(season => (
-                      <SeasonAccordion 
-                        key={season.id} 
-                        season={season} 
-                        showId={id} 
-                        isExpanded={expandedSeason === season.season_number} 
-                        onToggle={() => handleToggleSeason(season.season_number)} 
-                        seasonDetails={seasonDetailsMap[season.season_number]} 
-                        watchProgress={watchProgress} 
-                        onToggleEpisode={props.onToggleEpisode} 
-                        onMarkPreviousEpisodesWatched={props.onMarkPreviousEpisodesWatched} 
-                        onOpenJournal={props.onSaveJournal as any} 
-                        onOpenEpisodeDetail={setSelectedEpisodeForDetail} 
-                        showPosterPath={details.poster_path} 
-                        onMarkSeasonWatched={props.onMarkSeasonWatched} 
-                        onUnmarkSeasonWatched={props.onUnmarkSeasonWatched} 
-                        showDetails={details} 
-                        favoriteEpisodes={props.favoriteEpisodes} 
-                        onToggleFavoriteEpisode={props.onToggleFavoriteEpisode} 
-                        onStartLiveWatch={props.onStartLiveWatch} 
-                        onSaveJournal={props.onSaveJournal} 
-                        episodeRatings={props.episodeRatings} 
-                        onOpenEpisodeRatingModal={() => {}} 
-                        onAddWatchHistory={props.onAddWatchHistory} 
-                        onDiscussEpisode={(s, e) => { setActiveTab('discussion'); setActiveCommentThread(`tv-${id}-s${s}-e${e}`); }} 
-                        comments={props.comments} 
-                        onImageClick={(src) => {}} 
-                        onSaveEpisodeNote={props.onSaveEpisodeNote} 
-                        showRatings={showRatings} 
-                        seasonRatings={props.seasonRatings} 
-                        onRateSeason={props.onRateSeason} 
-                        episodeNotes={episodeNotes}
-                      />
-                   ))}
-                </div>
-              )}
-
-              {activeTab === 'info' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   <div className="space-y-8">
-                      <section>
-                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4">Overview</h2>
-                        <p className="text-text-secondary leading-relaxed">{details.overview}</p>
-                      </section>
-                      <WhereToWatch providers={providers} />
-                   </div>
-                   <MoreInfo details={details} onSelectShow={props.onSelectShow} />
-                </div>
-              )}
-
-              {activeTab === 'cast' && (
-                <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={props.onSelectPerson} />
-              )}
-
-              {activeTab === 'discussion' && (
-                <CommentsTab 
-                  details={details} 
-                  comments={props.comments} 
-                  currentUser={currentUser} 
-                  allUsers={props.allUsers} 
-                  seasonDetailsMap={seasonDetailsMap} 
-                  onFetchSeasonDetails={handleToggleSeason as any} 
-                  onSaveComment={props.onSaveComment} 
-                  onToggleLikeComment={() => {}} 
-                  onDeleteComment={() => {}} 
-                  activeThread={activeCommentThread} 
-                  // FIX: Corrected state setter name from setActiveThread to setActiveCommentThread
-                  setActiveThread={setActiveCommentThread} 
-                />
-              )}
-
-              {activeTab === 'media' && (
-                <div className="space-y-8">
-                   <section>
-                      <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4">Gallery</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                         {details.images?.backdrops?.slice(0, 12).map((img, i) => (
-                            <img key={i} src={getImageUrl(img.file_path, 'w500')} className="rounded-lg shadow-md hover:scale-105 transition-transform cursor-zoom-in" alt="Scene" />
-                         ))}
-                      </div>
-                   </section>
-                </div>
-              )}
-
-              {activeTab === 'discovery' && (
-                <div className="space-y-12">
-                   {details.belongs_to_collection && (
-                       <MovieCollection 
-                          collectionId={details.belongs_to_collection.id} 
-                          currentMovieId={id} 
-                          onSelectMovie={(mid) => props.onSelectShow(mid, 'movie')} 
-                       />
-                   )}
-                   <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={props.onSelectShow} />
-                </div>
-              )}
-
-              {activeTab === 'customize' && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Customize</h2>
-                  <CustomizeTab 
-                    posterUrl={posterUrl} 
-                    backdropUrl={backdropUrl} 
-                    onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} 
-                    onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} 
-                  />
-                </div>
-              )}
-
-              {activeTab === 'achievements' && (
-                <ShowAchievementsTab details={details} userData={allUserData} />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default ShowDetail;
+        isFavorited={!!

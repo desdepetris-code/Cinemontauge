@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
-import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon } from '../components/Icons';
+// Add missing ArrowPathIcon to imports
+import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, ArrowPathIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -26,6 +27,7 @@ import UpdatesScreen from './UpdatesScreen';
 import OngoingShowsScreen from './OngoingShowsScreen';
 import { PLACEHOLDER_PROFILE } from '../constants';
 import Carousel from '../components/Carousel';
+import { supabase } from '../services/supabaseClient';
 
 interface User {
   id: string;
@@ -37,29 +39,57 @@ interface ProfilePictureModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentUrl: string | null;
+    userId: string;
     onSave: (url: string | null) => void;
 }
 
-const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClose, currentUrl, onSave }) => {
+const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClose, currentUrl, userId, onSave }) => {
     const [url, setUrl] = useState(currentUrl || '');
     const [isUploading, setIsUploading] = useState(false);
 
+    useEffect(() => {
+        if (isOpen) {
+            setUrl(currentUrl || '');
+        }
+    }, [isOpen, currentUrl]);
+
     if (!isOpen) return null;
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Please select an image file (e.g., JPG, PNG, GIF).');
-                return;
-            }
-            setIsUploading(true);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setUrl(reader.result as string);
-                setIsUploading(false);
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            // 1. Define file path in 'avatars' bucket
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${userId}/${fileName}`;
+
+            // 2. Upload to Supabase Storage
+            const { error: uploadError, data } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 3. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            setUrl(publicUrl);
+            setIsUploading(false);
+        } catch (error: any) {
+            console.error('Error uploading avatar:', error.message);
+            alert('Upload failed: ' + error.message);
+            setIsUploading(false);
         }
     };
 
@@ -69,35 +99,83 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary"><XMarkIcon className="w-5 h-5" /></button>
-                <h2 className="text-xl font-bold mb-4">Update Profile Picture</h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-text-secondary mb-1 block">Image URL</label>
-                        <p className="text-xs text-text-secondary/80 mb-2">Paste a direct link to an image (e.g., .gif, .png, .jpg).</p>
-                         <input
-                            type="text"
-                            placeholder="https://example.com/image.gif"
-                            value={url}
-                            onChange={e => setUrl(e.target.value)}
-                            className="w-full p-2 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                        />
-                    </div>
-                    <div className="text-center text-sm text-text-secondary">OR</div>
-                    <div>
-                         <label htmlFor="file-upload" className={`w-full text-center cursor-pointer p-3 rounded-md font-semibold transition-colors ${isUploading ? 'bg-bg-secondary' : 'bg-accent-gradient text-on-accent hover:opacity-90'}`}>
-                            {isUploading ? 'Processing...' : 'Upload from Device'}
-                         </label>
-                        <input id="file-upload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
-                    </div>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-0 left-0 w-full h-1 bg-accent-gradient"></div>
+                <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors">
+                    <XMarkIcon className="w-5 h-5" />
+                </button>
+                
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none mb-2">Update Avatar</h2>
+                    <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60">Personalize your Registry Identity</p>
                 </div>
-                <div className="flex justify-end space-x-2 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 rounded-md bg-bg-secondary text-text-primary">Cancel</button>
-                    <button onClick={handleSave} disabled={isUploading} className="px-4 py-2 rounded-md bg-accent-gradient text-on-accent disabled:opacity-50">
-                        {isUploading ? 'Uploading...' : 'Save'}
-                    </button>
+
+                <div className="space-y-6">
+                    <div className="flex justify-center mb-6">
+                        <div className="relative group">
+                            <img 
+                                src={url || PLACEHOLDER_PROFILE} 
+                                alt="Preview" 
+                                className="w-32 h-32 rounded-full object-cover border-4 border-bg-secondary shadow-2xl" 
+                            />
+                            {isUploading && (
+                                <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                                    <ArrowPathIcon className="w-8 h-8 text-white animate-spin" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 block">Direct Image Link</label>
+                            <input
+                                type="text"
+                                placeholder="https://example.com/avatar.jpg"
+                                value={url}
+                                onChange={e => setUrl(e.target.value)}
+                                className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary placeholder-text-secondary/50 focus:outline-none border border-white/10 focus:border-primary-accent transition-all font-bold shadow-inner"
+                            />
+                        </div>
+                        
+                        <div className="relative">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="h-px flex-grow bg-white/10"></div>
+                                <span className="text-[10px] font-black uppercase text-text-secondary opacity-40">Or Upload File</span>
+                                <div className="h-px flex-grow bg-white/10"></div>
+                            </div>
+                            
+                            <label htmlFor="avatar-upload" className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 text-text-primary font-black uppercase text-[10px] tracking-widest cursor-pointer hover:bg-white/5 transition-all shadow-md ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" />
+                                {isUploading ? 'Uploading to Storage...' : 'Browse Local Files'}
+                            </label>
+                            <input 
+                                id="avatar-upload" 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handleFileChange} 
+                                disabled={isUploading} 
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-4">
+                        <button
+                            onClick={handleSave}
+                            disabled={isUploading}
+                            className="w-full py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-2xl transform transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                        >
+                            Save Avatar
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[9px] hover:text-text-primary transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -135,8 +213,6 @@ interface ProfileProps {
   }) => void;
   onJsonImportCompleted: (data: any) => void;
   onToggleEpisode: (showId: number, seasonNumber: number, episodeNumber: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
-  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
-  favoriteEpisodes: FavoriteEpisodes;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   setCustomLists: React.Dispatch<React.SetStateAction<CustomList[]>>;
   initialTab?: ProfileTab;
@@ -217,6 +293,8 @@ interface ProfileProps {
   onTabNavigate?: (tabId: string) => void;
   viewerId?: string; 
   isFollowerOfProfile?: boolean;
+  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
+  favoriteEpisodes: FavoriteEpisodes;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
@@ -244,7 +322,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
     return { followers: followerList, following: followingList };
   }, [currentUser, follows]);
 
-  // UPDATED: Icons for Overview, Catch Up, Updates, Weekly Picks, Library, Custom Lists, Season Log, Journal, History, Stats.
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
     { id: 'overview', label: 'Overview', icon: PushPinIcon },
     { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon },
@@ -306,7 +383,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
       case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
-      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} onUpdateList={props.onUpdateList as any} />;
+      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
       case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} onPermanentDeleteNote={onPermanentDeleteNote} onRestoreNote={onRestoreNote} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
@@ -320,7 +397,13 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-8">
-        <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} onSave={setProfilePictureUrl} />
+        <ProfilePictureModal 
+            isOpen={isPicModalOpen} 
+            onClose={() => setIsPicModalOpen(false)} 
+            currentUrl={profilePictureUrl} 
+            userId={currentUser?.id || 'guest'}
+            onSave={setProfilePictureUrl} 
+        />
         <NotificationsModal 
           isOpen={isNotificationsModalOpen} 
           onClose={() => setIsNotificationsModalOpen(false)} 

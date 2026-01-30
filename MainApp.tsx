@@ -30,7 +30,7 @@ import NominatePicksModal from './components/NominatePicksModal';
 import { calculateAutoStatus } from './utils/libraryLogic';
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
-import { getAllUsers } from './utils/userUtils';
+import { getAllUsers, searchPublicLists } from './utils/userUtils';
 import { supabase } from './services/supabaseClient';
 
 interface User {
@@ -172,7 +172,7 @@ export const MainApp: React.FC<MainAppProps> = ({
         isSyncingRef.current = true;
         
         try {
-            // Profile Sync
+            // Profile Sync: Map avatar_url (DB) to profilePictureUrl (State)
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             if (profile) {
                 if (profile.timezone) setTimezone(profile.timezone);
@@ -269,7 +269,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             await supabase.from('watch_progress').upsert(progressPayload, { onConflict: 'User_id,tmdb_id' });
         }
 
-        // Profile Update
+        // Profile Update: Map profilePictureUrl (State) to avatar_url (DB)
         await supabase.from('profiles').upsert({
             id: currentUser.id,
             username: currentUser.username,
@@ -920,10 +920,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       setDeletedNotes(prev => prev.filter(n => n.id !== note.id));
   }, [setDeletedNotes]);
 
-  const handleToggleLikeList = useCallback((ownerId: string, listId: string, listName: string) => {
-      confirmationService.show(`Liked "${listName}"`);
-  }, []);
-
   const handleTabPress = (tabId: string) => {
     setSelectedShow(null); setSelectedPerson(null); setSelectedUserId(null);
     window.scrollTo(0, 0); setInitialLibraryStatus(undefined);
@@ -944,6 +940,37 @@ export const MainApp: React.FC<MainAppProps> = ({
         }
     });
   }, [setReminders]);
+
+  // FIX: Added missing handleToggleLikeList function to enable list interactions on Search page.
+  const handleToggleLikeList = useCallback((ownerId: string, listId: string, listName: string) => {
+    if (!currentUser) {
+        onAuthClick();
+        return;
+    }
+    const listKey = `custom_lists_${ownerId}`;
+    const listsStr = localStorage.getItem(listKey);
+    if (listsStr) {
+        try {
+            const lists: CustomList[] = JSON.parse(listsStr);
+            const updatedLists = lists.map(l => {
+                if (l.id === listId) {
+                    const likes = l.likes || [];
+                    const userIndex = likes.indexOf(currentUser.id);
+                    if (userIndex > -1) {
+                        likes.splice(userIndex, 1);
+                        confirmationService.show(`Unliked ${listName}`);
+                    } else {
+                        likes.push(currentUser.id);
+                        confirmationService.show(`Liked ${listName}!`);
+                    }
+                    return { ...l, likes };
+                }
+                return l;
+            });
+            localStorage.setItem(listKey, JSON.stringify(updatedLists));
+        } catch (e) { console.error("Failed to update list likes", e); }
+    }
+  }, [currentUser, onAuthClick]);
 
   const renderScreen = () => {
     if (selectedShow) {
@@ -1011,6 +1038,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 episodeRatings={episodeRatings}
                 reminders={reminders}
                 onToggleReminder={handleToggleReminder}
+                // REMOVED duplicate onUpdateLists and favoriteEpisodes attributes
             />
         );
     }
@@ -1118,8 +1146,6 @@ export const MainApp: React.FC<MainAppProps> = ({
             onTmdbImportCompleted={handleTmdbImportCompleted}
             onJsonImportCompleted={handleJsonImportCompleted}
             onToggleEpisode={handleToggleEpisode}
-            onUpdateLists={updateLists}
-            favoriteEpisodes={favoriteEpisodes}
             onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
             setCustomLists={setCustomLists}
             initialTab={profileInitialTab}
@@ -1192,6 +1218,8 @@ export const MainApp: React.FC<MainAppProps> = ({
             onPermanentDeleteNote={handlePermanentDeleteNote}
             onRestoreNote={handleRestoreNote}
             onTabNavigate={handleTabPress}
+            onUpdateLists={updateLists}
+            favoriteEpisodes={favoriteEpisodes}
           />
         );
       default:
