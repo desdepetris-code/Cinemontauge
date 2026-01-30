@@ -54,6 +54,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 /**
  * Helper to upload custom posters/backdrops to 'custom-media' bucket.
+ * Now supports metadata for secure owner-based RLS.
  */
 export const uploadCustomMedia = async (
     userId: string, 
@@ -84,7 +85,7 @@ export const uploadCustomMedia = async (
             .from('custom-media')
             .upload(path, blob, {
                 upsert: true,
-                // @ts-ignore - metadata support recently added to SDK
+                // @ts-ignore - injecting ownership metadata for Storage RLS
                 metadata: { owner_id: userId }
             });
 

@@ -67,16 +67,16 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
         setIsUploading(true);
 
         try {
+            // Standardize avatar path to user ID to make cleanup/updates easier
             const fileExt = file.name.split('.').pop();
-            const fileName = `avatar_${Date.now()}.${fileExt}`;
-            const filePath = `${userId}/${fileName}`;
+            const filePath = `${userId}/avatar.${fileExt}`;
 
-            // Upload to Supabase Storage with specific metadata and upsert as requested
+            // Upload with specific metadata for RLS as requested
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(filePath, file, {
                     upsert: true,
-                    // @ts-ignore - metadata support recently added to SDK
+                    // @ts-ignore - metadata mapping for RLS
                     metadata: { owner_id: userId }
                 });
 
