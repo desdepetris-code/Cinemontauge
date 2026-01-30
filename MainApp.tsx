@@ -31,7 +31,7 @@ import { calculateAutoStatus } from './utils/libraryLogic';
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers, searchPublicLists } from './utils/userUtils';
-import { supabase } from './services/supabaseClient';
+import { supabase, uploadCustomMedia } from './services/supabaseClient';
 
 interface User {
   id: string;
@@ -180,6 +180,28 @@ export const MainApp: React.FC<MainAppProps> = ({
                 if (profile.avatar_url) setProfilePictureUrl(profile.avatar_url);
             }
 
+            // Custom Media Sync
+            const { data: customMedia } = await supabase.from('custom_media').select('*').eq('user_id', currentUser.id);
+            if (customMedia) {
+                const nextPaths: CustomImagePaths = {};
+                const nextEpImages: typeof customEpisodeImages = {};
+                
+                customMedia.forEach((m: any) => {
+                    if (m.asset_type === 'poster' || m.asset_type === 'backdrop') {
+                        if (!nextPaths[m.tmdb_id]) nextPaths[m.tmdb_id] = { gallery: [] };
+                        if (m.asset_type === 'poster') nextPaths[m.tmdb_id].poster_path = m.url;
+                        if (m.asset_type === 'backdrop') nextPaths[m.tmdb_id].backdrop_path = m.url;
+                        nextPaths[m.tmdb_id].gallery!.push(m.url);
+                    } else if (m.asset_type === 'episode') {
+                        if (!nextEpImages[m.tmdb_id]) nextEpImages[m.tmdb_id] = {};
+                        if (!nextEpImages[m.tmdb_id][m.season_number]) nextEpImages[m.tmdb_id][m.season_number] = {};
+                        nextEpImages[m.tmdb_id][m.season_number][m.episode_number] = m.url;
+                    }
+                });
+                setCustomImagePaths(nextPaths);
+                setCustomEpisodeImages(nextEpImages);
+            }
+
             // Library Sync
             const { data: libraryItems } = await supabase.from('library').select('*').eq('User_id', currentUser.id);
             if (libraryItems) {
@@ -240,7 +262,66 @@ export const MainApp: React.FC<MainAppProps> = ({
     loadSupabaseData();
   }, [currentUser]);
 
-  // 2. Sync State Changes to Supabase
+  // 2. Migration: Move Base64 from LocalStorage to Supabase custom-media bucket
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const migrateAssets = async () => {
+        // Migration state key
+        const migrationKey = `assets_migrated_${currentUser.id}`;
+        if (localStorage.getItem(migrationKey)) return;
+
+        console.info("Starting cinematic asset migration to cloud...");
+        confirmationService.show("Cloud Migration in progress...");
+
+        // 1. Migrate Main Image Paths
+        const pathKeys = Object.keys(customImagePaths).map(Number);
+        for (const tmdbId of pathKeys) {
+            const entry = customImagePaths[tmdbId];
+            if (entry.poster_path?.startsWith('data:')) {
+                const url = await uploadCustomMedia(currentUser.id, tmdbId, 'poster', entry.poster_path);
+                if (url) entry.poster_path = url;
+            }
+            if (entry.backdrop_path?.startsWith('data:')) {
+                const url = await uploadCustomMedia(currentUser.id, tmdbId, 'backdrop', entry.backdrop_path);
+                if (url) entry.backdrop_path = url;
+            }
+            if (entry.gallery) {
+                for (let i = 0; i < entry.gallery.length; i++) {
+                    if (entry.gallery[i].startsWith('data:')) {
+                        const url = await uploadCustomMedia(currentUser.id, tmdbId, 'poster', entry.gallery[i]);
+                        if (url) entry.gallery[i] = url;
+                    }
+                }
+            }
+        }
+        setCustomImagePaths({ ...customImagePaths });
+
+        // 2. Migrate Episode Images
+        const epKeys = Object.keys(customEpisodeImages).map(Number);
+        for (const tmdbId of epKeys) {
+            const seasons = customEpisodeImages[tmdbId];
+            for (const sNum in seasons) {
+                for (const eNum in seasons[sNum]) {
+                    const data = seasons[sNum][eNum];
+                    if (data.startsWith('data:')) {
+                        const url = await uploadCustomMedia(currentUser.id, tmdbId, 'episode', data, Number(sNum), Number(eNum));
+                        if (url) seasons[sNum][eNum] = url;
+                    }
+                }
+            }
+        }
+        setCustomEpisodeImages({ ...customEpisodeImages });
+
+        localStorage.setItem(migrationKey, 'true');
+        confirmationService.show("Migration Complete! LocalStorage purged.");
+        console.info("Asset migration finished.");
+    };
+
+    migrateAssets();
+  }, [currentUser]);
+
+  // 3. Sync State Changes to Supabase
   const syncToSupabase = useCallback(async () => {
     if (!currentUser || isSyncingRef.current) return;
 
@@ -614,12 +695,26 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show(entry ? "Journal entry saved." : "Journal entry removed.");
   }, [setWatchProgress, setUserXp]);
 
-  const handleSetCustomImage = useCallback((mediaId: number, type: 'poster' | 'backdrop', path: string) => {
-    setCustomImagePaths(prev => ({
-        ...prev,
-        [mediaId]: { ...prev[mediaId], [`${type}_path`]: path }
-    }));
-  }, [setCustomImagePaths]);
+  const handleSetCustomImage = useCallback(async (mediaId: number, type: 'poster' | 'backdrop', source: string | File) => {
+    if (!currentUser) return;
+
+    confirmationService.show(`Uploading custom ${type}...`);
+    const publicUrl = await uploadCustomMedia(currentUser.id, mediaId, type, source);
+
+    if (publicUrl) {
+        setCustomImagePaths(prev => {
+            const next = { ...prev };
+            if (!next[mediaId]) next[mediaId] = { gallery: [] };
+            if (type === 'poster') next[mediaId].poster_path = publicUrl;
+            if (type === 'backdrop') next[mediaId].backdrop_path = publicUrl;
+            if (!next[mediaId].gallery!.includes(publicUrl)) next[mediaId].gallery!.push(publicUrl);
+            return next;
+        });
+        confirmationService.show(`${type.charAt(0).toUpperCase() + type.slice(1)} synchronized to cloud.`);
+    } else {
+        confirmationService.show("Cloud sync failed. Image saved locally.");
+    }
+  }, [currentUser, setCustomImagePaths]);
 
   const handleToggleFavoriteEpisode = useCallback((showId: number, seasonNumber: number, episodeNumber: number) => {
     setFavoriteEpisodes(prev => {
@@ -827,15 +922,23 @@ export const MainApp: React.FC<MainAppProps> = ({
       setDeletedHistory(prev => [item, ...prev]);
   }, [setDeletedHistory]);
 
-  const handleSetCustomEpisodeImage = useCallback((showId: number, season: number, episode: number, imagePath: string) => {
-      setCustomEpisodeImages(prev => {
-          const next = { ...prev };
-          if (!next[showId]) next[showId] = {};
-          if (!next[showId][season]) next[showId][season] = {};
-          next[showId][season][episode] = imagePath;
-          return next;
-      });
-  }, [setCustomEpisodeImages]);
+  const handleSetCustomEpisodeImage = useCallback(async (showId: number, season: number, episode: number, imagePath: string | File) => {
+    if (!currentUser) return;
+    
+    confirmationService.show("Uploading episode image...");
+    const publicUrl = await uploadCustomMedia(currentUser.id, showId, 'episode', imagePath, season, episode);
+
+    if (publicUrl) {
+        setCustomEpisodeImages(prev => {
+            const next = { ...prev };
+            if (!next[showId]) next[showId] = {};
+            if (!next[showId][season]) next[showId][season] = {};
+            next[showId][season][episode] = publicUrl;
+            return next;
+        });
+        confirmationService.show("Episode capture synced to cloud.");
+    }
+  }, [currentUser, setCustomEpisodeImages]);
 
   const handleClearMediaHistory = useCallback((mediaId: number, mediaType: 'tv' | 'movie') => {
       setHistory(prev => prev.filter(h => h.id !== mediaId));

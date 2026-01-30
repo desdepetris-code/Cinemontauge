@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TmdbImage } from '../types';
 import { TMDB_IMAGE_BASE_URL } from '../constants';
 import { SparklesIcon, PlusIcon, CloudArrowUpIcon, XMarkIcon, ArrowPathIcon } from './Icons';
+import { uploadCustomMedia } from '../services/supabaseClient';
 
 interface ImageSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   posters: TmdbImage[];
   backdrops: TmdbImage[];
-  onSelect: (type: 'poster' | 'backdrop', path: string) => void;
+  onSelect: (type: 'poster' | 'backdrop', path: string | File) => void;
   initialTab?: 'posters' | 'backdrops';
 }
 
@@ -27,7 +28,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
 
   if (!isOpen) return null;
 
-  const handleSelect = (type: 'poster' | 'backdrop', path: string) => {
+  const handleSelect = (type: 'poster' | 'backdrop', path: string | File) => {
     onSelect(type, path);
     onClose();
   };
@@ -38,42 +39,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
       handleSelect(activeTab === 'posters' ? 'poster' : 'backdrop', customUrl.trim());
   };
 
-  const validateAndCategorizeImage = (base64: string): Promise<{ type: 'poster' | 'backdrop' | null }> => {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-            const width = img.width;
-            const height = img.height;
-            const ratio = width / height;
-
-            // Reject very small images
-            if (width < 200 || height < 200) {
-                alert("Image is too small. Please use a higher resolution image.");
-                return resolve({ type: null });
-            }
-
-            // Ratio < 0.8 is likely a vertical poster (2:3 is 0.66)
-            if (ratio < 0.85) {
-                resolve({ type: 'poster' });
-            } 
-            // Ratio > 1.2 is likely a horizontal backdrop (16:9 is 1.77)
-            else if (ratio > 1.15) {
-                resolve({ type: 'backdrop' });
-            }
-            else {
-                alert("Invalid image dimensions. Please provide a vertical poster or horizontal backdrop.");
-                resolve({ type: null });
-            }
-        };
-        img.onerror = () => {
-            alert("Failed to load image for validation.");
-            resolve({ type: null });
-        };
-        img.src = base64;
-    });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
@@ -82,28 +48,10 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
           return;
       }
 
-      if (file.size > 2 * 1024 * 1024) {
-          if (!window.confirm('This image is quite large (>2MB). Large files may exceed your device\'s local storage limit. Continue anyway?')) {
-              return;
-          }
-      }
-
       setIsUploading(true);
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-          const base64 = event.target?.result as string;
-          const { type } = await validateAndCategorizeImage(base64);
-          
-          if (type) {
-              handleSelect(type, base64);
-          }
-          setIsUploading(false);
-      };
-      reader.onerror = () => {
-          alert('Failed to read file.');
-          setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+      // Pass the file directly to the parent handler which now supports File objects via Supabase upload
+      handleSelect(activeTab === 'posters' ? 'poster' : 'backdrop', file);
+      setIsUploading(false);
   };
 
   const imagesToShow = activeTab === 'posters' ? posters : backdrops;
@@ -168,7 +116,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
                     ) : (
                         <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" />
                     )}
-                    <span>{isUploading ? 'Validating...' : 'Add New Image'}</span>
+                    <span>{isUploading ? 'Syncing...' : 'Upload Asset to Cloud'}</span>
                 </button>
                 <input 
                     ref={fileInputRef}
@@ -208,7 +156,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
         </div>
         
         <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5 flex-shrink-0">
-            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40 max-w-sm">Local storage is limited. Custom images are categorized based on their aspect ratio (vertical = poster, horizontal = backdrop).</p>
+            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40 max-w-sm">Assets are now stored securely in the SceneIt Cloud Registry. LocalStorage is only used for temporary caching.</p>
             <button
                 onClick={onClose}
                 className="px-10 py-3 rounded-full text-text-secondary font-black uppercase tracking-widest text-xs bg-bg-secondary hover:text-text-primary hover:bg-bg-secondary/80 transition-all border border-white/5"

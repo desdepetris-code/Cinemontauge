@@ -50,3 +50,62 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 });
+
+/**
+ * Helper to upload custom posters/backdrops to 'custom-media' bucket.
+ */
+export const uploadCustomMedia = async (
+    userId: string, 
+    tmdbId: number, 
+    type: 'poster' | 'backdrop' | 'episode', 
+    source: string | File,
+    season?: number,
+    episode?: number
+): Promise<string | null> => {
+    try {
+        let blob: Blob;
+        let ext = 'jpg';
+
+        if (source instanceof File) {
+            blob = source;
+            ext = source.name.split('.').pop() || 'jpg';
+        } else {
+            // Handle Base64 conversion
+            const response = await fetch(source);
+            blob = await response.blob();
+            ext = blob.type.split('/').pop() || 'jpg';
+        }
+
+        const fileName = `${type}_${Date.now()}.${ext}`;
+        const path = `${userId}/${tmdbId}/${type}/${fileName}`;
+
+        const { error, data } = await supabase.storage
+            .from('custom-media')
+            .upload(path, blob);
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('custom-media')
+            .getPublicUrl(path);
+
+        // Record entry in database
+        const { error: dbError } = await supabase
+            .from('custom_media')
+            .insert({
+                user_id: userId,
+                tmdb_id: tmdbId,
+                asset_type: type,
+                url: publicUrl,
+                season_number: season,
+                episode_number: episode
+            });
+
+        if (dbError) console.error("Error logging media to DB:", dbError);
+
+        return publicUrl;
+    } catch (e) {
+        console.error("Upload failed:", e);
+        return null;
+    }
+};
