@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
-// Add missing ArrowPathIcon to imports
 import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, ArrowPathIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
@@ -67,19 +67,21 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClo
         setIsUploading(true);
 
         try {
-            // 1. Define file path in 'avatars' bucket
             const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
+            const fileName = `avatar_${Date.now()}.${fileExt}`;
             const filePath = `${userId}/${fileName}`;
 
-            // 2. Upload to Supabase Storage
-            const { error: uploadError, data } = await supabase.storage
+            // Upload to Supabase Storage with specific metadata and upsert as requested
+            const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, file);
+                .upload(filePath, file, {
+                    upsert: true,
+                    // @ts-ignore - metadata support recently added to SDK
+                    metadata: { owner_id: userId }
+                });
 
             if (uploadError) throw uploadError;
 
-            // 3. Get Public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);

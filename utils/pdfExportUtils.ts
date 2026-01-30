@@ -1,3 +1,4 @@
+
 import { jsPDF } from 'jspdf';
 
 interface ReportRow {
@@ -137,7 +138,7 @@ export const generateSupabaseSpecPDF = (): void => {
         });
     };
 
-    addText("CineMontauge: Supabase Backend Specification v3", 18, 'bold', [65, 105, 225]);
+    addText("CineMontauge: Supabase Backend Specification v3.5", 18, 'bold', [65, 105, 225]);
     y += 4;
     addText("COMPREHENSIVE RLS POLICIES & SCHEMA FOR CHATGPT", 12, 'bold', [100, 100, 100]);
     addText("--------------------------------------------------------------------------------", 10, 'normal', [150, 150, 150]);
@@ -145,48 +146,36 @@ export const generateSupabaseSpecPDF = (): void => {
 
     addText("1. Relational Schema Requirements", 14, 'bold');
     addText("Table: profiles -> Basic user metadata (Public read, Owner edit).");
-    addText("Table: media_items -> Global cache for TMDB metadata (Public read).");
     addText("Table: library -> Shows/Movies tracked (Private, Owner only).");
     addText("Table: watch_progress -> JSONB episode states (Private, Owner only).");
-    addText("Table: weekly_picks -> Daily Gem nominations (Public read, Owner edit).");
-    addText("Table: custom_lists -> visibility: ['public', 'followers', 'private'].");
+    addText("Table: custom_media -> Owner-assigned posters and backdrops.");
     y += 5;
 
-    addText("2. Row Level Security (RLS) Logic", 14, 'bold');
+    addText("2. Storage Buckets & Policies", 14, 'bold');
     
-    addText("Table: profiles", 11, 'bold');
-    addText("- SELECT: 'true' (Everyone can see usernames/avatars).");
-    addText("- INSERT/UPDATE: 'auth.uid() = id' (Only user can change their profile).");
-    y += 2;
+    addText("Bucket: avatars", 11, 'bold');
+    addText("- Public Access: Enabled (Anyone can view avatars).");
+    addText("- RLS SELECT: 'true'");
+    addText("- RLS INSERT/UPDATE/DELETE (Role: authenticated):");
+    addText("  'bucket_id = \"avatars\" AND (metadata->>\"owner_id\")::uuid = auth.uid()'");
+    y += 4;
 
-    addText("Table: library & watch_progress", 11, 'bold');
-    addText("- ALL ACTIONS: 'auth.uid() = user_id' (Strict privacy for watch history).");
-    y += 2;
-
-    addText("Table: weekly_picks", 11, 'bold');
-    addText("- SELECT: 'true' (Nominations are visible to everyone on the dashboard).");
-    addText("- INSERT/UPDATE/DELETE: 'auth.uid() = user_id' (Only the nominator can edit).");
-    y += 2;
-
-    addText("Table: custom_lists", 11, 'bold');
-    addText("- SELECT: 'visibility = \"public\" OR auth.uid() = user_id' (Visibility-based access).");
-    addText("- INSERT/UPDATE/DELETE: 'auth.uid() = user_id' (Owner only management).");
-    y += 2;
-
-    addText("Table: comments", 11, 'bold');
-    addText("- SELECT: 'visibility = \"public\" OR auth.uid() = user_id OR (visibility = \"followers\" AND user_id IN (SELECT followed_id FROM follows WHERE follower_id = auth.uid()))'.");
-    addText("- INSERT: 'auth.uid() = user_id'.");
-    addText("- UPDATE/DELETE: 'auth.uid() = user_id'.");
+    addText("Bucket: custom-media", 11, 'bold');
+    addText("- Public Access: Enabled.");
+    addText("- RLS INSERT/UPDATE/DELETE (Role: authenticated):");
+    addText("  'bucket_id = \"custom-media\" AND (metadata->>\"owner_id\")::uuid = auth.uid()'");
     y += 5;
 
-    addText("3. Social Interactions Junctions", 14, 'bold');
-    addText("- follows: SELECT everyone, INSERT/DELETE where follower_id = auth.uid().");
-    addText("- list_likes: SELECT everyone, INSERT/DELETE where user_id = auth.uid().");
+    addText("3. Detailed RLS Logic (SQL Format)", 14, 'bold');
+    addText("Run the following in the Supabase SQL Editor:", 10, 'italic');
+    addText("ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;", 9, 'normal', [80, 80, 80]);
+    addText("CREATE POLICY \"Public Read\" ON storage.objects FOR SELECT USING (true);", 9);
+    addText("CREATE POLICY \"Owner Management\" ON storage.objects FOR ALL TO authenticated USING (bucket_id IN ('avatars', 'custom-media') AND (metadata->>'owner_id')::uuid = auth.uid());", 9);
     y += 5;
 
-    addText("4. ChatGPT Prompt for RLS SQL Generation", 14, 'bold');
-    addText("Copy and paste the following into ChatGPT:", 11, 'italic');
-    addText("'Please write the SQL to enable Row Level Security (RLS) for my CineMontauge database. For profiles, allow public read but owner-only update. For library and watch_progress, ensure strict owner-only access. For custom_lists, allow public read if visibility is \"public\", but restricted to owner if \"private\". For comments, allow public read if \"public\", owner read if \"private\", and if \"followers\", only allow read for users who follow the author via the follows table. Also, write the triggers to automatically create a profile row when a new user signs up in auth.users.'", 10, 'normal', [80, 80, 80]);
+    addText("4. Profiles & Triggers", 14, 'bold');
+    addText("- auth.users -> Profiles table sync trigger (Owner only update).");
+    y += 5;
 
     addText("--------------------------------------------------------------------------------", 10, 'normal', [150, 150, 150]);
     addText("Generated by CineMontauge Admin Portal", 8, 'italic', [150, 150, 150]);

@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
@@ -81,7 +82,11 @@ export const uploadCustomMedia = async (
 
         const { error, data } = await supabase.storage
             .from('custom-media')
-            .upload(path, blob);
+            .upload(path, blob, {
+                upsert: true,
+                // @ts-ignore - metadata support recently added to SDK
+                metadata: { owner_id: userId }
+            });
 
         if (error) throw error;
 
