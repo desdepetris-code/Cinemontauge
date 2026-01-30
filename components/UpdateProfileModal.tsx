@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Added missing CheckCircleIcon to imports
 import { XMarkIcon, UserIcon, EnvelopeIcon, SparklesIcon, CheckCircleIcon } from './Icons';
 import Logo from './Logo';
 
@@ -26,10 +25,19 @@ const UpdateProfileModal: React.FC<UpdateProfileModalProps> = ({ isOpen, onClose
 
     if (!isOpen) return null;
 
+    const validateUsername = (val: string) => {
+        const regex = /^[a-zA-Z0-9!@#$%^&*()_+\-=[\]{};':",.<>/?]+$/;
+        return regex.test(val);
+    };
+
     const handleSave = async () => {
         setError(null);
         if (!username.trim() || !email.trim()) {
             setError("Username and email cannot be empty.");
+            return;
+        }
+        if (!validateUsername(username)) {
+            setError("Username contains invalid characters.");
             return;
         }
         setLoading(true);
@@ -71,7 +79,7 @@ const UpdateProfileModal: React.FC<UpdateProfileModalProps> = ({ isOpen, onClose
                             <input 
                                 type="text" 
                                 value={username} 
-                                onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} 
+                                onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} 
                                 className={inputClass} 
                                 placeholder="new_handle"
                             />
@@ -124,7 +132,7 @@ const UpdateProfileModal: React.FC<UpdateProfileModalProps> = ({ isOpen, onClose
                 </div>
 
                 <p className="mt-8 text-[8px] font-black text-text-secondary/30 uppercase tracking-[0.3em] text-center">
-                    Registry Verification System v3.0
+                    Registry Verification System v3.2
                 </p>
             </div>
         </div>

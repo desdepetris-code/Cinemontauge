@@ -15,7 +15,9 @@ interface User {
 const App: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
+    const [missingUsername, setMissingUsername] = useState(false);
+    const [missingPassword, setMissingPassword] = useState(false);
+    
     const userId = currentUser ? currentUser.id : 'guest';
 
     const [autoHolidayThemesEnabled, setAutoHolidayThemesEnabled] = useLocalStorage<boolean>(`autoHolidayThemesEnabled_${userId}`, true);
@@ -24,17 +26,24 @@ const App: React.FC = () => {
     const checkProfileStatus = useCallback(async (supabaseUser: any) => {
         if (!supabaseUser) return;
 
+        // 1. Check database for username
         const { data: profile, error } = await supabase
             .from('profiles')
             .select('username')
             .eq('id', supabaseUser.id)
             .single();
 
-        // If no profile or no username, the user needs to complete their registration (common for first-time Google signups)
-        if (error || !profile || !profile.username) {
-            setNeedsProfileCompletion(true);
-        } else {
-            setNeedsProfileCompletion(false);
+        const hasUsername = !!(profile?.username);
+        
+        // 2. Check if user has a password (email provider identity)
+        // If they only have OAuth identities (like google), they don't have a password yet.
+        const hasPassword = supabaseUser.identities?.some((identity: any) => identity.provider === 'email') || false;
+
+        setMissingUsername(!hasUsername);
+        setMissingPassword(!hasPassword);
+
+        // If username is established, we can finalize the session
+        if (hasUsername) {
             setCurrentUser({
                 id: supabaseUser.id,
                 email: supabaseUser.email || '',
@@ -63,7 +72,8 @@ const App: React.FC = () => {
                 }
             } else {
                 setCurrentUser(null);
-                setNeedsProfileCompletion(false);
+                setMissingUsername(false);
+                setMissingPassword(false);
             }
         });
 
@@ -125,37 +135,37 @@ const App: React.FC = () => {
         return null;
     }, []);
 
-    const handleCompleteProfile = useCallback(async ({ username, password }: any): Promise<string | null> => {
+    const handleCompleteProfile = useCallback(async (data: { username?: string; password?: string }): Promise<string | null> => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return "User session not found.";
 
-        // 1. Set the password for the account so they can log in via email/pass later
-        const { error: authError } = await supabase.auth.updateUser({ password });
-        if (authError) return authError.message;
-
-        // 2. Create the profile record
-        const { error: profileError } = await supabase.from('profiles').upsert({ 
-            id: user.id, 
-            username, 
-            email: user.email,
-            user_xp: 0 
-        });
-        
-        if (profileError) {
-            if (profileError.code === '23505') return "Username already taken.";
-            return profileError.message;
+        // 1. Establish Password if missing
+        if (data.password) {
+            const { error: authError } = await supabase.auth.updateUser({ password: data.password });
+            if (authError) return authError.message;
         }
 
-        setNeedsProfileCompletion(false);
-        setCurrentUser({
-            id: user.id,
-            email: user.email || '',
-            username: username
-        });
+        // 2. Establish Username if missing
+        if (data.username) {
+            // Using upsert with just ID and Username to avoid overwriting existing columns like email/xp
+            const { error: profileError } = await supabase.from('profiles').upsert({ 
+                id: user.id, 
+                username: data.username,
+                email: user.email // Keep email in sync
+            }, { onConflict: 'id' });
+            
+            if (profileError) {
+                if (profileError.code === '23505') return "Username already taken.";
+                return profileError.message;
+            }
+        }
+
+        // Re-check status to close modal and update local state
+        await checkProfileStatus(user);
         
-        confirmationService.show(`Profile secured! Welcome to CineMontauge, ${username}.`);
+        confirmationService.show(`Registry updated! Welcome to CineMontauge.`);
         return null;
-    }, []);
+    }, [checkProfileStatus]);
 
     const handleUpdatePassword = useCallback(async (passwords: { currentPassword: string; newPassword: string; }): Promise<string | null> => {
         const { error } = await supabase.auth.updateUser({ password: passwords.newPassword });
@@ -217,6 +227,8 @@ const App: React.FC = () => {
         <div className="font-black uppercase tracking-widest animate-pulse text-sm text-primary-accent">Verifying Connection...</div>
       </div>
     );
+
+    const showProfileCompletion = missingUsername || missingPassword;
     
     return (
         <>
@@ -243,7 +255,9 @@ const App: React.FC = () => {
                 onForgotPasswordReset={handleForgotPasswordReset}
             />
             <CompleteProfileModal 
-                isOpen={needsProfileCompletion}
+                isOpen={showProfileCompletion}
+                missingUsername={missingUsername}
+                missingPassword={missingPassword}
                 onComplete={handleCompleteProfile}
             />
         </>
