@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserData, CustomList, CustomListItem, AppPreferences, ListVisibility } from '../types';
 import ListCard from '../components/ListCard';
@@ -117,7 +118,10 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
   };
 
   const handleDeleteList = (listId: string) => {
-    if (listId === 'watchlist') return;
+    if (listId === 'watchlist') {
+        confirmationService.show("The 'Watch List' is mandatory and cannot be removed.");
+        return;
+    }
     if (window.confirm("ARE YOU SURE?\n\nDeleting this collection is permanent and cannot be undone.")) {
         setCustomLists(prev => prev.filter(l => l.id !== listId));
         setActiveListId(null);

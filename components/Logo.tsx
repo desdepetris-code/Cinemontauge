@@ -1,3 +1,4 @@
+
 import React, { forwardRef } from 'react';
 
 interface LogoProps {
@@ -126,7 +127,6 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         fill="white"
         textAnchor="middle"
         letterSpacing="1.2"
-        style={{ opacity: 0.95 }}
       >
         CineMontauge
       </text>

@@ -120,7 +120,7 @@ const DetailedActionButton: React.FC<{
             {icon}
         </div>
     </div>
-    <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 text-center leading-tight transition-colors ${isActive ? 'text-primary-accent' : 'text-text-secondary group-hover:text-text-primary'}`}>{label}</span>
+    <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 text-center leading-tight transition-colors ${isActive ? 'text-primary-accent' : 'text-text-secondary group-hover:text-primary-accent'}`}>{label}</span>
   </button>
 );
 
@@ -393,14 +393,14 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   };
 
   const handleReportIssue = (option: string) => {
-    const subject = `SceneIt Page Change Request: ${details?.title || details?.name} (ID: ${details?.id})`;
+    const subject = `CineMontauge Page Change Request: ${details?.title || details?.name} (ID: ${details?.id})`;
     const body = `Issue Type: ${option}\n\nDetails:\n[Please describe the issue here]`;
     window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setIsReportIssueModalOpen(false);
   };
 
   const handleAirtimeSend = (data: any) => {
-      const subject = `SceneIt Airtime Correction Request: ${details?.title || details?.name} (ID: ${details?.id})`;
+      const subject = `CineMontauge Airtime Correction Request: ${details?.title || details?.name} (ID: ${details?.id})`;
       const body = `Correction Type: ${data.type}\n` +
                  (data.timezone ? `Selected Timezone: ${data.timezone}\n` : '') +
                  (data.episodes.length > 0 ? `Affected Episodes:\n${data.episodes.join('\n')}\n` : '') +
@@ -774,7 +774,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               )}
               {activeTab === 'info' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   <div className="space-y-8"><section><h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4">Overview</h2><p className="text-text-secondary leading-relaxed">{details.overview}</p></section><WhereToWatch providers={providers} /></div>
+                   <div className="space-y-8"><section><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Overview</h2><p className="text-text-secondary leading-relaxed">{details.overview}</p></section><WhereToWatch providers={providers} /></div>
                    <MoreInfo details={details} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
                 </div>
               )}
@@ -791,6 +791,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
+                  // Fix: Use the correct state setter setActiveCommentThread
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings, DeletedHistoryItem, DeletedNote } from '../types';
 import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon, PlayPauseIcon } from '../components/Icons';
@@ -181,7 +182,7 @@ const SearchHistory: React.FC<{
                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-widest">Recent Searches</h2>
                 <button onClick={onClear} className="text-xs font-black uppercase text-red-500 hover:text-red-400 transition-colors">Clear All</button>
             </div>
-            {history.length === 0 ? (
+            {!history || history.length === 0 ? (
                 <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
                     <p className="text-text-secondary font-bold uppercase tracking-widest text-xs">No search history found.</p>
                 </div>
@@ -194,18 +195,17 @@ const SearchHistory: React.FC<{
                                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSelectShow(h.item!.id, h.item!.media_type as any)}>
                                         <img src={getImageUrl(h.item.poster_path, 'w92')} className="w-10 h-14 object-cover rounded-lg shadow-md border border-white/10" alt="" />
                                         <div className="min-w-0">
-                                            <p className="text-xs font-black text-text-primary truncate uppercase">{h.item.title || (h.item as any).name}</p>
+                                            <p className="text-xs font-black text-text-primary truncate uppercase">{h.item.title || (h.item as any).name || 'Untitled'}</p>
                                             <p className="text-[10px] text-text-secondary uppercase tracking-widest opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="cursor-pointer px-2" onClick={() => onQueryChange(h.query || '')}>
-                                        <p className="text-sm font-bold text-text-primary truncate italic">"{h.query}"</p>
+                                        <p className="text-sm font-bold text-text-primary truncate italic">"{h.query || 'Unknown search'}"</p>
                                         <p className="text-[10px] text-text-secondary uppercase tracking-widest opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
                                     </div>
                                 )}
                             </div>
-                            {/* FIX: Ensure delete button is prominent and always visible */}
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onDelete(h.timestamp); }} 
                                 className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md border border-red-500/20 ml-4 flex-shrink-0"
@@ -282,7 +282,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
           history={props.userData.searchHistory} 
           onDelete={props.onDeleteSearchHistoryItem}
           onClear={props.onClearSearchHistory}
-          onQueryChange={() => {}} 
+          onQueryChange={(q) => {}} // Could be wired to actual search logic
           onSelectShow={(id, type) => props.onSelectShow(id, type)}
           userData={props.userData}
         />
@@ -324,14 +324,14 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
                 </button>
             </div>
 
-            {props.userData.deletedHistory.length === 0 && props.userData.deletedNotes.length === 0 ? (
+            {(!props.userData.deletedHistory || props.userData.deletedHistory.length === 0) && (!props.userData.deletedNotes || props.userData.deletedNotes.length === 0) ? (
                 <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-40">
                     <TrashIcon className="w-12 h-12 mx-auto mb-4" />
                     <p className="font-black uppercase tracking-widest text-[10px]">Registry trash is empty</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {props.userData.deletedHistory.map(item => {
+                    {props.userData.deletedHistory?.map(item => {
                         const displayTitle = item.title || (item as any).name || 'Untitled';
                         return (
                             <div key={item.logId} className="bg-bg-secondary/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary-accent/30 transition-all shadow-xl">
@@ -352,7 +352,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
                             </div>
                         );
                     })}
-                    {props.userData.deletedNotes.map(note => (
+                    {props.userData.deletedNotes?.map(note => (
                         <div key={note.id} className="bg-yellow-900/10 p-4 rounded-2xl border border-yellow-500/20 flex items-center justify-between group hover:border-yellow-500/40 transition-all shadow-xl">
                             <div className="min-w-0 flex-grow pr-4">
                                 <div className="flex items-center gap-2 mb-1">

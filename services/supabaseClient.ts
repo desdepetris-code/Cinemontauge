@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
- * SCENEIT REGISTRY SYNC
+ * CINEMONTAUGE REGISTRY SYNC
  * 
  * To ensure connection to your Supabase project:
  * 1. Ensure Vercel environment variables are named:
@@ -32,7 +32,7 @@ const supabaseAnonKey = (
 ).trim();
 
 // Debug verification (safe for production as it doesn't log the full key)
-console.debug('SceneIt Supabase Sync:', {
+console.debug('CineMontauge Supabase Sync:', {
     url: supabaseUrl.substring(0, 15) + '...',
     keyLoaded: !!supabaseAnonKey,
     keyPrefix: supabaseAnonKey.substring(0, 5)
@@ -113,5 +113,39 @@ export const uploadCustomMedia = async (
     } catch (e) {
         console.error("Upload failed:", e);
         return null;
+    }
+};
+
+/**
+ * Helper to delete user-uploaded media.
+ */
+export const deleteCustomMedia = async (userId: string, url: string): Promise<boolean> => {
+    try {
+        // 1. Find the entry in the DB to get the path
+        const { data, error } = await supabase
+            .from('custom_media')
+            .delete()
+            .eq('user_id', userId)
+            .eq('url', url)
+            .select();
+
+        if (error) throw error;
+
+        // 2. Extract path from URL (Assuming standard public URL format)
+        // Format: https://.../storage/v1/object/public/custom-media/USER_ID/TMDB_ID/TYPE/FILE
+        const urlParts = url.split('/custom-media/');
+        if (urlParts.length === 2) {
+            const path = urlParts[1];
+            const { error: storageError } = await supabase.storage
+                .from('custom-media')
+                .remove([path]);
+            
+            if (storageError) console.warn("Could not delete from storage bucket:", storageError);
+        }
+
+        return true;
+    } catch (e) {
+        console.error("Delete failed:", e);
+        return false;
     }
 };

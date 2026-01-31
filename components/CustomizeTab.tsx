@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { PhotoIcon, PlusIcon, InformationCircleIcon, CheckCircleIcon, XMarkIcon, TrashIcon } from './Icons';
 import { CustomImagePaths, TmdbImage } from '../types';
@@ -59,6 +60,14 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
       return `${TMDB_IMAGE_BASE_URL}original${path}`;
   };
 
+  const handleRemove = (e: React.MouseEvent, url: string) => {
+      e.stopPropagation();
+      if (window.confirm("ARE YOU SURE?\n\nThis will permanently delete this asset from the CineMontauge Registry. This action cannot be undone.")) {
+          onRemoveCustomImage?.(showId, url);
+          if (selectedAsset === url) setSelectedAsset(null);
+      }
+  };
+
   return (
     <div className="animate-fade-in space-y-12">
         {selectedAsset && (
@@ -83,7 +92,7 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
         <div className="p-5 bg-primary-accent/10 rounded-2xl border border-primary-accent/20 flex items-center gap-4">
             <InformationCircleIcon className="w-6 h-6 text-primary-accent flex-shrink-0" />
             <p className="text-[11px] font-black uppercase tracking-widest text-primary-accent leading-relaxed">
-                Security Note: Images you upload are stored strictly in your browser and will only appear on your account.
+                Registry Note: Assets you upload are stored securely in the cloud linked to your identity. You can manage them anytime.
             </p>
         </div>
 
@@ -127,7 +136,7 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
                     <div key={`${item.url}-${i}`} onClick={() => setSelectedAsset(item.url)} className={`relative rounded-2xl overflow-hidden shadow-xl border border-white/5 group/asset cursor-pointer bg-bg-secondary/40 transition-all hover:scale-105 ${item.category === 'backdrop' ? 'aspect-video col-span-2' : 'aspect-[2/3]'}`}>
                         <img src={getFullUrl(item.url)} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover/asset:scale-110" loading="lazy" />
                         {item.type === 'custom' && (
-                            <button onClick={(e) => { e.stopPropagation(); if (window.confirm("Remove this image?")) onRemoveCustomImage?.(showId, item.url); }} className="absolute top-2 right-2 p-1.5 bg-red-600/80 backdrop-blur-md rounded-lg text-white shadow-lg hover:bg-red-500 transition-all z-20"><TrashIcon className="w-4 h-4" /></button>
+                            <button onClick={(e) => handleRemove(e, item.url)} className="absolute top-2 right-2 p-1.5 bg-red-600/80 backdrop-blur-md rounded-lg text-white shadow-lg hover:bg-red-500 transition-all z-20"><TrashIcon className="w-4 h-4" /></button>
                         )}
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/asset:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                             <div className="p-3 bg-white/10 rounded-full backdrop-blur-md"><PlusIcon className="w-5 h-5 text-white" /></div>

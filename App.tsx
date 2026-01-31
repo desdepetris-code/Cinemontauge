@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
@@ -126,7 +127,7 @@ const App: React.FC = () => {
                 user_xp: 0 
             });
             if (profileError) console.error("Error creating profile:", profileError);
-            confirmationService.show(`Welcome to SceneIt, ${username}!`);
+            confirmationService.show(`Welcome to CineMontauge, ${username}!`);
         } else {
             confirmationService.show(`Registration successful! Please confirm your email to activate.`);
         }
@@ -165,7 +166,7 @@ const App: React.FC = () => {
         
         confirmationService.show(`Registry updated! Welcome to CineMontauge.`);
         return null;
-    }, [checkProfileStatus]);
+  }, [checkProfileStatus]);
 
     const handleUpdatePassword = useCallback(async (passwords: { currentPassword: string; newPassword: string; }): Promise<string | null> => {
         const { error } = await supabase.auth.updateUser({ password: passwords.newPassword });

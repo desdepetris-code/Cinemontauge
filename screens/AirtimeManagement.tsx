@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
 import { generateAirtimePDF, generateSupabaseSpecPDF } from '../utils/pdfExportUtils';
-import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon } from '../components/Icons';
+import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
@@ -61,7 +62,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     });
 
     const deviceCount = useMemo(() => {
-        const globalRegistryStr = localStorage.getItem('sceneit_global_device_tokens');
+        const globalRegistryStr = localStorage.getItem('cinemontauge_global_device_tokens');
         const globalRegistry = globalRegistryStr ? JSON.parse(globalRegistryStr) : [];
         return globalRegistry.length;
     }, []);
@@ -77,7 +78,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             const svgData = new XMLSerializer().serializeToString(svg);
             const canvas = document.createElement("canvas");
             
-            // Set high resolution for the exported image (1000x1000)
             const exportSize = 1000;
             canvas.width = exportSize;
             canvas.height = exportSize;
@@ -85,7 +85,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
 
-            // Fill background with black for the JPEG
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -95,7 +94,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
 
             img.onload = () => {
                 ctx.drawImage(img, 0, 0, exportSize, exportSize);
-                const jpgUrl = canvas.toDataURL("image/jpeg", 0.95); // High quality
+                const jpgUrl = canvas.toDataURL("image/jpeg", 0.95);
                 
                 const downloadLink = document.createElement('a');
                 downloadLink.href = jpgUrl;
@@ -114,30 +113,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         }
     };
 
-    const handleTestConnection = async () => {
-        setConnectionStatus('testing');
-        setTestResult(null);
-        
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', TEST_PROFILE_ID)
-                .single();
-
-            if (error) throw error;
-            
-            setTestResult(data);
-            setConnectionStatus('success');
-            confirmationService.show("Supabase Connection Verified!");
-        } catch (e: any) {
-            console.error("Supabase Test Failed:", e);
-            setTestResult(e.message);
-            setConnectionStatus('error');
-            confirmationService.show("Connection Failed: " + e.message);
-        }
-    };
-
     const handleGlobalBroadcast = async (title: string, message: string) => {
         confirmationService.show("Preparing global broadcast...");
         
@@ -147,7 +122,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 await pushNotificationService.triggerLocalNotification(title, message);
             }
 
-            const usersJson = localStorage.getItem('sceneit_users');
+            const usersJson = localStorage.getItem('cinemontauge_users');
             const allUsers = usersJson ? JSON.parse(usersJson) : [];
             
             allUsers.forEach((user: any) => {
@@ -166,18 +141,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 localStorage.setItem(userNotifKey, JSON.stringify([newNotif, ...userNotifs].slice(0, 50)));
             });
 
-            const guestNotifKey = 'notifications_guest';
-            const guestNotifsStr = localStorage.getItem(guestNotifKey);
-            const guestNotifs = guestNotifsStr ? JSON.parse(guestNotifsStr) : [];
-            localStorage.setItem(guestNotifKey, JSON.stringify([{
-                id: `broadcast-${Date.now()}-guest`,
-                type: 'app_update',
-                title: title,
-                description: message,
-                timestamp: new Date().toISOString(),
-                read: false
-            }, ...guestNotifs].slice(0, 50)));
-
             confirmationService.show(`Broadcast successfully delivered to ${allUsers.length + 1} users.`);
             setIsBroadcastModalOpen(false);
         } catch (e) {
@@ -192,11 +155,13 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         const rows: { title: string; status: string; details: string }[] = [];
         const offset = reportOffsets[type];
         
+        const seenPeopleIds = new Set<number>();
+        
         try {
             let currentPage = offset.page;
             let currentMatches = 0;
 
-            while (currentMatches < DEFAULT_MATCH_LIMIT && currentPage < offset.page + 5) {
+            while (currentMatches < DEFAULT_MATCH_LIMIT && currentPage < offset.page + 10) {
                 const data = await discoverMediaPaginated(offset.mediaType, { page: currentPage, sortBy: 'popularity.desc' });
                 if (!data || data.results.length === 0) break;
 
@@ -204,16 +169,53 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     const item = data.results[i];
                     setScanProgress(prev => ({ ...prev, current: i, total: data.results.length, matches: currentMatches }));
                     
-                    const hasTruth = !!AIRTIME_OVERRIDES[item.id];
-                    const shouldInclude = (type === 'ongoing' && !hasTruth); 
-
-                    if (shouldInclude) {
-                        rows.push({
-                            title: item.title || item.name || 'Unknown',
-                            status: item.media_type.toUpperCase(),
-                            details: `TMDB ID: ${item.id} • Popularity: ${Math.round(item.popularity || 0)}`
-                        });
-                        currentMatches++;
+                    if (type === 'ongoing') {
+                        const hasTruth = !!AIRTIME_OVERRIDES[item.id];
+                        if (!hasTruth) {
+                            rows.push({
+                                title: item.title || item.name || 'Unknown',
+                                status: item.media_type.toUpperCase(),
+                                details: `TMDB ID: ${item.id} • Popularity: ${Math.round(item.popularity || 0)}`
+                            });
+                            currentMatches++;
+                        }
+                    } else if (type === 'no_recommendations') {
+                        // Look for items that have aired recently (last 30 days) and check recommendations
+                        const releaseDate = new Date(item.release_date || item.first_air_date || 0);
+                        const tenDaysAgo = new Date();
+                        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                        
+                        // Check if it aired at least 1 day ago but not more than 30
+                        if (releaseDate < new Date() && releaseDate > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) {
+                            // Fix: Cast item.media_type to 'tv' | 'movie' to match getMediaDetails signature
+                            const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
+                            if (!details.recommendations?.results || details.recommendations.results.length === 0) {
+                                rows.push({
+                                    title: details.title || details.name || 'Unknown',
+                                    status: details.media_type.toUpperCase(),
+                                    details: `Aired: ${releaseDate.toLocaleDateString()} • ID: ${details.id} • Recommendations Tab is empty.`
+                                });
+                                currentMatches++;
+                            }
+                        }
+                    } else if (type === 'placeholder_people') {
+                        // Scan media and their credits for people without images
+                        // Fix: Cast item.media_type to 'tv' | 'movie' to match getMediaDetails signature
+                        const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
+                        if (details.credits?.cast) {
+                            for (const person of details.credits.cast) {
+                                if (!person.profile_path && !seenPeopleIds.has(person.id)) {
+                                    seenPeopleIds.add(person.id);
+                                    rows.push({
+                                        title: person.name,
+                                        status: `Person (ID: ${person.id})`,
+                                        details: `Character: ${person.character} • On Show/Movie: ${details.title || details.name}`
+                                    });
+                                    currentMatches++;
+                                }
+                                if (currentMatches >= DEFAULT_MATCH_LIMIT) break;
+                            }
+                        }
                     }
 
                     if (currentMatches >= DEFAULT_MATCH_LIMIT) {
@@ -226,23 +228,28 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 }
                 if (currentMatches >= DEFAULT_MATCH_LIMIT) break;
                 currentPage++;
+                // Artificial delay to prevent TMDB rate limiting during heavy scans
+                await new Promise(r => setTimeout(r, 200));
             }
 
-            generateAirtimePDF(label, rows, offset.part);
-            setDownloadedPdfs(prev => [{
-                id: `rep-${Date.now()}`,
-                title: label,
-                timestamp: new Date().toISOString(),
-                part: offset.part,
-                rows
-            }, ...prev]);
+            if (rows.length > 0) {
+                generateAirtimePDF(label, rows, offset.part);
+                setDownloadedPdfs(prev => [{
+                    id: `rep-${Date.now()}`,
+                    title: label,
+                    timestamp: new Date().toISOString(),
+                    part: offset.part,
+                    rows
+                }, ...prev]);
 
-            setReportOffsets(prev => ({
-                ...prev,
-                [type]: { ...prev[type], part: prev[type].part + 1 }
-            }));
-
-            confirmationService.show(`${label} Generated!`);
+                setReportOffsets(prev => ({
+                    ...prev,
+                    [type]: { ...prev[type], part: prev[type].part + 1 }
+                }));
+                confirmationService.show(`${label} Generated!`);
+            } else {
+                confirmationService.show(`No ${label} matches found in this scan batch.`);
+            }
         } catch (e) {
             console.error(e);
             alert("Report generation failed.");
@@ -292,7 +299,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {/* Audit & Reports */}
                 <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-8 lg:col-span-2">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
@@ -315,6 +321,34 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                             </div>
                             <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Ongoing Audit</span>
                          </button>
+
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={() => runAuditReport('no_recommendations', 'Movies and show detail pages without recommendations on the tab')}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <div className="flex items-center justify-between w-full mb-4">
+                                <div className={`p-3 rounded-2xl ${isGenerating === 'no_recommendations' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-sky-400'}`}>
+                                    {isGenerating === 'no_recommendations' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <SparklesIcon className="w-5 h-5" />}
+                                </div>
+                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.no_recommendations.part}</span>
+                            </div>
+                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Missing Recommendations</span>
+                         </button>
+
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={() => runAuditReport('placeholder_people', 'Missing Cast and Crew Images')}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <div className="flex items-center justify-between w-full mb-4">
+                                <div className={`p-3 rounded-2xl ${isGenerating === 'placeholder_people' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-rose-400'}`}>
+                                    {isGenerating === 'placeholder_people' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <UsersIcon className="w-5 h-5" />}
+                                </div>
+                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.placeholder_people.part}</span>
+                            </div>
+                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Person Image Audit</span>
+                         </button>
                     </div>
                     
                     {isGenerating && (
@@ -330,9 +364,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     )}
                 </div>
 
-                {/* System Controls & Brand Assets */}
                 <div className="space-y-8">
-                    {/* Brand Identity Card */}
                     <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
                         <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
                             <SparklesIcon className="w-6 h-6 text-primary-accent" />
@@ -383,7 +415,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 deviceCount={deviceCount}
             />
             
-            {/* High-res off-screen logo for JPEG generation */}
             <div className="fixed -left-[4000px] top-0 pointer-events-none opacity-0">
                 <Logo ref={logoRef} className="w-[1000px] h-[1000px]" />
             </div>

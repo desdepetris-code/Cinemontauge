@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
@@ -177,7 +178,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, onSelectUser, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences, onUpdateSearchHistory } = props;
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
@@ -229,26 +230,31 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             const [mediaData, peopleData] = await Promise.all([mediaPromise, peoplePromise]);
             setMediaResults(mediaData.results);
             setPeopleResults(peopleData.results);
+            // Update search history with the query string
+            onUpdateSearchHistory(query);
         } catch (e) { setError("Could not perform search."); } finally { setLoading(false); }
     };
 
-    const debounceTimer = setTimeout(performAllSearches, 500);
+    const debounceTimer = setTimeout(performAllSearches, 800);
     return () => clearTimeout(debounceTimer);
-}, [query, userData.customLists, genres, currentUser?.id, preferences.searchAlwaysExpandFilters]);
+}, [query, userData.customLists, genres, currentUser?.id, preferences.searchAlwaysExpandFilters, onUpdateSearchHistory]);
 
   const filteredAndSortedMedia = useMemo(() => {
     let results = [...mediaResults];
-    if (mediaTypeFilter !== 'all') results = results.filter(item => item.media_type === mediaTypeFilter);
-    if (genreFilter) results = results.filter(item => item.genre_ids?.includes(Number(genreFilter)));
-    if (yearFilter && yearFilter.length === 4) results = results.filter(i => (i.release_date || i.first_air_date || '').substring(0, 4) === yearFilter);
     
+    // Hide Watched Filter
     if (hideWatched) {
         results = results.filter(i => {
             const isCompleted = userData.completed.some(c => c.id === i.id);
             const isCaughtUp = userData.allCaughtUp.some(c => c.id === i.id);
+            // Hide if user marked as complete or caught up
             return !isCompleted && !isCaughtUp;
         });
     }
+
+    if (mediaTypeFilter !== 'all') results = results.filter(item => item.media_type === mediaTypeFilter);
+    if (genreFilter) results = results.filter(item => item.genre_ids?.includes(Number(genreFilter)));
+    if (yearFilter && yearFilter.length === 4) results = results.filter(i => (i.release_date || i.first_air_date || '').substring(0, 4) === yearFilter);
 
     results.sort((a, b) => {
       switch (sortFilter) {
@@ -263,6 +269,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
   const handleItemSelect = (id: number, media_type: 'tv' | 'movie', item: TmdbMedia) => {
     const tracked: TrackedItem = { id: item.id, title: item.title || item.name || 'Untitled', media_type: item.media_type, poster_path: item.poster_path, genre_ids: item.genre_ids };
+    onUpdateSearchHistory(tracked);
     onSelectShow(id, media_type, tracked);
   };
 
@@ -281,10 +288,10 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                     <div className="flex-grow w-full md:w-auto">
                         <button 
                             onClick={() => setHideWatched(!hideWatched)}
-                            className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl transition-all border shadow-lg ${hideWatched ? 'bg-accent-gradient text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
+                            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 group ${hideWatched ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
                         >
                             {hideWatched ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                            <span className="text-xs font-black uppercase tracking-widest">Hide Watched</span>
+                            <span className="text-xs font-black uppercase tracking-widest">{hideWatched ? 'Unhide Watched' : 'Hide/Unhide Watched'}</span>
                         </button>
                     </div>
 
@@ -292,7 +299,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                         {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && !preferences.searchAlwaysExpandFilters && (
                             <button 
                                 onClick={() => setShowFiltersToggle(!showFiltersToggle)}
-                                className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
+                                className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
                             >
                                 <FilterIcon className="w-5 h-5" />
                                 <span className="text-xs font-black uppercase tracking-widest">Filters</span>

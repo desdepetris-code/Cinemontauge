@@ -1,3 +1,4 @@
+
 import { TMDB_API_BASE_URL, TMDB_API_KEY } from '../constants';
 import { TmdbMedia, TmdbMediaDetails, TmdbSeasonDetails, WatchProviderResponse, TmdbCollection, TmdbFindResponse, PersonDetails, TrackedItem, TmdbPerson, CalendarItem, NewlyPopularEpisode, CastMember, CrewMember } from '../types';
 import { getFromCache, setToCache } from '../utils/cacheUtils';
@@ -176,7 +177,6 @@ export const getEpisodeCredits = async (tvId: number, seasonNumber: number, epis
 
 /**
  * Aggregates show credits from multiple seasons.
- * Optimized to prune redundant data before caching to stay within LocalStorage limits.
  */
 export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDetails['seasons']): Promise<{ mainCast: CastMember[], guestStars: CastMember[], crew: CrewMember[] }> => {
     const cacheKey = `tmdb_agg_credits_v3_${tvId}`;
@@ -184,16 +184,13 @@ export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDe
     if (cached) return cached;
     if (!seasons) return { mainCast: [], guestStars: [], crew: [] };
 
-    // Limit scanning to stay within memory limits for massive shows (like Law & Order)
     const episodeCreditPromises: (() => Promise<any | null>)[] = [];
     const seasonsToFetch = seasons.filter(s => s.season_number > 0).sort((a, b) => b.season_number - a.season_number);
     
-    // Safety: Only check up to 10 most recent seasons for credits to identify current cast
     const SEASON_LIMIT = 10;
     const seasonsSlice = seasonsToFetch.slice(0, SEASON_LIMIT);
 
     for (const season of seasonsSlice) {
-        // Sample only 3 episodes per season (start, mid, end) for large shows to capture cast shifts
         const epIndices = season.episode_count <= 3 
             ? Array.from({length: season.episode_count}, (_, i) => i + 1)
             : [1, Math.floor(season.episode_count / 2), season.episode_count];
@@ -219,7 +216,6 @@ export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDe
         if (!credits) continue;
         credits.cast?.forEach((person: any) => {
             if (!mainCastMap.has(person.id)) {
-                // Lean Person Object
                 mainCastMap.set(person.id, { 
                     person: { id: person.id, name: person.name, profile_path: person.profile_path, character: person.character, order: person.order }, 
                     appearances: 0 
@@ -238,7 +234,6 @@ export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDe
         });
     }
 
-    // STRICT PRUNING: Only keep top 25 cast and 15 crew members to ensure cache stability
     const mainCast = Array.from(mainCastMap.values())
         .sort((a,b) => b.appearances - a.appearances)
         .slice(0, 25)
@@ -389,6 +384,16 @@ export const getUpcomingMovies = async (): Promise<TmdbMedia[]> => {
     const endDate = twoMonthsLater.toISOString().split('T')[0];
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`discover/movie?primary_release_date.gte=${today}&primary_release_date.lte=${endDate}&sort_by=popularity.desc&region=US`);
     return (data?.results || []).map(i => ({ ...i, media_type: 'movie' }));
+};
+
+export const getNowPlayingMovies = async (): Promise<TmdbMedia[]> => {
+    const cacheKey = 'tmdb_now_playing_movies_v1';
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+    const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`movie/now_playing?region=US`);
+    const results = (data?.results || []).map(i => ({ ...i, media_type: 'movie' as const }));
+    setToCache(cacheKey, results, CACHE_TTL_SHORT);
+    return results;
 };
 
 /**

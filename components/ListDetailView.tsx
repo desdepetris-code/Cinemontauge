@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CustomList, AppPreferences, TrackedItem } from '../types';
 import ListGrid from './ListGrid';
@@ -114,7 +115,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                                         onClick={() => setIsEditingDescription(true)}
                                     >
                                         <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 leading-relaxed">
-                                            {list.description || "Personal curated collection. Tap to add a description."}
+                                            {list.description || (isWatchlist ? "My mandatory library watch list. Tap to add a description." : "Personal curated collection. Tap to add a description.")}
                                         </p>
                                         <PencilSquareIcon className="w-4 h-4 text-primary-accent opacity-0 group-hover/text:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
                                     </div>

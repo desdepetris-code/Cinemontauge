@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 const TermsOfService: React.FC = () => {
@@ -6,17 +7,17 @@ const TermsOfService: React.FC = () => {
       <h1 className="text-3xl font-bold text-text-primary mb-4">Terms of Service</h1>
       <p className="text-text-secondary mb-4">Last updated: {new Date().toLocaleDateString()}</p>
 
-      <p className="text-text-secondary mb-4">Welcome to CineMontauge ("the Service"). By using our application, you agree to these terms. Please read them carefully.</p>
+      <p className="text-text-secondary mb-4">Welcome to SceneIt ("the Service"). By using our application, you agree to these terms. Please read them carefully.</p>
       
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">1. Age Requirement</h2>
-      <p className="text-text-secondary mb-4">You must be at least 13 years of age to create an account and use the Service. By using CineMontauge, you represent and warrant that you meet this requirement.</p>
+      <p className="text-text-secondary mb-4">You must be at least 13 years of age to create an account and use the Service. By using SceneIt, you represent and warrant that you meet this requirement.</p>
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">2. Accounts</h2>
       <p className="text-text-secondary mb-4">When you create an account with us, you must provide us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.</p>
       <p className="text-text-secondary mb-4">You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password. You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.</p>
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">3. User Conduct</h2>
-      <p className="text-text-secondary mb-4">You agree not to use CineMontauge to:</p>
+      <p className="text-text-secondary mb-4">You agree not to use SceneIt to:</p>
       <ul>
         <li className="text-text-secondary ml-6 mb-2 list-disc">Upload, post, or link to any content that is unlawful, harmful, threatening, abusive, defamatory, or otherwise objectionable.</li>
         <li className="text-text-secondary ml-6 mb-2 list-disc">Infringe on any third party's intellectual property rights, including copyright, trademark, or patent.</li>
@@ -25,7 +26,7 @@ const TermsOfService: React.FC = () => {
       </ul>
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">4. Third-Party Services & Data Attribution</h2>
-      <p className="text-text-secondary mb-4">CineMontauge is a personal tracking tool and does not host, stream, or provide links to any copyrighted media files. To provide rich media information, we utilize several third-party APIs. The distinction in their usage is as follows:</p>
+      <p className="text-text-secondary mb-4">SceneIt is a personal tracking tool and does not host, stream, or provide links to any copyrighted media files. To provide rich media information, we utilize several third-party APIs. The distinction in their usage is as follows:</p>
 
       <ul className="list-disc ml-6 space-y-4 text-text-secondary">
         <li>
@@ -37,20 +38,20 @@ const TermsOfService: React.FC = () => {
           <strong className="font-semibold text-text-primary">The TV Database (TVDB):</strong> This is a supplementary data source for TV shows. We use the TVDB API to enrich our data, providing alternative poster images and a more comprehensive list of characters to enhance the user experience.
         </li>
         <li>
-          <strong className="font-semibold text-text-primary">Trakt.tv:</strong> This service is used for user data import functionality. By connecting your Trakt.tv account, you can import your existing watch history, watchlist, and ratings into CineMontauge, helping you get started quickly. We do not send your CineMontauge data back to Trakt.
+          <strong className="font-semibold text-text-primary">Trakt.tv:</strong> This service is used for user data import functionality. By connecting your Trakt.tv account, you can import your existing watch history, watchlist, and ratings into SceneIt, helping you get started quickly. We do not send your SceneIt data back to Trakt.
         </li>
       </ul>
 
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">5. Intellectual Property & DMCA Policy</h2>
-      <p className="text-text-secondary mb-4">CineMontauge respects the intellectual property rights of others and expects its users to do the same. We comply with the Digital Millennium Copyright Act (DMCA).</p>
+      <p className="text-text-secondary mb-4">SceneIt respects the intellectual property rights of others and expects its users to do the same. We comply with the Digital Millennium Copyright Act (DMCA).</p>
       
       <h3 className="text-xl font-bold text-text-primary mt-4 mb-2">DMCA & Copyright Policy</h3>
-      <p className="text-text-secondary mb-4">CineMontauge respects copyright and intellectual property rights. If you believe your work has been used without permission, please contact our DMCA agent.</p>
+      <p className="text-text-secondary mb-4">SceneIt respects copyright and intellectual property rights. If you believe your work has been used without permission, please contact our DMCA agent.</p>
       
       <div className="p-4 bg-bg-secondary rounded-lg space-y-2 mb-4">
         <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Preferred Contact (Email only):</strong> <a href="mailto:cinemontauge623@gmail.com" className="text-primary-accent underline">cinemontauge623@gmail.com</a>
+          <strong className="font-semibold text-text-primary">Preferred Contact (Email only):</strong> <a href="mailto:sceneit623@gmail.com" className="text-primary-accent underline">sceneit623@gmail.com</a>
         </p>
         <p className="text-text-secondary">
           <strong className="font-semibold text-text-primary">Mailing Address:</strong> Available upon request via email.
@@ -61,10 +62,10 @@ const TermsOfService: React.FC = () => {
       </div>
 
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">6. User-Generated Content</h2>
-      <p className="text-text-secondary mb-4">If you post content (such as journal entries or custom images), you grant CineMontauge a license to use it in connection with operating the service. You are solely responsible for the content you post.</p>
+      <p className="text-text-secondary mb-4">If you post content (such as journal entries or custom images), you grant SceneIt a license to use it in connection with operating the service. You are solely responsible for the content you post.</p>
       
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">7. Data Storage & Loss</h2>
-      <p className="text-text-secondary mb-4">CineMontauge primarily stores your data (watch history, progress, lists, journal entries) locally in your web browser's storage. Clearing your browser's cache or site data will permanently delete your information.</p>
+      <p className="text-text-secondary mb-4">SceneIt primarily stores your data (watch history, progress, lists, journal entries) locally in your web browser's storage. Clearing your browser's cache or site data will permanently delete your information.</p>
       
       <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">8. Termination</h2>
       <p className="text-text-secondary mb-4">We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever. Upon termination, your right to use the Service will immediately cease.</p>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
@@ -31,7 +32,7 @@ import { calculateAutoStatus } from './utils/libraryLogic';
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers, searchPublicLists } from './utils/userUtils';
-import { supabase, uploadCustomMedia } from './services/supabaseClient';
+import { supabase, uploadCustomMedia, deleteCustomMedia } from './services/supabaseClient';
 
 interface User {
   id: string;
@@ -370,6 +371,22 @@ export const MainApp: React.FC<MainAppProps> = ({
       const timer = setTimeout(syncToSupabase, 3000);
       return () => clearTimeout(timer);
   }, [syncToSupabase]);
+
+  // Mandatory Watch List Initializer
+  useEffect(() => {
+      if (!customLists.some(l => l.id === 'watchlist')) {
+          const watchlist: CustomList = {
+              id: 'watchlist',
+              name: 'Watch List',
+              description: 'My mandatory library watch list.',
+              items: [],
+              createdAt: new Date().toISOString(),
+              visibility: 'private',
+              likes: []
+          };
+          setCustomLists(prev => [watchlist, ...prev]);
+      }
+  }, [customLists, setCustomLists]);
 
 
   const allUserData: UserData = useMemo(() => ({
@@ -714,6 +731,30 @@ export const MainApp: React.FC<MainAppProps> = ({
     } else {
         confirmationService.show("Cloud sync failed. Image saved locally.");
     }
+  }, [currentUser, setCustomImagePaths]);
+
+  const handleRemoveCustomImage = useCallback(async (mediaId: number, imagePath: string) => {
+      if (!currentUser) return;
+
+      confirmationService.show("Deleting asset from cloud...");
+      const success = await deleteCustomMedia(currentUser.id, imagePath);
+
+      if (success) {
+          setCustomImagePaths(prev => {
+              const next = { ...prev };
+              if (next[mediaId]) {
+                  if (next[mediaId].poster_path === imagePath) delete next[mediaId].poster_path;
+                  if (next[mediaId].backdrop_path === imagePath) delete next[mediaId].backdrop_path;
+                  if (next[mediaId].gallery) {
+                      next[mediaId].gallery = next[mediaId].gallery!.filter(url => url !== imagePath);
+                  }
+              }
+              return next;
+          });
+          confirmationService.show("Asset permanently removed from registry.");
+      } else {
+          confirmationService.show("Asset deletion failed. Registry busy.");
+      }
   }, [currentUser, setCustomImagePaths]);
 
   const handleToggleFavoriteEpisode = useCallback((showId: number, seasonNumber: number, episodeNumber: number) => {
@@ -1090,6 +1131,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onUpdateLists={updateLists}
                 customImagePaths={customImagePaths}
                 onSetCustomImage={handleSetCustomImage}
+                onRemoveCustomImage={handleRemoveCustomImage}
                 favorites={favorites}
                 onToggleFavoriteShow={handleToggleFavoriteShow}
                 weeklyFavorites={weeklyFavorites}

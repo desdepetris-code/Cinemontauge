@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
 import NewSeasons from '../components/NewSeasons';
-import { discoverMedia } from '../services/tmdbService';
+import { discoverMedia, getNowPlayingMovies } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
@@ -65,6 +66,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 
     return (
         <div className="space-y-8">
+          <GenericCarousel title="🎞️ Now in Theaters" fetcher={getNowPlayingMovies} {...carouselProps} />
           {preferences.dashShowUpcoming && (
             <>
               <UpcomingPremieresCarousel title="📺 Upcoming TV Premieres" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} />

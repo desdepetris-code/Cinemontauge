@@ -1,5 +1,5 @@
 // data/showAchievements.ts
-import { TmdbMediaDetails, UserData } from '../types';
+import { TmdbMediaDetails, UserData, EpisodeProgress } from '../types';
 
 export interface ShowAchievement {
   id: string;
@@ -33,6 +33,22 @@ const findLatestTimestamp = (
   });
 
   return latestTimestamp > 0 ? new Date(latestTimestamp).toISOString() : null;
+};
+
+// Helper to count fully completed seasons for a show
+const getCompletedSeasonsForShow = (showId: number, details: TmdbMediaDetails, userData: UserData): number => {
+    const progress = userData.watchProgress[showId];
+    if (!progress || !details.seasons) return 0;
+    
+    return details.seasons.filter(s => {
+        if (s.season_number <= 0) return false;
+        const seasonProgress = progress[s.season_number];
+        if (!seasonProgress) return false;
+        
+        // Count how many episodes the user marked as watched in this season
+        const watchedInSeason = Object.values(seasonProgress).filter(ep => (ep as EpisodeProgress).status === 2).length;
+        return watchedInSeason >= s.episode_count && s.episode_count > 0;
+    }).length;
 };
 
 export const showAchievements: ShowAchievement[] = [
@@ -87,7 +103,46 @@ export const showAchievements: ShowAchievement[] = [
         return { unlocked: true, unlockDate };
     },
   },
-    {
+  {
+    id: 'decade_legacy',
+    name: '10-Year Legacy',
+    description: 'Completed 10 full seasons of this show.',
+    category: 'Progress',
+    check: (details, userData) => {
+        if (details.media_type !== 'tv') return { unlocked: false, unlockDate: null };
+        const completedCount = getCompletedSeasonsForShow(details.id, details, userData);
+        const unlocked = completedCount >= 10;
+        return { unlocked, unlockDate: unlocked ? new Date().toISOString() : null };
+    },
+  },
+  {
+    id: 'high_five',
+    name: 'High Five',
+    description: 'Completed 5 full seasons of this show.',
+    category: 'Progress',
+    check: (details, userData) => {
+        if (details.media_type !== 'tv') return { unlocked: false, unlockDate: null };
+        const completedCount = getCompletedSeasonsForShow(details.id, details, userData);
+        const unlocked = completedCount >= 5;
+        return { unlocked, unlockDate: unlocked ? new Date().toISOString() : null };
+    },
+  },
+  {
+    id: 'special_ops',
+    name: 'Special Ops',
+    description: 'Watched at least 5 special episodes from Season 0.',
+    category: 'Progress',
+    check: (details, userData) => {
+        if (details.media_type !== 'tv') return { unlocked: false, unlockDate: null };
+        const s0Progress = userData.watchProgress[details.id]?.[0];
+        if (!s0Progress) return { unlocked: false, unlockDate: null };
+        
+        const watchedCount = Object.values(s0Progress).filter(ep => (ep as EpisodeProgress).status === 2).length;
+        const unlocked = watchedCount >= 5;
+        return { unlocked, unlockDate: unlocked ? new Date().toISOString() : null };
+    },
+  },
+  {
     id: 'halfway_there',
     name: 'Halfway There',
     description: 'Completed 50% of all available episodes.',
@@ -105,7 +160,7 @@ export const showAchievements: ShowAchievement[] = [
       }
 
       const unlocked = watchedCount >= totalEpisodes / 2;
-      return { unlocked, unlockDate: unlocked ? new Date().toISOString() : null }; // Date is tricky here, so we fake it for now.
+      return { unlocked, unlockDate: unlocked ? new Date().toISOString() : null };
     },
   },
   {
@@ -125,7 +180,7 @@ export const showAchievements: ShowAchievement[] = [
         }
         
         if (watchedCount >= details.number_of_episodes) {
-             const historyEntry = userData.history.find(h => h.id === details.id); // Not perfect but a good guess
+             const historyEntry = userData.history.find(h => h.id === details.id);
              return { unlocked: true, unlockDate: historyEntry?.timestamp || null };
         }
         return { unlocked: false, unlockDate: null };
@@ -149,7 +204,7 @@ export const showAchievements: ShowAchievement[] = [
     category: 'Engagement',
     check: (details, userData) => {
         const isFavorite = userData.favorites.some(f => f.id === details.id);
-        return { unlocked: isFavorite, unlockDate: isFavorite ? new Date().toISOString() : null }; // Can't get date for this easily
+        return { unlocked: isFavorite, unlockDate: isFavorite ? new Date().toISOString() : null };
     },
   },
    {
@@ -159,7 +214,7 @@ export const showAchievements: ShowAchievement[] = [
     category: 'Engagement',
     check: (details, userData) => {
       const isInList = userData.customLists.some(list => list.items.some(item => item.id === details.id));
-      return { unlocked: isInList, unlockDate: null }; // No timestamp for this action
+      return { unlocked: isInList, unlockDate: null };
     },
   },
   {
