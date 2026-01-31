@@ -35,6 +35,8 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
         { id: 'private', label: 'Private', icon: LockClosedIcon, desc: 'Hidden from overview entirely.' },
     ];
 
+    const isSystemList = listToEdit && ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'].includes(listToEdit.id);
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[200] p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
@@ -43,7 +45,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2">
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Display Name</label>
-                        <input type="text" placeholder="e.g. 90s Noir..." value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-bold" disabled={listToEdit?.id === 'watchlist'} />
+                        <input type="text" placeholder="e.g. 90s Noir..." value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-bold" disabled={isSystemList} />
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Description (Optional)</label>
@@ -118,8 +120,9 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
   };
 
   const handleDeleteList = (listId: string) => {
-    if (listId === 'watchlist') {
-        confirmationService.show("The 'Watch List' is mandatory and cannot be removed.");
+    const mandatoryIds = ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'];
+    if (mandatoryIds.includes(listId)) {
+        confirmationService.show("Mandatory collections cannot be removed from the registry.");
         return;
     }
     if (window.confirm("ARE YOU SURE?\n\nDeleting this collection is permanent and cannot be undone.")) {

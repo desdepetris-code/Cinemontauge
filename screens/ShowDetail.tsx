@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
@@ -49,6 +50,7 @@ interface ShowDetailProps {
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   customImagePaths: CustomImagePaths;
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
+  onRemoveCustomImage: (mediaId: number, path: string) => void;
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   weeklyFavorites: WeeklyPick[];
@@ -134,7 +136,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
     onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onDiscardRequest,
-    onSetCustomEpisodeImage, onSetCustomImage, reminders, onToggleReminder
+    onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, reminders, onToggleReminder
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -210,7 +212,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Seasons', icon: ListBulletIcon }] as any : []),
     { id: 'info', label: 'Info', icon: BookOpenIcon },
     { id: 'cast', label: 'Cast', icon: UsersIcon },
-    { id: 'discussion', label: 'Comments', icon: ChatBubbleLeftRightIcon },
+    { id: 'discussion', label: 'Comment', icon: ChatBubbleLeftRightIcon },
     { id: 'recs', label: 'Recommended', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
     { id: 'achievements', label: 'Badges', icon: BadgeIcon },
@@ -519,7 +521,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const getLibraryButtonText = () => {
       if (currentStatus === 'completed') return 'Completed';
       if (currentStatus === 'allCaughtUp') return 'All Caught Up';
-      if (currentStatus === 'watching') return 'Watching';
+      if (currentStatus === 'watching') {
+          if (mediaType === 'movie') {
+              return pausedLiveSessions[id] ? 'In Progress' : 'In Library';
+          }
+          return 'Watching';
+      }
       if (currentStatus === 'planToWatch') return 'Plan to Watch';
       if (currentStatus === 'onHold') return 'On Hold';
       if (currentStatus === 'dropped') return 'Dropped';
@@ -632,21 +639,33 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               
               <div className="grid grid-cols-4 gap-2">
                 {mediaType === 'tv' ? (
-                  <DetailedActionButton 
-                      label={isAllWatched ? "Unmark All" : "Mark All"}
-                      className="col-span-2"
-                      isActive={isAllWatched}
-                      icon={isAllWatched ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => isAllWatched ? onUnmarkAllWatched(id) : onMarkAllWatched(id, details as any)} 
-                  />
+                  <>
+                    <DetailedActionButton 
+                        label="Mark all watched"
+                        isActive={isAllWatched}
+                        icon={<CheckCircleIcon className="w-6 h-6" />} 
+                        onClick={() => onMarkAllWatched(id, details as any)} 
+                    />
+                    <DetailedActionButton 
+                        label="Unmark all watched"
+                        icon={<XMarkIcon className="w-6 h-6" />} 
+                        onClick={() => onUnmarkAllWatched(id)} 
+                    />
+                  </>
                 ) : (
-                  <DetailedActionButton 
-                      label={currentStatus === 'completed' ? "Unlog Watch" : "Log a Watch"}
-                      className="col-span-2"
-                      isActive={currentStatus === 'completed'}
-                      icon={currentStatus === 'completed' ? <XMarkIcon className="w-6 h-6" /> : <CheckCircleIcon className="w-6 h-6" />} 
-                      onClick={() => currentStatus === 'completed' ? handleUnmarkMovie() : props.onMarkMediaAsWatched(details)} 
-                  />
+                  <>
+                    <DetailedActionButton 
+                        label="Mark watched"
+                        isActive={currentStatus === 'completed'}
+                        icon={<CheckCircleIcon className="w-6 h-6" />} 
+                        onClick={() => props.onMarkMediaAsWatched(details)} 
+                    />
+                    <DetailedActionButton 
+                        label="Mark unwatched"
+                        icon={<XMarkIcon className="w-6 h-6" />} 
+                        onClick={handleUnmarkMovie} 
+                    />
+                  </>
                 )}
                 {isUpcomingContent ? (
                   <DetailedActionButton 
@@ -675,7 +694,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                <DetailedActionButton label="Comments" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} isActive={hasComment} onClick={handleCommentsAction} />
+                <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} isActive={hasComment} onClick={handleCommentsAction} />
 
                 {mediaType === 'tv' ? (
                   <>
@@ -791,7 +810,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
-                  // Fix: Use the correct state setter setActiveCommentThread
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />
@@ -814,6 +832,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     customImagePaths={customImagePaths}
                     details={details}
                     onSetCustomImage={onSetCustomImage}
+                    onRemoveCustomImage={onRemoveCustomImage}
                   />
                 </div>
               )}

@@ -1,4 +1,5 @@
-import { TmdbMediaDetails, WatchProgress, WatchStatus, EpisodeProgress } from '../types';
+
+import { TmdbMediaDetails, WatchProgress, WatchStatus, EpisodeProgress, HistoryItem } from '../types';
 import { getAiredEpisodeCount } from './formatUtils';
 
 /**
@@ -47,6 +48,37 @@ export const calculateAutoStatus = (
 
     // Rule: Watching
     // If there are more episodes that have aired after the episode they marked as watched
+    return 'watching';
+};
+
+/**
+ * Determines the correct status for a movie based on history, active sessions, and manual presets.
+ */
+export const calculateMovieAutoStatus = (
+    mediaId: number,
+    history: HistoryItem[],
+    pausedSessions: Record<number, any>,
+    manualPreset?: WatchStatus
+): WatchStatus | null => {
+    const movieHistory = history.filter(h => h.id === mediaId);
+    
+    // 1. Completed check (Finished manual log or finished live log)
+    if (movieHistory.some(h => !h.logId.startsWith('live-'))) {
+        return 'completed';
+    }
+
+    // 2. In Progress check (Paused live session exists)
+    if (pausedSessions[mediaId]) {
+        return 'watching';
+    }
+
+    // 3. Fallback to manual preset if exists (Plan to Watch, On Hold, Dropped)
+    if (manualPreset) {
+        return manualPreset;
+    }
+
+    // 4. Default: Return generic 'watching' bucket if tracked but no state selected
+    // This allows the UI to label it "In Library"
     return 'watching';
 };
 

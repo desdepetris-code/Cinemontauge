@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEntry, TrackedItem, EpisodeTag, Comment, CastMember, CrewMember, AppPreferences, Note } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -428,7 +429,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   </button>
                   <button onClick={onDiscuss} className="flex flex-col items-center justify-center p-3 rounded-xl bg-bg-primary/60 border border-white/5 text-text-secondary hover:text-text-primary transition-all">
                       <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                      <span className="text-[8px] font-black uppercase mt-1">Comments</span>
+                      <span className="text-[8px] font-black uppercase mt-1">Comment</span>
                   </button>
               </div>
           </div>

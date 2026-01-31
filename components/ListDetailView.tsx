@@ -63,7 +63,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
         setIsEditingDescription(false);
     };
 
-    const isWatchlist = list.id === 'watchlist';
+    const isSystemList = ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'].includes(list.id);
 
     return (
         <div className="animate-fade-in space-y-8 pb-20">
@@ -115,7 +115,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                                         onClick={() => setIsEditingDescription(true)}
                                     >
                                         <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 leading-relaxed">
-                                            {list.description || (isWatchlist ? "My mandatory library watch list. Tap to add a description." : "Personal curated collection. Tap to add a description.")}
+                                            {list.description || (isSystemList ? "A system-managed built-in collection. Tap to add a description." : "Personal curated collection. Tap to add a description.")}
                                         </p>
                                         <PencilSquareIcon className="w-4 h-4 text-primary-accent opacity-0 group-hover/text:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
                                     </div>
@@ -137,7 +137,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                             </div>
                         </div>
                         <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit Meta</button>
-                        {!isWatchlist && (
+                        {!isSystemList && (
                             <button onClick={() => onDelete(list.id)} className="p-3 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-6">Delete</button>
                         )}
                     </div>

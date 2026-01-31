@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { HistoryItem, Follows, PublicUser, PrivacySettings } from '../../types';
+import { HistoryItem, Follows, PublicUser, PrivacySettings, TrackedItem } from '../../types';
 import { getAllUsers } from '../../utils/userUtils';
 import CompactShowCard from '../CompactShowCard';
 import { PLACEHOLDER_PROFILE } from '../../constants';
@@ -38,40 +39,48 @@ const FriendsActivity: React.FC<FriendsActivityProps> = ({ currentUser, follows,
         const activity: FriendActivity[] = [];
 
         followedIds.forEach(id => {
-            const privacySettingsJson = localStorage.getItem(`privacy_settings_${id}`);
-            const privacySettings: PrivacySettings = privacySettingsJson ? JSON.parse(privacySettingsJson) : { activityVisibility: 'followers' };
+            try {
+                const privacySettingsJson = localStorage.getItem(`privacy_settings_${id}`);
+                const privacySettings: PrivacySettings = privacySettingsJson ? JSON.parse(privacySettingsJson) : { activityVisibility: 'followers' };
 
-            if (privacySettings.activityVisibility === 'private') {
-                return; // Skip this user
-            }
-
-            const historyJson = localStorage.getItem(`history_${id}`);
-            if (!historyJson) return;
-
-            const fullHistory: HistoryItem[] = JSON.parse(historyJson);
-            
-            const uniqueMediaIds = new Set<number>();
-            const recentUniqueHistory: HistoryItem[] = [];
-            for (const item of fullHistory) { // History is already sorted by date desc in MainApp
-                if (!uniqueMediaIds.has(item.id)) {
-                    uniqueMediaIds.add(item.id);
-                    recentUniqueHistory.push(item);
+                if (privacySettings.activityVisibility === 'private') {
+                    return; 
                 }
-                if (recentUniqueHistory.length >= 5) break;
-            }
 
-            if (recentUniqueHistory.length > 0) {
-                const profilePicJson = localStorage.getItem(`profilePictureUrl_${id}`);
-                const profilePictureUrl = profilePicJson ? JSON.parse(profilePicJson) : null;
+                const historyJson = localStorage.getItem(`history_${id}`);
+                if (!historyJson) return;
 
-                activity.push({
-                    user: {
-                        id,
-                        username: userMap.get(id) || 'Unknown User',
-                        profilePictureUrl,
-                    },
-                    history: recentUniqueHistory,
-                });
+                const fullHistory: HistoryItem[] = JSON.parse(historyJson);
+                if (!Array.isArray(fullHistory)) return;
+
+                const uniqueMediaIds = new Set<number>();
+                const recentUniqueHistory: HistoryItem[] = [];
+                for (const item of fullHistory) {
+                    if (!uniqueMediaIds.has(item.id)) {
+                        uniqueMediaIds.add(item.id);
+                        recentUniqueHistory.push(item);
+                    }
+                    if (recentUniqueHistory.length >= 5) break;
+                }
+
+                if (recentUniqueHistory.length > 0) {
+                    const profilePicJson = localStorage.getItem(`profilePictureUrl_${id}`);
+                    let profilePictureUrl = null;
+                    if (profilePicJson) {
+                        try { profilePictureUrl = JSON.parse(profilePicJson); } catch(e) { profilePictureUrl = profilePicJson; }
+                    }
+
+                    activity.push({
+                        user: {
+                            id,
+                            username: userMap.get(id) || 'Unknown User',
+                            profilePictureUrl,
+                        },
+                        history: recentUniqueHistory,
+                    });
+                }
+            } catch (e) {
+                console.error(`Registry trace error for user ${id}:`, e);
             }
         });
 
@@ -108,7 +117,7 @@ const FriendsActivity: React.FC<FriendsActivityProps> = ({ currentUser, follows,
                             className="flex items-center space-x-3 mb-3 cursor-pointer group"
                             onClick={() => onSelectUser(user.id)}
                         >
-                            <img src={user.profilePictureUrl || PLACEHOLDER_PROFILE} alt={user.username} className="w-8 h-8 rounded-full object-cover bg-bg-secondary" />
+                            <img src={user.profilePictureUrl || PLACEHOLDER_PROFILE} alt={user.username} className="w-8 h-8 rounded-full object-cover bg-bg-secondary border border-white/5" />
                             <h4 className="font-semibold text-text-primary group-hover:underline">{user.username}</h4>
                         </div>
                         <div className="flex overflow-x-auto space-x-4 pb-2 hide-scrollbar">
@@ -117,7 +126,6 @@ const FriendsActivity: React.FC<FriendsActivityProps> = ({ currentUser, follows,
                                     <CompactShowCard item={item} onSelect={onSelectShow} />
                                 </div>
                             ))}
-                            <div className="w-2 flex-shrink-0"></div>
                         </div>
                     </div>
                 ))}

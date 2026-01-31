@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, Episode, LiveWatchMediaInfo, FavoriteEpisodes, WatchProgress, JournalEntry, Comment, TmdbSeasonDetails, TrackedItem } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
@@ -207,7 +208,7 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                     />
                     <ActionButton 
                         icon={<ChatBubbleLeftRightIcon className={`w-5 h-5 ${existingComment ? 'text-sky-400' : ''}`} />} 
-                        label="Comments" 
+                        label="Comment" 
                         onClick={handleOpenComment}
                         isActive={!!existingComment}
                     />

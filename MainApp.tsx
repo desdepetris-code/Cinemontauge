@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
@@ -28,7 +27,7 @@ import { calculateLevelInfo, XP_CONFIG } from './utils/xpUtils';
 import AnimationContainer from './components/AnimationContainer';
 import LiveWatchTracker from './components/LiveWatchTracker';
 import NominatePicksModal from './components/NominatePicksModal';
-import { calculateAutoStatus } from './utils/libraryLogic';
+import { calculateAutoStatus, calculateMovieAutoStatus } from './utils/libraryLogic';
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers, searchPublicLists } from './utils/userUtils';
@@ -374,18 +373,31 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   // Mandatory Watch List Initializer
   useEffect(() => {
-      if (!customLists.some(l => l.id === 'watchlist')) {
-          const watchlist: CustomList = {
-              id: 'watchlist',
-              name: 'Watch List',
-              description: 'My mandatory library watch list.',
-              items: [],
-              createdAt: new Date().toISOString(),
-              visibility: 'private',
-              likes: []
-          };
-          setCustomLists(prev => [watchlist, ...prev]);
-      }
+    const mandatoryLists = [
+        { id: 'watchlist', name: 'Watch List', description: 'My mandatory library watch list.' },
+        { id: 'upcoming-tv-watchlist', name: 'Upcoming TV Shows to Watch', description: 'TV shows I am excited for.' },
+        { id: 'upcoming-movie-watchlist', name: 'Upcoming Movies to Watch', description: 'Movies I am waiting for.' }
+    ];
+
+    let hasChanges = false;
+    const nextLists = [...customLists];
+
+    mandatoryLists.forEach(m => {
+        if (!nextLists.some(l => l.id === m.id)) {
+            nextLists.unshift({
+                ...m,
+                items: [],
+                createdAt: new Date().toISOString(),
+                visibility: 'private',
+                likes: []
+            });
+            hasChanges = true;
+        }
+    });
+
+    if (hasChanges) {
+        setCustomLists(nextLists);
+    }
   }, [customLists, setCustomLists]);
 
 
@@ -445,6 +457,81 @@ export const MainApp: React.FC<MainAppProps> = ({
     });
   }, [setSearchHistory]);
 
+  const updateLists = useCallback((item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => {
+        const setters: Record<string, React.Dispatch<React.SetStateAction<TrackedItem[]>>> = {
+            watching: setWatching, planToWatch: setPlanToWatch, completed: setCompleted,
+            onHold: setOnHold, dropped: setDropped, allCaughtUp: setAllCaughtUp,
+        };
+        Object.keys(setters).forEach(key => setters[key](prev => prev.filter(i => i.id !== item.id)));
+        
+        if (newList && setters[newList]) {
+            const stampedItem = { ...item, addedAt: item.addedAt || new Date().toISOString() };
+            setters[newList](prev => [stampedItem, ...prev]);
+            
+            // Only update manual presets for user-controlled states (PTW, Hold, Drop)
+            if (['planToWatch', 'onHold', 'dropped'].includes(newList)) {
+                setManualPresets(prev => ({ ...prev, [item.id]: newList }));
+            }
+        }
+
+        // If explicitly removed from library, clear the manual preset entirely.
+        if (newList === null) {
+            setManualPresets(prev => {
+                const next = { ...prev };
+                delete next[item.id];
+                return next;
+            });
+        }
+
+        const showName = item.title || (item as any).name || 'Untitled';
+        if (newList === 'watching') confirmationService.show(`Added ${showName} to Watching`);
+        else if (newList === 'allCaughtUp') confirmationService.show(`You are all caught up with ${showName}!`);
+        else if (newList) confirmationService.show(`"${showName}" added to ${newList}`);
+        else if (oldList) {
+            confirmationService.show(`Removed ${showName} from ${oldList}`);
+        }
+    }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp, setManualPresets]);
+
+  const syncLibraryItem = useCallback(async (mediaId: number, mediaType: 'tv' | 'movie', updatedProgress?: WatchProgress, watchActionJustHappened: boolean = false) => {
+      try {
+          const details = await getMediaDetails(mediaId, mediaType);
+          const currentProgress = (updatedProgress || watchProgress)[mediaId] || {};
+          let currentManualPreset = manualPresets[mediaId];
+          
+          if (watchActionJustHappened && (currentManualPreset === 'dropped' || currentManualPreset === 'onHold')) {
+              setManualPresets(prev => {
+                  const next = { ...prev }; delete next[mediaId]; return next;
+              });
+              currentManualPreset = undefined;
+          }
+
+          const trackedItem: TrackedItem = {
+              id: details.id, title: details.title || details.name || 'Untitled', 
+              media_type: mediaType, poster_path: details.poster_path, genre_ids: details.genres?.map(g => g.id),
+              release_date: details.release_date || details.first_air_date
+          };
+
+          if (mediaType === 'movie') {
+              const autoStatus = calculateMovieAutoStatus(mediaId, history, pausedLiveSessions, currentManualPreset);
+              updateLists(trackedItem, null, autoStatus);
+              return;
+          }
+
+          // TV Logic
+          const autoStatus = calculateAutoStatus(details, currentProgress);
+          let totalWatched = 0;
+          Object.values(currentProgress).forEach(s => {
+              Object.values(s).forEach(e => { if ((e as EpisodeProgress).status === 2) totalWatched++; });
+          });
+
+          if (totalWatched === 0) {
+              updateLists(trackedItem, null, currentManualPreset || null);
+          } else {
+              updateLists(trackedItem, null, currentManualPreset || autoStatus);
+          }
+      } catch (e) { console.error(e); }
+  }, [watchProgress, history, manualPresets, updateLists, setManualPresets, pausedLiveSessions]);
+
   const handleLiveWatchStop = useCallback(() => {
     if (liveWatchMedia) {
         const runtimeSeconds = liveWatchMedia.runtime * 60;
@@ -458,9 +545,45 @@ export const MainApp: React.FC<MainAppProps> = ({
             }));
             confirmationService.show("Progress archived to Continue Watching.");
         }
+        // Force library sync to reflect "In Progress" or restore previous state if finished
+        setTimeout(() => syncLibraryItem(liveWatchMedia.id, liveWatchMedia.media_type), 50);
     }
     setLiveWatchMedia(null); setLiveWatchElapsedSeconds(0); setLiveWatchStartTime(null); setLiveWatchPauseCount(0); setIsLiveWatchMinimized(false);
-  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchStartTime, liveWatchPauseCount, setPausedLiveSessions]);
+  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchStartTime, liveWatchPauseCount, setPausedLiveSessions, syncLibraryItem]);
+
+  const handleLiveWatchDiscard = useCallback(() => {
+    if (window.confirm("Discard this session? Your progress will not be saved.")) {
+        const id = liveWatchMedia?.id;
+        const type = liveWatchMedia?.media_type;
+        setLiveWatchMedia(null);
+        setLiveWatchElapsedSeconds(0);
+        setLiveWatchStartTime(null);
+        setLiveWatchPauseCount(0);
+        setIsLiveWatchMinimized(false);
+        if (id && type) {
+            setTimeout(() => syncLibraryItem(id, type), 50);
+        }
+    }
+  }, [liveWatchMedia, syncLibraryItem]);
+
+  const handleLiveWatchTogglePause = useCallback(() => {
+    setLiveWatchIsPaused(prev => {
+        if (!prev) setLiveWatchPauseCount(p => p + 1);
+        return !prev;
+    });
+  }, [setLiveWatchIsPaused, setLiveWatchPauseCount]);
+
+  useEffect(() => {
+    let interval: number | undefined;
+    if (liveWatchMedia && !liveWatchIsPaused) {
+      interval = window.setInterval(() => {
+        setLiveWatchElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [liveWatchMedia, liveWatchIsPaused, setLiveWatchElapsedSeconds]);
 
   const handleStartLiveWatch = useCallback((mediaInfo: LiveWatchMediaInfo) => {
     const paused = pausedLiveSessions[mediaInfo.id];
@@ -476,72 +599,10 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
     setLiveWatchMedia(mediaInfo); setLiveWatchIsPaused(false); setIsLiveWatchMinimized(false);
     confirmationService.show(`Live session started: ${mediaInfo.title}`);
-  }, [pausedLiveSessions, setPausedLiveSessions]);
-
-  const updateLists = useCallback((item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => {
-        const setters: Record<string, React.Dispatch<React.SetStateAction<TrackedItem[]>>> = {
-            watching: setWatching, planToWatch: setPlanToWatch, completed: setCompleted,
-            onHold: setOnHold, dropped: setDropped, allCaughtUp: setAllCaughtUp,
-        };
-        Object.keys(setters).forEach(key => setters[key](prev => prev.filter(i => i.id !== item.id)));
-        if (newList && setters[newList]) {
-            const stampedItem = { ...item, addedAt: item.addedAt || new Date().toISOString() };
-            setters[newList](prev => [stampedItem, ...prev]);
-            if (['planToWatch', 'onHold', 'dropped'].includes(newList)) {
-                setManualPresets(prev => ({ ...prev, [item.id]: newList }));
-            }
-        }
-        const showName = item.title || (item as any).name || 'Untitled';
-        if (newList === 'watching') confirmationService.show(`Added ${showName} to Watching`);
-        else if (newList === 'allCaughtUp') confirmationService.show(`You are all caught up with ${showName}!`);
-        else if (newList) confirmationService.show(`"${showName}" added to ${newList}`);
-        else if (oldList) {
-            confirmationService.show(`Removed ${showName} from ${oldList}`);
-        }
-    }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp, setManualPresets]);
-
-  const syncLibraryItem = useCallback(async (mediaId: number, mediaType: 'tv' | 'movie', updatedProgress?: WatchProgress, watchActionJustHappened: boolean = false) => {
-      try {
-          const details = await getMediaDetails(mediaId, mediaType);
-          
-          const currentProgress = (updatedProgress || watchProgress)[mediaId] || {};
-          let totalWatched = 0;
-          Object.values(currentProgress).forEach(s => {
-              Object.values(s).forEach(e => { if ((e as EpisodeProgress).status === 2) totalWatched++; });
-          });
-
-          let currentManualPreset = manualPresets[mediaId];
-          
-          if (watchActionJustHappened && (currentManualPreset === 'dropped' || currentManualPreset === 'onHold')) {
-              setManualPresets(prev => {
-                  const next = { ...prev }; delete next[mediaId]; return next;
-              });
-              currentManualPreset = undefined;
-          }
-
-          const autoStatus = calculateAutoStatus(details, currentProgress);
-          const trackedItem: TrackedItem = {
-              id: details.id, title: details.title || details.name || 'Untitled', 
-              media_type: mediaType, poster_path: details.poster_path, genre_ids: details.genres?.map(g => g.id),
-              release_date: details.release_date || details.first_air_date
-          };
-
-          if (mediaType === 'movie') {
-              const movieHistory = history.filter(h => h.id === mediaId);
-              if (movieHistory.some(h => !h.logId.startsWith('live-'))) updateLists(trackedItem, null, 'completed');
-              else if (currentManualPreset) updateLists(trackedItem, null, currentManualPreset);
-              else updateLists(trackedItem, null, null);
-              return;
-          }
-
-          if (totalWatched === 0) {
-              if (currentManualPreset) updateLists(trackedItem, null, currentManualPreset);
-              else updateLists(trackedItem, null, null);
-          } else {
-              updateLists(trackedItem, null, currentManualPreset || autoStatus);
-          }
-      } catch (e) { console.error(e); }
-  }, [watchProgress, history, manualPresets, updateLists, setManualPresets]);
+    
+    // Trigger sync to move to "In Progress" (Watching)
+    setTimeout(() => syncLibraryItem(mediaInfo.id, mediaInfo.media_type), 50);
+  }, [pausedLiveSessions, setPausedLiveSessions, syncLibraryItem]);
 
   const handleToggleEpisode = useCallback((showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null) => {
     const newStatus = currentStatus === 2 ? 0 : 2;
@@ -659,23 +720,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show(`Collection "${listName}" created.`);
   }, [setCustomLists]);
 
-  const handleLiveWatchDiscard = useCallback(() => {
-    if (window.confirm("Discard this session? Your progress will not be saved.")) {
-        setLiveWatchMedia(null);
-        setLiveWatchElapsedSeconds(0);
-        setLiveWatchStartTime(null);
-        setLiveWatchPauseCount(0);
-        setIsLiveWatchMinimized(false);
-    }
-  }, []);
-
-  const handleLiveWatchTogglePause = useCallback(() => {
-    setLiveWatchIsPaused(prev => {
-        if (!prev) setLiveWatchPauseCount(c => c + 1);
-        return !prev;
-    });
-  }, []);
-
   const handleMarkMovieAsWatched = useCallback(async (item: any, date?: string) => {
       const timestamp = date || new Date().toISOString();
       const trackedItem: TrackedItem = {
@@ -697,8 +741,9 @@ export const MainApp: React.FC<MainAppProps> = ({
       }, ...prev]);
       
       setUserXp(prev => prev + XP_CONFIG.movie);
-      updateLists(trackedItem, null, 'completed');
-  }, [liveWatchStartTime, liveWatchPauseCount, setHistory, setUserXp, updateLists]);
+      // Logic for movie watch should trigger immediate completed status update
+      setTimeout(() => syncLibraryItem(item.id, 'movie'), 10);
+  }, [liveWatchStartTime, liveWatchPauseCount, setHistory, setUserXp, syncLibraryItem]);
 
   const handleSaveJournal = useCallback((showId: number, season: number, episode: number, entry: JournalEntry | null) => {
     setWatchProgress(prev => {
@@ -1085,7 +1130,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     });
   }, [setReminders]);
 
-  // FIX: Added missing handleToggleLikeList function to enable list interactions on Search page.
   const handleToggleLikeList = useCallback((ownerId: string, listId: string, listName: string) => {
     if (!currentUser) {
         onAuthClick();
@@ -1152,6 +1196,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onSelectShowInModal={handleSelectShow}
                 onStartLiveWatch={handleStartLiveWatch}
                 onDeleteHistoryItem={handleDeleteHistoryItem}
+                /* // Fixed duplicate onUpdateLists prop */
                 onAddWatchHistory={handleAddWatchHistory}
                 onAddWatchHistoryBulk={handleAddWatchHistoryBulk}
                 onSaveComment={handleSaveComment}
@@ -1183,7 +1228,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                 episodeRatings={episodeRatings}
                 reminders={reminders}
                 onToggleReminder={handleToggleReminder}
-                // REMOVED duplicate onUpdateLists and favoriteEpisodes attributes
             />
         );
     }

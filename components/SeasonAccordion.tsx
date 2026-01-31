@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, Note } from '../types';
 import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleLeftRightIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
@@ -220,7 +221,7 @@ const EpisodeItem: React.FC<{
                         <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                         </ActionButton>
-                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                        <ActionButton label="Comment" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
                             <ChatBubbleLeftRightIcon className="w-5 h-5" />
                         </ActionButton>
                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); onSetLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>
@@ -408,7 +409,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
             }
         }}
         mediaTitle={notesModalState.episode ? `Note for S${notesModalState.episode.season_number} E${notesModalState.episode.episode_number}: ${notesModalState.episode.name}` : ''}
-        initialNotes={notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] ? [{ id: 'manual', text: (episodeNotes[showId][notesModalState.episode.season_number][notesModalState.episode.episode_number] as unknown as string), timestamp: new Date().toISOString() }] : []) : []}
+        initialNotes={notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] || []) : []}
       />
       <MarkAsWatchedModal
         isOpen={logDateModalState.isOpen}

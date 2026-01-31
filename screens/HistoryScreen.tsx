@@ -15,19 +15,18 @@ type HistoryTab = 'watch' | 'search' | 'ratings' | 'favorites' | 'comments' | 'd
 // --- WATCH HISTORY TAB ---
 type WatchHistoryFilter = 'all' | 'shows' | 'movies' | 'seasons' | 'episodes' | 'movies_episodes' | 'movies_seasons';
 
-// Component to render the watch history list with filters
 const WatchHistory: React.FC<{
   history: HistoryItem[];
   onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   timezone: string;
-}> = ({ history, onSelectShow, onDeleteHistoryItem, timezone }) => {
+}> = ({ history = [], onSelectShow, onDeleteHistoryItem, timezone }) => {
   const [activeFilter, setActiveFilter] = useState<WatchHistoryFilter>('all');
-  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState<string>(''); 
   const [searchQuery, setSearchQuery] = useState('');
 
   const processedHistory = useMemo(() => {
-    let items = [...history];
+    let items = Array.isArray(history) ? [...history] : [];
     if (selectedDate) items = items.filter(i => new Date(i.timestamp).toISOString().split('T')[0] === selectedDate);
     if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -62,7 +61,7 @@ const WatchHistory: React.FC<{
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-grow">
-                <input type="text" placeholder="Search history..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-bg-secondary rounded-xl text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent border border-white/5 font-bold shadow-inner" />
+                <input type="text" placeholder="Search history..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-bg-secondary rounded-xl text-text-primary focus:outline-none border border-white/5 font-bold" />
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-primary opacity-80" />
             </div>
             <div className="relative min-w-[180px]">
@@ -82,92 +81,51 @@ const WatchHistory: React.FC<{
         </Carousel>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {processedHistory.map(item => {
-            const watchDate = new Date(item.timestamp);
-            const month = watchDate.toLocaleString('default', { month: 'short' });
-            const day = watchDate.getDate();
-            const isLiveLog = item.startTime && item.endTime;
-            const displayTitle = item.title || (item as any).name || 'Untitled';
+      {processedHistory.length === 0 ? (
+        <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border border-white/5 opacity-50">
+            <p className="font-bold uppercase tracking-widest text-xs">No watch logs found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {processedHistory.map(item => {
+                const watchDate = new Date(item.timestamp);
+                const month = watchDate.toLocaleString('default', { month: 'short' });
+                const day = watchDate.getDate();
+                const isLiveLog = item.startTime && item.endTime;
+                const displayTitle = item.title || (item as any).name || 'Untitled';
 
-            return (
-                <div key={item.logId} className="bg-bg-secondary/20 rounded-[2rem] border border-white/5 overflow-hidden flex flex-col shadow-2xl animate-fade-in group">
-                    <div className="w-full aspect-video relative cursor-pointer overflow-hidden" onClick={() => onSelectShow(item.id, item.media_type)}>
-                        <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={displayTitle} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                        
-                        <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
-                            <span className="text-xl font-black text-white leading-none">{day}</span>
-                        </div>
-
-                        {isLiveLog && (
-                            <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white shadow-xl">
-                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                                <span className="text-[8px] font-black uppercase tracking-widest">Live Session Record</span>
+                return (
+                    <div key={item.logId} className="bg-bg-secondary/20 rounded-[2rem] border border-white/5 overflow-hidden flex flex-col shadow-2xl animate-fade-in group">
+                        <div className="w-full aspect-video relative cursor-pointer overflow-hidden" onClick={() => onSelectShow(item.id, item.media_type)}>
+                            <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={displayTitle} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                            <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
+                                <span className="text-xl font-black text-white leading-none">{day}</span>
                             </div>
-                        )}
-                    </div>
-
-                    <div className="p-6">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
-                                <h3 className="text-xl font-black text-text-primary uppercase tracking-tight truncate leading-tight group-hover:text-primary-accent transition-colors">
-                                    {displayTitle}
-                                </h3>
-                                {item.media_type === 'tv' && (
-                                    <p className="text-xs font-black text-primary-accent/80 uppercase tracking-[0.1em] mt-1">
-                                        S{item.seasonNumber} E{item.episodeNumber} {item.episodeTitle && <span className="text-text-secondary opacity-60 ml-1"> &bull; {item.episodeTitle}</span>}
-                                    </p>
-                                )}
-                            </div>
-
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }}
-                                className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0"
-                                title="Delete this capture"
-                            >
-                                <TrashIcon className="w-6 h-6" />
-                            </button>
                         </div>
-
-                        {isLiveLog ? (
-                            <div className="mt-4 p-4 bg-bg-primary/40 rounded-2xl border border-white/5 space-y-3">
-                                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-text-secondary">
-                                    <div className="flex items-center gap-2">
-                                        <ClockIcon className="w-3.5 h-3.5 text-primary-accent" />
-                                        <span>Session Duration</span>
-                                    </div>
-                                    <span className="text-text-primary">{formatTimeFromDate(item.startTime!, timezone)} — {formatTimeFromDate(item.endTime!, timezone)}</span>
+                        <div className="p-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-grow min-w-0 cursor-pointer" onClick={() => onSelectShow(item.id, item.media_type)}>
+                                    <h3 className="text-xl font-black text-text-primary uppercase tracking-tight truncate leading-tight group-hover:text-primary-accent transition-colors">{displayTitle}</h3>
+                                    {item.media_type === 'tv' && (
+                                        <p className="text-xs font-black text-primary-accent/80 uppercase tracking-[0.1em] mt-1">S{item.seasonNumber} E{item.episodeNumber}</p>
+                                    )}
                                 </div>
-                                {item.pauseCount && item.pauseCount > 0 ? (
-                                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-text-secondary border-t border-white/5 pt-2">
-                                        <div className="flex items-center gap-2">
-                                            <PlayPauseIcon className="w-3.5 h-3.5 text-amber-500" />
-                                            <span>Interruptions</span>
-                                        </div>
-                                        <span className="text-amber-500">{item.pauseCount} Pauses</span>
-                                    </div>
-                                ) : null}
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0"><TrashIcon className="w-6 h-6" /></button>
                             </div>
-                        ) : (
-                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-4 opacity-50">
-                                {formatDateTime(item.timestamp, timezone)}
-                            </p>
-                        )}
-                        
-                        {item.note && <p className="text-xs text-text-secondary italic mt-4 p-3 bg-bg-secondary/30 rounded-xl whitespace-pre-wrap border border-white/5">"{item.note}"</p>}
+                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-4 opacity-50">{formatDateTime(item.timestamp, timezone)}</p>
+                            {item.note && <p className="text-xs text-text-secondary italic mt-4 p-3 bg-bg-secondary/30 rounded-xl border border-white/5">"{item.note}"</p>}
+                        </div>
                     </div>
-                </div>
-            );
-        })}
-      </div>
+                );
+            })}
+        </div>
+      )}
     </div>
   );
 };
 
-// --- SEARCH HISTORY TAB ---
-// Component to render search history logs
 const SearchHistory: React.FC<{
     history: SearchHistoryItem[];
     onDelete: (timestamp: string) => void;
@@ -175,14 +133,14 @@ const SearchHistory: React.FC<{
     onQueryChange: (query: string) => void;
     onSelectShow: (id: number, type: 'tv' | 'movie') => void;
     userData: UserData;
-}> = ({ history, onDelete, onClear, onQueryChange, onSelectShow, userData }) => {
+}> = ({ history = [], onDelete, onClear, onQueryChange, onSelectShow, userData }) => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center px-2">
                 <h2 className="text-xl font-bold text-text-primary uppercase tracking-widest">Recent Searches</h2>
                 <button onClick={onClear} className="text-xs font-black uppercase text-red-500 hover:text-red-400 transition-colors">Clear All</button>
             </div>
-            {!history || history.length === 0 ? (
+            {!Array.isArray(history) || history.length === 0 ? (
                 <div className="text-center py-20 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
                     <p className="text-text-secondary font-bold uppercase tracking-widest text-xs">No search history found.</p>
                 </div>
@@ -206,13 +164,7 @@ const SearchHistory: React.FC<{
                                     </div>
                                 )}
                             </div>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDelete(h.timestamp); }} 
-                                className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md border border-red-500/20 ml-4 flex-shrink-0"
-                                title="Delete search capture"
-                            >
-                                <TrashIcon className="w-4 h-4" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); onDelete(h.timestamp); }} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md border border-red-500/20 ml-4 flex-shrink-0"><TrashIcon className="w-4 h-4" /></button>
                         </div>
                     ))}
                 </div>
@@ -236,7 +188,6 @@ interface HistoryScreenProps {
   onRestoreNote: (note: DeletedNote) => void;
 }
 
-// Main History Screen component that manages tabs
 const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
   const [activeTab, setActiveTab] = useState<HistoryTab>('watch');
 
@@ -269,46 +220,13 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
       </div>
 
       {activeTab === 'watch' && (
-        <WatchHistory 
-          history={props.userData.history} 
-          onSelectShow={props.onSelectShow} 
-          onDeleteHistoryItem={props.onDeleteHistoryItem} 
-          timezone={props.timezone} 
-        />
+        <WatchHistory history={props.userData?.history || []} onSelectShow={props.onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} timezone={props.timezone} />
       )}
       
       {activeTab === 'search' && (
-        <SearchHistory 
-          history={props.userData.searchHistory} 
-          onDelete={props.onDeleteSearchHistoryItem}
-          onClear={props.onClearSearchHistory}
-          onQueryChange={(q) => {}} // Could be wired to actual search logic
-          onSelectShow={(id, type) => props.onSelectShow(id, type)}
-          userData={props.userData}
-        />
+        <SearchHistory history={props.userData?.searchHistory || []} onDelete={props.onDeleteSearchHistoryItem} onClear={props.onClearSearchHistory} onQueryChange={() => {}} onSelectShow={props.onSelectShow} userData={props.userData} />
       )}
 
-      {activeTab === 'ratings' && (
-          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
-              <StarIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
-              <p className="font-black uppercase tracking-widest text-[10px]">Rating history module arriving in registry update</p>
-          </div>
-      )}
-
-      {activeTab === 'favorites' && (
-          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
-              <HeartIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
-              <p className="font-black uppercase tracking-widest text-[10px]">Favorites collection module implementation pending</p>
-          </div>
-      )}
-
-      {activeTab === 'comments' && (
-          <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-50">
-              <ChatBubbleOvalLeftEllipsisIcon className="w-12 h-12 mx-auto mb-4 text-text-secondary/20" />
-              <p className="font-black uppercase tracking-widest text-[10px]">Comment archive module arriving soon</p>
-          </div>
-      )}
-      
       {activeTab === 'deleted' && (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4 px-2">
@@ -316,55 +234,28 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
                     <h2 className="text-xl font-black text-text-primary uppercase tracking-tighter">Trash Bin</h2>
                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60">30-day retention period active</p>
                 </div>
-                <button 
-                    onClick={props.onClearAllDeletedHistory}
-                    className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl shadow-lg"
-                >
-                    Purge All Data
-                </button>
+                <button onClick={props.onClearAllDeletedHistory} className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl shadow-lg">Purge All Data</button>
             </div>
 
-            {(!props.userData.deletedHistory || props.userData.deletedHistory.length === 0) && (!props.userData.deletedNotes || props.userData.deletedNotes.length === 0) ? (
+            {(!props.userData?.deletedHistory || props.userData.deletedHistory.length === 0) && (!props.userData?.deletedNotes || props.userData.deletedNotes.length === 0) ? (
                 <div className="text-center py-32 bg-bg-secondary/10 rounded-3xl border-2 border-dashed border-white/5 opacity-40">
                     <TrashIcon className="w-12 h-12 mx-auto mb-4" />
                     <p className="font-black uppercase tracking-widest text-[10px]">Registry trash is empty</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {props.userData.deletedHistory?.map(item => {
-                        const displayTitle = item.title || (item as any).name || 'Untitled';
-                        return (
-                            <div key={item.logId} className="bg-bg-secondary/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary-accent/30 transition-all shadow-xl">
-                                <div className="flex items-center gap-4 min-w-0">
-                                    <img src={getImageUrl(item.poster_path, 'w92')} className="w-12 h-18 object-cover rounded-xl shadow-lg border border-white/10" alt="" />
-                                    <div className="min-w-0">
-                                        <h3 className="font-black text-text-primary uppercase tracking-tight truncate leading-tight">{displayTitle}</h3>
-                                        {item.media_type === 'tv' && (
-                                            <p className="text-[9px] text-text-secondary uppercase tracking-[0.2em] font-bold opacity-60 mt-1">S{item.seasonNumber} E{item.episodeNumber}</p>
-                                        )}
-                                        <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest mt-2 italic">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 ml-4">
-                                    <button onClick={() => props.onRestoreHistoryItem(item)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md" title="Restore"><ArrowPathIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => props.onPermanentDeleteHistoryItem(item.logId)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md" title="Destroy Permanently"><TrashIcon className="w-5 h-5" /></button>
+                    {props.userData.deletedHistory?.map(item => (
+                        <div key={item.logId} className="bg-bg-secondary/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-primary-accent/30 transition-all shadow-xl">
+                            <div className="flex items-center gap-4 min-w-0">
+                                <img src={getImageUrl(item.poster_path, 'w92')} className="w-12 h-18 object-cover rounded-xl shadow-lg border border-white/10" alt="" />
+                                <div className="min-w-0">
+                                    <h3 className="font-black text-text-primary uppercase tracking-tight truncate leading-tight">{item.title || 'Untitled'}</h3>
+                                    <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest mt-2 italic">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
                                 </div>
                             </div>
-                        );
-                    })}
-                    {props.userData.deletedNotes?.map(note => (
-                        <div key={note.id} className="bg-yellow-900/10 p-4 rounded-2xl border border-yellow-500/20 flex items-center justify-between group hover:border-yellow-500/40 transition-all shadow-xl">
-                            <div className="min-w-0 flex-grow pr-4">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <PencilSquareIcon className="w-4 h-4 text-yellow-500 opacity-60" />
-                                    <h3 className="font-black text-yellow-500 uppercase tracking-tighter text-xs truncate">{note.mediaTitle}</h3>
-                                </div>
-                                <p className="text-[10px] text-text-primary font-bold line-clamp-1 opacity-80 italic">"{note.text}"</p>
-                                <p className="text-[8px] font-black text-text-secondary uppercase tracking-widest mt-2 opacity-50">Context: {note.context}</p>
-                            </div>
-                            <div className="flex gap-2 flex-shrink-0">
-                                <button onClick={() => props.onRestoreNote(note)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md" title="Restore"><ArrowPathIcon className="w-5 h-5" /></button>
-                                <button onClick={() => props.onPermanentDeleteNote(note.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md" title="Destroy Permanently"><TrashIcon className="w-5 h-5" /></button>
+                            <div className="flex gap-2 ml-4">
+                                <button onClick={() => props.onRestoreHistoryItem(item)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md"><ArrowPathIcon className="w-5 h-5" /></button>
+                                <button onClick={() => props.onPermanentDeleteHistoryItem(item.logId)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md"><TrashIcon className="w-5 h-5" /></button>
                             </div>
                         </div>
                     ))}
