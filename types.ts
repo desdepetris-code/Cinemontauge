@@ -441,7 +441,6 @@ export interface UserData {
   };
   timezone?: string;
   timeFormat?: '12h' | '24h';
-  blockedUserIds: string[]; // NEW: Blocked user registry
 }
 
 export interface WeeklyPick extends TrackedItem {

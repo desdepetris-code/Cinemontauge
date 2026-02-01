@@ -28,7 +28,6 @@ import OngoingShowsScreen from './OngoingShowsScreen';
 import { PLACEHOLDER_PROFILE } from '../constants';
 import Carousel from '../components/Carousel';
 import { supabase } from '../services/supabaseClient';
-import UserProfileModal from '../components/UserProfileModal';
 
 interface User {
   id: string;
@@ -257,6 +256,7 @@ interface ProfileProps {
   notifications: AppNotification[];
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
+  // FIX: Removed duplicate identifier 'onSelectShow' previously at line 258/259.
   onAddNotifications: (notifs: AppNotification[]) => void;
   autoHolidayThemesEnabled: boolean;
   setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -298,20 +298,16 @@ interface ProfileProps {
   isFollowerOfProfile?: boolean;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   favoriteEpisodes: FavoriteEpisodes;
-  onBlockUser: (userId: string) => Promise<void>;
-  onUnblockUser: (userId: string) => Promise<void>;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote, onTabNavigate, viewerId, isFollowerOfProfile, onBlockUser, onUnblockUser } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote, onTabNavigate, viewerId, isFollowerOfProfile } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [targetUserProfileId, setTargetUserProfileId] = useState<string | null>(null);
-
   const stats = useCalculatedStats(userData);
 
   useEffect(() => {
@@ -320,27 +316,14 @@ const Profile: React.FC<ProfileProps> = (props) => {
     }
   }, [initialTab]);
 
-  const unreadCount = useMemo(() => {
-    // Filter notifications from blocked users
-    return notifications.filter(n => {
-        if (n.read) return false;
-        if (n.followerInfo && userData.blockedUserIds.includes(n.followerInfo.userId)) return false;
-        if (n.likerInfo && userData.blockedUserIds.includes(n.likerInfo.userId)) return false;
-        return true;
-    }).length;
-  }, [notifications, userData.blockedUserIds]);
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
 
   const { followers, following } = useMemo(() => {
     if (!currentUser) return { followers: [], following: [] };
     const followingList = follows[currentUser.id] || [];
     const followerList = Object.keys(follows).filter(userId => follows[userId]?.includes(currentUser.id));
-    
-    // Filter out blocked users from these lists
-    return { 
-        followers: followerList.filter(id => !userData.blockedUserIds.includes(id)), 
-        following: followingList.filter(id => !userData.blockedUserIds.includes(id)) 
-    };
-  }, [currentUser, follows, userData.blockedUserIds]);
+    return { followers: followerList, following: followingList };
+  }, [currentUser, follows]);
 
   // REORDERED TABS BASED ON USER REQUEST (1-15)
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
@@ -369,11 +352,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
       });
   };
 
-  const handleSelectUser = (id: string) => {
-    if (id === currentUser?.id) return;
-    setTargetUserProfileId(id);
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return (
@@ -385,8 +363,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
               currentUser={props.currentUser}
               follows={props.follows}
               onSelectShow={onSelectShow}
-              onSelectUser={handleSelectUser}
-              blockedUserIds={userData.blockedUserIds}
+              onSelectUser={props.onSelectUser}
             />
           </div>
           <div className="lg:col-span-1 space-y-6">
@@ -408,7 +385,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'updates': return <UpdatesScreen userData={userData} onSelectShow={onSelectShow} onAddNotifications={onAddNotifications} />;
       case 'progress': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
-      case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={handleSelectUser} blockedUserIds={userData.blockedUserIds} />;
+      case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
       case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
       case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} onPermanentDeleteNote={onPermanentDeleteNote} onRestoreNote={onRestoreNote} />;
@@ -416,7 +393,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'achievements': return <AchievementsScreen userData={userData} />;
       case 'imports': return <ImportsScreen userData={userData} onImportCompleted={props.onImportCompleted} onTraktImportCompleted={onTraktImportCompleted} onTmdbImportCompleted={onTmdbImportCompleted} onJsonImportCompleted={onJsonImportCompleted} />;
-      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={baseThemeId} currentHolidayName={currentHolidayName} onTabNavigate={onTabNavigate} onUnblockUser={onUnblockUser} />;
+      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={baseThemeId} currentHolidayName={currentHolidayName} onTabNavigate={onTabNavigate} />;
       case 'weeklyPicks': return <WeeklyPicksScreen userData={userData} onSelectShow={onSelectShow} onRemovePick={props.onToggleWeeklyFavorite} onNominate={onOpenNominateModal} />;
       default: return null;
     }
@@ -424,20 +401,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-8">
-        {targetUserProfileId && currentUser && (
-            <UserProfileModal 
-                userId={targetUserProfileId} 
-                currentUser={currentUser} 
-                follows={follows[currentUser.id] || []} 
-                onFollow={(id) => {}} // Handle follow in modal if implemented
-                onUnfollow={(id) => {}}
-                onClose={() => setTargetUserProfileId(null)}
-                onToggleLikeList={() => {}}
-                onBlockUser={onBlockUser}
-                onUnblockUser={onUnblockUser}
-                isBlocked={userData.blockedUserIds.includes(targetUserProfileId)}
-            />
-        )}
         <ProfilePictureModal 
             isOpen={isPicModalOpen} 
             onClose={() => setIsPicModalOpen(false)} 
@@ -452,10 +415,9 @@ const Profile: React.FC<ProfileProps> = (props) => {
           onMarkAllRead={props.onMarkAllRead} 
           onMarkOneRead={props.onMarkOneRead} 
           onSelectShow={onSelectShow} 
-          onSelectUser={handleSelectUser} 
-          blockedUserIds={userData.blockedUserIds}
+          onSelectUser={onSelectUser} 
         />
-        <FollowListModal isOpen={followModalState.isOpen} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} title={followModalState.title} userIds={followModalState.userIds} onSelectUser={handleSelectUser} />
+        <FollowListModal isOpen={followModalState.isOpen} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} title={followModalState.title} userIds={followModalState.userIds} onSelectUser={onSelectUser} />
         
         <div className="flex flex-col md:flex-row items-center md:items-end gap-4 mb-6 relative">
             <div className="absolute top-0 right-0 z-20 flex flex-col gap-2">

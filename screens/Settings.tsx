@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon, UserMinusIcon } from '../components/Icons';
+
+import React, { useState, useEffect, useRef } from 'react';
+// FIX: Added missing PencilSquareIcon to imports
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
-import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences, PublicUser } from '../types';
+import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
@@ -10,12 +12,10 @@ import UpdateProfileModal from '../components/UpdateProfileModal';
 import TimezoneSettings from '../components/TimezoneSettings';
 import { clearAllApiCache } from '../utils/cacheUtils';
 import { confirmationService } from '../services/confirmationService';
-import { getAllUsers } from '../utils/userUtils';
-import { PLACEHOLDER_PROFILE } from '../constants';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
     <div 
-        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-not-allowed hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
+        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
         onClick={disabled ? undefined : onClick}
     >
         <div>
@@ -120,22 +120,15 @@ interface SettingsProps {
     preferences: AppPreferences;
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
     onTabNavigate?: (tabId: string) => void;
-    onUnblockUser?: (id: string) => Promise<void>;
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, onUnblockUser } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
-  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
 
   const mandatoryNavIds = ['home', 'search', 'calendar', 'profile'];
-
-  const blockedUsersDetails = useMemo(() => {
-    const allUsers = getAllUsers();
-    return allUsers.filter(u => userData.blockedUserIds.includes(u.id));
-  }, [userData.blockedUserIds]);
 
   const handleTogglePreference = (key: keyof AppPreferences) => {
     setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
@@ -233,54 +226,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </SettingsCard>
         )}
         
-        <SettingsCard title="Social & Privacy">
-            <SettingsRow title="Blocked Users" subtitle="Manage your restricted interactions.">
-                <button 
-                    onClick={() => setShowBlockedUsers(!showBlockedUsers)}
-                    className="flex items-center gap-2 text-primary-accent font-black uppercase text-[10px] tracking-widest"
-                >
-                    {userData.blockedUserIds.length} Restricted <ChevronDownIcon className={`w-4 h-4 transition-transform ${showBlockedUsers ? 'rotate-180' : ''}`} />
-                </button>
-            </SettingsRow>
-            {showBlockedUsers && (
-                <div className="bg-bg-secondary/20 p-4 border-b border-bg-secondary/50 animate-fade-in">
-                    {blockedUsersDetails.length > 0 ? (
-                        <div className="space-y-3">
-                            {blockedUsersDetails.map(user => (
-                                <div key={user.id} className="flex items-center justify-between p-3 bg-bg-primary rounded-xl border border-white/5">
-                                    <div className="flex items-center gap-3">
-                                        <img src={PLACEHOLDER_PROFILE} className="w-8 h-8 rounded-full" alt="" />
-                                        <span className="font-bold text-sm text-text-primary">{user.username}</span>
-                                    </div>
-                                    <button 
-                                        onClick={() => onUnblockUser?.(user.id)}
-                                        className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
-                                    >
-                                        <UserMinusIcon className="w-4 h-4" /> Unblock
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-center text-xs text-text-secondary font-bold uppercase tracking-widest opacity-40 py-4">No users restricted in your registry.</p>
-                    )}
-                </div>
-            )}
-            <SettingsRow title="Activity Visibility" subtitle="Choose who can see your library and progress.">
-                <div className="flex p-1 bg-bg-primary rounded-full border border-bg-secondary">
-                    {(['public', 'followers', 'private'] as const).map(vis => (
-                        <button 
-                            key={vis} 
-                            onClick={() => setPrivacySettings({ activityVisibility: vis })} 
-                            className={`px-3 py-1 text-[10px] uppercase font-black rounded-full transition-all ${privacySettings.activityVisibility === vis ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary'}`}
-                        >
-                            {vis}
-                        </button>
-                    ))}
-                </div>
-            </SettingsRow>
-        </SettingsCard>
-
         <SettingsCard title="Feature Visibility">
             <div className="p-4 border-b border-bg-secondary/50">
                 <p className="text-xs font-black uppercase tracking-widest text-primary-accent mb-4">Search Page Controls</p>
@@ -379,10 +324,10 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                                     <span className="font-bold text-text-primary">{meta.label} {isMandatory && <span className="text-[10px] opacity-40 ml-1">(Locked)</span>}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <button onClick={moveNavTab(index, 'up')} disabled={index === 0} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
+                                    <button onClick={() => moveNavTab(index, 'up')} disabled={index === 0} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
                                         <ChevronDownIcon className="w-4 h-4 rotate-180" />
                                     </button>
-                                    <button onClick={moveNavTab(index, 'down')} disabled={index === navSettings.tabs.length - 1} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
+                                    <button onClick={() => moveNavTab(index, 'down')} disabled={index === navSettings.tabs.length - 1} className="p-1 text-text-secondary hover:text-primary-accent disabled:opacity-20">
                                         <ChevronDownIcon className="w-4 h-4" />
                                     </button>
                                     {!isMandatory && (

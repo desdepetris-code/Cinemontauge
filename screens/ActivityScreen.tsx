@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Follows, FriendActivity, PublicUser, UserData, PrivacySettings, HistoryItem, CustomList, UserRatings, Activity, ActivityType, TrackedItem } from '../types';
 import { getAllUsers } from '../utils/userUtils';
@@ -12,7 +11,6 @@ interface ActivityScreenProps {
     follows: Follows;
     onSelectShow: (id: number, mediaType: 'tv' | 'movie') => void;
     onSelectUser: (userId: string) => void;
-    blockedUserIds: string[]; // NEW: Block registry
 }
 
 const formatTimeAgo = (timestamp: string): string => {
@@ -84,7 +82,7 @@ const ActivityCard: React.FC<{ activity: Activity; onSelectShow: (id: number, me
     );
 };
 
-const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, onSelectShow, onSelectUser, blockedUserIds }) => {
+const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, onSelectShow, onSelectUser }) => {
     const [friendsActivity, setFriendsActivity] = useState<FriendActivity[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<ActivityType | 'ALL'>('ALL');
@@ -95,7 +93,7 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
             return;
         }
 
-        const followedIds = (follows[currentUser.id] || []).filter(id => !blockedUserIds.includes(id));
+        const followedIds = follows[currentUser.id] || [];
         if (followedIds.length === 0) {
             setLoading(false);
             return;
@@ -184,7 +182,7 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
             setLoading(false);
         });
 
-    }, [currentUser, follows, blockedUserIds]);
+    }, [currentUser, follows]);
 
     const filteredActivities = useMemo(() => {
         if (filter === 'ALL') return friendsActivity;
@@ -200,11 +198,11 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
 
     if (loading) return <div className="text-center p-8">Loading activity feed...</div>;
 
-    if (!currentUser || (follows[currentUser.id] || []).filter(id => !blockedUserIds.includes(id)).length === 0) {
+    if (!currentUser || (follows[currentUser.id] || []).length === 0) {
         return (
             <div className="text-center py-20 px-4">
                 <h2 className="text-xl font-bold">Find Your Friends</h2>
-                <p className="mt-2 text-text-secondary max-sm mx-auto">
+                <p className="mt-2 text-text-secondary max-w-sm mx-auto">
                     Follow other users to see what they've been watching, rating, and adding to their lists right here.
                 </p>
             </div>
@@ -215,7 +213,7 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
         return (
             <div className="text-center py-20 px-4">
                 <h2 className="text-xl font-bold">No Recent Activity</h2>
-                <p className="mt-2 text-text-secondary max-sm mx-auto">
+                <p className="mt-2 text-text-secondary max-w-sm mx-auto">
                     Your friends haven't had any recent activity matching your filters.
                 </p>
             </div>
@@ -236,7 +234,7 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
                             className="flex items-center space-x-3 mb-3 cursor-pointer group"
                             onClick={() => onSelectUser(user.id)}
                         >
-                            <img src={user.profilePictureUrl || PLACEHOLDER_PROFILE} alt={user.username} className="w-10 h-10 rounded-full object-cover bg-bg-secondary border border-white/5" />
+                            <img src={user.profilePictureUrl || PLACEHOLDER_PROFILE} alt={user.username} className="w-10 h-10 rounded-full object-cover bg-bg-secondary" />
                             <h4 className="font-semibold text-lg text-text-primary group-hover:underline">{user.username}</h4>
                         </div>
                         <div className="space-y-2">

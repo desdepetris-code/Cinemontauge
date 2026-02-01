@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
@@ -33,121 +32,76 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
- * Caches basic TMDB metadata in Supabase for faster global discovery.
+ * Atomic status toggle via RPC.
  */
-export const syncMediaRegistryCache = async (item: { tmdb_id: number, title: string, poster_path: string | null, backdrop_path: string | null, media_type: string }) => {
-    return await supabase
-        .from('media_registry_cache')
-        .upsert({
-            tmdb_id: item.tmdb_id,
-            title: item.title,
-            poster_path: item.poster_path,
-            backdrop_path: item.backdrop_path,
-            media_type: item.media_type
-        });
+export const syncWatchStatusRpc = async (mediaId: number, mediaType: string, status: string | null) => {
+    const { data, error } = await supabase.rpc('toggle_watch_status', {
+        p_media_id: mediaId,
+        p_media_type: mediaType,
+        p_status: status
+    });
+    if (error) throw error;
+    return data;
 };
 
 /**
- * Toggles a social interaction (Like/Bookmark).
+ * Syncs user rating for a media item.
  */
-export const toggleInteraction = async (userId: string, targetId: string, targetType: 'comment' | 'list' | 'journal', type: 'like' | 'bookmark' = 'like') => {
-    // Check if exists
-    const { data } = await supabase
-        .from('interactions')
-        .select('id')
-        .match({ user_id: userId, target_id: targetId, target_type: targetType, type })
-        .single();
-
-    if (data) {
-        return await supabase.from('interactions').delete().eq('id', data.id);
-    } else {
-        return await supabase.from('interactions').insert({
-            user_id: userId,
-            target_id: targetId,
-            target_type: targetType,
-            type
-        });
-    }
+export const syncRatingRpc = async (mediaId: number, mediaType: string, rating: number) => {
+    const { data, error } = await supabase.rpc('set_media_rating', {
+        p_media_id: mediaId,
+        p_media_type: mediaType,
+        p_rating: rating
+    });
+    if (error) throw error;
+    return data;
 };
 
 /**
- * Blocks another user from social interactions.
+ * Syncs a specific watch log entry.
  */
-export const blockUser = async (userId: string, blockedId: string) => {
-    return await supabase
-        .from('user_blocking')
-        .upsert({ blocker_id: userId, blocked_id: blockedId });
+export const syncHistoryItemRpc = async (item: any) => {
+    const { data, error } = await supabase.from('history').upsert({
+        log_id: item.logId,
+        tmdb_id: item.id,
+        media_type: item.media_type,
+        timestamp: item.timestamp,
+        season_number: item.seasonNumber,
+        episode_number: item.episodeNumber,
+        note: item.note,
+        metadata: {
+            episodeTitle: item.episodeTitle,
+            episodeStillPath: item.episodeStillPath,
+            seasonPosterPath: item.seasonPosterPath
+        }
+    });
+    if (error) throw error;
+    return data;
 };
 
 /**
- * Unblocks a user.
+ * Atomic Favorite Toggle.
  */
-export const unblockUser = async (userId: string, blockedId: string) => {
-    return await supabase
-        .from('user_blocking')
-        .delete()
-        .match({ blocker_id: userId, blocked_id: blockedId });
+export const toggleFavoriteRpc = async (mediaId: number, mediaType: string) => {
+    const { data, error } = await supabase.rpc('toggle_favorite', {
+        p_media_id: mediaId,
+        p_media_type: mediaType
+    });
+    if (error) throw error;
+    return data;
 };
 
 /**
- * Fetches the IDs of users blocked by the current user.
+ * Post Comment / Reply.
  */
-export const fetchBlockedUsers = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('user_blocking')
-        .select('blocked_id')
-        .eq('blocker_id', userId);
-    
-    if (error) return [];
-    return data.map(d => d.blocked_id);
-};
-
-/**
- * Syncs user XP to their central profile.
- */
-export const syncUserXp = async (userId: string, xp: number) => {
-    return await supabase
-        .from('profiles')
-        .update({ user_xp: xp })
-        .eq('id', userId);
-};
-
-/**
- * Persists a user's "Weekly Gem" nomination.
- */
-export const syncWeeklyPick = async (userId: string, tmdbId: number, category: string, weekKey: string, dayIndex: number, isRemove: boolean = false) => {
-    if (isRemove) {
-        return await supabase
-            .from('weekly_picks')
-            .delete()
-            .match({ user_id: userId, tmdb_id: tmdbId, week_key: weekKey });
-    }
-
-    return await supabase
-        .from('weekly_picks')
-        .upsert({
-            user_id: userId,
-            tmdb_id: tmdbId,
-            category,
-            week_key: weekKey,
-            day_index: dayIndex
-        });
-};
-
-/**
- * Fetches user analytics (streaks, daily activity, social metrics)
- */
-export const getUserAnalytics = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('user_analytics')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-    
-    if (error) {
-        console.warn("Analytics fetch failed:", error.message);
-        return null;
-    }
+export const postCommentRpc = async (mediaKey: string, content: string, parentId?: string, isSpoiler: boolean = false) => {
+    const { data, error } = await supabase.from('comments').insert({
+        media_key: mediaKey,
+        content,
+        parent_id: parentId,
+        is_spoiler: isSpoiler
+    }).select().single();
+    if (error) throw error;
     return data;
 };
 
@@ -176,7 +130,7 @@ export const syncJournalEntry = async (userId: string, tmdbId: number, season: n
 };
 
 /**
- * Syncs User Notes to the database.
+ * Syncs User Note.
  */
 export const syncUserNote = async (userId: string, tmdbId: number, note: any, isDelete: boolean = false) => {
     if (isDelete) {
@@ -198,7 +152,7 @@ export const syncUserNote = async (userId: string, tmdbId: number, note: any, is
 };
 
 /**
- * Helper to upload custom posters/backdrops to 'custom-media' bucket.
+ * Upload custom media.
  */
 export const uploadCustomMedia = async (
     userId: string, 
@@ -224,11 +178,11 @@ export const uploadCustomMedia = async (
         const fileName = `${type}_${Date.now()}.${ext}`;
         const path = `${userId}/${tmdbId}/${type}/${fileName}`;
 
-        const { error, data } = await supabase.storage
+        const { error } = await supabase.storage
             .from('custom-media')
             .upload(path, blob, {
                 upsert: true,
-                // @ts-ignore - metadata for RLS
+                // @ts-ignore
                 metadata: { owner_id: userId }
             });
 
@@ -257,7 +211,7 @@ export const uploadCustomMedia = async (
 };
 
 /**
- * Helper to delete user-uploaded media.
+ * Delete custom media.
  */
 export const deleteCustomMedia = async (userId: string, url: string): Promise<boolean> => {
     try {
@@ -282,4 +236,20 @@ export const deleteCustomMedia = async (userId: string, url: string): Promise<bo
         console.error("Delete failed:", e);
         return false;
     }
+};
+
+/**
+ * Fix: added export for 'getUserAnalytics' used by StatsScreen.tsx
+ */
+export const getUserAnalytics = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('user_analytics')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+    if (error) {
+        console.error("Error fetching analytics:", error);
+        return null;
+    }
+    return data;
 };

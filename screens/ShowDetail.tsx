@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon } from '../components/Icons';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
 import SeasonAccordion from '../components/SeasonAccordion';
@@ -512,6 +511,29 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     handleCommentOpen(null);
   };
 
+  const handleShare = async () => {
+      const shareData = {
+          title: details?.title || details?.name || 'CineMontauge',
+          text: `Check out ${details?.title || details?.name} on CineMontauge!`,
+          url: window.location.href,
+      };
+
+      if (navigator.share) {
+          try {
+              await navigator.share(shareData);
+          } catch (err) {
+              console.error('Error sharing:', err);
+          }
+      } else {
+          try {
+              await navigator.clipboard.writeText(window.location.href);
+              confirmationService.show("Link copied to clipboard!");
+          } catch (err) {
+              console.error('Clipboard failed:', err);
+          }
+      }
+  };
+
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -568,7 +590,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         backdrops={details.images?.backdrops || []} 
         onSelect={(type, path) => {
             if (isEpisodeSelectorOpen.ep) {
-                onSetCustomEpisodeImage(id, isEpisodeSelectorOpen.ep.season_number, isEpisodeSelectorOpen.ep.episode_number, path as any);
+                onSetCustomEpisodeImage(id, isEpisodeSelectorOpen.ep.season_number, isEpisodeSelectorOpen.ep.episode_number, path);
             }
         }} 
         initialTab="backdrops" 
@@ -707,6 +729,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                   </>
                 )}
+                <DetailedActionButton label="Share" icon={<ShareIcon className="w-6 h-6" />} onClick={handleShare} />
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
                 {mediaType === 'tv' && (
@@ -791,8 +814,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               {activeTab === 'info' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                    <div className="space-y-8"><section><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Overview</h2><p className="text-text-secondary leading-relaxed">{details.overview}</p></section><WhereToWatch providers={providers} /></div>
-                   {/* FIX: Pass seasonDetailsMap to MoreInfo */}
-                   <MoreInfo details={details} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} seasonDetailsMap={seasonDetailsMap} />
+                   <MoreInfo details={details} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
                 </div>
               )}
               {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
