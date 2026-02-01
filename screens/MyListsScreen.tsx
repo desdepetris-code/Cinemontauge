@@ -46,6 +46,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Display Name</label>
                         <input type="text" placeholder="e.g. 90s Noir..." value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-bold" disabled={isSystemList} />
+                        {isSystemList && <p className="text-[8px] font-black text-primary-accent uppercase tracking-widest ml-2 mt-1 opacity-60">System Registry List: Renaming restricted.</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Description (Optional)</label>

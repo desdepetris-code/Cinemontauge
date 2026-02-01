@@ -50,7 +50,6 @@ interface ShowDetailProps {
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   customImagePaths: CustomImagePaths;
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
-  onRemoveCustomImage: (mediaId: number, path: string) => void;
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   weeklyFavorites: WeeklyPick[];
@@ -136,7 +135,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
     onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onDiscardRequest,
-    onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, reminders, onToggleReminder
+    onSetCustomEpisodeImage, onSetCustomImage, reminders, onToggleReminder
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -832,7 +831,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     customImagePaths={customImagePaths}
                     details={details}
                     onSetCustomImage={onSetCustomImage}
-                    onRemoveCustomImage={onRemoveCustomImage}
                   />
                 </div>
               )}

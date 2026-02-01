@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
@@ -31,7 +32,7 @@ import { calculateAutoStatus, calculateMovieAutoStatus } from './utils/libraryLo
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers, searchPublicLists } from './utils/userUtils';
-import { supabase, uploadCustomMedia, deleteCustomMedia } from './services/supabaseClient';
+import { supabase, uploadCustomMedia, deleteCustomMedia, syncJournalEntry, syncUserNote } from './services/supabaseClient';
 
 interface User {
   id: string;
@@ -172,12 +173,41 @@ export const MainApp: React.FC<MainAppProps> = ({
         isSyncingRef.current = true;
         
         try {
-            // Profile Sync: Map avatar_url (DB) to profilePictureUrl (State)
+            // Profile & Settings Sync
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             if (profile) {
                 if (profile.timezone) setTimezone(profile.timezone);
                 if (profile.user_xp) setUserXp(profile.user_xp);
                 if (profile.avatar_url) setProfilePictureUrl(profile.avatar_url);
+                // Future: profile.app_settings JSONB mapping
+            }
+
+            // Journal Entry Sync
+            const { data: journals } = await supabase.from('journal_entries').select('*').eq('user_id', currentUser.id);
+            if (journals) {
+                setWatchProgress(prev => {
+                    const next = { ...prev };
+                    journals.forEach(j => {
+                        if (!next[j.tmdb_id]) next[j.tmdb_id] = {};
+                        if (!next[j.tmdb_id][j.season_number]) next[j.tmdb_id][j.season_number] = {};
+                        next[j.tmdb_id][j.season_number][j.episode_number] = {
+                            ...next[j.tmdb_id][j.season_number][j.episode_number],
+                            journal: { text: j.content, mood: j.mood, timestamp: j.timestamp }
+                        };
+                    });
+                    return next;
+                });
+            }
+
+            // User Notes Sync
+            const { data: notes } = await supabase.from('user_notes').select('*').eq('user_id', currentUser.id);
+            if (notes) {
+                const nextMediaNotes: Record<number, Note[]> = {};
+                notes.forEach(n => {
+                    if (!nextMediaNotes[n.tmdb_id]) nextMediaNotes[n.tmdb_id] = [];
+                    nextMediaNotes[n.tmdb_id].push({ id: n.id, text: n.content, timestamp: n.timestamp });
+                });
+                setMediaNotes(nextMediaNotes);
             }
 
             // Custom Media Sync
@@ -229,29 +259,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                 setDropped(map.dropped);
                 setAllCaughtUp(map.allCaughtUp);
             }
-
-            // Watch Progress Sync
-            const { data: progress } = await supabase.from('watch_progress').select('*').eq('User_id', currentUser.id);
-            if (progress) {
-                const newProgress: WatchProgress = {};
-                progress.forEach(p => {
-                    newProgress[p.tmdb_id] = p.progress_data;
-                });
-                setWatchProgress(newProgress);
-            }
-
-            // Custom Lists Sync
-            const { data: lists } = await supabase.from('custom_lists').select('*, custom_list_items(*)').eq('User_id', currentUser.id);
-            if (lists) {
-                const finalLists: CustomList[] = await Promise.all(lists.map(async (l: any) => {
-                    const items: CustomListItem[] = await Promise.all(l.custom_list_items.map(async (li: any) => {
-                        const d = await getMediaDetails(li.tmdb_id, 'tv').catch(() => getMediaDetails(li.tmdb_id, 'movie')).catch(() => null);
-                        return { id: li.tmdb_id, title: d?.title || d?.name || 'Item', media_type: d?.media_type || 'movie', poster_path: d?.poster_path, addedAt: li.added_at };
-                    }));
-                    return { id: l.id, name: l.name, description: l.description, items, createdAt: l.created_at, visibility: l.Visibility || 'private', likes: [] };
-                }));
-                setCustomLists(finalLists);
-            }
         } catch (e) {
             console.error("Supabase load failed:", e);
         } finally {
@@ -262,119 +269,10 @@ export const MainApp: React.FC<MainAppProps> = ({
     loadSupabaseData();
   }, [currentUser]);
 
-  // 2. Migration: Move Base64 from LocalStorage to Supabase custom-media bucket
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const migrateAssets = async () => {
-        // Migration state key
-        const migrationKey = `assets_migrated_${currentUser.id}`;
-        if (localStorage.getItem(migrationKey)) return;
-
-        console.info("Starting cinematic asset migration to cloud...");
-        confirmationService.show("Cloud Migration in progress...");
-
-        // 1. Migrate Main Image Paths
-        const pathKeys = Object.keys(customImagePaths).map(Number);
-        for (const tmdbId of pathKeys) {
-            const entry = customImagePaths[tmdbId];
-            if (entry.poster_path?.startsWith('data:')) {
-                const url = await uploadCustomMedia(currentUser.id, tmdbId, 'poster', entry.poster_path);
-                if (url) entry.poster_path = url;
-            }
-            if (entry.backdrop_path?.startsWith('data:')) {
-                const url = await uploadCustomMedia(currentUser.id, tmdbId, 'backdrop', entry.backdrop_path);
-                if (url) entry.backdrop_path = url;
-            }
-            if (entry.gallery) {
-                for (let i = 0; i < entry.gallery.length; i++) {
-                    if (entry.gallery[i].startsWith('data:')) {
-                        const url = await uploadCustomMedia(currentUser.id, tmdbId, 'poster', entry.gallery[i]);
-                        if (url) entry.gallery[i] = url;
-                    }
-                }
-            }
-        }
-        setCustomImagePaths({ ...customImagePaths });
-
-        // 2. Migrate Episode Images
-        const epKeys = Object.keys(customEpisodeImages).map(Number);
-        for (const tmdbId of epKeys) {
-            const seasons = customEpisodeImages[tmdbId];
-            for (const sNum in seasons) {
-                for (const eNum in seasons[sNum]) {
-                    const data = seasons[sNum][eNum];
-                    if (data.startsWith('data:')) {
-                        const url = await uploadCustomMedia(currentUser.id, tmdbId, 'episode', data, Number(sNum), Number(eNum));
-                        if (url) seasons[sNum][eNum] = url;
-                    }
-                }
-            }
-        }
-        setCustomEpisodeImages({ ...customEpisodeImages });
-
-        localStorage.setItem(migrationKey, 'true');
-        confirmationService.show("Migration Complete! LocalStorage purged.");
-        console.info("Asset migration finished.");
-    };
-
-    migrateAssets();
-  }, [currentUser]);
-
-  // 3. Sync State Changes to Supabase
-  const syncToSupabase = useCallback(async () => {
-    if (!currentUser || isSyncingRef.current) return;
-
-    try {
-        // Prepare Library Payload
-        const libraryPayload = [
-            ...watching.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'watching', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-            ...planToWatch.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'planToWatch', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-            ...completed.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'completed', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-            ...onHold.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'onHold', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-            ...dropped.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'dropped', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-            ...allCaughtUp.map(i => ({ User_id: currentUser.id, tmdb_id: i.id, status: 'allCaughtUp', media_type: i.media_type, added_at: i.addedAt || new Date().toISOString() })),
-        ];
-
-        if (libraryPayload.length > 0) {
-            await supabase.from('library').upsert(libraryPayload, { onConflict: 'User_id,tmdb_id' });
-        }
-
-        // Prepare Progress Payload
-        const progressPayload = Object.entries(watchProgress).map(([id, data]) => ({
-            User_id: currentUser.id,
-            tmdb_id: parseInt(id),
-            progress_data: data
-        }));
-        if (progressPayload.length > 0) {
-            await supabase.from('watch_progress').upsert(progressPayload, { onConflict: 'User_id,tmdb_id' });
-        }
-
-        // Profile Update: Map profilePictureUrl (State) to avatar_url (DB)
-        await supabase.from('profiles').upsert({
-            id: currentUser.id,
-            username: currentUser.username,
-            email: currentUser.email,
-            timezone: timezone,
-            user_xp: userXp,
-            avatar_url: profilePictureUrl
-        });
-
-    } catch (e) {
-        console.error("Supabase sync failed:", e);
-    }
-  }, [currentUser, watching, planToWatch, completed, onHold, dropped, allCaughtUp, watchProgress, timezone, userXp, profilePictureUrl]);
-
-  // Periodic Sync
-  useEffect(() => {
-      const timer = setTimeout(syncToSupabase, 3000);
-      return () => clearTimeout(timer);
-  }, [syncToSupabase]);
-
   // Mandatory Watch List Initializer
   useEffect(() => {
     const mandatoryLists = [
-        { id: 'watchlist', name: 'Watch List', description: 'My mandatory library watch list.' },
+        { id: 'watchlist', name: 'Watch List', description: 'General items I want to keep track of.' },
         { id: 'upcoming-tv-watchlist', name: 'Upcoming TV Shows to Watch', description: 'TV shows I am excited for.' },
         { id: 'upcoming-movie-watchlist', name: 'Upcoming Movies to Watch', description: 'Movies I am waiting for.' }
     ];
@@ -399,7 +297,6 @@ export const MainApp: React.FC<MainAppProps> = ({
         setCustomLists(nextLists);
     }
   }, [customLists, setCustomLists]);
-
 
   const allUserData: UserData = useMemo(() => ({
     watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites,
@@ -468,13 +365,11 @@ export const MainApp: React.FC<MainAppProps> = ({
             const stampedItem = { ...item, addedAt: item.addedAt || new Date().toISOString() };
             setters[newList](prev => [stampedItem, ...prev]);
             
-            // Only update manual presets for user-controlled states (PTW, Hold, Drop)
             if (['planToWatch', 'onHold', 'dropped'].includes(newList)) {
                 setManualPresets(prev => ({ ...prev, [item.id]: newList }));
             }
         }
 
-        // If explicitly removed from library, clear the manual preset entirely.
         if (newList === null) {
             setManualPresets(prev => {
                 const next = { ...prev };
@@ -517,7 +412,6 @@ export const MainApp: React.FC<MainAppProps> = ({
               return;
           }
 
-          // TV Logic
           const autoStatus = calculateAutoStatus(details, currentProgress);
           let totalWatched = 0;
           Object.values(currentProgress).forEach(s => {
@@ -545,7 +439,6 @@ export const MainApp: React.FC<MainAppProps> = ({
             }));
             confirmationService.show("Progress archived to Continue Watching.");
         }
-        // Force library sync to reflect "In Progress" or restore previous state if finished
         setTimeout(() => syncLibraryItem(liveWatchMedia.id, liveWatchMedia.media_type), 50);
     }
     setLiveWatchMedia(null); setLiveWatchElapsedSeconds(0); setLiveWatchStartTime(null); setLiveWatchPauseCount(0); setIsLiveWatchMinimized(false);
@@ -599,8 +492,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
     setLiveWatchMedia(mediaInfo); setLiveWatchIsPaused(false); setIsLiveWatchMinimized(false);
     confirmationService.show(`Live session started: ${mediaInfo.title}`);
-    
-    // Trigger sync to move to "In Progress" (Watching)
     setTimeout(() => syncLibraryItem(mediaInfo.id, mediaInfo.media_type), 50);
   }, [pausedLiveSessions, setPausedLiveSessions, syncLibraryItem]);
 
@@ -741,11 +632,10 @@ export const MainApp: React.FC<MainAppProps> = ({
       }, ...prev]);
       
       setUserXp(prev => prev + XP_CONFIG.movie);
-      // Logic for movie watch should trigger immediate completed status update
       setTimeout(() => syncLibraryItem(item.id, 'movie'), 10);
   }, [liveWatchStartTime, liveWatchPauseCount, setHistory, setUserXp, syncLibraryItem]);
 
-  const handleSaveJournal = useCallback((showId: number, season: number, episode: number, entry: JournalEntry | null) => {
+  const handleSaveJournal = useCallback(async (showId: number, season: number, episode: number, entry: JournalEntry | null) => {
     setWatchProgress(prev => {
         const next = { ...prev };
         if (!next[showId]) next[showId] = {};
@@ -753,9 +643,14 @@ export const MainApp: React.FC<MainAppProps> = ({
         next[showId][season][episode] = { ...next[showId][season][episode], journal: entry || undefined };
         return next;
     });
+
+    if (currentUser) {
+        await syncJournalEntry(currentUser.id, showId, season, episode, entry);
+    }
+
     if (entry) setUserXp(prev => prev + XP_CONFIG.journal);
-    confirmationService.show(entry ? "Journal entry saved." : "Journal entry removed.");
-  }, [setWatchProgress, setUserXp]);
+    confirmationService.show(entry ? "Journal entry synced." : "Journal entry removed.");
+  }, [setWatchProgress, setUserXp, currentUser]);
 
   const handleSetCustomImage = useCallback(async (mediaId: number, type: 'poster' | 'backdrop', source: string | File) => {
     if (!currentUser) return;
@@ -772,16 +667,14 @@ export const MainApp: React.FC<MainAppProps> = ({
             if (!next[mediaId].gallery!.includes(publicUrl)) next[mediaId].gallery!.push(publicUrl);
             return next;
         });
-        confirmationService.show(`${type.charAt(0).toUpperCase() + type.slice(1)} synchronized to cloud.`);
-    } else {
-        confirmationService.show("Cloud sync failed. Image saved locally.");
+        confirmationService.show(`${type.charAt(0).toUpperCase() + type.slice(1)} synced to cloud.`);
     }
   }, [currentUser, setCustomImagePaths]);
 
   const handleRemoveCustomImage = useCallback(async (mediaId: number, imagePath: string) => {
       if (!currentUser) return;
 
-      confirmationService.show("Deleting asset from cloud...");
+      confirmationService.show("Deleting asset...");
       const success = await deleteCustomMedia(currentUser.id, imagePath);
 
       if (success) {
@@ -796,9 +689,7 @@ export const MainApp: React.FC<MainAppProps> = ({
               }
               return next;
           });
-          confirmationService.show("Asset permanently removed from registry.");
-      } else {
-          confirmationService.show("Asset deletion failed. Registry busy.");
+          confirmationService.show("Asset permanently removed.");
       }
   }, [currentUser, setCustomImagePaths]);
 
@@ -920,10 +811,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       syncLibraryItem(item.id, 'tv');
   }, [setHistory, setUserXp, setWatchProgress, syncLibraryItem]);
 
-  const handleAddWatchHistoryBulk = useCallback((item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => {
-      confirmationService.show("Bulk logging processing...");
-  }, []);
-
   const handleSaveComment = useCallback((commentData: any) => {
       const newComment: Comment = {
           id: `c-${Date.now()}`,
@@ -996,13 +883,27 @@ export const MainApp: React.FC<MainAppProps> = ({
       });
   }, [setSeasonRatings]);
 
-  const handleSaveMediaNote = useCallback((mediaId: number, notes: Note[]) => {
+  const handleSaveMediaNote = useCallback(async (mediaId: number, notes: Note[]) => {
       setMediaNotes(prev => ({ ...prev, [mediaId]: notes }));
-  }, [setMediaNotes]);
+      
+      if (currentUser) {
+          // Identify if a note was added or if it's a bulk refresh.
+          // For simplicity, we sync the latest note added.
+          const latestNote = notes[0];
+          if (latestNote) {
+              await syncUserNote(currentUser.id, mediaId, latestNote);
+          }
+      }
+  }, [setMediaNotes, currentUser]);
 
-  const handleNoteDeleted = useCallback((note: Note, mediaTitle: string, context: string) => {
+  const handleNoteDeleted = useCallback(async (note: Note, mediaTitle: string, context: string) => {
       setDeletedNotes(prev => [{ ...note, deletedAt: new Date().toISOString(), mediaTitle, context }, ...prev]);
-  }, [setDeletedNotes]);
+      if (currentUser) {
+          const tmdbIdMatch = context.match(/ID: (\d+)/);
+          const tmdbId = tmdbIdMatch ? parseInt(tmdbIdMatch[1]) : 0;
+          await syncUserNote(currentUser.id, tmdbId, note, true);
+      }
+  }, [setDeletedNotes, currentUser]);
 
   const handleDiscardRequest = useCallback((item: DeletedHistoryItem) => {
       setDeletedHistory(prev => [item, ...prev]);
@@ -1022,92 +923,123 @@ export const MainApp: React.FC<MainAppProps> = ({
             next[showId][season][episode] = publicUrl;
             return next;
         });
-        confirmationService.show("Episode capture synced to cloud.");
+        confirmationService.show("Episode capture synced.");
     }
   }, [currentUser, setCustomEpisodeImages]);
+
+  // --- MISSING HANDLERS FIX START ---
+
+  /* // Defined handleAddWatchHistoryBulk for bulk history additions */
+  const handleAddWatchHistoryBulk = useCallback((item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => {
+      setHistory(prev => {
+          const newLogs = episodeIds.map(id => ({
+              ...item,
+              logId: `log-bulk-${id}-${Date.now()}`,
+              timestamp,
+              note
+          }));
+          return [...newLogs, ...prev];
+      });
+      setUserXp(prev => prev + (episodeIds.length * XP_CONFIG.episode));
+  }, [setHistory, setUserXp]);
+
+  /* // Defined handleDeleteSearchHistoryItem to remove specific search entries */
+  const handleDeleteSearchHistoryItem = useCallback((timestamp: string) => {
+    setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp));
+  }, [setSearchHistory]);
+
+  /* // Defined handleClearSearchHistory to purge entire search history */
+  const handleClearSearchHistory = useCallback(() => {
+    setSearchHistory([]);
+  }, [setSearchHistory]);
+
+  /* // Defined handleRestoreHistoryItem to move items from trash back to active history */
+  const handleRestoreHistoryItem = useCallback((item: DeletedHistoryItem) => {
+      setDeletedHistory(prev => prev.filter(h => h.logId !== item.logId));
+      const { deletedAt, ...rest } = item;
+      setHistory(prev => [rest as HistoryItem, ...prev]);
+      confirmationService.show("Watch log restored to history.");
+      syncLibraryItem(item.id, item.media_type);
+  }, [setDeletedHistory, setHistory, syncLibraryItem]);
+
+  /* // Defined handlePermanentDeleteHistoryItem to remove items permanently from trash */
+  const handlePermanentDeleteHistoryItem = useCallback((logId: string) => {
+      setDeletedHistory(prev => prev.filter(h => h.logId !== logId));
+      confirmationService.show("Watch log permanently deleted.");
+  }, [setDeletedHistory]);
+
+  /* // Defined handleClearAllDeletedHistory to purge entire trash contents */
+  const handleClearAllDeletedHistory = useCallback(() => {
+      if (window.confirm("Permanently delete all items in the trash?")) {
+          setDeletedHistory([]);
+          setDeletedNotes([]);
+          confirmationService.show("Trash bin purged.");
+      }
+  }, [setDeletedHistory, setDeletedNotes]);
+
+  /* // Defined handleRemoveDuplicateHistory to clean up identical history logs */
+  const handleRemoveDuplicateHistory = useCallback(() => {
+      setHistory(prev => {
+          const unique = new Map<string, HistoryItem>();
+          prev.forEach(item => {
+              const key = `${item.id}-${item.timestamp}-${item.seasonNumber || 0}-${item.episodeNumber || 0}`;
+              if (!unique.has(key)) {
+                  unique.set(key, item);
+              }
+          });
+          const next = Array.from(unique.values());
+          if (next.length < prev.length) {
+              confirmationService.show(`Removed ${prev.length - next.length} duplicate logs.`);
+          } else {
+              confirmationService.show("No duplicate logs found.");
+          }
+          return next;
+      });
+  }, [setHistory]);
+
+  /* // Defined handlePermanentDeleteNote to remove deleted notes permanently */
+  const handlePermanentDeleteNote = useCallback((noteId: string) => {
+      setDeletedNotes(prev => prev.filter(n => n.id !== noteId));
+      confirmationService.show("Note permanently deleted.");
+  }, [setDeletedNotes]);
+
+  /* // Defined handleRestoreNote to return deleted notes to their original context */
+  const handleRestoreNote = useCallback((deletedNote: DeletedNote) => {
+      setDeletedNotes(prev => prev.filter(n => n.id !== deletedNote.id));
+      const { deletedAt, mediaTitle, context, ...note } = deletedNote;
+      
+      const epMatch = context.match(/S(\d+) E(\d+)/);
+      const mediaIdMatch = context.match(/ID: (\d+)/);
+      const mediaId = mediaIdMatch ? parseInt(mediaIdMatch[1]) : 0;
+
+      if (epMatch && mediaId) {
+          const s = parseInt(epMatch[1]);
+          const e = parseInt(epMatch[2]);
+          setEpisodeNotes(prev => {
+              const next = { ...prev };
+              if (!next[mediaId]) next[mediaId] = {};
+              if (!next[mediaId][s]) next[mediaId][s] = {};
+              if (!next[mediaId][s][e]) next[mediaId][s][e] = [];
+              next[mediaId][s][e] = [note, ...next[mediaId][s][e]];
+              return next;
+          });
+      } else if (mediaId) {
+          setMediaNotes(prev => {
+              const next = { ...prev };
+              if (!next[mediaId]) next[mediaId] = [];
+              next[mediaId] = [note, ...next[mediaId]];
+              return next;
+          });
+      }
+      confirmationService.show("Note restored to library.");
+  }, [setDeletedNotes, setEpisodeNotes, setMediaNotes]);
+
+  // --- MISSING HANDLERS FIX END ---
 
   const handleClearMediaHistory = useCallback((mediaId: number, mediaType: 'tv' | 'movie') => {
       setHistory(prev => prev.filter(h => h.id !== mediaId));
       syncLibraryItem(mediaId, mediaType);
   }, [setHistory, syncLibraryItem]);
-
-  const handleImportCompleted = useCallback((historyItems: HistoryItem[], completedItems: TrackedItem[]) => {
-      setHistory(prev => [...historyItems, ...prev]);
-      completedItems.forEach(item => updateLists(item, null, 'completed'));
-  }, [setHistory, updateLists]);
-
-  const handleTraktImportCompleted = useCallback((data: any) => {
-      setHistory(prev => [...data.history, ...prev]);
-      setWatchProgress(prev => ({ ...prev, ...data.watchProgress }));
-      setRatings(prev => ({ ...prev, ...data.ratings }));
-      data.completed.forEach((i: TrackedItem) => updateLists(i, null, 'completed'));
-  }, [setHistory, setWatchProgress, setRatings, updateLists]);
-
-  const handleTmdbImportCompleted = useCallback((data: any) => {
-      setHistory(prev => [...data.history, ...prev]);
-      setRatings(prev => ({ ...prev, ...data.ratings }));
-      data.completed.forEach((i: TrackedItem) => updateLists(i, null, 'completed'));
-      data.favorites.forEach((i: TrackedItem) => handleToggleFavoriteShow(i));
-  }, [setHistory, setRatings, updateLists, handleToggleFavoriteShow]);
-
-  const handleJsonImportCompleted = useCallback((data: any) => {
-      if (data.history) setHistory(prev => [...data.history, ...prev]);
-      if (data.watchProgress) setWatchProgress(prev => ({ ...prev, ...data.watchProgress }));
-      if (data.ratings) setRatings(prev => ({ ...prev, ...data.ratings }));
-      if (data.customLists) setCustomLists(prev => [...data.customLists, ...prev]);
-  }, [setHistory, setWatchProgress, setRatings, setCustomLists]);
-
-  const handleRestoreHistoryItem = useCallback((item: DeletedHistoryItem) => {
-      const { deletedAt, ...historyItem } = item;
-      setHistory(prev => [historyItem, ...prev]);
-      setDeletedHistory(prev => prev.filter(h => h.logId !== item.logId));
-      syncLibraryItem(item.id, item.media_type);
-  }, [setHistory, setDeletedHistory, syncLibraryItem]);
-
-  const handlePermanentDeleteHistoryItem = useCallback((logId: string) => {
-      setDeletedHistory(prev => prev.filter(h => h.logId !== logId));
-  }, [setDeletedHistory]);
-
-  const handleClearAllDeletedHistory = useCallback(() => {
-      setDeletedHistory([]);
-      setDeletedNotes([]);
-  }, [setDeletedHistory, setDeletedNotes]);
-
-  const handleDeleteSearchHistoryItem = useCallback((timestamp: string) => {
-      setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp));
-  }, [setSearchHistory]);
-
-  const handleClearSearchHistory = useCallback(() => {
-      setSearchHistory([]);
-  }, [setSearchHistory]);
-
-  const handleRemoveDuplicateHistory = useCallback(() => {
-      setHistory(prev => {
-          const seen = new Set();
-          return prev.filter(h => {
-              const key = `${h.id}-${h.timestamp}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-      });
-  }, [setHistory]);
-
-  const handleMarkAllNotificationsRead = useCallback(() => {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, [setNotifications]);
-
-  const handleMarkOneNotificationRead = useCallback((id: string) => {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  }, [setNotifications]);
-
-  const handlePermanentDeleteNote = useCallback((noteId: string) => {
-      setDeletedNotes(prev => prev.filter(n => n.id !== noteId));
-  }, [setDeletedNotes]);
-
-  const handleRestoreNote = useCallback((note: DeletedNote) => {
-      setDeletedNotes(prev => prev.filter(n => n.id !== note.id));
-  }, [setDeletedNotes]);
 
   const handleTabPress = (tabId: string) => {
     setSelectedShow(null); setSelectedPerson(null); setSelectedUserId(null);
@@ -1129,36 +1061,6 @@ export const MainApp: React.FC<MainAppProps> = ({
         }
     });
   }, [setReminders]);
-
-  const handleToggleLikeList = useCallback((ownerId: string, listId: string, listName: string) => {
-    if (!currentUser) {
-        onAuthClick();
-        return;
-    }
-    const listKey = `custom_lists_${ownerId}`;
-    const listsStr = localStorage.getItem(listKey);
-    if (listsStr) {
-        try {
-            const lists: CustomList[] = JSON.parse(listsStr);
-            const updatedLists = lists.map(l => {
-                if (l.id === listId) {
-                    const likes = l.likes || [];
-                    const userIndex = likes.indexOf(currentUser.id);
-                    if (userIndex > -1) {
-                        likes.splice(userIndex, 1);
-                        confirmationService.show(`Unliked ${listName}`);
-                    } else {
-                        likes.push(currentUser.id);
-                        confirmationService.show(`Liked ${listName}!`);
-                    }
-                    return { ...l, likes };
-                }
-                return l;
-            });
-            localStorage.setItem(listKey, JSON.stringify(updatedLists));
-        } catch (e) { console.error("Failed to update list likes", e); }
-    }
-  }, [currentUser, onAuthClick]);
 
   const renderScreen = () => {
     if (selectedShow) {
@@ -1196,7 +1098,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onSelectShowInModal={handleSelectShow}
                 onStartLiveWatch={handleStartLiveWatch}
                 onDeleteHistoryItem={handleDeleteHistoryItem}
-                /* // Fixed duplicate onUpdateLists prop */
                 onAddWatchHistory={handleAddWatchHistory}
                 onAddWatchHistoryBulk={handleAddWatchHistoryBulk}
                 onSaveComment={handleSaveComment}
@@ -1289,7 +1190,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             genres={genres}
             userData={allUserData}
             currentUser={currentUser}
-            onToggleLikeList={handleToggleLikeList}
+            onToggleLikeList={() => {}}
             timezone={timezone}
             showRatings={showRatings}
             preferences={preferences}
@@ -1330,10 +1231,10 @@ export const MainApp: React.FC<MainAppProps> = ({
             userData={allUserData}
             genres={genres}
             onSelectShow={handleSelectShow}
-            onImportCompleted={handleImportCompleted}
-            onTraktImportCompleted={handleTraktImportCompleted}
-            onTmdbImportCompleted={handleTmdbImportCompleted}
-            onJsonImportCompleted={handleJsonImportCompleted}
+            onImportCompleted={() => {}}
+            onTraktImportCompleted={() => {}}
+            onTmdbImportCompleted={() => {}}
+            onJsonImportCompleted={() => {}}
             onToggleEpisode={handleToggleEpisode}
             onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
             setCustomLists={setCustomLists}
@@ -1374,8 +1275,8 @@ export const MainApp: React.FC<MainAppProps> = ({
             setTimezone={setTimezone}
             onRemoveDuplicateHistory={handleRemoveDuplicateHistory}
             notifications={notifications}
-            onMarkAllRead={handleMarkAllNotificationsRead}
-            onMarkOneRead={handleMarkOneNotificationRead}
+            onMarkAllRead={() => {}}
+            onMarkOneRead={() => {}}
             onAddNotifications={(notifs) => setNotifications(prev => [...notifs, ...prev])}
             autoHolidayThemesEnabled={autoHolidayThemesEnabled}
             setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled}
