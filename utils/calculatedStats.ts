@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { UserData, CalculatedStats, TrackedItem, EpisodeProgress, HistoryItem } from '../types';
 
@@ -18,6 +17,9 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     // --- Time-based Stats ---
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const oneMonthAgo = new Date();
@@ -54,6 +56,12 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const journalCount = allProgressEntries.filter(ep => ep.journal?.text).length;
     const moodJournalCount = allProgressEntries.filter(ep => ep.journal?.mood).length;
 
+    // Added notesCreatedToday calculation
+    const notesCreatedToday = allProgressEntries.filter(ep => {
+        if (!ep.journal?.timestamp) return false;
+        return new Date(ep.journal.timestamp) >= today;
+    }).length;
+
     const moodDistribution: Record<string, number> = {};
     allProgressEntries.forEach(ep => {
       if (ep.journal?.mood) {
@@ -69,15 +77,23 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const showsWatchingCount = data.watching.filter(i => i.media_type === 'tv').length;
     const moviesToWatchCount = data.planToWatch.filter(i => i.media_type === 'movie').length;
 
-    // --- Longest streak ---
+    // --- Streak calculation (Current & Longest) ---
     // FIX: Explicitly type uniqueDates as string array to avoid 'unknown' type error in sort.
     const uniqueDates: string[] = Array.from(new Set(nonManualHistory.map(h => new Date(h.timestamp).toDateString())));
     uniqueDates.sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
     
     let longestStreak = 0;
+    let currentStreak = 0;
+    
     if (uniqueDates.length > 0) {
-        longestStreak = 1;
-        let currentStreak = 1;
+        let tempStreak = 1;
+        let foundTodayOrYesterday = false;
+        const lastActivityDate = new Date(uniqueDates[uniqueDates.length - 1]);
+        
+        if (lastActivityDate >= yesterday) {
+            foundTodayOrYesterday = true;
+        }
+
         for(let i = 1; i < uniqueDates.length; i++) {
             const date1 = new Date(uniqueDates[i-1]);
             const date2 = new Date(uniqueDates[i]);
@@ -85,17 +101,31 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
             
             if(diffDays === 1) {
-                currentStreak++;
+                tempStreak++;
             } else if (diffDays > 1) { // If there's a gap, reset.
-                longestStreak = Math.max(longestStreak, currentStreak);
-                currentStreak = 1;
+                longestStreak = Math.max(longestStreak, tempStreak);
+                tempStreak = 1;
             }
             // If diffDays is 0, it's the same day, so do nothing to the streak.
         }
-        longestStreak = Math.max(longestStreak, currentStreak);
+        longestStreak = Math.max(longestStreak, tempStreak);
+
+        if (foundTodayOrYesterday) {
+            // Find length of last consecutive segment
+            let lastSegment = 1;
+            for(let i = uniqueDates.length - 1; i > 0; i--) {
+                const date1 = new Date(uniqueDates[i-1]);
+                const date2 = new Date(uniqueDates[i]);
+                const diffTime = date2.getTime() - date1.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) lastSegment++;
+                else break;
+            }
+            currentStreak = lastSegment;
+        }
     }
     
-    // --- Genre count & monthly/yearly stats (from history) ---
+    // --- Genre count ---
     const allTrackedItemsById = new Map<number, TrackedItem>();
     [...data.watching, ...data.planToWatch, ...data.completed, ...data.favorites].forEach(item => {
         allTrackedItemsById.set(item.id, item);
@@ -119,9 +149,9 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
 
     historyThisMonth.forEach(h => {
         if (h.media_type === 'tv') {
-            hoursWatchedThisMonth += 45; // Approx. 45 min per episode
+            hoursWatchedThisMonth += 45; 
         } else {
-            hoursWatchedThisMonth += 100; // Approx. 100 min per movie
+            hoursWatchedThisMonth += 100;
         }
         const trackedItem = allTrackedItemsById.get(h.id);
         if (trackedItem && trackedItem.genre_ids) {
@@ -130,7 +160,7 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
             });
         }
     });
-    hoursWatchedThisMonth /= 60; // Convert minutes to hours
+    hoursWatchedThisMonth /= 60; 
 
     const topGenresThisMonth = Object.entries(genreCountsThisMonth)
         .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -140,7 +170,7 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     // --- All-time & Yearly stats ---
     let totalHoursWatched = 0;
     const genreCountsAllTime: Record<number, number> = {};
-    const weeklyActivity = Array(7).fill(0); // 0: Sun, 1: Mon, ..., 6: Sat
+    const weeklyActivity = Array(7).fill(0); 
     
     const historyThisYear = validHistory.filter(h => new Date(h.timestamp) >= thisYearStart);
     const episodesWatchedThisYear = historyThisYear.filter(h => h.media_type === 'tv').length;
@@ -200,19 +230,21 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
         monthlyActivityData.push({ month: label, count });
     }
     
-    // --- New stats for achievements ---
     const ratedItemsCount = Object.keys(data.ratings).length;
     const customListsCount = data.customLists.length;
     const maxItemsInCustomList = data.customLists.length > 0 ? Math.max(0, ...data.customLists.map(l => l.items.length)) : 0;
     const distinctMoodsCount = Object.keys(moodDistribution).length;
 
+    // Fixed return object by adding missing currentStreak and notesCreatedToday
     const extendedStats: CalculatedStats = {
       totalEpisodesWatched,
       nonManualEpisodesWatched,
+      currentStreak,
       longestStreak,
       watchedThisWeek,
       journalCount,
       moodJournalCount,
+      notesCreatedToday,
       showsCompleted,
       moviesCompleted,
       totalItemsOnLists,

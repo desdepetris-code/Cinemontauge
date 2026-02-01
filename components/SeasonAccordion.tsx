@@ -88,6 +88,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   onUnmarkSeasonWatched,
   episodeRatings,
   onOpenEpisodeRatingModal,
+  onOpenAddWatchHistory,
   onAddWatchHistory,
   isCollapsible = true,
   onDiscussEpisode,
@@ -255,7 +256,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
         onSave={handleBulkLogSave}
         initialScope={logDateModalState.scope}
         mediaType="tv"
-        // Fix: Changed undefined 'details' to correct 'showDetails' prop
+        // Fix: Use correct showDetails prop instead of undefined 'details' variable
         showDetails={showDetails}
         seasonDetails={seasonDetails}
       />

@@ -1,3 +1,4 @@
+
 import { Achievement } from './types';
 
 export const allAchievements: Achievement[] = [
@@ -63,10 +64,18 @@ export const allAchievements: Achievement[] = [
   { id: 'binge_master', name: 'Binge Master', description: 'Complete 40 seasons across all shows.', difficulty: 'Hard', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 40 }) },
   { id: 'season_conqueror', name: 'Season Conqueror', description: 'Complete 75 seasons across all shows.', difficulty: 'Hard', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 75 }) },
 
-  // --- Newly Added Achievements ---
+  // --- Collection Achievements (Excludes built-in lists) ---
   { id: 'the_critic', name: 'The Critic', description: 'Rate 25 different movies or shows.', difficulty: 'Easy', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 25 }) },
-  { id: 'curator', name: 'Curator', description: 'Create your first custom list.', difficulty: 'Easy', check: (d, s) => ({ progress: s.customListsCount, goal: 1 }) },
-  { id: 'librarian', name: 'Librarian', description: 'Add 10 items to a single custom list.', difficulty: 'Easy', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 10 }) },
+  /* // FIX: Removed duplicate 'name' property on line 69 */
+  { id: 'curator', name: 'Curator', description: 'Create your first custom non-system list and add an item to it.', difficulty: 'Easy', check: (d, s) => ({ progress: s.customListsCount, goal: 1 }) },
+  { id: 'collector', name: 'Collector', description: 'Build 5 custom non-system lists with items.', difficulty: 'Medium', check: (d, s) => ({ progress: s.customListsCount, goal: 5 }) },
+  { id: 'archivist', name: 'Archivist', description: 'Build 10 custom non-system lists with items.', difficulty: 'Hard', check: (d, s) => ({ progress: s.customListsCount, goal: 10 }) },
+  
+  // --- List Volume Achievements (Based on user lists) ---
+  { id: 'librarian', name: 'Librarian', description: 'Add 10 items to a single custom collection.', difficulty: 'Easy', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 10 }) },
+  { id: 'mega_list', name: 'Mega List', description: 'Add 50 items to a single custom collection.', difficulty: 'Medium', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 50 }) },
+  { id: 'giga_list', name: 'Giga List', description: 'Add 100 items to a single custom collection.', difficulty: 'Hard', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 100 }) },
+  
   { id: 'emotional_rollercoaster', name: 'Emotional Rollercoaster', description: 'Use 5 different moods in your journal entries.', difficulty: 'Easy', check: (d, s) => ({ progress: s.distinctMoodsCount, goal: 5 }) },
   { id: 'double_feature', name: 'Double Feature', description: 'Watch 2 movies in a single day. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 2 }) },
   { 
@@ -89,17 +98,13 @@ export const allAchievements: Achievement[] = [
         return { progress: found ? 1 : 0, goal: 1 };
     } 
   },
-  { id: 'collector', name: 'Collector', description: 'Create 5 custom lists.', difficulty: 'Medium', check: (d, s) => ({ progress: s.customListsCount, goal: 5 }) },
-  { id: 'archivist', name: 'Archivist', description: 'Create 10 custom lists.', difficulty: 'Hard', check: (d, s) => ({ progress: s.customListsCount, goal: 10 }) },
-  { id: 'mega_list', name: 'Mega List', description: 'Add 50 items to a single custom list.', difficulty: 'Medium', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 50 }) },
-  { id: 'giga_list', name: 'Giga List', description: 'Add 100 items to a single custom list.', difficulty: 'Hard', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 100 }) },
   { id: 'moody', name: 'Moody', description: 'Use 10 different moods in your journal entries.', difficulty: 'Medium', check: (d, s) => ({ progress: s.distinctMoodsCount, goal: 10 }) },
   { id: 'triple_threat', name: 'Triple Threat', description: 'Watch 3 movies in a single day. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 3 }) },
   
   // Hours watched
   { id: 'hours_100', name: 'Time Well Spent', description: 'Watch 100 hours of content. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 100 })},
   { id: 'hours_250', name: 'Couch Potato', description: 'Watch 250 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 250 })},
-  { id: 'hours_500', name: 'Screen Fiend', description: 'Watch 50 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 500 })},
+  { id: 'hours_500', name: 'Screen Fiend', description: 'Watch 500 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 500 })},
   { id: 'hours_1000', name: 'Time Lord', description: 'Watch 1,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 1000 })},
   { id: 'hours_2000', name: 'Eternity Viewer', description: 'Watch 2,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 2000 })},
 ];

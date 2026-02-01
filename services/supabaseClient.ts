@@ -33,6 +33,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
+ * Fetches user analytics (streaks, daily activity, social metrics)
+ */
+export const getUserAnalytics = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('user_analytics')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+    
+    if (error) {
+        console.warn("Analytics fetch failed:", error.message);
+        return null;
+    }
+    return data;
+};
+
+/**
  * Syncs a Journal Entry to the database.
  */
 export const syncJournalEntry = async (userId: string, tmdbId: number, season: number, episode: number, entry: any) => {

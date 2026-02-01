@@ -451,10 +451,12 @@ export interface WeeklyPick extends TrackedItem {
 export interface CalculatedStats {
   totalEpisodesWatched: number;
   nonManualEpisodesWatched: number;
+  currentStreak: number;
   longestStreak: number;
   watchedThisWeek: number;
   journalCount: number;
   moodJournalCount: number;
+  notesCreatedToday: number;
   showsCompleted: number;
   moviesCompleted: number;
   totalItemsOnLists: number;
