@@ -55,6 +55,7 @@ interface ShowDetailProps {
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory?: Record<string, WeeklyPick[]>;
   onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
+  onToggleWeeklyFavoriteReplacement?: (item: WeeklyPick, replacementId?: number) => void;
   onSelectShow: (id: number, media_type: 'tv' | 'movie' | 'person') => void;
   onOpenCustomListModal: (item: any) => void;
   ratings: UserRatings;
@@ -71,6 +72,8 @@ interface ShowDetailProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
+  onDeleteSearchHistoryItem: (timestamp: string) => void;
+  onClearSearchHistory: () => void;
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
@@ -208,7 +211,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [details, backdropUrl]);
 
   const tabs: { id: TabType, label: string, icon: any }[] = useMemo(() => [
-    ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Seasons', icon: ListBulletIcon }] as any : []),
+    ...(mediaType === 'tv' ? [{ id: 'seasons', label: 'Episodes', icon: ListBulletIcon }] as any : []),
     { id: 'info', label: 'Info', icon: BookOpenIcon },
     { id: 'cast', label: 'Cast', icon: UsersIcon },
     { id: 'discussion', label: 'Comment', icon: ChatBubbleLeftRightIcon },
@@ -520,12 +523,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const getLibraryButtonText = () => {
       if (currentStatus === 'completed') return 'Completed';
       if (currentStatus === 'allCaughtUp') return 'All Caught Up';
-      if (currentStatus === 'watching') {
-          if (mediaType === 'movie') {
-              return pausedLiveSessions[id] ? 'In Progress' : 'In Library';
-          }
-          return 'Watching';
-      }
+      if (currentStatus === 'watching') return 'Watching';
       if (currentStatus === 'planToWatch') return 'Plan to Watch';
       if (currentStatus === 'onHold') return 'On Hold';
       if (currentStatus === 'dropped') return 'Dropped';
@@ -570,7 +568,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         backdrops={details.images?.backdrops || []} 
         onSelect={(type, path) => {
             if (isEpisodeSelectorOpen.ep) {
-                onSetCustomEpisodeImage(id, isEpisodeSelectorOpen.ep.season_number, isEpisodeSelectorOpen.ep.episode_number, path);
+                onSetCustomEpisodeImage(id, isEpisodeSelectorOpen.ep.season_number, isEpisodeSelectorOpen.ep.episode_number, path as any);
             }
         }} 
         initialTab="backdrops" 
@@ -741,7 +739,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
             {nextEpisodeToWatch && (
               <section className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-                <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center"><PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />Continue Journey</h2>
+                <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center"><PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />Up Next</h2>
                 <NextUpWidget {...props} details={details} showId={id} nextEpisodeToWatch={nextEpisodeToWatch} onOpenJournal={handleJournalOpen} onOpenCommentModal={handleCommentOpen} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
               </section>
             )}
@@ -793,7 +791,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               {activeTab === 'info' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                    <div className="space-y-8"><section><h2 className="text-xl font-black text-text-primary uppercase tracking-widest">Overview</h2><p className="text-text-secondary leading-relaxed">{details.overview}</p></section><WhereToWatch providers={providers} /></div>
-                   <MoreInfo details={details} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
+                   {/* FIX: Pass seasonDetailsMap to MoreInfo */}
+                   <MoreInfo details={details} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} seasonDetailsMap={seasonDetailsMap} />
                 </div>
               )}
               {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}

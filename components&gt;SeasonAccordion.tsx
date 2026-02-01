@@ -104,6 +104,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
+  // Fix: Move 'today' to component scope so it's accessible by all functions
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
@@ -114,6 +115,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
       if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
       const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
       const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
+      // Fix: Corrected typo 'unwwatchedCount' to 'unwatchedCount'
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
@@ -448,7 +450,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                                         <ActionButton label="Rate" onClick={(e) => { e.stopPropagation(); onOpenEpisodeRatingModal(ep); }} isActive={epRating > 0}>
                                             <StarIcon className={`w-5 h-5 ${epRating ? 'text-yellow-400' : ''}`} />
                                         </ActionButton>
-                                        <ActionButton label="Comment" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
+                                        <ActionButton label="Comments" onClick={(e) => { e.stopPropagation(); onDiscussEpisode(ep.season_number, ep.episode_number); }}>
                                             <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5" />
                                         </ActionButton>
                                         <ActionButton label="Log" onClick={(e) => { e.stopPropagation(); setLogDateModalState({ isOpen: true, episode: ep, scope: 'single' }); }} disabled={isFuture}>

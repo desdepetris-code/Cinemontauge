@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Added missing PencilSquareIcon to imports
 import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon } from '../components/Icons';
@@ -54,19 +55,22 @@ interface User {
     email: string;
 }
 
+// REORDERED TABS BASED ON USER REQUEST (1-14, excluding settings as it's the current page)
 const ALL_PROFILE_TABS: { id: ProfileTab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'history', label: 'Overall History' },
     { id: 'progress', label: 'Progress' },
+    { id: 'updates', label: 'Updates' },
     { id: 'ongoing', label: 'Catch Up' },
-    { id: 'history', label: 'History' },
     { id: 'weeklyPicks', label: 'Weekly Picks' },
     { id: 'library', label: 'Library' },
+    { id: 'achievements', label: 'Achievements' },
     { id: 'lists', label: 'Custom Lists' },
+    { id: 'seasonLog', label: 'Season Logs' },
+    { id: 'journal', label: 'Journal' },
     { id: 'activity', label: 'Activity' },
     { id: 'stats', label: 'Stats' },
-    { id: 'seasonLog', label: 'Season Log' },
-    { id: 'journal', label: 'Journal' },
-    { id: 'achievements', label: 'Achievements' },
-    { id: 'imports', label: 'Import & Sync' },
+    { id: 'imports', label: 'Import and Sync' },
 ];
 
 interface SettingsProps {
@@ -383,7 +387,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             <SettingsRow title="Smart Watch Logic" subtitle="Helpful popup when episodes are marked out of order.">
                 <ToggleSwitch enabled={notificationSettings.showPriorEpisodesPopup} onChange={() => handleToggleNotification('showPriorEpisodesPopup')} />
             </SettingsRow>
-            <SettingsRow title="Enable Spoiler Shield" subtitle="Blurs thumbnails and descriptions for unwatched episodes.">
+            <SettingsRow title="Enable Spoiler Shield" subtitle="Helpful when episodes are marked out of order.">
                 <ToggleSwitch enabled={preferences.enableSpoilerShield} onChange={() => handleTogglePreference('enableSpoilerShield')} />
             </SettingsRow>
         </SettingsCard>

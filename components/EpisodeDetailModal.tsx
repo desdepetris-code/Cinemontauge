@@ -256,7 +256,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                 onClick={() => setActiveTab('details')}
                 className={`py-4 px-6 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'details' ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}
               >
-                  Overview
+                  Episode
                   {activeTab === 'details' && <div className="absolute bottom-0 left-4 right-4 h-1 bg-primary-accent rounded-full"></div>}
               </button>
               <button 

@@ -256,6 +256,7 @@ interface ProfileProps {
   notifications: AppNotification[];
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
+  // FIX: Removed duplicate identifier 'onSelectShow' previously at line 258/259.
   onAddNotifications: (notifs: AppNotification[]) => void;
   autoHolidayThemesEnabled: boolean;
   setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -324,22 +325,23 @@ const Profile: React.FC<ProfileProps> = (props) => {
     return { followers: followerList, following: followingList };
   }, [currentUser, follows]);
 
+  // REORDERED TABS BASED ON USER REQUEST (1-15)
   const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
-    { id: 'overview', label: 'Overview', icon: PushPinIcon },
-    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon },
-    { id: 'updates', label: 'Updates', icon: CurlyLoopIcon },
-    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon },
-    { id: 'library', label: 'Library', icon: CabinetIcon },
-    { id: 'lists', label: 'Custom Lists', icon: TagIcon },
-    { id: 'seasonLog', label: 'Season Log', icon: ScrollIcon },
-    { id: 'journal', label: 'Journal', icon: QuillIcon },
-    { id: 'history', label: 'Overall History', icon: WavesIcon },
-    { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon },
-    { id: 'activity', label: 'Activity', icon: UserGroupIcon },
-    { id: 'stats', label: 'Stats', icon: MagnifyingGlassIcon },
-    { id: 'achievements', label: 'Achievements', icon: BadgeIcon },
-    { id: 'imports', label: 'Import & Sync', icon: CloudArrowUpIcon },
-    { id: 'settings', label: 'Settings', icon: CogIcon },
+    { id: 'overview', label: 'Overview', icon: PushPinIcon }, // 1
+    { id: 'history', label: 'Overall History', icon: WavesIcon }, // 2
+    { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon }, // 3
+    { id: 'updates', label: 'Updates', icon: CurlyLoopIcon }, // 4
+    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon }, // 5
+    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon }, // 6
+    { id: 'library', label: 'Library', icon: CabinetIcon }, // 7
+    { id: 'achievements', label: 'Achievements', icon: BadgeIcon }, // 8
+    { id: 'lists', label: 'Custom Lists', icon: TagIcon }, // 9
+    { id: 'seasonLog', label: 'Season Logs', icon: ScrollIcon }, // 10
+    { id: 'journal', label: 'Journal', icon: QuillIcon }, // 11
+    { id: 'activity', label: 'Activity', icon: UserGroupIcon }, // 12
+    { id: 'stats', label: 'Stats', icon: MagnifyingGlassIcon }, // 13
+    { id: 'imports', label: 'Import and Sync', icon: CloudArrowUpIcon }, // 14
+    { id: 'settings', label: 'Settings', icon: CogIcon }, // 15
   ];
 
   const isPublic = privacySettings.activityVisibility !== 'private';

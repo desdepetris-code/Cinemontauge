@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { TmdbMediaDetails } from '../types';
+import { TmdbMediaDetails, TmdbSeasonDetails } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
 import RelatedShows from './RelatedShows';
@@ -10,6 +10,7 @@ interface MoreInfoProps {
   details: TmdbMediaDetails | null;
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
   timezone: string;
+  seasonDetailsMap?: Record<number, TmdbSeasonDetails>;
 }
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => {
@@ -22,29 +23,47 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
     );
 };
 
-const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone }) => {
+const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone, seasonDetailsMap = {} }) => {
     if (!details) return <p className="text-text-secondary">More information is not available.</p>;
 
     const releaseDate = details.media_type === 'tv' ? details.first_air_date : details.release_date;
     
     const runtimeValue = useMemo(() => {
         if (details.media_type === 'tv') {
+            // Logic: "The time is how long the most number of episodes ran for" (The Mode)
+            const frequencyMap: Record<number, number> = {};
+            
+            // 1. Check already loaded season details for precise per-episode runtimes
+            // Fixed: Explicitly cast Object.values to TmdbSeasonDetails[] to resolve 'Property episodes does not exist on type unknown' error.
+            (Object.values(seasonDetailsMap) as TmdbSeasonDetails[]).forEach(season => {
+                season.episodes?.forEach(ep => {
+                    if (ep.runtime && ep.runtime > 0) {
+                        frequencyMap[ep.runtime] = (frequencyMap[ep.runtime] || 0) + 1;
+                    }
+                });
+            });
+
+            // 2. If we have counts from loaded episodes, find the mode
+            const counts = Object.entries(frequencyMap);
+            if (counts.length > 0) {
+                const mode = counts.reduce((a, b) => b[1] > a[1] ? b : a);
+                return formatRuntime(Number(mode[0]));
+            }
+
+            // 3. Fallback to TMDB summary array if no episodes are loaded/available
+            // TMDB lists typical runtimes; the first is usually the most common.
             const runtimes = (details.episode_run_time || []).filter(t => t > 0);
             if (runtimes.length === 0) return 'N/A';
-            if (runtimes.length === 1) return formatRuntime(runtimes[0]);
-
-            const min = Math.min(...runtimes);
-            const max = Math.max(...runtimes);
-
-            if (min === max) return formatRuntime(min);
-
-            return `${formatRuntime(min)} - ${formatRuntime(max)}`;
+            
+            // If the user hasn't loaded seasons yet, we assume the first value in 
+            // TMDB's episode_run_time is the "typical" (most frequent) duration.
+            return formatRuntime(runtimes[0]);
         } else {
             return formatRuntime(details.runtime);
         }
-    }, [details]);
+    }, [details, seasonDetailsMap]);
 
-    const runtimeLabel = details.media_type === 'tv' ? 'Avg. Episode Runtime' : 'Est. Runtime';
+    const runtimeLabel = details.media_type === 'tv' ? 'Typical Episode Runtime' : 'Est. Runtime';
 
     const languageName = useMemo(() => {
         if (!details.original_language) return null;
@@ -72,8 +91,6 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone }) 
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
     };
 
-    // Try to find precision airtime for the first episode or movie release if available in current context
-    // This is enhanced when details are enriched by Trakt in the Calendar
     const precisionTime = details.media_type === 'movie' && (details as any).airtime 
         ? formatTimeFromDate((details as any).airtime, timezone)
         : null;

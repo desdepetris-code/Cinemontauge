@@ -262,12 +262,13 @@ export const MainApp: React.FC<MainAppProps> = ({
         } catch (e) {
             console.error("Supabase load failed:", e);
         } finally {
+            // isSyncingRef is intended to prevent excessive state triggers during initial pull
             isSyncingRef.current = false;
         }
     };
 
     loadSupabaseData();
-  }, [currentUser]);
+  }, [currentUser, setTimezone, setUserXp, setProfilePictureUrl, setWatchProgress, setMediaNotes, setCustomImagePaths, setCustomEpisodeImages, setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp]);
 
   // Mandatory Watch List Initializer
   useEffect(() => {
@@ -523,10 +524,15 @@ export const MainApp: React.FC<MainAppProps> = ({
     setTimeout(() => syncLibraryItem(showId, 'tv', nextProgress, true), 10);
   }, [setWatchProgress, setHistory, setUserXp, syncLibraryItem, liveWatchStartTime, liveWatchPauseCount]);
 
-  const handleSelectShow = useCallback((id: number, media_type: 'tv' | 'movie') => {
-    setSelectedShow({ id, media_type });
+  /* // FIX: Updated handleSelectShow to support 'person' media type by routing to setSelectedPerson */
+  const handleSelectShow = useCallback((id: number, media_type: 'tv' | 'movie' | 'person') => {
+    if (media_type === 'person') {
+      setSelectedPerson(id);
+    } else {
+      setSelectedShow({ id, media_type });
+    }
     window.scrollTo(0, 0);
-  }, []);
+  }, [setSelectedPerson, setSelectedShow]);
 
   const handleToggleFavoriteShow = useCallback((item: TrackedItem) => {
     setFavorites(prev => {
@@ -927,8 +933,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, setCustomEpisodeImages]);
 
-  // --- MISSING HANDLERS FIX START ---
-
   /* // Defined handleAddWatchHistoryBulk for bulk history additions */
   const handleAddWatchHistoryBulk = useCallback((item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => {
       setHistory(prev => {
@@ -1033,8 +1037,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       }
       confirmationService.show("Note restored to library.");
   }, [setDeletedNotes, setEpisodeNotes, setMediaNotes]);
-
-  // --- MISSING HANDLERS FIX END ---
 
   const handleClearMediaHistory = useCallback((mediaId: number, mediaType: 'tv' | 'movie') => {
       setHistory(prev => prev.filter(h => h.id !== mediaId));
