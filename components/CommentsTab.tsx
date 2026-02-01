@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, Comment, PublicUser, TmdbSeasonDetails, Follows, CommentVisibility } from '../types';
 import CommentThread from './CommentThread';
@@ -16,6 +17,7 @@ interface CommentsTabProps {
     activeThread: string;
     setActiveThread: (key: string) => void;
     follows: Follows;
+    blockedUserIds: string[]; // NEW: Access to restricted IDs
 }
 
 const CommentForm: React.FC<{
@@ -77,7 +79,7 @@ const CommentForm: React.FC<{
 
 
 const CommentsTab: React.FC<CommentsTabProps> = (props) => {
-    const { details, onFetchSeasonDetails, seasonDetailsMap, activeThread, setActiveThread, currentUser, follows } = props;
+    const { details, onFetchSeasonDetails, seasonDetailsMap, activeThread, setActiveThread, currentUser, follows, blockedUserIds } = props;
     const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'most_liked'>('newest');
 
     const filteredComments = useMemo(() => {
@@ -87,6 +89,9 @@ const CommentsTab: React.FC<CommentsTabProps> = (props) => {
         return props.comments.filter(comment => {
             const authorId = comment.user.id;
             
+            // NEW: Hide all comments from blocked users
+            if (blockedUserIds.includes(authorId)) return false;
+
             // Rules:
             // 1. Author can always see their own comment
             if (authorId === viewerId) return true;
@@ -104,7 +109,7 @@ const CommentsTab: React.FC<CommentsTabProps> = (props) => {
 
             return false;
         });
-    }, [props.comments, currentUser, follows]);
+    }, [props.comments, currentUser, follows, blockedUserIds]);
 
     const handlePostComment = (text: string, isSpoiler: boolean, visibility: CommentVisibility) => {
         const mediaKey = activeThread === 'general' ? `${details.media_type}-${details.id}` : activeThread;

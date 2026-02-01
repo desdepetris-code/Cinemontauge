@@ -1,5 +1,8 @@
+
 import { useMemo } from 'react';
 import { UserData, CalculatedStats, TrackedItem, EpisodeProgress, HistoryItem } from '../types';
+
+const SYSTEM_LIST_IDS = ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'];
 
 export function useCalculatedStats(data: UserData): CalculatedStats {
   return useMemo(() => {
@@ -56,7 +59,6 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const journalCount = allProgressEntries.filter(ep => ep.journal?.text).length;
     const moodJournalCount = allProgressEntries.filter(ep => ep.journal?.mood).length;
 
-    // Added notesCreatedToday calculation
     const notesCreatedToday = allProgressEntries.filter(ep => {
         if (!ep.journal?.timestamp) return false;
         return new Date(ep.journal.timestamp) >= today;
@@ -72,13 +74,20 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     // --- List-based Stats ---
     const showsCompleted = data.completed.filter(i => i.media_type === 'tv').length;
     const moviesCompleted = data.completed.filter(i => i.media_type === 'movie').length;
-    const totalItemsOnLists = data.watching.length + data.planToWatch.length + data.completed.length;
+    const totalItemsOnLists = data.watching.length + data.planToWatch.length + data.completed.length + data.allCaughtUp.length;
     const planToWatchCount = data.planToWatch.length;
     const showsWatchingCount = data.watching.filter(i => i.media_type === 'tv').length;
     const moviesToWatchCount = data.planToWatch.filter(i => i.media_type === 'movie').length;
 
+    // --- Custom List Logic: Filter for user-created and strictly non-empty lists ---
+    const userCreatedLists = data.customLists.filter(l => !SYSTEM_LIST_IDS.includes(l.id));
+    const nonEmptyUserLists = userCreatedLists.filter(l => l.items && l.items.length > 0);
+    const customListsCount = nonEmptyUserLists.length;
+    const maxItemsInCustomList = nonEmptyUserLists.length > 0 
+        ? Math.max(...nonEmptyUserLists.map(l => l.items?.length || 0)) 
+        : 0;
+
     // --- Streak calculation (Current & Longest) ---
-    // FIX: Explicitly type uniqueDates as string array to avoid 'unknown' type error in sort.
     const uniqueDates: string[] = Array.from(new Set(nonManualHistory.map(h => new Date(h.timestamp).toDateString())));
     uniqueDates.sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
     
@@ -102,14 +111,13 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
             
             if(diffDays === 1) {
                 tempStreak++;
-            } else if (diffDays > 1) { // If there's a gap, reset.
+            } else if (diffDays > 1) { 
                 longestStreak = Math.max(longestStreak, tempStreak);
                 tempStreak = 1;
             }
-            // If diffDays is 0, it's the same day, so do nothing to the streak.
         }
         longestStreak = Math.max(longestStreak, tempStreak);
-
+        
         if (foundTodayOrYesterday) {
             // Find length of last consecutive segment
             let lastSegment = 1;
@@ -127,7 +135,7 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     
     // --- Genre count ---
     const allTrackedItemsById = new Map<number, TrackedItem>();
-    [...data.watching, ...data.planToWatch, ...data.completed, ...data.favorites].forEach(item => {
+    [...data.watching, ...data.planToWatch, ...data.completed, ...data.favorites, ...data.allCaughtUp].forEach(item => {
         allTrackedItemsById.set(item.id, item);
     });
 
@@ -231,11 +239,8 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     }
     
     const ratedItemsCount = Object.keys(data.ratings).length;
-    const customListsCount = data.customLists.length;
-    const maxItemsInCustomList = data.customLists.length > 0 ? Math.max(0, ...data.customLists.map(l => l.items.length)) : 0;
     const distinctMoodsCount = Object.keys(moodDistribution).length;
 
-    // Fixed return object by adding missing currentStreak and notesCreatedToday
     const extendedStats: CalculatedStats = {
       totalEpisodesWatched,
       nonManualEpisodesWatched,

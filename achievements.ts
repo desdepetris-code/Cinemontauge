@@ -66,7 +66,6 @@ export const allAchievements: Achievement[] = [
 
   // --- Collection Achievements (Excludes built-in lists) ---
   { id: 'the_critic', name: 'The Critic', description: 'Rate 25 different movies or shows.', difficulty: 'Easy', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 25 }) },
-  /* // FIX: Removed duplicate 'name' property on line 69 */
   { id: 'curator', name: 'Curator', description: 'Create your first custom non-system list and add an item to it.', difficulty: 'Easy', check: (d, s) => ({ progress: s.customListsCount, goal: 1 }) },
   { id: 'collector', name: 'Collector', description: 'Build 5 custom non-system lists with items.', difficulty: 'Medium', check: (d, s) => ({ progress: s.customListsCount, goal: 5 }) },
   { id: 'archivist', name: 'Archivist', description: 'Build 10 custom non-system lists with items.', difficulty: 'Hard', check: (d, s) => ({ progress: s.customListsCount, goal: 10 }) },

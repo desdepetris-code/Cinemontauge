@@ -33,6 +33,108 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
+ * Caches basic TMDB metadata in Supabase for faster global discovery.
+ */
+export const syncMediaRegistryCache = async (item: { tmdb_id: number, title: string, poster_path: string | null, backdrop_path: string | null, media_type: string }) => {
+    return await supabase
+        .from('media_registry_cache')
+        .upsert({
+            tmdb_id: item.tmdb_id,
+            title: item.title,
+            poster_path: item.poster_path,
+            backdrop_path: item.backdrop_path,
+            media_type: item.media_type
+        });
+};
+
+/**
+ * Toggles a social interaction (Like/Bookmark).
+ */
+export const toggleInteraction = async (userId: string, targetId: string, targetType: 'comment' | 'list' | 'journal', type: 'like' | 'bookmark' = 'like') => {
+    // Check if exists
+    const { data } = await supabase
+        .from('interactions')
+        .select('id')
+        .match({ user_id: userId, target_id: targetId, target_type: targetType, type })
+        .single();
+
+    if (data) {
+        return await supabase.from('interactions').delete().eq('id', data.id);
+    } else {
+        return await supabase.from('interactions').insert({
+            user_id: userId,
+            target_id: targetId,
+            target_type: targetType,
+            type
+        });
+    }
+};
+
+/**
+ * Blocks another user from social interactions.
+ */
+export const blockUser = async (userId: string, blockedId: string) => {
+    return await supabase
+        .from('user_blocking')
+        .upsert({ blocker_id: userId, blocked_id: blockedId });
+};
+
+/**
+ * Unblocks a user.
+ */
+export const unblockUser = async (userId: string, blockedId: string) => {
+    return await supabase
+        .from('user_blocking')
+        .delete()
+        .match({ blocker_id: userId, blocked_id: blockedId });
+};
+
+/**
+ * Fetches the IDs of users blocked by the current user.
+ */
+export const fetchBlockedUsers = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('user_blocking')
+        .select('blocked_id')
+        .eq('blocker_id', userId);
+    
+    if (error) return [];
+    return data.map(d => d.blocked_id);
+};
+
+/**
+ * Syncs user XP to their central profile.
+ */
+export const syncUserXp = async (userId: string, xp: number) => {
+    return await supabase
+        .from('profiles')
+        .update({ user_xp: xp })
+        .eq('id', userId);
+};
+
+/**
+ * Persists a user's "Weekly Gem" nomination.
+ */
+export const syncWeeklyPick = async (userId: string, tmdbId: number, category: string, weekKey: string, dayIndex: number, isRemove: boolean = false) => {
+    if (isRemove) {
+        return await supabase
+            .from('weekly_picks')
+            .delete()
+            .match({ user_id: userId, tmdb_id: tmdbId, week_key: weekKey });
+    }
+
+    return await supabase
+        .from('weekly_picks')
+        .upsert({
+            user_id: userId,
+            tmdb_id: tmdbId,
+            category,
+            week_key: weekKey,
+            day_index: dayIndex
+        });
+};
+
+/**
  * Fetches user analytics (streaks, daily activity, social metrics)
  */
 export const getUserAnalytics = async (userId: string) => {

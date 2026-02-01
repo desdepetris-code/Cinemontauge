@@ -74,17 +74,17 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     // --- List-based Stats ---
     const showsCompleted = data.completed.filter(i => i.media_type === 'tv').length;
     const moviesCompleted = data.completed.filter(i => i.media_type === 'movie').length;
-    const totalItemsOnLists = data.watching.length + data.planToWatch.length + data.completed.length;
+    const totalItemsOnLists = data.watching.length + data.planToWatch.length + data.completed.length + data.allCaughtUp.length;
     const planToWatchCount = data.planToWatch.length;
     const showsWatchingCount = data.watching.filter(i => i.media_type === 'tv').length;
     const moviesToWatchCount = data.planToWatch.filter(i => i.media_type === 'movie').length;
 
-    // --- Custom List Logic: Filter for user-created and non-empty ---
+    // --- Custom List Logic: Filter for user-created and strictly non-empty lists ---
     const userCreatedLists = data.customLists.filter(l => !SYSTEM_LIST_IDS.includes(l.id));
-    const nonEmptyUserLists = userCreatedLists.filter(l => l.items.length > 0);
+    const nonEmptyUserLists = userCreatedLists.filter(l => l.items && l.items.length > 0);
     const customListsCount = nonEmptyUserLists.length;
     const maxItemsInCustomList = nonEmptyUserLists.length > 0 
-        ? Math.max(...nonEmptyUserLists.map(l => l.items.length)) 
+        ? Math.max(...nonEmptyUserLists.map(l => l.items?.length || 0)) 
         : 0;
 
     // --- Streak calculation (Current & Longest) ---
@@ -135,7 +135,7 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     
     // --- Genre count ---
     const allTrackedItemsById = new Map<number, TrackedItem>();
-    [...data.watching, ...data.planToWatch, ...data.completed, ...data.favorites].forEach(item => {
+    [...data.watching, ...data.planToWatch, ...data.completed, ...data.favorites, ...data.allCaughtUp].forEach(item => {
         allTrackedItemsById.set(item.id, item);
     });
 

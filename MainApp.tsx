@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
@@ -32,7 +31,7 @@ import { calculateAutoStatus, calculateMovieAutoStatus } from './utils/libraryLo
 import AirtimeManagement from './screens/AirtimeManagement';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers, searchPublicLists } from './utils/userUtils';
-import { supabase, uploadCustomMedia, deleteCustomMedia, syncJournalEntry, syncUserNote } from './services/supabaseClient';
+import { supabase, uploadCustomMedia, deleteCustomMedia, syncJournalEntry, syncUserNote, blockUser, unblockUser, fetchBlockedUsers } from './services/supabaseClient';
 
 interface User {
   id: string;
@@ -115,6 +114,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     dashShowRecommendations: true,
     dashShowTrending: true,
     dashShowWeeklyGems: true, 
+    // Fixed: Removed duplicate dashShowWeeklyPicks property
     dashShowWeeklyPicks: true,
     dashShowNewSeasons: true,
     dashShowPlanToWatch: true,
@@ -139,6 +139,8 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [weeklyFavorites, setWeeklyFavorites] = useLocalStorage<WeeklyPick[]>(`weekly_favorites_${userId}`, []);
   const [weeklyFavoritesWeekKey, setWeeklyFavoritesWeekKey] = useLocalStorage<string>(`weekly_favorites_week_${userId}`, '');
   const [weeklyFavoritesHistory, setWeeklyFavoritesHistory] = useLocalStorage<Record<string, WeeklyPick[]>>(`weekly_favorites_history_${userId}`, {});
+
+  const [blockedUserIds, setBlockedUserIds] = useLocalStorage<string[]>(`blockedUserIds_${userId}`, []);
 
   const [activeScreen, setActiveScreen] = useState<string>('home');
   const [profileInitialTab, setProfileInitialTab] = useState<ProfileTab | undefined>(undefined);
@@ -259,6 +261,11 @@ export const MainApp: React.FC<MainAppProps> = ({
                 setDropped(map.dropped);
                 setAllCaughtUp(map.allCaughtUp);
             }
+
+            // Block List Sync
+            const blocked = await fetchBlockedUsers(currentUser.id);
+            setBlockedUserIds(blocked);
+            
         } catch (e) {
             console.error("Supabase load failed:", e);
         } finally {
@@ -268,7 +275,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     };
 
     loadSupabaseData();
-  }, [currentUser, setTimezone, setUserXp, setProfilePictureUrl, setWatchProgress, setMediaNotes, setCustomImagePaths, setCustomEpisodeImages, setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp]);
+  }, [currentUser, setTimezone, setUserXp, setProfilePictureUrl, setWatchProgress, setMediaNotes, setCustomImagePaths, setCustomEpisodeImages, setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp, setBlockedUserIds]);
 
   // Mandatory Watch List Initializer
   useEffect(() => {
@@ -304,13 +311,15 @@ export const MainApp: React.FC<MainAppProps> = ({
     watchProgress, history, deletedHistory, deletedNotes, customLists, ratings,
     episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments,
     mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory,
-    customEpisodeImages, customImagePaths, globalPlaceholders, timezone, timeFormat
+    customEpisodeImages, customImagePaths, globalPlaceholders, timezone, timeFormat,
+    blockedUserIds // Syncing blocked IDs to all screens
   }), [
     watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites,
     watchProgress, history, deletedHistory, deletedNotes, customLists, ratings,
     episodeRatings, seasonRatings, favoriteEpisodes, searchHistory, comments,
     mediaNotes, episodeNotes, weeklyFavorites, weeklyFavoritesHistory,
-    customEpisodeImages, customImagePaths, globalPlaceholders, timezone, timeFormat
+    customEpisodeImages, customImagePaths, globalPlaceholders, timezone, timeFormat,
+    blockedUserIds
   ]);
 
   const levelInfo = useMemo(() => calculateLevelInfo(userXp), [userXp]);
@@ -524,7 +533,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     setTimeout(() => syncLibraryItem(showId, 'tv', nextProgress, true), 10);
   }, [setWatchProgress, setHistory, setUserXp, syncLibraryItem, liveWatchStartTime, liveWatchPauseCount]);
 
-  /* // FIX: Updated handleSelectShow to support 'person' media type by routing to setSelectedPerson */
   const handleSelectShow = useCallback((id: number, media_type: 'tv' | 'movie' | 'person') => {
     if (media_type === 'person') {
       setSelectedPerson(id);
@@ -933,7 +941,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, setCustomEpisodeImages]);
 
-  /* // Defined handleAddWatchHistoryBulk for bulk history additions */
   const handleAddWatchHistoryBulk = useCallback((item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => {
       setHistory(prev => {
           const newLogs = episodeIds.map(id => ({
@@ -947,17 +954,14 @@ export const MainApp: React.FC<MainAppProps> = ({
       setUserXp(prev => prev + (episodeIds.length * XP_CONFIG.episode));
   }, [setHistory, setUserXp]);
 
-  /* // Defined handleDeleteSearchHistoryItem to remove specific search entries */
   const handleDeleteSearchHistoryItem = useCallback((timestamp: string) => {
     setSearchHistory(prev => prev.filter(h => h.timestamp !== timestamp));
   }, [setSearchHistory]);
 
-  /* // Defined handleClearSearchHistory to purge entire search history */
   const handleClearSearchHistory = useCallback(() => {
     setSearchHistory([]);
   }, [setSearchHistory]);
 
-  /* // Defined handleRestoreHistoryItem to move items from trash back to active history */
   const handleRestoreHistoryItem = useCallback((item: DeletedHistoryItem) => {
       setDeletedHistory(prev => prev.filter(h => h.logId !== item.logId));
       const { deletedAt, ...rest } = item;
@@ -966,13 +970,11 @@ export const MainApp: React.FC<MainAppProps> = ({
       syncLibraryItem(item.id, item.media_type);
   }, [setDeletedHistory, setHistory, syncLibraryItem]);
 
-  /* // Defined handlePermanentDeleteHistoryItem to remove items permanently from trash */
   const handlePermanentDeleteHistoryItem = useCallback((logId: string) => {
       setDeletedHistory(prev => prev.filter(h => h.logId !== logId));
       confirmationService.show("Watch log permanently deleted.");
   }, [setDeletedHistory]);
 
-  /* // Defined handleClearAllDeletedHistory to purge entire trash contents */
   const handleClearAllDeletedHistory = useCallback(() => {
       if (window.confirm("Permanently delete all items in the trash?")) {
           setDeletedHistory([]);
@@ -981,7 +983,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       }
   }, [setDeletedHistory, setDeletedNotes]);
 
-  /* // Defined handleRemoveDuplicateHistory to clean up identical history logs */
   const handleRemoveDuplicateHistory = useCallback(() => {
       setHistory(prev => {
           const unique = new Map<string, HistoryItem>();
@@ -1001,13 +1002,11 @@ export const MainApp: React.FC<MainAppProps> = ({
       });
   }, [setHistory]);
 
-  /* // Defined handlePermanentDeleteNote to remove deleted notes permanently */
   const handlePermanentDeleteNote = useCallback((noteId: string) => {
       setDeletedNotes(prev => prev.filter(n => n.id !== noteId));
       confirmationService.show("Note permanently deleted.");
   }, [setDeletedNotes]);
 
-  /* // Defined handleRestoreNote to return deleted notes to their original context */
   const handleRestoreNote = useCallback((deletedNote: DeletedNote) => {
       setDeletedNotes(prev => prev.filter(n => n.id !== deletedNote.id));
       const { deletedAt, mediaTitle, context, ...note } = deletedNote;
@@ -1042,6 +1041,20 @@ export const MainApp: React.FC<MainAppProps> = ({
       setHistory(prev => prev.filter(h => h.id !== mediaId));
       syncLibraryItem(mediaId, mediaType);
   }, [setHistory, syncLibraryItem]);
+
+  const handleBlockUser = useCallback(async (blockedId: string) => {
+    if (!currentUser) return;
+    await blockUser(currentUser.id, blockedId);
+    setBlockedUserIds(prev => [...prev, blockedId]);
+    confirmationService.show("User blocked.");
+  }, [currentUser, setBlockedUserIds]);
+
+  const handleUnblockUser = useCallback(async (blockedId: string) => {
+    if (!currentUser) return;
+    await unblockUser(currentUser.id, blockedId);
+    setBlockedUserIds(prev => prev.filter(id => id !== blockedId));
+    confirmationService.show("User unblocked.");
+  }, [currentUser, setBlockedUserIds]);
 
   const handleTabPress = (tabId: string) => {
     setSelectedShow(null); setSelectedPerson(null); setSelectedUserId(null);
@@ -1089,13 +1102,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onOpenCustomListModal={(item) => setAddToListModalState({ isOpen: true, item })}
                 ratings={ratings}
                 onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
-                onRateItem={handleRateItem}
-                onMarkMediaAsWatched={handleMarkMovieAsWatched}
-                onUnmarkMovieWatched={handleUnmarkMovieWatched}
-                onMarkSeasonWatched={handleMarkSeasonWatched}
-                onUnmarkSeasonWatched={handleUnmarkSeasonWatched}
-                onMarkPreviousEpisodesWatched={handleMarkPreviousEpisodesWatched}
-                favoriteEpisodes={favoriteEpisodes}
                 onSelectPerson={setSelectedPerson}
                 onSelectShowInModal={handleSelectShow}
                 onStartLiveWatch={handleStartLiveWatch}
@@ -1312,6 +1318,8 @@ export const MainApp: React.FC<MainAppProps> = ({
             onTabNavigate={handleTabPress}
             onUpdateLists={updateLists}
             favoriteEpisodes={favoriteEpisodes}
+            onBlockUser={handleBlockUser}
+            onUnblockUser={handleUnblockUser}
           />
         );
       default:
