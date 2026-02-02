@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
@@ -32,6 +33,38 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
+ * TRAKT REGISTRY HELPERS
+ */
+
+export const saveTraktToken = async (userId: string, token: any) => {
+    const { error } = await supabase.from('trakt_tokens').upsert({
+        user_id: userId,
+        access_token: token.access_token,
+        refresh_token: token.refresh_token,
+        created_at: token.created_at,
+        expires_in: token.expires_in
+    });
+    if (error) throw error;
+};
+
+export const getTraktToken = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('trakt_tokens')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+};
+
+// Fix: Updated to also clear the local token cache used by Trakt precision functions.
+export const deleteTraktToken = async (userId: string) => {
+    const { error } = await supabase.from('trakt_tokens').delete().eq('user_id', userId);
+    if (error) throw error;
+    localStorage.removeItem('trakt_token_cache');
+};
+
+/**
  * Atomic status toggle via RPC.
  */
 export const syncWatchStatusRpc = async (mediaId: number, mediaType: string, status: string | null) => {
@@ -62,7 +95,7 @@ export const syncRatingRpc = async (mediaId: number, mediaType: string, rating: 
  */
 export const syncHistoryItemRpc = async (item: any) => {
     const { data, error } = await supabase.from('history').upsert({
-        log_id: item.logId,
+        log_id: item.log_id || item.logId,
         tmdb_id: item.id,
         media_type: item.media_type,
         timestamp: item.timestamp,
@@ -92,20 +125,6 @@ export const toggleFavoriteRpc = async (mediaId: number, mediaType: string) => {
 };
 
 /**
- * Post Comment / Reply.
- */
-export const postCommentRpc = async (mediaKey: string, content: string, parentId?: string, isSpoiler: boolean = false) => {
-    const { data, error } = await supabase.from('comments').insert({
-        media_key: mediaKey,
-        content,
-        parent_id: parentId,
-        is_spoiler: isSpoiler
-    }).select().single();
-    if (error) throw error;
-    return data;
-};
-
-/**
  * Syncs a Journal Entry to the database.
  */
 export const syncJournalEntry = async (userId: string, tmdbId: number, season: number, episode: number, entry: any) => {
@@ -127,28 +146,6 @@ export const syncJournalEntry = async (userId: string, tmdbId: number, season: n
             mood: entry.mood,
             timestamp: entry.timestamp
         }, { onConflict: 'user_id,tmdb_id,season_number,episode_number' });
-};
-
-/**
- * Syncs User Note.
- */
-export const syncUserNote = async (userId: string, tmdbId: number, note: any, isDelete: boolean = false) => {
-    if (isDelete) {
-        return await supabase
-            .from('user_notes')
-            .delete()
-            .match({ user_id: userId, id: note.id });
-    }
-
-    return await supabase
-        .from('user_notes')
-        .upsert({
-            id: note.id,
-            user_id: userId,
-            tmdb_id: tmdbId,
-            content: note.text,
-            timestamp: note.timestamp
-        });
 };
 
 /**
@@ -210,37 +207,35 @@ export const uploadCustomMedia = async (
     }
 };
 
-/**
- * Delete custom media.
- */
-export const deleteCustomMedia = async (userId: string, url: string): Promise<boolean> => {
+// Fix: Added missing export for deleteCustomMedia used in MainApp.
+export const deleteCustomMedia = async (userId: string, mediaId: number, url: string) => {
     try {
-        const { error } = await supabase
+        const storagePath = url.split('/custom-media/')[1];
+        if (storagePath) {
+            await supabase.storage.from('custom-media').remove([storagePath]);
+        }
+        await supabase
             .from('custom_media')
             .delete()
-            .eq('user_id', userId)
-            .eq('url', url);
-
-        if (error) throw error;
-
-        const urlParts = url.split('/custom-media/');
-        if (urlParts.length === 2) {
-            const path = urlParts[1];
-            await supabase.storage
-                .from('custom-media')
-                .remove([path]);
-        }
-
-        return true;
+            .match({ user_id: userId, tmdb_id: mediaId, url: url });
     } catch (e) {
-        console.error("Delete failed:", e);
-        return false;
+        console.error("Delete custom media failed:", e);
     }
 };
 
-/**
- * Fix: added export for 'getUserAnalytics' used by StatsScreen.tsx
- */
+// Fix: Added missing export for syncUserNote used in MainApp.
+export const syncUserNote = async (userId: string, mediaId: number, notes: any[]) => {
+    try {
+        await supabase.from('media_notes').upsert({
+            user_id: userId,
+            tmdb_id: mediaId,
+            notes: notes
+        }, { onConflict: 'user_id,tmdb_id' });
+    } catch (e) {
+        console.error("Sync user note failed:", e);
+    }
+};
+
 export const getUserAnalytics = async (userId: string) => {
     const { data, error } = await supabase
         .from('user_analytics')
