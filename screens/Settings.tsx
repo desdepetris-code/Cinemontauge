@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Added missing PencilSquareIcon to imports
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon } from '../components/Icons';
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon, Squares2X2Icon, ListBulletIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
 import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
@@ -55,7 +53,6 @@ interface User {
     email: string;
 }
 
-// REORDERED TABS BASED ON USER REQUEST (1-14, excluding settings as it's the current page)
 const ALL_PROFILE_TABS: { id: ProfileTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'history', label: 'Overall History' },
@@ -64,7 +61,7 @@ const ALL_PROFILE_TABS: { id: ProfileTab; label: string }[] = [
     { id: 'ongoing', label: 'Catch Up' },
     { id: 'weeklyPicks', label: 'Weekly Picks' },
     { id: 'library', label: 'Library' },
-    { id: 'achievements', label: 'Achievements' },
+    { id: 'achievements', label: 'Main Achievements' },
     { id: 'lists', label: 'Custom Lists' },
     { id: 'seasonLog', label: 'Season Logs' },
     { id: 'journal', label: 'Journal' },
@@ -134,12 +131,12 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSeriesInfoPreference = (val: AppPreferences['searchShowSeriesInfo']) => {
-    setPreferences(prev => ({ ...prev, searchShowSeriesInfo: val }));
-  };
-
   const handleToggleNotification = (key: keyof NotificationSettings) => {
     setNotificationSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSeriesInfoPreference = (val: AppPreferences['searchShowSeriesInfo']) => {
+    setPreferences(prev => ({ ...prev, searchShowSeriesInfo: val }));
   };
 
   const toggleShortcutTab = (tabId: ProfileTab) => {
@@ -175,8 +172,44 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     <>
     <ResetPasswordModal isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSave={onUpdatePassword} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset as any} currentUserEmail={currentUser?.email || ''} />
     <UpdateProfileModal isOpen={isUpdateProfileModalOpen} onClose={() => setIsUpdateProfileModalOpen(false)} onSave={onUpdateProfile} currentUser={currentUser} />
-    <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-text-primary mb-8">Settings</h1>
+    <div className="max-w-4xl mx-auto px-4 pb-12">
+        <h1 className="text-3xl font-bold text-text-primary mb-8 uppercase tracking-tighter">Settings</h1>
+
+        <SettingsCard title="Display Preferences">
+             <SettingsRow title="Tab Navigation Style" subtitle="Choose how tabs are displayed on profile and detail pages.">
+                <div className="flex p-1 bg-bg-primary rounded-xl border border-white/5 shadow-inner">
+                    <button 
+                        onClick={() => setPreferences(prev => ({...prev, tabNavigationStyle: 'scroll'}))}
+                        className={`flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${preferences.tabNavigationStyle === 'scroll' ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                        <ListBulletIcon className="w-3.5 h-3.5" />
+                        Scroll
+                    </button>
+                    <button 
+                        onClick={() => setPreferences(prev => ({...prev, tabNavigationStyle: 'dropdown'}))}
+                        className={`flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${preferences.tabNavigationStyle === 'dropdown' ? 'bg-accent-gradient text-on-accent shadow-md' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                        <Squares2X2Icon className="w-3.5 h-3.5" />
+                        Dropdown
+                    </button>
+                </div>
+            </SettingsRow>
+             <SettingsRow title="Show Badge Orbit on Profile" subtitle="Physical display of your earned credentials around your avatar.">
+                <ToggleSwitch enabled={preferences.showBadgesOnProfile} onChange={() => handleTogglePreference('showBadgesOnProfile')} />
+            </SettingsRow>
+             <SettingsRow title="Show Ratings & Scores" subtitle="Display TMDB and user scores throughout the app.">
+                <ToggleSwitch enabled={showRatings} onChange={setShowRatings} />
+            </SettingsRow>
+             <SettingsRow title="Show Watched Confirmation" subtitle="Display a banner when an item is marked as watched.">
+                <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
+            </SettingsRow>
+            <SettingsRow title="Smart Watch Logic" subtitle="Helpful popup when episodes are marked out of order.">
+                <ToggleSwitch enabled={notificationSettings.showPriorEpisodesPopup} onChange={() => handleToggleNotification('showPriorEpisodesPopup')} />
+            </SettingsRow>
+            <SettingsRow title="Enable Spoiler Shield" subtitle="Helpful when episodes are marked out of order.">
+                <ToggleSwitch enabled={preferences.enableSpoilerShield} onChange={() => handleTogglePreference('enableSpoilerShield')} />
+            </SettingsRow>
+        </SettingsCard>
 
         <SettingsCard title="Owner Portal">
              <SettingsRow 
@@ -280,7 +313,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                     <ToggleSwitch enabled={preferences.dashShowTrending} onChange={() => handleTogglePreference('dashShowTrending')} />
                 </SettingsRow>
                 <SettingsRow title="Weekly Gems (Hall of Fame)" subtitle="Your curated elite picks for the week.">
-                    <ToggleSwitch enabled={preferences.dashShowWeeklyGems} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
+                    <ToggleSwitch enabled={preferences.dashShowWeeklyGems} onChange={() => handleTogglePreference('dashShowWeeklyGems')} />
                 </SettingsRow>
             </div>
         </SettingsCard>
@@ -377,21 +410,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </SettingsRow>
         </SettingsCard>
 
-        <SettingsCard title="Display Preferences">
-             <SettingsRow title="Show Ratings & Scores" subtitle="Display TMDB and user scores throughout the app.">
-                <ToggleSwitch enabled={showRatings} onChange={setShowRatings} />
-            </SettingsRow>
-             <SettingsRow title="Show Watched Confirmation" subtitle="Display a banner when an item is marked as watched.">
-                <ToggleSwitch enabled={notificationSettings.showWatchedConfirmation} onChange={() => handleToggleNotification('showWatchedConfirmation')} />
-            </SettingsRow>
-            <SettingsRow title="Smart Watch Logic" subtitle="Helpful popup when episodes are marked out of order.">
-                <ToggleSwitch enabled={notificationSettings.showPriorEpisodesPopup} onChange={() => handleToggleNotification('showPriorEpisodesPopup')} />
-            </SettingsRow>
-            <SettingsRow title="Enable Spoiler Shield" subtitle="Helpful when episodes are marked out of order.">
-                <ToggleSwitch enabled={preferences.enableSpoilerShield} onChange={() => handleTogglePreference('enableSpoilerShield')} />
-            </SettingsRow>
-        </SettingsCard>
-
         <ThemeSettings 
             customThemes={props.customThemes} 
             setCustomThemes={setCustomThemes} 
@@ -418,7 +436,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
 
         <SettingsCard title="Data Management">
             <SettingsRow title="Clear API Cache" subtitle="Force refetch all movie/show data.">
-                {/* Fix: Use clearAllApiCache(false) since it is a manual action */}
                 <button onClick={() => clearAllApiCache(false)} className="p-2 rounded-full text-text-primary bg-bg-secondary hover:brightness-125"><ArrowPathIcon className="w-5 h-5"/></button>
             </SettingsRow>
             <SettingsRow title="Clear All Data" subtitle="Permanently delete all data from this device." isDestructive>

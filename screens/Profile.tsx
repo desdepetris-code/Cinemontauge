@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
-import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, ArrowPathIcon } from '../components/Icons';
+import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, ArrowPathIcon, ChevronDownIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -10,6 +10,7 @@ import MyListsScreen from './MyListsScreen';
 import HistoryScreen from './HistoryScreen';
 import JournalWidget from '../components/profile/JournalWidget';
 import { useCalculatedStats } from '../hooks/useCalculatedStats';
+import { useAchievements } from '../hooks/useAchievements';
 import OverviewStats from '../components/profile/OverviewStats';
 import StatsNarrative from '../components/StatsNarrative';
 import StatsScreen from './StatsScreen';
@@ -35,184 +36,58 @@ interface User {
   email: string;
 }
 
-interface ProfilePictureModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    currentUrl: string | null;
-    userId: string;
-    onSave: (url: string | null) => void;
-}
-
-const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({ isOpen, onClose, currentUrl, userId, onSave }) => {
+const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; currentUrl: string | null; userId: string; onSave: (url: string | null) => void; }> = ({ isOpen, onClose, currentUrl, userId, onSave }) => {
     const [url, setUrl] = useState(currentUrl || '');
     const [isUploading, setIsUploading] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            setUrl(currentUrl || '');
-        }
-    }, [isOpen, currentUrl]);
-
+    useEffect(() => { if (isOpen) setUrl(currentUrl || ''); }, [isOpen, currentUrl]);
     if (!isOpen) return null;
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file.');
-            return;
-        }
-
         setIsUploading(true);
-
         try {
-            // Standardize avatar path to user ID to make cleanup/updates easier
             const fileExt = file.name.split('.').pop();
             const filePath = `${userId}/avatar.${fileExt}`;
-
-            // Upload with specific metadata for RLS as requested
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file, {
-                    upsert: true,
-                    // @ts-ignore - metadata mapping for RLS
-                    metadata: { owner_id: userId }
-                });
-
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
             if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
-
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
             setUrl(publicUrl);
-            setIsUploading(false);
-        } catch (error: any) {
-            console.error('Error uploading avatar:', error.message);
-            alert('Upload failed: ' + error.message);
-            setIsUploading(false);
-        }
-    };
-
-    const handleSave = () => {
-        onSave(url || null);
-        onClose();
+        } catch (error: any) { alert('Upload failed: ' + error.message); } finally { setIsUploading(false); }
     };
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                <div className="absolute top-0 left-0 w-full h-1 bg-accent-gradient"></div>
-                <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors">
-                    <XMarkIcon className="w-5 h-5" />
-                </button>
-                
+                <button onClick={onClose} className="absolute top-6 right-6 p-2 text-text-secondary hover:text-text-primary"><XMarkIcon className="w-5 h-5" /></button>
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none mb-2">Update Avatar</h2>
-                    <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60">Personalize your Registry Identity</p>
+                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">Update Avatar</h2>
                 </div>
-
-                <div className="space-y-6">
-                    <div className="flex justify-center mb-6">
-                        <div className="relative group">
-                            <img 
-                                src={url || PLACEHOLDER_PROFILE} 
-                                alt="Preview" 
-                                className="w-32 h-32 rounded-full object-cover border-4 border-bg-secondary shadow-2xl" 
-                            />
-                            {isUploading && (
-                                <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
-                                    <ArrowPathIcon className="w-8 h-8 text-white animate-spin" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 block">Direct Image Link</label>
-                            <input
-                                type="text"
-                                placeholder="https://example.com/avatar.jpg"
-                                value={url}
-                                onChange={e => setUrl(e.target.value)}
-                                className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary placeholder-text-secondary/50 focus:outline-none border border-white/10 focus:border-primary-accent transition-all font-bold shadow-inner"
-                            />
-                        </div>
-                        
-                        <div className="relative">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="h-px flex-grow bg-white/10"></div>
-                                <span className="text-[10px] font-black uppercase text-text-secondary opacity-40">Or Upload File</span>
-                                <div className="h-px flex-grow bg-white/10"></div>
-                            </div>
-                            
-                            <label htmlFor="avatar-upload" className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 text-text-primary font-black uppercase text-[10px] tracking-widest cursor-pointer hover:bg-white/5 transition-all shadow-md ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" />
-                                {isUploading ? 'Uploading to Storage...' : 'Browse Local Files'}
-                            </label>
-                            <input 
-                                id="avatar-upload" 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={handleFileChange} 
-                                disabled={isUploading} 
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3 pt-4">
-                        <button
-                            onClick={handleSave}
-                            disabled={isUploading}
-                            className="w-full py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-2xl transform transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
-                        >
-                            Save Avatar
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[9px] hover:text-text-primary transition-all"
-                        >
-                            Cancel
-                        </button>
+                <div className="flex justify-center mb-8">
+                    <div className="relative">
+                        <img src={url || PLACEHOLDER_PROFILE} alt="Preview" className="w-32 h-32 rounded-full object-cover border-4 border-bg-secondary shadow-2xl" />
+                        {isUploading && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center"><ArrowPathIcon className="w-8 h-8 text-white animate-spin" /></div>}
                     </div>
                 </div>
+                <input type="text" placeholder="Direct Image Link" value={url} onChange={e => setUrl(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary border border-white/10 mb-4" />
+                <label className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 cursor-pointer mb-6">
+                    <CloudArrowUpIcon className="w-5 h-5" /> <span>Upload Local File</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                </label>
+                <button onClick={() => { onSave(url || null); onClose(); }} className="w-full py-5 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs">Save Avatar</button>
             </div>
         </div>
     );
 };
-
-const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ enabled, onChange, disabled }) => (
-    <button
-        onClick={() => !disabled && onChange(!enabled)}
-        disabled={disabled}
-        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-    >
-        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${enabled ? 'translate-x-5' : ''}`}/>
-    </button>
-);
 
 interface ProfileProps {
   userData: UserData;
   genres: Record<number, string>;
   onSelectShow: (id: number, mediaType: 'tv' | 'movie' | 'person') => void;
   onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
-  onTraktImportCompleted: (data: {
-    history: HistoryItem[];
-    completed: TrackedItem[];
-    planToWatch: TrackedItem[];
-    watchProgress: WatchProgress;
-    ratings: UserRatings;
-  }) => void;
-  onTmdbImportCompleted: (data: {
-    history: HistoryItem[];
-    completed: TrackedItem[];
-    planToWatch: TrackedItem[];
-    favorites: TrackedItem[];
-    ratings: UserRatings;
-  }) => void;
+  onTraktImportCompleted: (data: any) => void;
+  onTmdbImportCompleted: (data: any) => void;
   onJsonImportCompleted: (data: any) => void;
   onToggleEpisode: (showId: number, seasonNumber: number, episodeNumber: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
@@ -256,7 +131,6 @@ interface ProfileProps {
   notifications: AppNotification[];
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
-  // FIX: Removed duplicate identifier 'onSelectShow' previously at line 258/259.
   onAddNotifications: (notifs: AppNotification[]) => void;
   autoHolidayThemesEnabled: boolean;
   setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -267,13 +141,7 @@ interface ProfileProps {
   textSize: number;
   setTextSize: React.Dispatch<React.SetStateAction<number>>;
   onFeedbackSubmit: () => void;
-  levelInfo: {
-      level: number;
-      xp: number;
-      xpForNextLevel: number;
-      xpProgress: number;
-      progressPercent: number;
-  };
+  levelInfo: { level: number; xp: number; xpForNextLevel: number; xpProgress: number; progressPercent: number; };
   timeFormat: '12h' | '24h';
   setTimeFormat: React.Dispatch<React.SetStateAction<'12h' | '24h'>>;
   pin: string | null;
@@ -301,209 +169,195 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, follows, onSelectUser, privacySettings, setPrivacySettings, onForgotPasswordRequest, onForgotPasswordReset, timezone, setTimezone, profileTheme, levelInfo, onFeedbackSubmit, timeFormat, setTimeFormat, onDeleteHistoryItem, onRestoreHistoryItem, onPermanentDeleteHistoryItem, onClearAllDeletedHistory, pin, setPin, onOpenNominateModal, pausedLiveSessions, onStartLiveWatch, notifications, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, onAddNotifications, preferences, baseThemeId, currentHolidayName, onPermanentDeleteNote, onRestoreNote, onTabNavigate, viewerId, isFollowerOfProfile } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   const stats = useCalculatedStats(userData);
+  const { badges } = useAchievements(userData);
 
-  useEffect(() => {
-    if (initialTab) {
-        setActiveTab(initialTab);
-    }
-  }, [initialTab]);
+  useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
 
-  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+  const auraStyle = useMemo(() => {
+    if (badges.length === 0) return '';
+    const topTier = Math.max(...badges.map(b => b.tier));
+    if (topTier === 3) return 'shadow-[0_0_40px_rgba(234,179,8,0.5)] border-yellow-500/50';
+    if (topTier === 2) return 'shadow-[0_0_30px_rgba(148,163,184,0.4)] border-slate-400/50';
+    return 'shadow-[0_0_20px_rgba(var(--color-accent-primary-rgb),0.3)] border-primary-accent/30';
+  }, [badges]);
 
-  const { followers, following } = useMemo(() => {
-    if (!currentUser) return { followers: [], following: [] };
-    const followingList = follows[currentUser.id] || [];
-    const followerList = Object.keys(follows).filter(userId => follows[userId]?.includes(currentUser.id));
-    return { followers: followerList, following: followingList };
-  }, [currentUser, follows]);
-
-  // REORDERED TABS BASED ON USER REQUEST (1-15)
-  const tabs: { id: ProfileTab; label: string; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
-    { id: 'overview', label: 'Overview', icon: PushPinIcon }, // 1
-    { id: 'history', label: 'Overall History', icon: WavesIcon }, // 2
-    { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon }, // 3
-    { id: 'updates', label: 'Updates', icon: CurlyLoopIcon }, // 4
-    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon }, // 5
-    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon }, // 6
-    { id: 'library', label: 'Library', icon: CabinetIcon }, // 7
-    { id: 'achievements', label: 'Achievements', icon: BadgeIcon }, // 8
-    { id: 'lists', label: 'Custom Lists', icon: TagIcon }, // 9
-    { id: 'seasonLog', label: 'Season Logs', icon: ScrollIcon }, // 10
-    { id: 'journal', label: 'Journal', icon: QuillIcon }, // 11
-    { id: 'activity', label: 'Activity', icon: UserGroupIcon }, // 12
-    { id: 'stats', label: 'Stats', icon: MagnifyingGlassIcon }, // 13
-    { id: 'imports', label: 'Import and Sync', icon: CloudArrowUpIcon }, // 14
-    { id: 'settings', label: 'Settings', icon: CogIcon }, // 15
-  ];
-
-  const isPublic = privacySettings.activityVisibility !== 'private';
-
-  const handlePrivacyToggle = (newIsPublic: boolean) => {
-      setPrivacySettings({
-          activityVisibility: newIsPublic ? 'followers' : 'private'
+  const badgeOrbit = useMemo(() => {
+      if (!preferences.showBadgesOnProfile || badges.length === 0) return null;
+      const radius = 100; 
+      const maxBadgesInOrbit = 12; 
+      const orbitItems = badges.slice(0, maxBadgesInOrbit);
+      return orbitItems.map((badge, index) => {
+          const angle = (index / orbitItems.length) * 2 * Math.PI - Math.PI / 2;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          return (
+              <div 
+                  key={badge.id}
+                  className="absolute z-30 transition-all duration-1000 group/badge pointer-events-auto"
+                  style={{ transform: `translate(calc(50% + ${x}px - 14px), calc(50% + ${y}px - 14px))`, left: '0', top: '0' }}
+                  title={`${badge.name}: ${badge.description}`}
+              >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg bg-bg-secondary border-2 shadow-xl backdrop-blur-md transition-transform hover:scale-125 cursor-help ${
+                      badge.tier === 3 ? 'border-yellow-500 shadow-yellow-500/30' :
+                      badge.tier === 2 ? 'border-slate-400 shadow-slate-400/30' :
+                      'border-primary-accent shadow-primary-accent/30'
+                  }`}>
+                      <span className="drop-shadow-md">{badge.icon}</span>
+                  </div>
+              </div>
+          );
       });
-  };
+  }, [badges, preferences.showBadgesOnProfile]);
+
+  const tabs: { id: ProfileTab; label: string; icon: any }[] = [
+    { id: 'overview', label: 'Overview', icon: PushPinIcon },
+    { id: 'history', label: 'Overall History', icon: WavesIcon }, 
+    { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon },
+    { id: 'updates', label: 'Updates', icon: CurlyLoopIcon },
+    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon },
+    { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon },
+    { id: 'library', label: 'Library', icon: CabinetIcon },
+    { id: 'achievements', label: 'Main Achievements', icon: BadgeIcon },
+    { id: 'lists', label: 'Collections', icon: TagIcon },
+    { id: 'seasonLog', label: 'Season Logs', icon: ScrollIcon },
+    { id: 'journal', label: 'Journal', icon: QuillIcon },
+    { id: 'activity', label: 'Social Feed', icon: UserGroupIcon },
+    { id: 'stats', label: 'Analytics', icon: MagnifyingGlassIcon },
+    { id: 'imports', label: 'Import and Sync', icon: CloudArrowUpIcon },
+    { id: 'settings', label: 'Settings', icon: CogIcon },
+  ];
 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
             <StatsNarrative stats={stats} genres={genres} userData={userData} currentUser={currentUser} />
             <OverviewStats stats={stats} />
-            <FriendsActivity 
-              currentUser={props.currentUser}
-              follows={props.follows}
-              onSelectShow={onSelectShow}
-              onSelectUser={props.onSelectUser}
-            />
+            <FriendsActivity currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />
           </div>
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-8">
             <RecentActivityWidget history={userData.history} onSelectShow={onSelectShow} />
             <AchievementsWidget userData={userData} onNavigate={() => setActiveTab('achievements')} />
-            <ListsWidget 
-                watching={userData.watching} 
-                planToWatch={userData.planToWatch} 
-                customLists={userData.customLists}
-                isOwnProfile={!viewerId || viewerId === currentUser?.id}
-                isFollower={isFollowerOfProfile}
-                onNavigate={() => setActiveTab('lists')} 
-            />
-            <JournalWidget userData={userData} onSelectShow={onSelectShow} onNavigate={() => setActiveTab('journal')} />
+            <ListsWidget watching={userData.watching} planToWatch={userData.planToWatch} customLists={userData.customLists} isOwnProfile={!viewerId || viewerId === currentUser?.id} isFollower={isFollowerOfProfile} onNavigate={() => setActiveTab('lists')} />
           </div>
         </div>
       );
       case 'ongoing': return <OngoingShowsScreen userData={userData} onSelectShow={onSelectShow as any} />;
-      case 'updates': return <UpdatesScreen userData={userData} onSelectShow={onSelectShow} onAddNotifications={onAddNotifications} />;
-      case 'progress': return <ProgressScreen {...props} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={onStartLiveWatch} />;
-      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
-      case 'activity': return <ActivityScreen currentUser={props.currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
+      case 'updates': return <UpdatesScreen userData={userData} onSelectShow={onSelectShow} onAddNotifications={props.onAddNotifications} />;
+      case 'progress': return <ProgressScreen {...props} pausedLiveSessions={props.pausedLiveSessions} onStartLiveWatch={props.onStartLiveWatch} />;
+      case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={props.preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
+      case 'achievements': return <AchievementsScreen userData={userData} />;
+      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={props.preferences} />;
+      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} onRestoreHistoryItem={props.onRestoreHistoryItem} onPermanentDeleteHistoryItem={props.onPermanentDeleteHistoryItem} onClearAllDeletedHistory={props.onClearAllDeletedHistory} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={props.timezone} onPermanentDeleteNote={props.onPermanentDeleteNote} onRestoreNote={props.onRestoreNote} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
-      case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={preferences} />;
-      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={onDeleteHistoryItem} onRestoreHistoryItem={onRestoreHistoryItem} onPermanentDeleteHistoryItem={logId => props.onPermanentDeleteHistoryItem?.(logId)} onClearAllDeletedHistory={() => props.onClearAllDeletedHistory?.()} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={timezone} onPermanentDeleteNote={onPermanentDeleteNote} onRestoreNote={onRestoreNote} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
-      case 'achievements': return <AchievementsScreen userData={userData} />;
-      case 'imports': return <ImportsScreen userData={userData} onImportCompleted={props.onImportCompleted} onTraktImportCompleted={onTraktImportCompleted} onTmdbImportCompleted={onTmdbImportCompleted} onJsonImportCompleted={onJsonImportCompleted} />;
-      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={baseThemeId} currentHolidayName={currentHolidayName} onTabNavigate={onTabNavigate} />;
-      case 'weeklyPicks': return <WeeklyPicksScreen userData={userData} onSelectShow={onSelectShow} onRemovePick={props.onToggleWeeklyFavorite} onNominate={onOpenNominateModal} />;
+      case 'imports': return <ImportsScreen userData={userData} onImportCompleted={props.onImportCompleted} onTraktImportCompleted={props.onTraktImportCompleted} onTmdbImportCompleted={props.onTmdbImportCompleted} onJsonImportCompleted={props.onJsonImportCompleted} />;
+      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={props.baseThemeId} currentHolidayName={props.currentHolidayName} onTabNavigate={onTabNavigate} />;
+      case 'weeklyPicks': return <WeeklyPicksScreen userData={userData} onSelectShow={onSelectShow} onRemovePick={props.onToggleWeeklyFavorite} onNominate={props.onOpenNominateModal} />;
       default: return null;
     }
   };
 
   return (
-    <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-8">
-        <ProfilePictureModal 
-            isOpen={isPicModalOpen} 
-            onClose={() => setIsPicModalOpen(false)} 
-            currentUrl={profilePictureUrl} 
-            userId={currentUser?.id || 'guest'}
-            onSave={setProfilePictureUrl} 
-        />
-        <NotificationsModal 
-          isOpen={isNotificationsModalOpen} 
-          onClose={() => setIsNotificationsModalOpen(false)} 
-          notifications={notifications} 
-          onMarkAllRead={props.onMarkAllRead} 
-          onMarkOneRead={props.onMarkOneRead} 
-          onSelectShow={onSelectShow} 
-          onSelectUser={onSelectUser} 
-        />
-        <FollowListModal isOpen={followModalState.isOpen} onClose={() => setFollowModalState({isOpen: false, title: '', userIds: []})} title={followModalState.title} userIds={followModalState.userIds} onSelectUser={onSelectUser} />
+    <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-32">
+        <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} userId={currentUser?.id || 'guest'} onSave={setProfilePictureUrl} />
         
-        <div className="flex flex-col md:flex-row items-center md:items-end gap-4 mb-6 relative">
-            <div className="absolute top-0 right-0 z-20 flex flex-col gap-2">
-              <button 
-                onClick={() => setIsNotificationsModalOpen(true)}
-                className="relative p-3 rounded-full bg-bg-secondary hover:brightness-125 transition-all group shadow-lg"
-              >
-                <BellIcon className="w-6 h-6 text-text-primary" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-accent text-[10px] font-black text-on-accent animate-pulse">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-              <button 
-                onClick={() => setActiveTab('settings')}
-                className={`p-3 rounded-full transition-all group shadow-lg ${activeTab === 'settings' ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`}
-                title="Settings"
-              >
-                <CogIcon className="w-6 h-6" />
-              </button>
-            </div>
+        <div className="flex flex-col md:flex-row items-center md:items-end gap-8 mb-20 relative pt-12">
+            <div className="relative group flex-shrink-0">
+                <div className="absolute inset-0 pointer-events-none">
+                    {badgeOrbit}
+                </div>
 
-            <div className="relative group flex-shrink-0" onClick={() => setIsPicModalOpen(true)}>
-                <img src={profilePictureUrl || PLACEHOLDER_PROFILE} alt="Profile" className="w-32 h-32 rounded-full object-cover bg-bg-secondary border-4 border-bg-primary cursor-pointer" />
-                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <PencilSquareIcon className="w-8 h-8 text-white" />
+                <div className={`relative z-10 w-44 h-44 rounded-full transition-all duration-1000 ${auraStyle}`} onClick={() => setIsPicModalOpen(true)}>
+                    <img src={profilePictureUrl || PLACEHOLDER_PROFILE} alt="Profile" className="w-full h-full rounded-full object-cover bg-bg-secondary border-4 border-bg-primary cursor-pointer relative z-10" />
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <PencilSquareIcon className="w-8 h-8 text-white" />
+                    </div>
                 </div>
             </div>
-            <div className="flex-grow text-center md:text-left">
-                {currentUser ? (
-                    <>
-                        <h1 className="text-3xl font-bold text-text-primary">{currentUser.username}</h1>
-                        <p className="text-sm text-text-secondary">{currentUser.email}</p>
-                        <div className="flex justify-center md:justify-start space-x-4 mt-2">
-                            <button onClick={() => setFollowModalState({isOpen: true, title: 'Followers', userIds: followers})} className="text-sm"><strong className="text-text-primary">{followers.length}</strong> Followers</button>
-                            <button onClick={() => setFollowModalState({isOpen: true, title: 'Following', userIds: following})} className="text-sm"><strong className="text-text-primary">{following.length}</strong> Following</button>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <h1 className="text-3xl font-bold text-text-primary">Guest Profile</h1>
-                        <button onClick={onAuthClick} className="mt-2 text-sm font-semibold text-primary-accent hover:underline">Log in or Sign up to sync your data</button>
-                    </>
-                )}
-            </div>
-            <div className="flex-shrink-0 flex items-center space-x-2">
-                {currentUser && (
-                    <div className="flex items-center space-x-2 bg-bg-secondary p-1 rounded-full">
-                        <span className="text-xs font-semibold px-2">{isPublic ? 'Public Profile' : 'Private Profile'}</span>
-                        <ToggleSwitch enabled={isPublic} onChange={handlePrivacyToggle} />
+            
+            <div className="flex-grow text-center md:text-left space-y-2">
+                <div className="flex items-center justify-center md:justify-start gap-4">
+                    <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">{currentUser?.username || 'Guest Identity'}</h1>
+                    <div className="px-4 py-1.5 bg-bg-secondary/40 border border-white/10 rounded-2xl shadow-inner backdrop-blur-md">
+                        <span className="text-xs font-black text-primary-accent uppercase tracking-widest">Level {levelInfo.level}</span>
                     </div>
-                )}
+                </div>
+                <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60">{currentUser?.email || 'Archive access limited'}</p>
                 {currentUser && (
-                    <div className="relative">
-                        <button onClick={() => setIsDropdownOpen(p => !p)} onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)} className="p-2 rounded-full bg-bg-secondary hover:brightness-125">
-                            <EllipsisVerticalIcon className="w-5 h-5" />
+                    <div className="flex justify-center md:justify-start space-x-8 mt-4 pt-4 border-t border-white/5">
+                        <button onClick={() => setFollowModalState({isOpen: true, title: 'Network Followers', userIds: []})} className="group flex flex-col items-center md:items-start transition-all hover:translate-y-[-2px]">
+                            <span className="text-xl font-black text-text-primary group-hover:text-primary-accent transition-colors">0</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Followers</span>
                         </button>
-                        {isDropdownOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-bg-primary border border-bg-secondary rounded-md shadow-lg z-10">
-                                <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10">Log Out</button>
-                            </div>
-                        )}
+                        <button onClick={() => setFollowModalState({isOpen: true, title: 'Tracking Network', userIds: []})} className="group flex flex-col items-center md:items-start transition-all hover:translate-y-[-2px]">
+                            <span className="text-xl font-black text-text-primary group-hover:text-primary-accent transition-colors">0</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Following</span>
+                        </button>
                     </div>
                 )}
             </div>
+
+            <div className="flex-shrink-0 flex items-center gap-3">
+                <button onClick={() => setIsNotificationsModalOpen(true)} className="p-4 rounded-2xl bg-bg-secondary/40 border border-white/5 text-text-primary hover:border-primary-accent/50 hover:brightness-125 transition-all shadow-xl relative backdrop-blur-md">
+                    <BellIcon className="w-6 h-6" />
+                    {notifications.filter(n => !n.read).length > 0 && <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary-accent rounded-full border-2 border-bg-secondary shadow-[0_0_8px_var(--color-accent-primary)]"></div>}
+                </button>
+                <button onClick={() => setActiveTab('settings')} className="p-4 rounded-2xl bg-bg-secondary/40 border border-white/5 text-text-primary hover:border-primary-accent/50 hover:brightness-125 transition-all shadow-xl backdrop-blur-md">
+                    <CogIcon className="w-6 h-6" />
+                </button>
+            </div>
         </div>
         
-        <div className="mb-6 relative">
-            <Carousel>
-                <div className="flex space-x-2 overflow-x-auto pb-2 hide-scrollbar">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center space-x-2 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-full transition-colors ${activeTab === tab.id ? 'bg-accent-gradient text-on-accent' : 'bg-bg-secondary text-text-secondary hover:brightness-125'}`}
-                        >
-                            <tab.icon className="w-5 h-5" />
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
+        <div className="mb-10 sticky top-16 bg-bg-primary/95 backdrop-blur-xl z-40 -mx-4 px-4 py-4 border-b border-white/5">
+            {preferences.tabNavigationStyle === 'scroll' ? (
+                <Carousel>
+                    <div className="flex space-x-3 overflow-x-auto pb-2 hide-scrollbar">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center space-x-3 px-6 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap rounded-full transition-all border ${
+                                    activeTab === tab.id 
+                                        ? 'bg-primary-accent/20 text-primary-accent border-primary-accent shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.3)] scale-105' 
+                                        : 'bg-bg-secondary/20 text-text-secondary border-white/5 hover:border-white/20 hover:text-text-primary'
+                                }`}
+                            >
+                                <tab.icon className={`w-4 h-4 transition-colors ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary'}`} />
+                                <span>{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </Carousel>
+            ) : (
+                <div className="max-w-md mx-auto relative group">
+                    <select 
+                        value={activeTab}
+                        onChange={(e) => setActiveTab(e.target.value as ProfileTab)}
+                        className="w-full appearance-none bg-bg-secondary/40 border border-primary-accent/30 rounded-2xl py-4 px-6 text-xs font-black uppercase tracking-[0.2em] text-text-primary focus:outline-none focus:border-primary-accent shadow-xl backdrop-blur-md transition-all pr-12"
+                    >
+                        {tabs.map(tab => (
+                            <option key={tab.id} value={tab.id}>{tab.label}</option>
+                        ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-accent pointer-events-none group-hover:scale-110 transition-transform" />
                 </div>
-            </Carousel>
+            )}
         </div>
 
-        {renderContent()}
+        <div className="animate-fade-in min-h-[40vh]">
+            {renderContent()}
+        </div>
     </div>
   );
 };

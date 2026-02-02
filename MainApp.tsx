@@ -119,6 +119,8 @@ export const MainApp: React.FC<MainAppProps> = ({
     dashShowPlanToWatch: true,
     enableAnimations: true,
     enableSpoilerShield: false,
+    showBadgesOnProfile: true,
+    tabNavigationStyle: 'scroll',
   });
 
   const [privacySettings, setPrivacySettings] = useLocalStorage<PrivacySettings>(`privacy_settings_${userId}`, {
@@ -506,6 +508,48 @@ export const MainApp: React.FC<MainAppProps> = ({
       setTimeout(() => syncLibraryItem(item.id, 'movie'), 10);
   }, [currentUser, setHistory, setUserXp, syncLibraryItem]);
 
+  const handleAddToList = useCallback((listId: string, item: CustomListItem) => {
+    setCustomLists(prev => prev.map(list => {
+      if (list.id === listId) {
+        const alreadyInList = list.items.some(i => i.id === item.id);
+        if (alreadyInList) {
+          confirmationService.show(`"${item.title}" removed from ${list.name}`);
+          return { ...list, items: list.items.filter(i => i.id !== item.id) };
+        } else {
+          confirmationService.show(`"${item.title}" added to ${list.name}`);
+          return { ...list, items: [...list.items, item] };
+        }
+      }
+      return list;
+    }));
+  }, [setCustomLists]);
+
+  const handleCreateAndAddToList = useCallback((listName: string, item: CustomListItem) => {
+    const newList: CustomList = {
+      id: `cl-${Date.now()}`,
+      name: listName,
+      description: '',
+      items: [item],
+      createdAt: new Date().toISOString(),
+      visibility: 'private',
+      likes: []
+    };
+    setCustomLists(prev => [newList, ...prev]);
+    confirmationService.show(`Collection "${listName}" created with "${item.title}"`);
+  }, [setCustomLists]);
+
+  const activeStandardStatus = useMemo(() => {
+    if (!addToListModalState.item) return null;
+    const itemId = addToListModalState.item.id;
+    if (watching.some(i => i.id === itemId)) return 'watching';
+    if (planToWatch.some(i => i.id === itemId)) return 'planToWatch';
+    if (completed.some(i => i.id === itemId)) return 'completed';
+    if (onHold.some(i => i.id === itemId)) return 'onHold';
+    if (dropped.some(i => i.id === itemId)) return 'dropped';
+    if (allCaughtUp.some(i => i.id === itemId)) return 'allCaughtUp';
+    return null;
+  }, [addToListModalState.item, watching, planToWatch, completed, onHold, dropped, allCaughtUp]);
+
   const profileTabs = ['overview', 'history', 'library', 'lists', 'activity', 'stats', 'seasonLog', 'journal', 'achievements', 'imports', 'settings', 'updates', 'weeklyPicks', 'ongoing'];
 
   return (
@@ -584,7 +628,17 @@ export const MainApp: React.FC<MainAppProps> = ({
         )}
         
         <PersonDetailModal isOpen={!!selectedPerson} onClose={() => setSelectedPerson(null)} personId={selectedPerson} userData={allUserData} onSelectShow={handleSelectShow} onToggleFavoriteShow={handleToggleFavoriteShow} onRateItem={handleRateItem} ratings={ratings} favorites={favorites} onToggleWeeklyFavorite={handleToggleFavoriteShow} weeklyFavorites={weeklyFavorites} />
-        <AddToListModal isOpen={addToListModalState.isOpen} onClose={() => setAddToListModalState({ isOpen: false, item: null })} itemToAdd={addToListModalState.item} customLists={customLists} onAddToList={() => {}} onCreateAndAddToList={() => {}} onGoToDetails={handleSelectShow} onUpdateLists={updateLists} />
+        <AddToListModal 
+            isOpen={addToListModalState.isOpen} 
+            onClose={() => setAddToListModalState({ isOpen: false, item: null })} 
+            itemToAdd={addToListModalState.item} 
+            customLists={customLists} 
+            onAddToList={handleAddToList} 
+            onCreateAndAddToList={handleCreateAndAddToList} 
+            onGoToDetails={handleSelectShow} 
+            onUpdateLists={updateLists}
+            activeStandardStatus={activeStandardStatus}
+        />
         <NominatePicksModal isOpen={isNominateModalOpen} onClose={() => setIsNominateModalOpen(false)} userData={allUserData} currentPicks={weeklyFavorites} onNominate={(p) => setWeeklyFavorites(prev => [...prev, p])} onRemovePick={(p) => setWeeklyFavorites(prev => prev.filter(item => item.id !== p.id || item.category !== p.category || item.dayIndex !== p.dayIndex))} />
         <WelcomeModal isOpen={!isWelcomeDismissed} onClose={() => { setIsWelcomeDismissed(true); localStorage.setItem('welcome_dismissed', 'true'); }} timezone={timezone} setTimezone={setTimezone} timeFormat={timeFormat} setTimeFormat={setTimeFormat} />
         

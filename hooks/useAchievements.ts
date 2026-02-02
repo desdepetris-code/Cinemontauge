@@ -1,44 +1,38 @@
-import { useMemo, useState, useEffect } from 'react';
-import { UserData, UserAchievementStatus } from '../types';
-import { allAchievements } from '../achievements';
-import { useCalculatedStats } from './useCalculatedStats';
-import { getCompletedSeasonsCount } from '../utils/seasonUtils';
 
-export function useAchievements(data: UserData): { achievements: UserAchievementStatus[], isLoading: boolean } {
+import { useMemo, useState, useEffect } from 'react';
+import { UserData, UserAchievementStatus, Badge } from '../types';
+import { allAchievements, badges } from '../achievements';
+import { useCalculatedStats } from './useCalculatedStats';
+
+export function useAchievements(data: UserData) {
   const [statuses, setStatuses] = useState<UserAchievementStatus[]>([]);
+  const [unlockedBadges, setUnlockedBadges] = useState<Badge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const calculatedStats = useCalculatedStats(data);
   
   useEffect(() => {
-    const checkAllAchievements = async () => {
+    const checkAll = async () => {
         setIsLoading(true);
-        const completedSeasons = await getCompletedSeasonsCount(data);
-        const extendedStats = { ...calculatedStats, completedSeasonsCount: completedSeasons };
-
+        
         const newStatuses = allAchievements.map(ach => {
-            const { progress, goal } = ach.check(data, extendedStats);
-            // unlocked is re-evaluated every time the hook runs, ensuring it relocks if progress drops.
+            const { progress, goal } = ach.check(data, calculatedStats);
             const unlocked = progress >= goal;
-            return { ...ach, unlocked, progress, goal };
+            return { ...ach, unlocked, progress, goal, unlockDate: unlocked ? new Date().toISOString() : undefined };
         });
         
+        const newlyUnlockedBadges = badges.filter(badge => 
+            badge.requirements.every(reqId => 
+                newStatuses.find(s => s.id === reqId)?.unlocked
+            )
+        );
+
         setStatuses(newStatuses);
+        setUnlockedBadges(newlyUnlockedBadges);
         setIsLoading(false);
     };
 
-    checkAllAchievements();
+    checkAll();
   }, [data, calculatedStats]);
 
-  const sortedStatuses = useMemo(() => {
-    return [...statuses].sort((a, b) => {
-      if (a.unlocked !== b.unlocked) {
-        return a.unlocked ? -1 : 1;
-      }
-      const progressA = a.goal > 0 ? a.progress / a.goal : 0;
-      const progressB = b.goal > 0 ? b.progress / b.goal : 0;
-      return progressB - progressA;
-    });
-  }, [statuses]);
-
-  return { achievements: sortedStatuses, isLoading };
+  return { achievements: statuses, badges: unlockedBadges, isLoading };
 }

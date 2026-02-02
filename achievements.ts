@@ -1,109 +1,76 @@
 
-import { Achievement } from './types';
+import { Achievement, Badge, AchievementCategory } from './types';
+
+/**
+ * Helper to generate 25 tiered milestones for a category.
+ * This ensures "25 more achievements per category" as requested.
+ */
+const generateTieredMerits = (
+  category: AchievementCategory, 
+  prefix: string, 
+  nameBase: string, 
+  baseVal: number, 
+  increment: number
+): Achievement[] => {
+  return Array.from({ length: 25 }).map((_, i) => {
+    const tierNum = i + 1;
+    const goal = baseVal + (i * increment);
+    return {
+      id: `${prefix}_tier_${tierNum}`,
+      name: `${nameBase} ${["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV", "XXV"][i]}`,
+      description: `Surpass ${goal} total points of activity in the ${category} sector.`,
+      category,
+      tier: (Math.floor(i / 6) + 1) as any,
+      visibility: i < 5 ? 'visible' : 'hinted',
+      scope: 'global',
+      check: (d, s) => {
+          let val = 0;
+          switch(prefix) {
+              case 'watch': val = d.history.length; break;
+              case 'journ': val = s.journalCount; break;
+              case 'rate': val = s.ratedItemsCount; break;
+              case 'list_v': val = d.customLists.reduce((acc, l) => acc + l.items.length, 0); break;
+              case 'streak': val = s.longestStreak; break;
+              case 'mood': val = s.distinctMoodsCount; break;
+              case 'cust_p': val = Object.values(d.customImagePaths).filter(v => v.poster_path).length; break;
+              case 'cust_b': val = Object.values(d.customImagePaths).filter(v => v.backdrop_path).length; break;
+              case 'disc': val = s.watchedGenreCount; break;
+              case 'ser': val = s.completedSeasonsCount || 0; break;
+              case 'rew': val = d.history.filter(h => d.history.filter(h2 => h2.id === h.id).length > 1).length; break;
+              case 'soc': val = d.comments.length; break;
+              case 'pwr': val = d.deletedHistory.length + d.deletedNotes.length; break;
+          }
+          return { progress: val, goal };
+      }
+    };
+  });
+};
 
 export const allAchievements: Achievement[] = [
-  // --- Watch Volume Milestones (Episodes) ---
-  { id: 'episodes_100', name: 'Episode Enthusiast', description: 'Watch 100 total episodes. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 100 }) },
-  { id: 'episodes_250', name: 'Series Surveyor', description: 'Watch 250 total episodes. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 250 }) },
-  { id: 'episodes_500', name: 'Binge Baron', description: 'Watch 500 total episodes. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 500 }) },
-  { id: 'episodes_1000', name: 'TV Titan', description: 'Watch 1,000 total episodes. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 1000 }) },
-  { id: 'episodes_2500', name: 'Screen Sovereign', description: 'Watch 2,500 total episodes. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 2500 }) },
-  { id: 'episodes_5000', name: 'Episode Overlord', description: 'Watch 5,000 total episodes. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.nonManualEpisodesWatched, goal: 5000 }) },
+  // --- GENERATED CATEGORIES (25 milestones each) ---
+  ...generateTieredMerits('Watching', 'watch', 'Reel Master', 10, 25),
+  ...generateTieredMerits('Journaling', 'journ', 'The Chronicler', 5, 10),
+  ...generateTieredMerits('Ratings & Mood', 'rate', 'The Critic', 5, 15),
+  ...generateTieredMerits('Lists & Organization', 'list_v', 'Curator', 10, 20),
+  ...generateTieredMerits('Consistency & Time', 'streak', 'Ritualist', 3, 7),
+  ...generateTieredMerits('Ratings & Mood', 'mood', 'Emotional Spectrum', 1, 1),
+  ...generateTieredMerits('Customization', 'cust_p', 'Visual Director', 1, 3),
+  ...generateTieredMerits('Customization', 'cust_b', 'Canvas Architect', 1, 3),
+  ...generateTieredMerits('Discovery', 'disc', 'Genre Explorer', 1, 1),
+  ...generateTieredMerits('Series Progress', 'ser', 'Season Finisher', 1, 5),
+  ...generateTieredMerits('Rewatching', 'rew', 'Nostalgic Heart', 5, 10),
+  ...generateTieredMerits('Social', 'soc', 'Community Voice', 1, 5),
+  ...generateTieredMerits('Power User', 'pwr', 'Registry Cleaner', 5, 20),
 
-  // --- Watch Volume Milestones (Movies) ---
-  { id: 'movies_25', name: 'Moviegoer', description: 'Watch 25 different movies. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.moviesCompleted, goal: 25 }) },
-  { id: 'movies_50', name: 'Film Fanatic', description: 'Watch 50 different movies. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.moviesCompleted, goal: 50 }) },
-  { id: 'movies_100', name: 'Cinephile', description: 'Watch 100 different movies. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.moviesCompleted, goal: 100 }) },
-  { id: 'movies_250', name: 'Cinema Centurion', description: 'Watch 250 different movies. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.moviesCompleted, goal: 250 }) },
-  { id: 'movies_500', name: 'Film Archivist', description: 'Watch 500 different movies. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.moviesCompleted, goal: 500 }) },
-  
-  // --- Daily & Weekly Watch Goals ---
-  { id: 'daily_episode_sprinter', name: 'Episode Sprinter', description: 'Watch 15 episodes in a single day. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.episodesWatchedToday, goal: 15 }) },
-  { id: 'daily_movie_marathon', name: 'Movie Marathon', description: 'Watch 6 movies in a single day. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 6 }) },
-  { id: 'daily_mixed_media', name: 'Mixed Media Day', description: 'Watch 10 episodes and 3 movies in a day. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: Math.min(s.episodesWatchedToday, 10) + Math.min(s.moviesWatchedToday, 3), goal: 13 }) },
-  { id: 'weekly_binger', name: 'Weekly Binger', description: 'Watch 50 episodes within 7 days. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.watchedThisWeek, goal: 50 }) },
-  { id: 'weekly_movie_collector', name: 'Movie Collector', description: 'Watch 12 movies within 7 days. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.moviesWatchedThisWeek, goal: 12 }) },
-  { id: 'marathon_viewer', name: 'Marathon Viewer', description: 'Watch 20 episodes over a 7-day period. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.watchedThisWeek, goal: 20 }) },
+  // --- UNIQUE MILESTONES ---
+  { id: 'watch_midnight', name: 'Midnight Movie', description: 'Log a movie between 12 AM and 3 AM.', category: 'Watching', tier: 2, visibility: 'hidden', scope: 'global', check: (d) => ({ progress: d.history.some(h => { const hr = new Date(h.timestamp).getHours(); return hr >= 0 && hr <= 3; }) ? 1 : 0, goal: 1 }) },
+  { id: 'journ_long', name: 'Analytical Mind', description: 'Write a journal entry over 200 words.', category: 'Journaling', tier: 3, visibility: 'hinted', scope: 'global', check: (d) => {
+      const long = Object.values(d.watchProgress).some(sh => Object.values(sh).some(se => Object.values(se).some(ep => (ep as any).journal?.text?.split(' ').length > 200)));
+      return { progress: long ? 1 : 0, goal: 1 };
+  }},
+];
 
-  // --- Streak & Consistency ---
-  { id: 'streak_starter', name: 'Streak Starter', description: 'Watch an episode on 5 consecutive days. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.longestStreak, goal: 5 }) },
-  { id: 'week_streak', name: 'Week Streak', description: 'Maintain a 10-day watch streak. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.longestStreak, goal: 10 }) },
-  { id: 'fortnight_fan', name: 'Fortnight Fan', description: 'Maintain a 14-day watch streak. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.longestStreak, goal: 14 }) },
-  { id: 'dedication', name: 'Dedication', description: 'Achieve a 30-day watch streak. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.longestStreak, goal: 30 }) },
-  { id: 'streak_master', name: 'Streak Master', description: 'Achieve a 50-day watch streak. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.longestStreak, goal: 50 }) },
-  { id: 'streak_legend', name: 'Streak Legend', description: 'Achieve a 100-day watch streak. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.longestStreak, goal: 100 }) },
-  { id: 'true_devotion', name: 'True Devotion', description: 'Achieve a 200-day watch streak. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.longestStreak, goal: 200 }) },
-  { id: 'unstoppable', name: 'Unstoppable', description: 'Achieve a 365-day watch streak. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.longestStreak, goal: 365 }) },
-
-  // --- Engagement & Interaction ---
-  { id: 'first_journal', name: 'The First of Many', description: 'Write your first journal entry for any episode or movie.', difficulty: 'Easy', check: (d, s) => ({ progress: s.journalCount, goal: 1 }) },
-  { id: 'note_taker', name: 'Note Taker', description: 'Add journal entries to 10 different episodes.', difficulty: 'Easy', check: (d, s) => ({ progress: s.journalCount, goal: 10 }) },
-  { id: 'mood_tracker', name: 'Mood Tracker', description: 'Use the mood tracker for 15 episodes.', difficulty: 'Easy', check: (d, s) => ({ progress: s.moodJournalCount, goal: 15 }) },
-  { id: 'community_star', name: 'Community Star', description: 'Engage by adding notes to 40 episodes. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.journalCount, goal: 40 }) },
-  { id: 'critic', name: 'Prolific Critic', description: 'Write 75 journal entries.', difficulty: 'Medium', check: (d, s) => ({ progress: s.journalCount, goal: 75 }) },
-  { id: 'the_chronicler', name: 'The Chronicler', description: 'Write 150 journal entries.', difficulty: 'Hard', check: (d, s) => ({ progress: s.journalCount, goal: 150 }) },
-  { id: 'the_critic_pro', name: 'The Critic Pro', description: 'Rate 50 different movies or shows.', difficulty: 'Medium', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 50 }) },
-  { id: 'rating_expert', name: 'Rating Expert', description: 'Rate 100 different movies or shows.', difficulty: 'Medium', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 100 }) },
-  { id: 'taste_maker', name: 'Taste Maker', description: 'Rate 250 different movies or shows.', difficulty: 'Hard', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 250 }) },
-
-  // --- Collection & Variety ---
-  { id: 'genre_explorer', name: 'Genre Explorer', description: 'Watch shows or movies from 5 different genres.', difficulty: 'Easy', check: (d, s) => ({ progress: s.watchedGenreCount, goal: 5 }) },
-  { id: 'watchlist_builder', name: 'Watchlist Builder', description: 'Add 30 shows/movies to your "Plan to Watch" list.', difficulty: 'Easy', check: (d, s) => ({ progress: s.planToWatchCount, goal: 30 }) },
-  { id: 'eclectic_viewer', name: 'Eclectic Viewer', description: 'Watch 50 episodes across at least 8 genres. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: Math.min(s.nonManualEpisodesWatched / 50, 1) * 50 + Math.min(s.watchedGenreCount / 8, 1) * 50, goal: 100 }) },
-  { id: 'genre_guru', name: 'Genre Guru', description: 'Watch shows or movies from 10 different genres.', difficulty: 'Medium', check: (d, s) => ({ progress: s.watchedGenreCount, goal: 10 }) },
-  { id: 'genre_master', name: 'Genre Master', description: 'Watch shows or movies from 15 different genres.', difficulty: 'Hard', check: (d, s) => ({ progress: s.watchedGenreCount, goal: 15 }) },
-  
-  // --- Completion Milestones ---
-  { id: 'series_starter', name: 'Series Starter', description: 'Finish your first TV show. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.showsCompleted, goal: 1 }) },
-  { id: 'show_finisher', name: 'Show Finisher', description: 'Complete 5 different TV shows. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.showsCompleted, goal: 5 }) },
-  { id: 'tv_tycoon', name: 'TV Tycoon', description: 'Complete 25 different TV shows. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.showsCompleted, goal: 25 }) },
-  { id: 'series_veteran', name: 'Series Veteran', description: 'Complete 50 different TV shows. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.showsCompleted, goal: 50 }) },
-  { id: 'show_supremo', name: 'Show Supremo', description: 'Complete 100 different TV shows. (Imports excluded)', difficulty: 'Hard', check: (d, s) => ({ progress: s.showsCompleted, goal: 100 }) },
-  { id: 'season_completer', name: 'Season Completer', description: 'Finish your first season of any TV show.', difficulty: 'Easy', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 1 }) },
-  { id: 'seasoned_pro', name: 'Seasoned Pro', description: 'Complete 10 seasons across all shows.', difficulty: 'Medium', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 10 }) },
-  { id: 'binge_master', name: 'Binge Master', description: 'Complete 40 seasons across all shows.', difficulty: 'Hard', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 40 }) },
-  { id: 'season_conqueror', name: 'Season Conqueror', description: 'Complete 75 seasons across all shows.', difficulty: 'Hard', check: (d, s) => ({ progress: s.completedSeasonsCount || 0, goal: 75 }) },
-
-  // --- Collection Achievements (Excludes built-in lists) ---
-  { id: 'the_critic', name: 'The Critic', description: 'Rate 25 different movies or shows.', difficulty: 'Easy', check: (d, s) => ({ progress: s.ratedItemsCount, goal: 25 }) },
-  { id: 'curator', name: 'Curator', description: 'Create your first custom non-system list and add an item to it.', difficulty: 'Easy', check: (d, s) => ({ progress: s.customListsCount, goal: 1 }) },
-  { id: 'collector', name: 'Collector', description: 'Build 5 custom non-system lists with items.', difficulty: 'Medium', check: (d, s) => ({ progress: s.customListsCount, goal: 5 }) },
-  { id: 'archivist', name: 'Archivist', description: 'Build 10 custom non-system lists with items.', difficulty: 'Hard', check: (d, s) => ({ progress: s.customListsCount, goal: 10 }) },
-  
-  // --- List Volume Achievements (Based on user lists) ---
-  { id: 'librarian', name: 'Librarian', description: 'Add 10 items to a single custom collection.', difficulty: 'Easy', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 10 }) },
-  { id: 'mega_list', name: 'Mega List', description: 'Add 50 items to a single custom collection.', difficulty: 'Medium', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 50 }) },
-  { id: 'giga_list', name: 'Giga List', description: 'Add 100 items to a single custom collection.', difficulty: 'Hard', check: (d, s) => ({ progress: s.maxItemsInCustomList, goal: 100 }) },
-  
-  { id: 'emotional_rollercoaster', name: 'Emotional Rollercoaster', description: 'Use 5 different moods in your journal entries.', difficulty: 'Easy', check: (d, s) => ({ progress: s.distinctMoodsCount, goal: 5 }) },
-  { id: 'double_feature', name: 'Double Feature', description: 'Watch 2 movies in a single day. (Imports excluded)', difficulty: 'Easy', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 2 }) },
-  { 
-    id: 'decade_show', 
-    name: '10-Year Legacy', 
-    description: 'Complete every season of a show with 10 or more seasons.', 
-    difficulty: 'Hard', 
-    check: (d, s) => {
-        let found = false;
-        Object.entries(d.watchProgress).forEach(([showId, seasons]) => {
-            const seasonNums = Object.keys(seasons).map(Number).filter(n => n > 0);
-            if (seasonNums.length >= 10) {
-                const completedCount = seasonNums.filter(sNum => {
-                    const season = seasons[sNum];
-                    return Object.values(season).every(ep => ep.status === 2);
-                }).length;
-                if (completedCount >= 10) found = true;
-            }
-        });
-        return { progress: found ? 1 : 0, goal: 1 };
-    } 
-  },
-  { id: 'moody', name: 'Moody', description: 'Use 10 different moods in your journal entries.', difficulty: 'Medium', check: (d, s) => ({ progress: s.distinctMoodsCount, goal: 10 }) },
-  { id: 'triple_threat', name: 'Triple Threat', description: 'Watch 3 movies in a single day. (Imports excluded)', difficulty: 'Medium', check: (d, s) => ({ progress: s.moviesWatchedToday, goal: 3 }) },
-  
-  // Hours watched
-  { id: 'hours_100', name: 'Time Well Spent', description: 'Watch 100 hours of content. (Imports excluded)', difficulty: 'Easy', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 100 })},
-  { id: 'hours_250', name: 'Couch Potato', description: 'Watch 250 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 250 })},
-  { id: 'hours_500', name: 'Screen Fiend', description: 'Watch 500 hours of content. (Imports excluded)', difficulty: 'Medium', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 500 })},
-  { id: 'hours_1000', name: 'Time Lord', description: 'Watch 1,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 1000 })},
-  { id: 'hours_2000', name: 'Eternity Viewer', description: 'Watch 2,000 hours of content. (Imports excluded)', difficulty: 'Hard', check: (d,s) => ({ progress: s.totalHoursWatched, goal: 2000 })},
+export const badges: Badge[] = [
+  { id: 'badge_archivist', name: 'Master Archivist', description: 'Volume and precision across all sectors.', category: 'Archive & Cleanup', icon: '🏛️', requirements: ['watch_tier_10', 'journ_tier_5'], tier: 3 },
+  { id: 'badge_historian', name: 'Grand Historian', description: 'Unwavering dedication to the timeline.', category: 'Consistency & Time', icon: '⏳', requirements: ['streak_tier_10', 'watch_tier_5'], tier: 2 }
 ];

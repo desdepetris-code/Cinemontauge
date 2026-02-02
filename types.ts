@@ -1,4 +1,47 @@
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  category: AchievementCategory;
+  subcategory?: string;
+  tier: 1 | 2 | 3 | 4; // I, II, III, Elite
+  visibility: 'visible' | 'hinted' | 'hidden';
+  scope: 'global' | 'media';
+  check: (data: UserData, stats: CalculatedStats) => { progress: number; goal: number };
+}
+
+export type AchievementCategory = 
+  | 'Watching' 
+  | 'Series Progress' 
+  | 'Rewatching' 
+  | 'Journaling' 
+  | 'Ratings & Mood' 
+  | 'Customization' 
+  | 'Registry Stewardship' 
+  | 'Archive & Cleanup' 
+  | 'Lists & Organization' 
+  | 'Consistency & Time' 
+  | 'Discovery' 
+  | 'Social' 
+  | 'Power User';
+
+export interface UserAchievementStatus extends Achievement {
+  unlocked: boolean;
+  progress: number;
+  goal: number;
+  unlockDate?: string;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  requirements: string[]; // Achievement IDs needed
+  category: AchievementCategory;
+  tier: 1 | 2 | 3; // Bronze, Silver, Gold aura
+}
 
 export interface DownloadedPdf {
     id: string;
@@ -27,7 +70,7 @@ export interface ShortcutSettings {
 }
 
 export interface NavSettings {
-  tabs: string[]; // Mixed ScreenName and ProfileTab
+  tabs: string[];
   position: 'bottom' | 'left' | 'right';
   hoverRevealNav: boolean;
   hoverRevealHeader: boolean;
@@ -45,11 +88,13 @@ export interface AppPreferences {
   dashShowRecommendations: boolean;
   dashShowTrending: boolean;
   dashShowWeeklyGems: boolean;
-  dashShowWeeklyPicks: boolean; // Renamed or Added
+  dashShowWeeklyPicks: boolean;
   dashShowNewSeasons: boolean;
   dashShowPlanToWatch: boolean;
   enableAnimations: boolean;
   enableSpoilerShield: boolean;
+  showBadgesOnProfile: boolean;
+  tabNavigationStyle: 'scroll' | 'dropdown'; // New preference
 }
 
 export type ScreenName = 'home' | 'search' | 'calendar' | 'progress' | 'profile' | 'allNewReleases' | 'allTrendingTV' | 'allTrendingMovies' | 'allTopRated' | 'allBingeWorthy' | 'allHiddenGems' | 'allTopComedy' | 'allWestern' | 'allSciFi' | 'allNewlyPopularEpisodes';
@@ -74,7 +119,7 @@ export interface TmdbMedia {
   name?: string;
   media_type: 'tv' | 'movie' | 'person';
   poster_path: string | null;
-  backdrop_path: string | null;
+  backdrop_path?: string | null;
   release_date?: string;
   first_air_date?: string;
   genre_ids?: number[];
@@ -119,7 +164,7 @@ export interface TmdbMediaDetails extends TmdbMedia {
   original_language?: string;
   origin_country?: string[];
   belongs_to_collection?: { id: number; name: string; poster_path: string | null; backdrop_path: string | null } | null;
-  created_by?: { id: number; name: string }[]; // Added
+  created_by?: { id: number; name: string }[]; 
 }
 
 export interface WatchProvider {
@@ -177,7 +222,7 @@ export interface Episode {
   episode_type?: string;
   crew?: CrewMember[];
   guest_stars?: CastMember[];
-  airtime?: string; // Precision timing from Trakt
+  airtime?: string; 
 }
 
 export interface TmdbImage {
@@ -193,7 +238,7 @@ export interface CastMember {
   character: string;
   profile_path: string | null;
   order: number;
-  gender?: number; // 1: Female, 2: Male
+  gender?: number; 
 }
 
 export interface CrewMember {
@@ -267,7 +312,7 @@ export interface JournalEntry {
 }
 
 export interface EpisodeProgress {
-  status: 0 | 1 | 2; // 0: unwatched, 1: watching, 2: watched
+  status: 0 | 1 | 2; 
   journal?: JournalEntry;
 }
 
@@ -286,7 +331,7 @@ export interface CustomList {
   items: CustomListItem[];
   createdAt: string;
   visibility: ListVisibility;
-  likes: string[]; // User IDs who liked this list
+  likes: string[]; 
 }
 
 export interface PublicCustomList extends CustomList {
@@ -326,7 +371,7 @@ export type CommentVisibility = 'public' | 'private' | 'followers';
 
 export interface Comment {
   id: string;
-  mediaKey: string; // e.g., 'movie-123' or 'tv-123-s1-e1'
+  mediaKey: string; 
   text: string;
   timestamp: string;
   user: {
@@ -335,7 +380,7 @@ export interface Comment {
     profilePictureUrl: string | null;
   };
   parentId: string | null;
-  likes: string[]; // User IDs
+  likes: string[]; 
   isSpoiler: boolean;
   visibility: CommentVisibility;
 }
@@ -347,7 +392,7 @@ export interface PublicUser {
 }
 
 export interface Follows {
-  [userId: string]: string[]; // User IDs that this user follows
+  [userId: string]: string[]; 
 }
 
 export interface PrivacySettings {
@@ -407,7 +452,7 @@ export interface Note {
 export interface DeletedNote extends Note {
   deletedAt: string;
   mediaTitle: string;
-  context: string; // e.g. "S1 E5" or "Show Overall"
+  context: string; 
 }
 
 export interface UserData {
@@ -442,6 +487,7 @@ export interface UserData {
   };
   timezone?: string;
   timeFormat?: '12h' | '24h';
+  blockedUserIds?: string[];
 }
 
 export interface WeeklyPick extends TrackedItem {
@@ -551,23 +597,6 @@ export interface LiveWatchMediaInfo {
   episodeTitle?: string;
 }
 
-export interface TvdbToken {
-  token: string;
-  expiry: number;
-}
-
-export interface TvdbShow {
-  id: number;
-  name: string;
-  artworks?: { type: number; image: string }[];
-  characters?: any[];
-}
-
-export interface TvdbRelatedShow {
-  id: number;
-  typeName: string;
-}
-
 export interface TraktToken {
   access_token: string;
   token_type: string;
@@ -616,26 +645,6 @@ export interface TraktCalendarMovie {
 export interface EpisodeTag {
   text: string;
   className: string;
-}
-
-export interface UserAchievementStatus {
-  id: string;
-  name: string;
-  description: string;
-  difficulty: AchievementDifficulty;
-  unlocked: boolean;
-  progress: number;
-  goal: number;
-}
-
-export type AchievementDifficulty = 'Easy' | 'Medium' | 'Hard';
-
-export interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  difficulty: AchievementDifficulty;
-  check: (data: UserData, stats: CalculatedStats) => { progress: number; goal: number };
 }
 
 export interface SeasonLogItem {
@@ -695,5 +704,28 @@ export interface MediaUpdate {
 
 export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string; gallery?: string[] }>;
 
-// Added 'missing_airtime' and 'missing_status' to ReportType to fix overlap errors in AirtimeManagement
 export type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_episodes' | 'library' | 'no_recommendations' | 'placeholder_people' | 'missing_airtime' | 'missing_status';
+
+/* Added missing TVDB interfaces */
+export interface TvdbToken {
+  token: string;
+  expiry: number;
+}
+
+export interface TvdbArtwork {
+  id: number;
+  image: string;
+  type: number;
+  language?: string;
+}
+
+export interface TvdbShow {
+  id: number;
+  name: string;
+  artworks?: TvdbArtwork[];
+}
+
+export interface TvdbRelatedShow {
+  id?: number;
+  typeName: string;
+}

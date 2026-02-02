@@ -91,7 +91,6 @@ const WatchHistory: React.FC<{
                 const watchDate = new Date(item.timestamp);
                 const month = watchDate.toLocaleString('default', { month: 'short' });
                 const day = watchDate.getDate();
-                const isLiveLog = item.startTime && item.endTime;
                 const displayTitle = item.title || (item as any).name || 'Untitled';
 
                 return (
@@ -112,7 +111,7 @@ const WatchHistory: React.FC<{
                                         <p className="text-xs font-black text-primary-accent/80 uppercase tracking-[0.1em] mt-1">S{item.seasonNumber} E{item.episodeNumber}</p>
                                     )}
                                 </div>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0"><TrashIcon className="w-6 h-6" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0" title="Move to Trash"><TrashIcon className="w-6 h-6" /></button>
                             </div>
                             <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-4 opacity-50">{formatDateTime(item.timestamp, timezone)}</p>
                             {item.note && <p className="text-xs text-text-secondary italic mt-4 p-3 bg-bg-secondary/30 rounded-xl border border-white/5">"{item.note}"</p>}
@@ -197,7 +196,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
     { id: 'ratings', label: 'Ratings', icon: StarIcon },
     { id: 'favorites', label: 'Favorites', icon: HeartIcon },
     { id: 'comments', label: 'Comments', icon: ChatBubbleOvalLeftEllipsisIcon },
-    { id: 'deleted', label: 'Trash', icon: TrashIcon },
+    { id: 'deleted', label: 'Trash Bin', icon: TrashIcon }, // Updated label for clarity
   ];
 
   return (
@@ -231,10 +230,13 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-4 px-2">
                 <div>
-                    <h2 className="text-xl font-black text-text-primary uppercase tracking-tighter">Trash Bin</h2>
-                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-60">30-day retention period active</p>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-tighter">Vault Trash</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-black text-text-secondary uppercase tracking-widest opacity-60">30-day auto-purge policy active</span>
+                        <div className="px-2 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded-md text-[8px] font-black text-primary-accent uppercase">Secured</div>
+                    </div>
                 </div>
-                <button onClick={props.onClearAllDeletedHistory} className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl shadow-lg">Purge All Data</button>
+                <button onClick={props.onClearAllDeletedHistory} className="px-6 py-2 bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl shadow-lg">Wipe Trash Registry</button>
             </div>
 
             {(!props.userData?.deletedHistory || props.userData.deletedHistory.length === 0) && (!props.userData?.deletedNotes || props.userData.deletedNotes.length === 0) ? (
@@ -250,12 +252,12 @@ const HistoryScreen: React.FC<HistoryScreenProps> = (props) => {
                                 <img src={getImageUrl(item.poster_path, 'w92')} className="w-12 h-18 object-cover rounded-xl shadow-lg border border-white/10" alt="" />
                                 <div className="min-w-0">
                                     <h3 className="font-black text-text-primary uppercase tracking-tight truncate leading-tight">{item.title || 'Untitled'}</h3>
-                                    <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest mt-2 italic">Deleted {new Date(item.deletedAt).toLocaleDateString()}</p>
+                                    <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest mt-2 italic">Scheduled Purge: {new Date(new Date(item.deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2 ml-4">
-                                <button onClick={() => props.onRestoreHistoryItem(item)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md"><ArrowPathIcon className="w-5 h-5" /></button>
-                                <button onClick={() => props.onPermanentDeleteHistoryItem(item.logId)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md"><TrashIcon className="w-5 h-5" /></button>
+                                <button onClick={() => props.onRestoreHistoryItem(item)} className="p-3 bg-primary-accent/10 text-primary-accent rounded-xl hover:bg-primary-accent hover:text-on-accent transition-all shadow-md" title="Restore log"><ArrowPathIcon className="w-5 h-5" /></button>
+                                <button onClick={() => props.onPermanentDeleteHistoryItem(item.logId)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-md" title="Purge permanently"><TrashIcon className="w-5 h-5" /></button>
                             </div>
                         </div>
                     ))}

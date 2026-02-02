@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { TmdbMedia, CustomList, CustomListItem, TrackedItem, WatchStatus } from '../types';
-import { ChevronRightIcon, XMarkIcon, CheckCircleIcon, PlusIcon, ListBulletIcon } from './Icons';
+import { ChevronRightIcon, XMarkIcon, CheckCircleIcon, PlusIcon, ListBulletIcon, BookmarkIcon } from './Icons';
 
 interface AddToListModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface AddToListModalProps {
   activeStandardStatus?: WatchStatus | null;
 }
 
-const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemToAdd, customLists, onAddToList, onCreateAndAddToList, onGoToDetails }) => {
+const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemToAdd, customLists, onAddToList, onCreateAndAddToList, onGoToDetails, onUpdateLists, activeStandardStatus }) => {
     const [view, setView] = useState<'list' | 'create'>('list');
     const [newListName, setNewListName] = useState('');
 
@@ -32,6 +33,7 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
         media_type: itemToAdd.media_type,
         poster_path: itemToAdd.poster_path,
         genre_ids: itemToAdd.genre_ids,
+        release_date: (itemToAdd as TmdbMedia).release_date || (itemToAdd as TmdbMedia).first_air_date || (itemToAdd as TrackedItem).release_date
     };
 
     const handleAdd = (listId: string) => {
@@ -53,29 +55,59 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
         resetAndClose();
     };
 
+    const handlePlanToWatch = () => {
+        if (activeStandardStatus === 'planToWatch') {
+            onUpdateLists(trackedItem, 'planToWatch', null);
+        } else {
+            onUpdateLists(trackedItem, activeStandardStatus || null, 'planToWatch');
+        }
+        resetAndClose();
+    };
+
+    const isInPlanToWatch = activeStandardStatus === 'planToWatch';
+
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[110] p-4" onClick={resetAndClose}>
-            <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-sm p-8 animate-fade-in relative border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in relative border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
                 <button onClick={resetAndClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
                     <XMarkIcon className="w-5 h-5" />
                 </button>
 
                 <div className="mb-6">
-                    <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter mb-1">Add to List</h2>
-                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate">Organize into your collections</p>
+                    <h2 className="text-2xl font-black text-text-primary uppercase tracking-tighter mb-1">Add to Collection</h2>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-60 truncate">Manage "{trackedItem.title}"</p>
                 </div>
 
                 <button
                     onClick={handleGoToDetailsClick}
-                    className="w-full flex items-center justify-between p-4 mb-6 rounded-2xl bg-bg-secondary/40 border border-white/5 hover:border-white/10 transition-all group shadow-inner"
+                    className="w-full flex items-center justify-between p-4 mb-6 rounded-2xl bg-bg-secondary/40 border border-white/5 hover:border-primary-accent/40 transition-all group shadow-inner"
                 >
-                    <span className="text-xs font-black uppercase tracking-widest text-text-primary group-hover:text-primary-accent transition-colors">Go to Details</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary group-hover:text-primary-accent transition-colors">View Details</span>
                     <ChevronRightIcon className="w-5 h-5 text-text-secondary group-hover:text-primary-accent transition-all" />
                 </button>
 
                 {view === 'list' ? (
                     <>
                         <div className="flex-grow space-y-2 mb-6 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
+                            {/* Plan to Watch - High Priority Option */}
+                            <button
+                                onClick={handlePlanToWatch}
+                                className={`w-full flex items-center justify-between p-4 mb-4 rounded-2xl border transition-all ${
+                                    isInPlanToWatch 
+                                        ? 'bg-white border-black shadow-md' 
+                                        : 'bg-primary-accent/10 border-primary-accent/30 text-text-primary hover:bg-primary-accent/20'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <BookmarkIcon className={`w-5 h-5 ${isInPlanToWatch ? 'text-black' : 'text-primary-accent'}`} />
+                                    <span className={`text-xs font-black uppercase tracking-widest ${isInPlanToWatch ? 'text-black' : 'text-primary-accent'}`}>Plan to Watch</span>
+                                </div>
+                                {isInPlanToWatch && <CheckCircleIcon className="w-5 h-5 text-black" />}
+                            </button>
+
+                            <div className="h-px w-full bg-white/5 my-4"></div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40 mb-2 ml-1">Your Custom Collections</p>
+
                             {customLists.length > 0 ? (
                                 customLists.map(list => {
                                     const isAlreadyInList = list.items.some(i => i.id === itemToAdd.id);
@@ -97,7 +129,7 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
                             ) : (
                                 <div className="text-center py-8 opacity-40">
                                     <ListBulletIcon className="w-10 h-10 mx-auto mb-2" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">No custom lists created yet.</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">No custom collections yet.</p>
                                 </div>
                             )}
                         </div>

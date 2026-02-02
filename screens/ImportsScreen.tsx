@@ -5,9 +5,8 @@ import * as tmdbService from '../services/tmdbService';
 import { HistoryItem, TrackedItem, TraktToken, UserRatings, WatchProgress, UserData } from '../types';
 import * as traktService from '../services/traktService';
 import { firebaseConfig } from '../firebaseConfig';
-import { XMarkIcon, CheckCircleIcon, CloudArrowUpIcon, InformationCircleIcon, ArrowPathIcon, ListBulletIcon } from '../components/Icons';
+import { XMarkIcon, CheckCircleIcon, CloudArrowUpIcon, InformationCircleIcon, ArrowPathIcon, ListBulletIcon, DocumentTextIcon } from '../components/Icons';
 import { confirmationService } from '../services/confirmationService';
-import * as googleDriveService from '../services/googleDriveService';
 import { getTraktToken, deleteTraktToken } from '../services/supabaseClient';
 
 const SectionHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
@@ -36,7 +35,6 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void; userId: string }>
         checkRegistry();
     }, [userId]);
 
-    // Handle OAuth Callback
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
@@ -155,7 +153,7 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void; userId: string }>
                         disabled={isLoading} 
                         className="w-full py-4 bg-bg-secondary rounded-2xl font-black uppercase text-xs tracking-widest border border-white/5 hover:brightness-125 transition-all group overflow-hidden relative"
                     >
-                        <div className="absolute inset-0 nav-spectral-bg opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                        <div className="absolute inset-0 nav-spectral-bg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <span className="relative z-10">{isLoading ? feedback : 'Run Registry Reconciliation'}</span>
                     </button>
                 </div>
@@ -175,6 +173,103 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void; userId: string }>
     );
 };
 
+const FileImporter: React.FC<{ onImport: (data: any) => void }> = ({ onImport }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const jsonInputRef = useRef<HTMLInputElement>(null);
+    const csvInputRef = useRef<HTMLInputElement>(null);
+
+    const handleJsonImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsLoading(true);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target?.result as string);
+                onImport(data);
+                confirmationService.show("JSON data imported and merged.");
+            } catch (err) {
+                alert("Invalid JSON file format.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const text = event.target?.result as string;
+            const lines = text.split('\n');
+            const history: HistoryItem[] = [];
+            const completed: TrackedItem[] = [];
+            
+            // Basic CSV parser: Title, Media Type (movie/tv), Year
+            for (let line of lines.slice(1)) {
+                if (!line.trim()) continue;
+                const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+                if (parts.length >= 2) {
+                    const title = parts[0];
+                    const mediaType = parts[1].toLowerCase().includes('tv') ? 'tv' : 'movie';
+                    
+                    // Note: This is a placeholder as CSV doesn't have IDs. 
+                    // A real implementation would need to search TMDB for each row.
+                    // For now, we flag them for future reconciliation or handle as manual logs.
+                    console.log(`CSV Row: ${title} (${mediaType})`);
+                }
+            }
+            setIsLoading(false);
+            alert("CSV importing is currently limited to logging. Full reconciliation requires ID matching.");
+        };
+        reader.readAsText(file);
+    };
+
+    return (
+        <div className="bg-card-gradient rounded-lg shadow-md p-6 mt-8 border border-white/5 space-y-6">
+            <SectionHeader title="Local File Import" subtitle="Import your data from JSON or CSV archives." />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button 
+                    onClick={() => jsonInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center p-8 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all group"
+                >
+                    <div className="p-4 bg-primary-accent/10 rounded-2xl text-primary-accent mb-4 group-hover:scale-110 transition-transform">
+                        <ListBulletIcon className="w-8 h-8" />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">JSON Import</span>
+                    <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">CineMontauge Backup</span>
+                </button>
+                <input type="file" ref={jsonInputRef} onChange={handleJsonImport} accept=".json" className="hidden" />
+
+                <button 
+                    onClick={() => csvInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center p-8 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all group"
+                >
+                    <div className="p-4 bg-primary-accent/10 rounded-2xl text-primary-accent mb-4 group-hover:scale-110 transition-transform">
+                        <DocumentTextIcon className="w-8 h-8" />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">CSV Import</span>
+                    <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">External Log (Letterboxd/IMDB)</span>
+                </button>
+                <input type="file" ref={csvInputRef} onChange={handleCsvImport} accept=".csv" className="hidden" />
+            </div>
+            
+            {isLoading && (
+                <div className="flex items-center justify-center gap-3 animate-pulse text-primary-accent">
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Processing Data...</span>
+                </div>
+            )}
+        </div>
+    );
+};
+
 interface ImportsScreenProps {
     onImportCompleted: (historyItems: HistoryItem[], completedItems: TrackedItem[]) => void;
     onTraktImportCompleted: (data: any) => void;
@@ -184,7 +279,6 @@ interface ImportsScreenProps {
 }
 
 const ImportsScreen: React.FC<ImportsScreenProps> = ({ onImportCompleted, onTraktImportCompleted, onTmdbImportCompleted, onJsonImportCompleted, userData }) => {
-  // Use current user ID for registry sync
   const currentUserId = localStorage.getItem('supabase.auth.token') ? JSON.parse(localStorage.getItem('supabase.auth.token')!).currentSession?.user?.id : 'guest';
 
   return (
@@ -197,7 +291,7 @@ const ImportsScreen: React.FC<ImportsScreenProps> = ({ onImportCompleted, onTrak
         </div>
 
       <TraktImporter onImport={onTraktImportCompleted} userId={currentUserId} />
-      {/* Other importers... */}
+      <FileImporter onImport={onJsonImportCompleted} />
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
@@ -54,7 +55,6 @@ interface ShowDetailProps {
   weeklyFavorites: WeeklyPick[];
   weeklyFavoritesHistory?: Record<string, WeeklyPick[]>;
   onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
-  onToggleWeeklyFavoriteReplacement?: (item: WeeklyPick, replacementId?: number) => void;
   onSelectShow: (id: number, media_type: 'tv' | 'movie' | 'person') => void;
   onOpenCustomListModal: (item: any) => void;
   ratings: UserRatings;
@@ -71,8 +71,6 @@ interface ShowDetailProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
-  onDeleteSearchHistoryItem: (timestamp: string) => void;
-  onClearSearchHistory: () => void;
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
@@ -116,14 +114,12 @@ const DetailedActionButton: React.FC<{
 }> = ({ icon, label, onClick, className = "", isActive }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all group relative ${className} ${isActive ? 'bg-primary-accent/20 border-primary-accent shadow-[0_0_10px_rgba(var(--color-accent-primary-rgb),0.3)]' : 'border-primary-accent/20 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-primary-accent/50'}`}
+    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all group relative ${className} ${isActive ? 'bg-primary-accent/20 border-primary-accent shadow-[0_0_12px_rgba(var(--color-accent-primary-rgb),0.3)]' : 'border-white/10 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-primary-accent/50'}`}
   >
-    <div className="relative flex items-center justify-center">
-        <div className={`transition-colors ${isActive ? 'text-primary-accent' : 'text-text-primary group-hover:text-primary-accent'}`}>
-            {icon}
-        </div>
+    <div className={`transition-colors ${isActive ? 'text-primary-accent' : 'text-text-primary group-hover:text-primary-accent'}`}>
+        {icon}
     </div>
-    <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 text-center leading-tight transition-colors ${isActive ? 'text-primary-accent' : 'text-text-secondary group-hover:text-primary-accent'}`}>{label}</span>
+    <span className={`text-[9px] font-black uppercase tracking-widest mt-2 text-center leading-tight transition-colors ${isActive ? 'text-primary-accent' : 'text-text-secondary group-hover:text-primary-accent'}`}>{label}</span>
   </button>
 );
 
@@ -216,7 +212,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     { id: 'discussion', label: 'Comment', icon: ChatBubbleLeftRightIcon },
     { id: 'recs', label: 'Recommended', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
-    { id: 'achievements', label: 'Badges', icon: BadgeIcon },
+    { id: 'achievements', label: 'Merits', icon: BadgeIcon },
   ], [mediaType]);
 
   const fetchData = useCallback(async () => {
@@ -650,7 +646,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             <div className="mt-6 space-y-4">
               <button 
                 onClick={() => setIsWatchlistModalOpen(true)}
-                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-bold text-lg bg-bg-secondary/40 border border-primary-accent/30 hover:bg-bg-secondary/60 hover:border-primary-accent/50 transition-all text-text-primary shadow-lg group"
+                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-bold text-lg bg-bg-secondary/40 border border-white/5 hover:border-primary-accent/40 transition-all text-text-primary shadow-lg group"
               >
                 <span className="uppercase tracking-widest">{getLibraryButtonText()}</span>
                 <ChevronDownIcon className="w-5 h-5 text-text-secondary" />
@@ -742,7 +738,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           <div className="flex-grow min-w-0 space-y-8">
             <header>
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                {showStatus && <span className={`px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
+                {showStatus && <span className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
                 <span className="text-text-secondary font-bold flex items-center">
                     <span className="mx-1"> • </span>
                     <span className="mx-1">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
@@ -770,16 +766,31 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             {mediaType === 'tv' && <OverallProgress details={details} watchProgress={watchProgress} />}
 
             <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 overflow-x-auto hide-scrollbar">
-              <Carousel>
-                <div className="flex space-x-8 whitespace-nowrap min-w-max">
-                    {tabs.map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-sm font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
-                        <tab.icon className="w-4 h-4" />{tab.label}
-                        {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full"></div>}
-                    </button>
-                    ))}
+              {preferences.tabNavigationStyle === 'scroll' ? (
+                <Carousel>
+                    <div className="flex space-x-8 whitespace-nowrap min-w-max">
+                        {tabs.map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
+                            <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary'}`} />{tab.label}
+                            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full shadow-[0_0_10px_var(--color-accent-primary)]"></div>}
+                        </button>
+                        ))}
+                    </div>
+                </Carousel>
+              ) : (
+                <div className="max-w-md mx-auto py-4 relative group">
+                    <select 
+                        value={activeTab}
+                        onChange={(e) => setActiveTab(e.target.value as TabType)}
+                        className="w-full appearance-none bg-bg-secondary/40 border border-primary-accent/30 rounded-2xl py-4 px-6 text-xs font-black uppercase tracking-[0.2em] text-text-primary focus:outline-none focus:border-primary-accent shadow-xl backdrop-blur-md transition-all pr-12"
+                    >
+                        {tabs.map(tab => (
+                            <option key={tab.id} value={tab.id}>{tab.label}</option>
+                        ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-accent pointer-events-none group-hover:scale-110 transition-transform" />
                 </div>
-              </Carousel>
+              )}
             </div>
 
             <div className="pt-4 min-h-[400px]">
