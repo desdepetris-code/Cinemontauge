@@ -1,4 +1,5 @@
 
+
 export interface DownloadedPdf {
     id: string;
     title: string;
@@ -694,4 +695,5 @@ export interface MediaUpdate {
 
 export type CustomImagePaths = Record<number, { poster_path?: string; backdrop_path?: string; gallery?: string[] }>;
 
-export type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_episodes' | 'library' | 'no_recommendations' | 'placeholder_people';
+// Added 'missing_airtime' and 'missing_status' to ReportType to fix overlap errors in AirtimeManagement
+export type ReportType = 'ongoing' | 'hiatus' | 'legacy' | 'integrity' | 'deep_ongoing' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_episodes' | 'library' | 'no_recommendations' | 'placeholder_people' | 'missing_airtime' | 'missing_status';

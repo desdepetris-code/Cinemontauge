@@ -7,8 +7,123 @@ interface ReportRow {
     details: string;
 }
 
+interface SummaryData {
+    totalScanned: number;
+    matchesFound: number;
+    criteria: string;
+    partNumber: number;
+}
+
 /**
- * Generates a refined show-level truth audit report for the CineMontauge registry.
+ * Generates a professional registry report with a summary section and data tables.
+ * Returns the PDF blob for storage upload.
+ */
+export const generateSummaryReportPDF = (
+    title: string, 
+    data: ReportRow[], 
+    summary: SummaryData
+): { blob: Blob; fileName: string } => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const tableWidth = pageWidth - (margin * 2);
+    
+    // Header Branding
+    doc.setFontSize(24);
+    doc.setTextColor(65, 105, 225); // Royal Blue
+    doc.setFont("helvetica", "bold");
+    doc.text("CineMontauge Engineering", margin, 25);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(150);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Registry Audit Log • ${new Date().toLocaleString()}`, margin, 32);
+    
+    // Summary Section
+    doc.setFillColor(245, 247, 255);
+    doc.roundedRect(margin, 38, tableWidth, 40, 3, 3, 'F');
+    
+    doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("AUDIT SUMMARY", margin + 5, 48);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Report Title: ${title}`, margin + 5, 56);
+    doc.text(`Target Criteria: ${summary.criteria}`, margin + 5, 62);
+    doc.text(`Total Scanned: ${summary.totalScanned}`, margin + 5, 68);
+    doc.text(`Matches Found: ${summary.matchesFound}`, margin + 5, 74);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(65, 105, 225);
+    doc.text(`PART ${summary.partNumber}`, pageWidth - margin - 20, 48, { align: 'right' });
+
+    // Table Column Definitions
+    const colNoWidth = 10;
+    const colTitleWidth = 60;
+    const colStatusWidth = 30;
+    const colDetailsWidth = tableWidth - colNoWidth - colTitleWidth - colStatusWidth;
+
+    const xNo = margin;
+    const xTitle = xNo + colNoWidth;
+    const xStatus = xTitle + colTitleWidth;
+    const xDetails = xStatus + colStatusWidth;
+
+    const drawTableHeader = (y: number) => {
+        doc.setFontSize(9);
+        doc.setTextColor(255);
+        doc.setFillColor(30, 30, 30);
+        doc.rect(margin, y - 5, tableWidth, 8, 'F');
+        doc.text("#", xNo + 2, y);
+        doc.text("Registry Item", xTitle + 2, y);
+        doc.text("Status", xStatus + 2, y);
+        doc.text("Technical Details / Findings", xDetails + 2, y);
+    };
+
+    let y = 90;
+    drawTableHeader(y);
+    y += 8;
+    
+    data.forEach((row, index) => {
+        const wrappedDetails = doc.splitTextToSize(row.details, colDetailsWidth - 4);
+        const rowHeight = Math.max(10, wrappedDetails.length * 5 + 4);
+
+        if (y + rowHeight > 280) {
+            doc.addPage();
+            y = 30;
+            drawTableHeader(y);
+            y += 8;
+        }
+
+        // Shading
+        if (index % 2 === 0) {
+            doc.setFillColor(252, 252, 252);
+            doc.rect(margin, y - 5, tableWidth, rowHeight, 'F');
+        }
+
+        doc.setFontSize(8);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "normal");
+        
+        doc.text(`${index + 1}`, xNo + 2, y);
+        doc.text(doc.splitTextToSize(row.title, colTitleWidth - 4), xTitle + 2, y);
+        doc.text(doc.splitTextToSize(row.status, colStatusWidth - 4), xStatus + 2, y);
+        doc.text(wrappedDetails, xDetails + 2, y);
+        
+        y += rowHeight;
+    });
+
+    const fileName = `CM_Report_${title.replace(/\s+/g, '_')}_P${summary.partNumber}_${Date.now()}.pdf`;
+    return {
+        blob: doc.output('blob'),
+        fileName
+    };
+};
+
+/**
+ * Legacy: Refined show-level truth audit report for the CineMontauge registry.
  */
 export const generateAirtimePDF = (title: string, data: ReportRow[], part: number = 1): void => {
     const doc = new jsPDF();
@@ -16,7 +131,6 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
     const margin = 14;
     const tableWidth = pageWidth - (margin * 2);
     
-    // Branding Header
     doc.setFontSize(22);
     doc.setTextColor(65, 105, 225); 
     doc.text("CineMontauge Registry Audit", margin, 22);
@@ -30,7 +144,6 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
     doc.setFont("helvetica", "normal");
     doc.text(`CineMontauge Admin Export • ${new Date().toLocaleString()}`, margin, 40);
     
-    // Column Definitions
     const colNoWidth = 10;
     const colTitleWidth = 75;
     const colStatusWidth = 35;
@@ -60,12 +173,9 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
 
     for (let i = 0; i < data.length; i++) {
         const row = data[i];
-        
-        // Wrap text for details column
         const wrappedDetails = doc.splitTextToSize(row.details, colDetailsWidth - 4);
         const rowHeight = Math.max(8, wrappedDetails.length * 5);
 
-        // Page break logic
         if (y + rowHeight > 280) {
             doc.addPage();
             y = 20;
@@ -75,8 +185,6 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
         }
         
         entryCount++;
-
-        // Alternate row shading for readability
         if (entryCount % 2 !== 0) {
             doc.setFillColor(245, 247, 255); 
             doc.rect(margin, y - 4, tableWidth, rowHeight, 'F');
@@ -84,25 +192,15 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
-        
-        // Row Number
         doc.text(`${entryCount}`, xNo + 2, y);
-        
-        // Title
         doc.text(row.title.substring(0, 50), xTitle + 2, y);
-        
-        // Status
         doc.setFont("helvetica", "normal");
         doc.text(row.status.substring(0, 20), xStatus + 2, y);
-        
-        // Wrapped metadata
         doc.setFontSize(8);
         doc.text(wrappedDetails, xDetails + 2, y);
-        
         y += rowHeight;
     }
     
-    // Final Footer with page numbering
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let j = 1; j <= totalPages; j++) {
         doc.setPage(j);
@@ -114,10 +212,6 @@ export const generateAirtimePDF = (title: string, data: ReportRow[], part: numbe
     doc.save(`CineMontauge_Truth_Audit_Part_${part}.pdf`);
 };
 
-/**
- * Generates a full Supabase Backend Blueprint for ChatGPT.
- * Refined with comprehensive Storage RLS policies and new recommended tables.
- */
 export const generateSupabaseSpecPDF = (): void => {
     const doc = new jsPDF();
     const margin = 14;
@@ -155,7 +249,7 @@ export const generateSupabaseSpecPDF = (): void => {
     addText("2. Social Architecture", 14, 'bold');
     addText("follows: (id uuid pk, follower_id uuid fk, following_id uuid fk)");
     addText("comments: (id uuid pk, user_id uuid fk, media_key text, content text, parent_id uuid fk, visibility text, is_spoiler bool)");
-    addText("interactions: (id uuid pk, user_id uuid fk, target_id uuid, target_type text, type text)"); // Likes, Bookmarks
+    addText("interactions: (id uuid pk, user_id uuid fk, target_id uuid, target_type text, type text)");
     addText("user_blocking: (id uuid pk, blocker_id uuid fk, blocked_id uuid fk)");
     addText("activity_stream: (id uuid pk, user_id uuid fk, event_type text, metadata jsonb, created_at timestamptz)");
     y += 5;
@@ -166,9 +260,9 @@ export const generateSupabaseSpecPDF = (): void => {
     y += 5;
 
     addText("4. Storage RLS Policies (Critical)", 14, 'bold');
-    addText("BUCKETS: avatars, custom-media, brand-assets", 11, 'bold');
+    addText("BUCKETS: avatars, custom-media, brand-assets, admin-reports", 11, 'bold');
     addText("- Public Read: ALLOW SELECT to PUBLIC on all buckets.");
-    addText("- Secure Write: ALLOW ALL to AUTHENTICATED where (storage.foldername(name))[1] = auth.uid()::text.");
+    addText("- Admin Write: ALLOW ALL to AUTHENTICATED where is_admin = true.");
     y += 5;
 
     addText("5. Performance Triggers (PostgreSQL)", 14, 'bold');

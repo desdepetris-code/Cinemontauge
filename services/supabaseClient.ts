@@ -33,6 +33,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
+ * ADMIN HELPERS
+ */
+
+export const uploadAdminReport = async (fileName: string, pdfBlob: Blob) => {
+    const { data, error } = await supabase.storage
+        .from('admin-reports')
+        .upload(`reports/${fileName}`, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: true
+        });
+    if (error) throw error;
+    return data;
+};
+
+/**
  * TRAKT REGISTRY HELPERS
  */
 
@@ -57,7 +72,6 @@ export const getTraktToken = async (userId: string) => {
     return data;
 };
 
-// Fix: Updated to also clear the local token cache used by Trakt precision functions.
 export const deleteTraktToken = async (userId: string) => {
     const { error } = await supabase.from('trakt_tokens').delete().eq('user_id', userId);
     if (error) throw error;
@@ -207,7 +221,6 @@ export const uploadCustomMedia = async (
     }
 };
 
-// Fix: Added missing export for deleteCustomMedia used in MainApp.
 export const deleteCustomMedia = async (userId: string, mediaId: number, url: string) => {
     try {
         const storagePath = url.split('/custom-media/')[1];
@@ -223,7 +236,6 @@ export const deleteCustomMedia = async (userId: string, mediaId: number, url: st
     }
 };
 
-// Fix: Added missing export for syncUserNote used in MainApp.
 export const syncUserNote = async (userId: string, mediaId: number, notes: any[]) => {
     try {
         await supabase.from('media_notes').upsert({

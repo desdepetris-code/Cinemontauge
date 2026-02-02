@@ -1,15 +1,15 @@
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
-import { generateAirtimePDF, generateSupabaseSpecPDF } from '../utils/pdfExportUtils';
+import { generateAirtimePDF, generateSupabaseSpecPDF, generateSummaryReportPDF } from '../utils/pdfExportUtils';
 import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
 import * as pushNotificationService from '../services/pushNotificationService';
 import BroadcastModal from '../components/BroadcastModal';
-import { supabase } from '../services/supabaseClient';
+import { supabase, uploadAdminReport } from '../services/supabaseClient';
 import Logo from '../components/Logo';
 
 interface AirtimeManagementProps {
@@ -19,14 +19,6 @@ interface AirtimeManagementProps {
 
 const MASTER_PIN = "999236855421340";
 const DEFAULT_MATCH_LIMIT = 100;
-const TEST_PROFILE_ID = '9957fe71-75df-4233-a549-05ecbef52766';
-
-interface ReportOffset {
-    page: number;
-    index: number;
-    part: number;
-    mediaType: 'tv' | 'movie';
-}
 
 /**
  * Owner portal for registry truth database auditing and system management.
@@ -43,22 +35,15 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     // Brand Asset Capture
     const logoRef = useRef<SVGSVGElement>(null);
 
-    // Connection Test State
-    const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [testResult, setTestResult] = useState<any>(null);
-
-    const [reportOffsets, setReportOffsets] = useLocalStorage<Record<string, ReportOffset>>('cinemontauge_report_offsets', {
+    const [reportOffsets, setReportOffsets] = useLocalStorage<Record<string, any>>('cinemontauge_report_offsets', {
         ongoing: { page: 1, index: 0, part: 1, mediaType: 'tv' },
         hiatus: { page: 1, index: 0, part: 1, mediaType: 'tv' },
-        legacy: { page: 1, index: 0, part: 1, mediaType: 'tv' },
-        integrity: { page: 1, index: 0, part: 1, mediaType: 'tv' },
-        deep_ongoing: { page: 1, index: 0, part: 1, mediaType: 'tv' },
         placeholder_tv: { page: 1, index: 0, part: 1, mediaType: 'tv' },
         placeholder_movies: { page: 1, index: 0, part: 1, mediaType: 'movie' },
-        placeholder_episodes: { page: 1, index: 0, part: 1, mediaType: 'tv' },
-        library: { page: 1, index: 0, part: 1, mediaType: 'tv' },
+        placeholder_people: { page: 1, index: 0, part: 1, mediaType: 'tv' },
         no_recommendations: { page: 1, index: 0, part: 1, mediaType: 'tv' },
-        placeholder_people: { page: 1, index: 0, part: 1, mediaType: 'tv' }
+        missing_airtime: { page: 1, index: 0, part: 1, mediaType: 'tv' },
+        missing_status: { page: 1, index: 0, part: 1, mediaType: 'tv' }
     });
 
     const deviceCount = useMemo(() => {
@@ -67,192 +52,120 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         return globalRegistry.length;
     }, []);
 
-    const handleDownloadLogo = () => {
-        if (!logoRef.current) {
-            console.error("Logo ref is missing");
-            return;
-        }
-        
-        try {
-            const svg = logoRef.current;
-            const svgData = new XMLSerializer().serializeToString(svg);
-            const canvas = document.createElement("canvas");
-            
-            const exportSize = 1000;
-            canvas.width = exportSize;
-            canvas.height = exportSize;
-            
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return;
-
-            ctx.fillStyle = "black";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const img = new Image();
-            const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-            const url = URL.createObjectURL(svgBlob);
-
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0, exportSize, exportSize);
-                const jpgUrl = canvas.toDataURL("image/jpeg", 0.95);
-                
-                const downloadLink = document.createElement('a');
-                downloadLink.href = jpgUrl;
-                downloadLink.download = 'cinemontauge-brand-asset.jpg';
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-                
-                URL.revokeObjectURL(url);
-                confirmationService.show("Logo exported as 1000px JPEG.");
-            };
-            img.src = url;
-        } catch (error) {
-            console.error("Failed to download logo:", error);
-            alert("JPEG Export failed. Your browser might be restricting canvas operations.");
-        }
-    };
-
-    const handleGlobalBroadcast = async (title: string, message: string) => {
-        confirmationService.show("Preparing global broadcast...");
-        
-        try {
-            const permission = await pushNotificationService.requestNotificationPermission();
-            if (permission === 'granted') {
-                await pushNotificationService.triggerLocalNotification(title, message);
-            }
-
-            const usersJson = localStorage.getItem('cinemontauge_users');
-            const allUsers = usersJson ? JSON.parse(usersJson) : [];
-            
-            allUsers.forEach((user: any) => {
-                const userNotifKey = `notifications_${user.id}`;
-                const userNotifsStr = localStorage.getItem(userNotifKey);
-                const userNotifs = userNotifsStr ? JSON.parse(userNotifsStr) : [];
-                
-                const newNotif: AppNotification = {
-                    id: `broadcast-${Date.now()}-${user.id}`,
-                    type: 'app_update',
-                    title: title,
-                    description: message,
-                    timestamp: new Date().toISOString(),
-                    read: false
-                };
-                localStorage.setItem(userNotifKey, JSON.stringify([newNotif, ...userNotifs].slice(0, 50)));
-            });
-
-            confirmationService.show(`Broadcast successfully delivered to ${allUsers.length + 1} users.`);
-            setIsBroadcastModalOpen(false);
-        } catch (e) {
-            console.error(e);
-            alert("Broadcast dispatch failed.");
-        }
-    };
-
     const runAuditReport = async (type: ReportType, label: string) => {
         setIsGenerating(type);
         setScanProgress({ current: 0, total: 0, matches: 0 });
         const rows: { title: string; status: string; details: string }[] = [];
-        const offset = reportOffsets[type];
+        const offset = reportOffsets[type] || { page: 1, index: 0, part: 1, mediaType: 'tv' };
         
-        const seenPeopleIds = new Set<number>();
+        let totalScanned = 0;
+        let matchesFound = 0;
         
         try {
             let currentPage = offset.page;
-            let currentMatches = 0;
-
-            while (currentMatches < DEFAULT_MATCH_LIMIT && currentPage < offset.page + 10) {
+            while (matchesFound < DEFAULT_MATCH_LIMIT && currentPage < offset.page + 5) {
                 const data = await discoverMediaPaginated(offset.mediaType, { page: currentPage, sortBy: 'popularity.desc' });
                 if (!data || data.results.length === 0) break;
 
                 for (let i = (currentPage === offset.page ? offset.index : 0); i < data.results.length; i++) {
                     const item = data.results[i];
-                    setScanProgress(prev => ({ ...prev, current: i, total: data.results.length, matches: currentMatches }));
+                    totalScanned++;
+                    setScanProgress({ current: totalScanned, total: 500, matches: matchesFound });
                     
-                    if (type === 'ongoing') {
-                        const hasTruth = !!AIRTIME_OVERRIDES[item.id];
-                        if (!hasTruth) {
-                            rows.push({
-                                title: item.title || item.name || 'Unknown',
-                                status: item.media_type.toUpperCase(),
-                                details: `TMDB ID: ${item.id} • Popularity: ${Math.round(item.popularity || 0)}`
-                            });
-                            currentMatches++;
+                    let isMatch = false;
+                    let findings = "";
+                    let itemStatus = "";
+
+                    if (type === 'placeholder_tv' || type === 'placeholder_movies') {
+                        if (!item.poster_path || !item.backdrop_path) {
+                            isMatch = true;
+                            itemStatus = "Missing Media";
+                            findings = `Missing: ${!item.poster_path ? '[POSTER]' : ''} ${!item.backdrop_path ? '[BACKDROP]' : ''}`;
+                        }
+                    } else if (type === 'missing_airtime') {
+                        const details = await getMediaDetails(item.id, 'tv');
+                        if (details.status === 'Returning Series' && !details.next_episode_to_air) {
+                            isMatch = true;
+                            itemStatus = "TBA Airtime";
+                            findings = "Show is returning but has no scheduled airtime in registry.";
+                        }
+                    } else if (type === 'missing_status') {
+                        const details = await getMediaDetails(item.id, 'tv');
+                        if (!details.status || details.status === 'Unknown') {
+                            isMatch = true;
+                            itemStatus = "Invalid Status";
+                            findings = "Registry status is missing or undefined.";
                         }
                     } else if (type === 'no_recommendations') {
-                        // Look for items that have aired recently (last 30 days) and check recommendations
-                        const releaseDate = new Date(item.release_date || item.first_air_date || 0);
-                        const tenDaysAgo = new Date();
-                        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-                        
-                        // Check if it aired at least 1 day ago but not more than 30
-                        if (releaseDate < new Date() && releaseDate > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) {
-                            // Fix: Cast item.media_type to 'tv' | 'movie' to match getMediaDetails signature
-                            const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
-                            if (!details.recommendations?.results || details.recommendations.results.length === 0) {
-                                rows.push({
-                                    title: details.title || details.name || 'Unknown',
-                                    status: details.media_type.toUpperCase(),
-                                    details: `Aired: ${releaseDate.toLocaleDateString()} • ID: ${details.id} • Recommendations Tab is empty.`
-                                });
-                                currentMatches++;
-                            }
+                        const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
+                        if (!details.recommendations?.results || details.recommendations.results.length === 0) {
+                            isMatch = true;
+                            itemStatus = "Rec Gap";
+                            findings = "No similar titles found in registry for this item.";
                         }
                     } else if (type === 'placeholder_people') {
-                        // Scan media and their credits for people without images
-                        // Fix: Cast item.media_type to 'tv' | 'movie' to match getMediaDetails signature
-                        const details = await getMediaDetails(item.id, item.media_type as 'tv' | 'movie');
-                        if (details.credits?.cast) {
-                            for (const person of details.credits.cast) {
-                                if (!person.profile_path && !seenPeopleIds.has(person.id)) {
-                                    seenPeopleIds.add(person.id);
-                                    rows.push({
-                                        title: person.name,
-                                        status: `Person (ID: ${person.id})`,
-                                        details: `Character: ${person.character} • On Show/Movie: ${details.title || details.name}`
-                                    });
-                                    currentMatches++;
-                                }
-                                if (currentMatches >= DEFAULT_MATCH_LIMIT) break;
-                            }
+                        const details = await getMediaDetails(item.id, 'tv');
+                        const placeholders = details.credits?.cast?.filter(c => !c.profile_path).slice(0, 3);
+                        if (placeholders && placeholders.length > 0) {
+                            isMatch = true;
+                            itemStatus = "Person Placeholders";
+                            findings = `Cast missing images: ${placeholders.map(p => p.name).join(', ')}`;
                         }
                     }
 
-                    if (currentMatches >= DEFAULT_MATCH_LIMIT) {
+                    if (isMatch) {
+                        rows.push({
+                            title: item.title || item.name || 'Unknown',
+                            status: itemStatus,
+                            details: `TMDB ID: ${item.id} • ${findings}`
+                        });
+                        matchesFound++;
+                    }
+
+                    if (matchesFound >= DEFAULT_MATCH_LIMIT) {
                         setReportOffsets(prev => ({
                             ...prev,
                             [type]: { ...prev[type], page: currentPage, index: i + 1 }
                         }));
                         break;
                     }
+                    if (totalScanned % 5 === 0) await new Promise(r => setTimeout(r, 50)); // Prevent lockout
                 }
-                if (currentMatches >= DEFAULT_MATCH_LIMIT) break;
+                if (matchesFound >= DEFAULT_MATCH_LIMIT) break;
                 currentPage++;
-                // Artificial delay to prevent TMDB rate limiting during heavy scans
-                await new Promise(r => setTimeout(r, 200));
             }
 
             if (rows.length > 0) {
-                generateAirtimePDF(label, rows, offset.part);
+                const { blob, fileName } = generateSummaryReportPDF(label, rows, {
+                    totalScanned,
+                    matchesFound,
+                    criteria: label,
+                    partNumber: offset.part
+                });
+                
+                // Upload to Supabase
+                await uploadAdminReport(fileName, blob);
+                
+                // Save locally for UI
                 setDownloadedPdfs(prev => [{
                     id: `rep-${Date.now()}`,
                     title: label,
                     timestamp: new Date().toISOString(),
                     part: offset.part,
-                    rows
+                    rows: [] // Don't store huge rows in localStorage
                 }, ...prev]);
 
                 setReportOffsets(prev => ({
                     ...prev,
-                    [type]: { ...prev[type], part: prev[type].part + 1 }
+                    [type]: { ...prev[type], part: (prev[type]?.part || 1) + 1 }
                 }));
-                confirmationService.show(`${label} Generated!`);
+                confirmationService.show(`Registry Audit "${label}" Uploaded to Supabase.`);
             } else {
-                confirmationService.show(`No ${label} matches found in this scan batch.`);
+                confirmationService.show(`Registry is healthy for criteria: ${label}`);
             }
         } catch (e) {
             console.error(e);
-            alert("Report generation failed.");
+            alert("Report pipeline failed.");
         } finally {
             setIsGenerating(null);
         }
@@ -293,72 +206,75 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     </button>
                     <div>
                         <h1 className="text-4xl font-black text-text-primary uppercase tracking-tighter">Owner Portal</h1>
-                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-1 opacity-60">Registry Management & Overrides</p>
+                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-1 opacity-60">System Registry Maintenance</p>
                     </div>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-8 lg:col-span-2">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
-                            <ArchiveBoxIcon className="w-6 h-6 text-primary-accent" />
-                            Truth Audit Pipeline
-                        </h2>
-                    </div>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                        <ArchiveBoxIcon className="w-6 h-6 text-primary-accent" />
+                        Automated Data Audits
+                    </h2>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                          <button 
                             disabled={!!isGenerating}
-                            onClick={() => runAuditReport('ongoing', 'Missing Truth (Ongoing)')}
+                            onClick={() => runAuditReport('placeholder_tv', 'TV Image Placeholders')}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
-                            <div className="flex items-center justify-between w-full mb-4">
-                                <div className={`p-3 rounded-2xl ${isGenerating === 'ongoing' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-amber-400'}`}>
-                                    {isGenerating === 'ongoing' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <ClockIcon className="w-5 h-5" />}
-                                </div>
-                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.ongoing.part}</span>
-                            </div>
-                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Ongoing Audit</span>
+                            <PhotoIcon className="w-6 h-6 text-rose-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Placeholder Audit</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">TV & Movies</span>
                          </button>
 
                          <button 
                             disabled={!!isGenerating}
-                            onClick={() => runAuditReport('no_recommendations', 'Movies and show detail pages without recommendations on the tab')}
+                            onClick={() => runAuditReport('missing_airtime', 'Airdates Gap Analysis')}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
-                            <div className="flex items-center justify-between w-full mb-4">
-                                <div className={`p-3 rounded-2xl ${isGenerating === 'no_recommendations' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-sky-400'}`}>
-                                    {isGenerating === 'no_recommendations' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <SparklesIcon className="w-5 h-5" />}
-                                </div>
-                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.no_recommendations.part}</span>
-                            </div>
-                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Missing Recommendations</span>
+                            <ClockIcon className="w-6 h-6 text-amber-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Airtime Gaps</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Returning Series</span>
                          </button>
 
                          <button 
                             disabled={!!isGenerating}
-                            onClick={() => runAuditReport('placeholder_people', 'Missing Cast and Crew Images')}
+                            onClick={() => runAuditReport('missing_status', 'Status Integrity Check')}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
-                            <div className="flex items-center justify-between w-full mb-4">
-                                <div className={`p-3 rounded-2xl ${isGenerating === 'placeholder_people' ? 'bg-primary-accent text-on-accent' : 'bg-bg-primary text-rose-400'}`}>
-                                    {isGenerating === 'placeholder_people' ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <UsersIcon className="w-5 h-5" />}
-                                </div>
-                                <span className="text-[10px] font-black text-text-secondary opacity-40 uppercase tracking-widest">Part {reportOffsets.placeholder_people.part}</span>
-                            </div>
-                            <span className="text-sm font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent transition-colors">Person Image Audit</span>
+                            <PlayPauseIcon className="w-6 h-6 text-sky-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Status Failures</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Registry Core</span>
+                         </button>
+
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={() => runAuditReport('placeholder_people', 'Person Meta Audit')}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <UsersIcon className="w-6 h-6 text-teal-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Person Images</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Cast & Crew</span>
+                         </button>
+
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={() => runAuditReport('no_recommendations', 'Recommendation Gaps')}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <SparklesIcon className="w-6 h-6 text-purple-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Recommendation Gap</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Discovery Feed</span>
                          </button>
                     </div>
-                    
+
                     {isGenerating && (
-                        <div className="bg-bg-primary/60 rounded-2xl p-6 border border-primary-accent/20 animate-fade-in shadow-inner">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">Pipeline Scanning...</span>
-                                <span className="text-[10px] font-black text-text-secondary">{scanProgress.matches} matches</span>
-                            </div>
-                            <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden shadow-inner">
-                                <div className="bg-accent-gradient h-full rounded-full transition-all duration-300" style={{ width: `${(scanProgress.current / (scanProgress.total || 1)) * 100}%` }}></div>
+                        <div className="p-6 bg-bg-primary/60 rounded-2xl border border-primary-accent/20 animate-fade-in">
+                            <p className="text-[10px] font-black uppercase text-primary-accent mb-3">Pipeline scanning registry...</p>
+                            <div className="w-full bg-bg-secondary rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-accent-gradient h-full transition-all duration-300" style={{ width: `${(scanProgress.current / 500) * 100}%` }}></div>
                             </div>
                         </div>
                     )}
@@ -367,56 +283,18 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 <div className="space-y-8">
                     <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
                         <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
-                            <SparklesIcon className="w-6 h-6 text-primary-accent" />
-                            Brand Identity
+                            <InformationCircleIcon className="w-6 h-6 text-primary-accent" />
+                            System Blueprint
                         </h2>
-                        <div className="bg-black/60 rounded-2xl p-6 border border-white/5 flex flex-col items-center">
-                            <Logo className="w-32 h-32 mb-6" />
-                            <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest text-center mb-6 leading-relaxed">
-                                High-res JPEG capture for Google OAuth<br/>Consent & Social Profiles.
-                            </p>
-                            <button 
-                                onClick={handleDownloadLogo}
-                                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-primary-accent/10 border border-primary-accent/20 text-primary-accent font-black uppercase tracking-widest text-[10px] hover:bg-primary-accent hover:text-on-accent transition-all shadow-lg active:scale-95"
-                            >
-                                <DownloadIcon className="w-4 h-4" />
-                                Download 1000px JPEG
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-8">
-                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
-                            <BoltIcon className="w-6 h-6 text-yellow-500" />
-                            Live Hub
-                        </h2>
-                        <div className="grid grid-cols-1 gap-3">
-                            <button 
-                                onClick={() => setIsBroadcastModalOpen(true)}
-                                className="w-full flex items-center gap-4 p-4 bg-bg-secondary/40 rounded-2xl border border-white/5 hover:bg-bg-secondary transition-all group"
-                            >
-                                <div className="p-3 bg-red-500/10 rounded-xl text-red-500 group-hover:bg-red-500 group-hover:text-on-accent transition-all">
-                                    <MegaphoneIcon className="w-5 h-5" />
-                                </div>
-                                <div className="text-left">
-                                    <span className="text-xs font-black uppercase tracking-widest text-text-primary block">Global Broadcast</span>
-                                    <span className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40">Targeting {deviceCount} Devices</span>
-                                </div>
-                            </button>
-                        </div>
+                        <button 
+                            onClick={generateSupabaseSpecPDF}
+                            className="w-full flex items-center justify-center gap-4 py-5 bg-bg-secondary/40 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-text-primary hover:bg-bg-secondary transition-all"
+                        >
+                            <DownloadIcon className="w-5 h-5 text-primary-accent" />
+                            Export Technical Spec
+                        </button>
                     </div>
                 </div>
-            </div>
-
-            <BroadcastModal 
-                isOpen={isBroadcastModalOpen}
-                onClose={() => setIsBroadcastModalOpen(false)}
-                onSend={handleGlobalBroadcast}
-                deviceCount={deviceCount}
-            />
-            
-            <div className="fixed -left-[4000px] top-0 pointer-events-none opacity-0">
-                <Logo ref={logoRef} className="w-[1000px] h-[1000px]" />
             </div>
         </div>
     );
