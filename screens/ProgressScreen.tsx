@@ -323,14 +323,18 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         }
 
         const sortFunction = (a: EnrichedMediaData, b: EnrichedMediaData): number => {
+            // FIX: Ensure media_type access is consistent across union members.
+            const aType = (a as TrackedItem).media_type;
+            const bType = (b as TrackedItem).media_type;
+
             switch (sortOption) {
                 case 'leastEpisodesLeft':
-                    const remainingA = a.media_type === 'tv' ? (a as EnrichedShowData).totalEpisodes - (a as EnrichedShowData).watchedCount : 1;
-                    const remainingB = b.media_type === 'tv' ? (b as EnrichedShowData).totalEpisodes - (b as EnrichedShowData).watchedCount : 1;
+                    const remainingA = aType === 'tv' ? (a as EnrichedShowData).totalEpisodes - (a as EnrichedShowData).watchedCount : 1;
+                    const remainingB = bType === 'tv' ? (b as EnrichedShowData).totalEpisodes - (b as EnrichedShowData).watchedCount : 1;
                     return remainingA - remainingB;
                 case 'mostEpisodesLeft':
-                    const remainingA2 = a.media_type === 'tv' ? (a as EnrichedShowData).totalEpisodes - (a as EnrichedShowData).watchedCount : 1;
-                    const remainingB2 = b.media_type === 'tv' ? (b as EnrichedShowData).totalEpisodes - (b as EnrichedShowData).watchedCount : 1;
+                    const remainingA2 = aType === 'tv' ? (a as EnrichedShowData).totalEpisodes - (a as EnrichedShowData).watchedCount : 1;
+                    const remainingB2 = bType === 'tv' ? (b as EnrichedShowData).totalEpisodes - (b as EnrichedShowData).watchedCount : 1;
                     return remainingB2 - remainingA2;
                 case 'staleFirst':
                     const timeA = a.lastWatchedTimestamp === 0 ? Infinity : a.lastWatchedTimestamp;
@@ -339,8 +343,8 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                 case 'popularity':
                     return (b.popularity || 0) - (a.popularity || 0);
                 case 'recentlyAired':
-                    const airA = a.media_type === 'tv' ? new Date((a as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
-                    const airB = b.media_type === 'tv' ? new Date((b as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
+                    const airA = aType === 'tv' ? new Date((a as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
+                    const airB = bType === 'tv' ? new Date((b as EnrichedShowData).nextEpisodeInfo?.air_date || 0).getTime() : 0;
                     return airB - airA;
                 case 'lastWatched':
                 default:
@@ -455,10 +459,10 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                             if (typeFilter === 'episode' && item.media_type === 'tv') {
                                 const show = item as EnrichedShowData;
                                 return (
-                                    <div key={item.id} className="animate-slide-in-up">
+                                    <div key={show.id} className="animate-slide-in-up">
                                         <EpisodeProgressCard 
                                             show={show} 
-                                            onSelect={() => props.onSelectShow(item.id, 'tv')}
+                                            onSelect={() => props.onSelectShow(show.id, 'tv')}
                                             onToggleWatched={(e) => {
                                                 e.stopPropagation();
                                                 if (show.nextEpisodeInfo) {
@@ -472,11 +476,12 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                             }
 
                             if (typeFilter === 'season' && item.media_type === 'tv') {
+                                const show = item as EnrichedShowData;
                                 return (
-                                    <div key={item.id} className="animate-slide-in-up">
+                                    <div key={show.id} className="animate-slide-in-up">
                                         <SeasonProgressCard 
-                                            show={item as EnrichedShowData} 
-                                            onSelect={() => props.onSelectShow(item.id, 'tv')}
+                                            show={show} 
+                                            onSelect={() => props.onSelectShow(show.id, 'tv')}
                                         />
                                     </div>
                                 );

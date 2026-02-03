@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
-import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType } from '../types';
+import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification } from '../types';
 import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
@@ -14,6 +13,7 @@ import EpisodeDetailModal from '../components/EpisodeDetailModal';
 import OverallProgress from '../components/OverallProgress';
 import ScoreStar from '../components/ScoreStar';
 import { getShowStatus } from '../utils/statusUtils';
+import { getRecentEpisodeCount, isNewRelease, formatTimeFromDate } from '../utils/formatUtils';
 import CastAndCrew from '../components/CastAndCrew';
 import MoreInfo from '../components/MoreInfo';
 import WhereToWatch from '../components/WhereToWatch';
@@ -76,6 +76,7 @@ interface ShowDetailProps {
   comments: Comment[];
   genres: Record<number, string>;
   onMarkAllWatched: (showId: number, showInfo: TrackedItem) => void;
+  onAddNotifications: (notifs: AppNotification[]) => void;
   onUnmarkAllWatched: (showId: number) => void;
   onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, notes: Note[]) => void;
   showRatings: boolean;
@@ -212,7 +213,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     { id: 'discussion', label: 'Comment', icon: ChatBubbleLeftRightIcon },
     { id: 'recs', label: 'Recommended', icon: SparklesIcon },
     { id: 'customize', label: 'Customize', icon: PhotoIcon },
-    { id: 'achievements', label: 'Merits', icon: BadgeIcon },
+    { id: 'achievements', label: 'Achievements', icon: BadgeIcon },
   ], [mediaType]);
 
   const fetchData = useCallback(async () => {
@@ -530,6 +531,17 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       }
   };
 
+  /* // FIX: Corrected handleThreadChange to call setActiveCommentThread instead of undefined setActiveThread */
+  const handleThreadChange = (key: string) => {
+    if (key.startsWith('s')) {
+        const seasonNum = parseInt(key.replace('s', ''));
+        if (!seasonDetailsMap[seasonNum]) {
+            handleToggleSeason(seasonNum);
+        }
+    }
+    setActiveCommentThread(key === `s${details?.last_episode_to_air?.season_number}` ? `tv-${details?.id}-s${details?.last_episode_to_air?.season_number}-e${details?.last_episode_to_air?.episode_number}` : key);
+  }
+
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -646,9 +658,9 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             <div className="mt-6 space-y-4">
               <button 
                 onClick={() => setIsWatchlistModalOpen(true)}
-                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-bold text-lg bg-bg-secondary/40 border border-white/5 hover:border-primary-accent/40 transition-all text-text-primary shadow-lg group"
+                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-black text-lg bg-bg-secondary/40 border border-white/5 hover:border-primary-accent/40 transition-all text-text-primary shadow-lg group uppercase tracking-tighter"
               >
-                <span className="uppercase tracking-widest">{getLibraryButtonText()}</span>
+                <span>{getLibraryButtonText()}</span>
                 <ChevronDownIcon className="w-5 h-5 text-text-secondary" />
               </button>
               
@@ -656,13 +668,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 {mediaType === 'tv' ? (
                   <>
                     <DetailedActionButton 
-                        label="Mark all watched"
+                        label="Capture all"
                         isActive={isAllWatched}
                         icon={<CheckCircleIcon className="w-6 h-6" />} 
                         onClick={() => onMarkAllWatched(id, details as any)} 
                     />
                     <DetailedActionButton 
-                        label="Unmark all watched"
+                        label="Purge all"
                         icon={<XMarkIcon className="w-6 h-6" />} 
                         onClick={() => onUnmarkAllWatched(id)} 
                     />
@@ -670,13 +682,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 ) : (
                   <>
                     <DetailedActionButton 
-                        label="Mark watched"
+                        label="Capture"
                         isActive={currentStatus === 'completed'}
                         icon={<CheckCircleIcon className="w-6 h-6" />} 
                         onClick={() => props.onMarkMediaAsWatched(details)} 
                     />
                     <DetailedActionButton 
-                        label="Mark unwatched"
+                        label="Purge"
                         icon={<XMarkIcon className="w-6 h-6" />} 
                         onClick={handleUnmarkMovie} 
                     />
@@ -691,8 +703,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 ) : (
                   <DetailedActionButton 
-                      label="Weekly Pick" 
-                      icon={<SparklesIcon className="w-6 h-6" />} 
+                      label="Nominate" 
+                      icon={<TrophyIcon className="w-6 h-6" />} 
                       isActive={isWeeklyFavorite}
                       onClick={() => setIsNominationModalOpen(true)} 
                   />
@@ -715,11 +727,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   <>
                     <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
-                    <DetailedActionButton label="Log a Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
+                    <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                   </>
                 ) : (
                   <>
-                    <DetailedActionButton label="Log a Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
+                    <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                     <DetailedActionButton label="Live Watch" icon={<PlayCircleIcon className="w-6 h-6" />} onClick={handleStartLiveWatch} />
                     <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
@@ -729,7 +741,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
                 {mediaType === 'tv' && (
-                    <DetailedActionButton label="Request Airtime" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
+                    <DetailedActionButton label="Request Air" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
                 )}
               </div>
             </div>
@@ -741,9 +753,9 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 {showStatus && <span className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
                 <span className="text-text-secondary font-bold flex items-center">
                     <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
+                    <span className="mx-1 metadata-caption">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
                     <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4)}</span>
+                    <span className="mx-1 metadata-caption">{(details.release_date || details.first_air_date)?.substring(0, 4)}</span>
                 </span>
                 {mediaType === 'tv' && (
                   <button onClick={() => setIsDescriptionModalOpen(true)} className="ml-auto group flex items-center space-x-2 text-primary-accent hover:text-primary-accent/80 transition-colors bg-primary-accent/10 px-4 py-1.5 rounded-full border border-primary-accent/20">
@@ -752,7 +764,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   </button>
                 )}
               </div>
-              <h1 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter mb-4">{details.title || details.name}</h1>
+              <h1 className="text-5xl md:text-7xl font-black text-text-primary tracking-tighter mb-4 leading-none">{details.title || details.name}</h1>
               <p className="text-lg text-text-secondary leading-relaxed max-w-3xl italic line-clamp-2">"{details.tagline || details.overview}"</p>
             </header>
 
@@ -841,6 +853,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
+                  /* // FIX: Passed setActiveCommentThread instead of undefined setActiveThread to fix build error */
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />

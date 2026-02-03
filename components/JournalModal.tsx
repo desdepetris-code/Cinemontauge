@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { JournalEntry, TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress } from '../types';
+import { JournalEntry, TmdbMediaDetails, Episode, WatchProgress } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
 import { XMarkIcon } from './Icons';
 
@@ -12,7 +13,6 @@ interface JournalModalProps {
   initialEpisode?: Episode;
   watchProgress: WatchProgress;
 }
-
 
 const moods = ['😊', '😂', '😍', '😢', '🤯', '🤔', '😠', '😴', '🥳', '😡', '🤮', '💔'];
 
@@ -31,7 +31,6 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, onSave, me
             setSelectedSeason(seasonNum);
             setSelectedEpisode(initialEpisode?.episode_number ?? 1);
         } else {
-            // Movie
             const entry = watchProgress[mediaDetails?.id || 0]?.[0]?.[0]?.journal;
             setText(entry?.text || '');
             setMood(entry?.mood || '');
@@ -62,7 +61,6 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, onSave, me
     }
   }, [mediaDetails, selectedSeason, selectedEpisode, watchProgress]);
 
-
   if (!isOpen || !mediaDetails) return null;
 
   const handleSave = () => {
@@ -80,27 +78,27 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, onSave, me
   const currentEpisode = episodesForSeason.find(e => e.episode_number === selectedEpisode);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[200] p-4" onClick={onClose}>
-      <div className="bg-bg-primary rounded-lg shadow-xl w-full max-w-lg p-6 animate-fade-in relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[200] p-4" onClick={onClose}>
+      <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-10 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
             <XMarkIcon className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-text-primary mb-2">My Journal</h2>
-        <p className="text-text-secondary mb-1">{mediaDetails.name}</p>
+        <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-1">Journal Reflection</h2>
+        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.3em] mb-8 opacity-60 truncate">{mediaDetails.name}</p>
         
         {mediaDetails.media_type === 'tv' && (
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="grid grid-cols-2 gap-2 mb-6">
               <select 
                   value={selectedSeason} 
                   onChange={e => setSelectedSeason(Number(e.target.value))}
-                  className="w-full p-2 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  className="w-full text-xs font-black uppercase tracking-widest"
               >
-                  {mediaDetails.seasons?.map(s => <option key={s.id} value={s.season_number}>(Season: {s.season_number})</option>)}
+                  {mediaDetails.seasons?.map(s => <option key={s.id} value={s.season_number}>Season {s.season_number}</option>)}
               </select>
               <select 
                   value={selectedEpisode} 
                   onChange={e => setSelectedEpisode(Number(e.target.value))}
-                  className="w-full p-2 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  className="w-full text-xs font-black uppercase tracking-widest"
                   disabled={isLoadingEpisodes}
               >
                   {isLoadingEpisodes 
@@ -109,51 +107,43 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, onSave, me
               </select>
           </div>
         )}
-        {currentEpisode && <p className="text-sm text-text-secondary mb-4">"{currentEpisode.name}"</p>}
-
-
+        
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Add your journal entry..."
-          className="w-full h-40 p-3 bg-bg-secondary rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+          placeholder="Capture your thoughts here..."
+          style={{ fontFamily: 'var(--font-journal)' }}
+          className="w-full h-48 p-5 bg-bg-secondary rounded-3xl text-text-primary focus:outline-none border border-white/5 shadow-inner text-lg leading-relaxed resize-none"
         />
 
-        <div className="my-4">
-          <label className="block text-sm font-medium text-text-secondary mb-2">How did it make you feel?</label>
+        <div className="my-8">
+          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary mb-4 block opacity-60 ml-2">Emotional Resonance</label>
           <div className="grid grid-cols-6 gap-2">
             {moods.map(m => (
               <button
                 key={m}
                 onClick={() => setMood(m)}
-                className={`text-3xl p-2 rounded-full transition-transform transform hover:scale-125 ${mood === m ? 'bg-primary-accent/20' : 'bg-transparent'}`}
+                className={`text-3xl p-3 rounded-2xl transition-all transform hover:scale-110 active:scale-95 ${mood === m ? 'bg-primary-accent/20 border border-primary-accent/40 shadow-lg' : 'bg-transparent border border-transparent'}`}
                 aria-label={`Mood: ${m}`}
               >
                 {m}
               </button>
             ))}
           </div>
-           {mood && (
-            <div className="text-center mt-3">
-                <button onClick={() => setMood('')} className="text-xs text-text-secondary hover:text-red-500 transition-colors">
-                    Remove Mood
-                </button>
-            </div>
-          )}
         </div>
 
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 rounded-md text-text-primary bg-bg-secondary hover:brightness-125 transition-all"
-          >
-            Cancel
-          </button>
+        <div className="flex flex-col gap-3">
           <button
             onClick={handleSave}
-            className="px-6 py-2 rounded-md text-white bg-accent-gradient hover:opacity-90 transition-opacity"
+            className="w-full py-5 rounded-[1.5rem] bg-accent-gradient text-on-accent font-black uppercase tracking-[0.2em] text-xs shadow-2xl transform transition-all hover:scale-[1.02] active:scale-95"
           >
-            Save Entry
+            Archive Entry
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl text-text-secondary bg-bg-secondary font-black uppercase tracking-widest text-[9px] hover:text-text-primary transition-all"
+          >
+            Discard
           </button>
         </div>
       </div>

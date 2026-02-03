@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { TrackedItem, TmdbMediaDetails, Episode, LiveWatchMediaInfo, UserData } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -45,36 +46,13 @@ const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, o
         }
     };
     
-    const handleResumeWatch = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!nextEpisodeInfo) return;
-        const mediaInfo: LiveWatchMediaInfo = {
-            id: item.id,
-            media_type: 'tv',
-            title: item.title,
-            poster_path: item.poster_path,
-            runtime: details.episode_run_time?.[0] || 45,
-            seasonNumber: nextEpisodeInfo.season_number,
-            episodeNumber: nextEpisodeInfo.episode_number,
-            episodeTitle: nextEpisodeInfo.name,
-        };
-        onStartLiveWatch(mediaInfo);
-    };
-
-    const handleToggleFavorite = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if(nextEpisodeInfo) {
-            onToggleFavoriteEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number);
-        }
-    }
-    
     const bannerImageUrl = useMemo(() => {
         const season = details.seasons?.find(s => s.season_number === nextEpisodeInfo?.season_number);
         return getImageUrl(season?.poster_path || item.poster_path, 'w154');
     }, [details.seasons, nextEpisodeInfo, item.poster_path]);
 
     return (
-        <div className="bg-card-gradient rounded-lg shadow-md flex overflow-hidden h-48">
+        <div className="bg-card-gradient rounded-lg shadow-md flex overflow-hidden h-48 border border-white/5">
             <div className="w-32 flex-shrink-0 cursor-pointer relative" onClick={() => onSelectShow(item.id, 'tv')}>
                 <BrandedImage title={item.title} status={showStatus?.text}>
                     <img src={bannerImageUrl} alt={item.title} className="w-full h-full object-cover" />
@@ -116,7 +94,7 @@ const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, o
                 {nextEpisodeInfo && (
                     <div className="absolute top-2 right-2 flex space-x-1">
                         <button 
-                            onClick={handleToggleFavorite}
+                            onClick={(e) => { e.stopPropagation(); onToggleFavoriteEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number); }}
                             className="p-1.5 bg-backdrop rounded-full text-white/80 hover:text-white hover:bg-yellow-500/50 transition-colors"
                             title={isEpisodeFavorited ? "Unfavorite episode" : "Favorite episode"}
                         >

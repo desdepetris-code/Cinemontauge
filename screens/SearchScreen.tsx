@@ -140,7 +140,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
                             showRatings={showRatings}
                             preferences={preferences}
                             userData={userData}
-                            columns="grid-cols-1 md:grid-cols-2"
+                            columns="grid-cols-2 md:grid-cols-4 lg:grid-cols-4"
                         />
                     </div>
 
@@ -160,7 +160,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
                             showRatings={showRatings}
                             preferences={preferences}
                             userData={userData}
-                            columns="grid-cols-1 md:grid-cols-2"
+                            columns="grid-cols-2 md:grid-cols-4 lg:grid-cols-4"
                         />
                     </div>
                 </div>
@@ -275,7 +275,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
   const renderSearchResults = () => {
     if (loading && mediaResults.length === 0) return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
             {[...Array(12)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-2xl"></div></div>)}
         </div>
     );
@@ -335,7 +335,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                         </div>
                         <div className="relative">
                             <input 
-                                type="text"
+                                type="text" 
                                 maxLength={4}
                                 placeholder="Year (e.g. 2025)"
                                 value={yearFilter}
@@ -360,7 +360,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                 )}
 
                 {filteredAndSortedMedia.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8 animate-fade-in pb-10">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 animate-fade-in pb-10">
                         {filteredAndSortedMedia.map(item => (
                             <ActionCard 
                                 key={item.id} 

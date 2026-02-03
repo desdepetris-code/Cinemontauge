@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
 import { generateAirtimePDF, generateSupabaseSpecPDF, generateSummaryReportPDF } from '../utils/pdfExportUtils';
-import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon } from '../components/Icons';
+import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon, ListBulletIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
@@ -27,7 +26,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
     const [pin, setPin] = useState('');
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [pinError, setPinError] = useState(false);
-    const [isGenerating, setIsGenerating] = useState<ReportType | null>(null);
+    const [isGenerating, setIsGenerating] = useState<ReportType | 'library_dump' | null>(null);
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, matches: 0 });
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [downloadedPdfs, setDownloadedPdfs] = useLocalStorage<DownloadedPdf[]>('cinemontauge_reports', []);
@@ -45,6 +44,33 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         missing_airtime: { page: 1, index: 0, part: 1, mediaType: 'tv' },
         missing_status: { page: 1, index: 0, part: 1, mediaType: 'tv' }
     });
+
+    const runFullLibraryDump = () => {
+        setIsGenerating('library_dump');
+        const allItems = [
+            ...userData.watching,
+            ...userData.planToWatch,
+            ...userData.completed,
+            ...userData.onHold,
+            ...userData.dropped,
+            ...userData.allCaughtUp
+        ];
+        
+        const unique = Array.from(new Map(allItems.map(i => [i.id, i])).values());
+        const rows = unique.map(i => ({
+            title: i.title,
+            status: i.media_type.toUpperCase(),
+            details: `TMDB ID: ${i.id}`
+        }));
+        
+        if (rows.length > 0) {
+            generateAirtimePDF("Full Library Registry Dump", rows, 1);
+            confirmationService.show(`Library dump of ${rows.length} items exported to PDF.`);
+        } else {
+            confirmationService.show("Registry is empty. No items to dump.");
+        }
+        setIsGenerating(null);
+    };
 
     const deviceCount = useMemo(() => {
         const globalRegistryStr = localStorage.getItem('cinemontauge_global_device_tokens');
@@ -268,13 +294,23 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                             <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Recommendation Gap</span>
                             <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Discovery Feed</span>
                          </button>
+
+                         <button 
+                            disabled={!!isGenerating}
+                            onClick={runFullLibraryDump}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <ListBulletIcon className="w-6 h-6 text-yellow-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Library Registry Dump</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Full Export for Badge Ref</span>
+                         </button>
                     </div>
 
                     {isGenerating && (
                         <div className="p-6 bg-bg-primary/60 rounded-2xl border border-primary-accent/20 animate-fade-in">
-                            <p className="text-[10px] font-black uppercase text-primary-accent mb-3">Pipeline scanning registry...</p>
+                            <p className="text-[10px] font-black uppercase text-primary-accent mb-3">Pipeline processing registry...</p>
                             <div className="w-full bg-bg-secondary rounded-full h-1.5 overflow-hidden">
-                                <div className="bg-accent-gradient h-full transition-all duration-300" style={{ width: `${(scanProgress.current / 500) * 100}%` }}></div>
+                                <div className="bg-accent-gradient h-full transition-all duration-300" style={{ width: `${scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 50}%` }}></div>
                             </div>
                         </div>
                     )}

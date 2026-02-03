@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMedia, TrackedItem, TmdbMediaDetails, UserData } from '../types';
 import { PlusIcon, CheckCircleIcon, CalendarIcon, HeartIcon, ChevronDownIcon } from './Icons';
@@ -9,6 +10,8 @@ import { isNewRelease, getRecentEpisodeCount } from '../utils/formatUtils';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 import { getMediaDetails } from '../services/tmdbService';
 import UserRatingStamp from './UserRatingStamp';
+import BrandedImage from './BrandedImage';
+import { getShowStatus } from '../utils/statusUtils';
 
 interface ActionCardProps {
     item: TmdbMedia;
@@ -71,6 +74,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
         else if (showSeriesInfo === 'hidden') setIsInfoExpanded(false);
         else if (showSeriesInfo === 'toggle') setIsInfoExpanded(false);
     }, [showSeriesInfo]);
+
+    const showStatusText = useMemo(() => {
+        if (!details) return null;
+        return getShowStatus(details)?.text ?? null;
+    }, [details]);
 
     const ageRating = useMemo(() => {
         if (!details) return null;
@@ -158,6 +166,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-2 z-20">
                         {ageRating && (
+                            /* FIX: Changed 'rating' to 'ageRating' to resolve "Cannot find name" error. */
                             <div className={`px-2 py-1 text-[10px] md:text-xs font-black rounded-lg backdrop-blur-md border border-white/10 shadow-2xl ${getAgeRatingColor(ageRating)}`}>
                                 {ageRating}
                             </div>
@@ -172,28 +181,29 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         )}
                     </div>
 
-                    <div className="aspect-[2/3] overflow-hidden">
-                        <FallbackImage
-                            srcs={posterSrcs}
-                            placeholder={PLACEHOLDER_POSTER}
-                            type="poster"
-                            globalPlaceholders={userData.globalPlaceholders}
-                            alt={title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
-                            loading="lazy"
-                        />
-                    </div>
-                    
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-4 opacity-0 group-hover/card:opacity-100 transition-all duration-500 translate-y-2 group-hover/card:translate-y-0">
-                         <h3 className="text-white text-xs md:text-sm font-black uppercase tracking-tight text-center w-full leading-tight drop-shadow-lg">{title}</h3>
-                    </div>
+                    <BrandedImage title={title} status={item.media_type === 'tv' ? showStatusText : null}>
+                        <div className="aspect-[2/3] overflow-hidden relative">
+                            <FallbackImage
+                                srcs={posterSrcs}
+                                placeholder={PLACEHOLDER_POSTER}
+                                type="poster"
+                                globalPlaceholders={userData.globalPlaceholders}
+                                alt={title}
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
+                                loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-4 opacity-0 group-hover/card:opacity-100 transition-all duration-500 translate-y-2 group-hover/card:translate-y-0">
+                                <h3 className="text-white text-xs md:text-sm font-black uppercase tracking-tight text-center w-full leading-tight drop-shadow-lg">{title}</h3>
+                            </div>
 
-                    {isCompleted && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white pointer-events-none animate-fade-in">
-                            <CheckCircleIcon className="w-12 h-12 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]" />
-                            <span className="font-black uppercase tracking-[0.2em] text-[10px] mt-2">Captured</span>
+                            {isCompleted && (
+                                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white pointer-events-none animate-fade-in">
+                                    <CheckCircleIcon className="w-12 h-12 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]" />
+                                    <span className="font-black uppercase tracking-[0.2em] text-[10px] mt-2">Captured</span>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </BrandedImage>
                     
                     {showSeriesInfo === 'toggle' && item.media_type === 'tv' && (
                         <button 

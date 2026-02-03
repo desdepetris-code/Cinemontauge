@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
-import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon } from './Icons';
+// Added missing AppNotification import
+import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification } from '../types';
+// FIX: Added missing ShareIcon to imports from ./Icons to resolve the "Cannot find name 'ShareIcon'" error.
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import SeasonAccordion from './SeasonAccordion';
@@ -72,6 +73,7 @@ interface ShowDetailProps {
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
+  onAddNotifications: (notifs: AppNotification[]) => void;
   onSaveComment: (commentData: any) => void;
   comments: Comment[];
   genres: Record<number, string>;
@@ -97,6 +99,7 @@ interface ShowDetailProps {
   onNoteDeleted: (note: Note, mediaTitle: string, context: string) => void;
   onDiscardRequest: (item: DeletedHistoryItem) => void;
   onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
+  // FIX: Removed duplicate 'onSetCustomImage' identifier to resolve build error.
   onClearMediaHistory: (mediaId: number, mediaType: 'tv' | 'movie') => void;
   reminders: Reminder[];
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
@@ -509,6 +512,40 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     handleCommentOpen(null);
   };
 
+  const handleShare = async () => {
+      const shareData = {
+          title: details?.title || details?.name || 'CineMontauge',
+          text: `Check out ${details?.title || details?.name} on CineMontauge!`,
+          url: window.location.href,
+      };
+
+      if (navigator.share) {
+          try {
+              await navigator.share(shareData);
+          } catch (err) {
+              console.error('Error sharing:', err);
+          }
+      } else {
+          try {
+              await navigator.clipboard.writeText(window.location.href);
+              confirmationService.show("Link copied to clipboard!");
+          } catch (err) {
+              console.error('Clipboard failed:', err);
+          }
+      }
+  };
+
+  /* // FIX: Corrected handleThreadChange to call setActiveCommentThread instead of undefined setActiveThread */
+  const handleThreadChange = (key: string) => {
+    if (key.startsWith('s')) {
+        const seasonNum = parseInt(key.replace('s', ''));
+        if (!seasonDetailsMap[seasonNum]) {
+            handleToggleSeason(seasonNum);
+        }
+    }
+    setActiveCommentThread(key === `s${details?.last_episode_to_air?.season_number}` ? `tv-${details?.id}-s${details?.last_episode_to_air?.season_number}-e${details?.last_episode_to_air?.episode_number}` : key);
+  }
+
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -625,9 +662,9 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             <div className="mt-6 space-y-4">
               <button 
                 onClick={() => setIsWatchlistModalOpen(true)}
-                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-bold text-lg bg-bg-secondary/40 border border-primary-accent/30 hover:bg-bg-secondary/60 hover:border-primary-accent/50 transition-all text-text-primary shadow-lg group"
+                className="w-full flex items-center justify-center space-x-2 py-4 rounded-xl font-black text-lg bg-bg-secondary/40 border border-white/5 hover:border-primary-accent/40 transition-all text-text-primary shadow-lg group uppercase tracking-tighter"
               >
-                <span className="uppercase tracking-widest">{getLibraryButtonText()}</span>
+                <span>{getLibraryButtonText()}</span>
                 <ChevronDownIcon className="w-5 h-5 text-text-secondary" />
               </button>
               
@@ -635,13 +672,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 {mediaType === 'tv' ? (
                   <>
                     <DetailedActionButton 
-                        label="Mark all watched"
+                        label="Capture all"
                         isActive={isAllWatched}
                         icon={<CheckCircleIcon className="w-6 h-6" />} 
                         onClick={() => onMarkAllWatched(id, details as any)} 
                     />
                     <DetailedActionButton 
-                        label="Unmark all watched"
+                        label="Purge all"
                         icon={<XMarkIcon className="w-6 h-6" />} 
                         onClick={() => onUnmarkAllWatched(id)} 
                     />
@@ -649,13 +686,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 ) : (
                   <>
                     <DetailedActionButton 
-                        label="Mark watched"
+                        label="Capture"
                         isActive={currentStatus === 'completed'}
                         icon={<CheckCircleIcon className="w-6 h-6" />} 
                         onClick={() => props.onMarkMediaAsWatched(details)} 
                     />
                     <DetailedActionButton 
-                        label="Mark unwatched"
+                        label="Purge"
                         icon={<XMarkIcon className="w-6 h-6" />} 
                         onClick={handleUnmarkMovie} 
                     />
@@ -670,8 +707,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   />
                 ) : (
                   <DetailedActionButton 
-                      label="Weekly Pick" 
-                      icon={<SparklesIcon className="w-6 h-6" />} 
+                      label="Nominate" 
+                      icon={<TrophyIcon className="w-6 h-6" />} 
                       isActive={isWeeklyFavorite}
                       onClick={() => setIsNominationModalOpen(true)} 
                   />
@@ -688,26 +725,27 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                <DetailedActionButton label="Comments" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} isActive={hasComment} onClick={handleCommentsAction} />
+                <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} isActive={hasComment} onClick={handleCommentsAction} />
 
                 {mediaType === 'tv' ? (
                   <>
                     <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
-                    <DetailedActionButton label="Log a Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
+                    <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                   </>
                 ) : (
                   <>
-                    <DetailedActionButton label="Log a Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
+                    <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                     <DetailedActionButton label="Live Watch" icon={<PlayCircleIcon className="w-6 h-6" />} onClick={handleStartLiveWatch} />
                     <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                   </>
                 )}
+                <DetailedActionButton label="Share" icon={<ShareIcon className="w-6 h-6" />} onClick={handleShare} />
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
                 {mediaType === 'tv' && (
-                    <DetailedActionButton label="Request Airtime" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
+                    <DetailedActionButton label="Request Air" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
                 )}
               </div>
             </div>
@@ -716,12 +754,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           <div className="flex-grow min-w-0 space-y-8">
             <header>
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                {showStatus && <span className={`px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
+                {showStatus && <span className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
                 <span className="text-text-secondary font-bold flex items-center">
                     <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
+                    <span className="mx-1 metadata-caption">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>
                     <span className="mx-1"> • </span>
-                    <span className="mx-1">{details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4)}</span>
+                    <span className="mx-1 metadata-caption">{(details.release_date || details.first_air_date)?.substring(0, 4)}</span>
                 </span>
                 {mediaType === 'tv' && (
                   <button onClick={() => setIsDescriptionModalOpen(true)} className="ml-auto group flex items-center space-x-2 text-primary-accent hover:text-primary-accent/80 transition-colors bg-primary-accent/10 px-4 py-1.5 rounded-full border border-primary-accent/20">
@@ -730,13 +768,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   </button>
                 )}
               </div>
-              <h1 className="text-4xl md:text-6xl font-black text-text-primary tracking-tighter mb-4">{details.title || details.name}</h1>
+              <h1 className="text-5xl md:text-7xl font-black text-text-primary tracking-tighter mb-4 leading-none">{details.title || details.name}</h1>
               <p className="text-lg text-text-secondary leading-relaxed max-w-3xl italic line-clamp-2">"{details.tagline || details.overview}"</p>
             </header>
 
             {nextEpisodeToWatch && (
               <section className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-                <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center"><PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />Continue Journey</h2>
+                <h2 className="text-xl font-black text-text-primary uppercase tracking-widest mb-4 flex items-center"><PlayCircleIcon className="w-6 h-6 mr-2 text-primary-accent" />Up Next</h2>
                 <NextUpWidget {...props} details={details} showId={id} nextEpisodeToWatch={nextEpisodeToWatch} onOpenJournal={handleJournalOpen} onOpenCommentModal={handleCommentOpen} onSelectShow={onSelectShow} timezone={props.allUserData.timezone} />
               </section>
             )}
@@ -744,16 +782,31 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
             {mediaType === 'tv' && <OverallProgress details={details} watchProgress={watchProgress} />}
 
             <div className="border-b border-primary-accent/10 sticky top-16 bg-bg-primary/80 backdrop-blur-md z-20 -mx-4 px-4 overflow-x-auto hide-scrollbar">
-              <Carousel>
-                <div className="flex space-x-8 whitespace-nowrap min-w-max">
-                    {tabs.map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-sm font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
-                        <tab.icon className="w-4 h-4" />{tab.label}
-                        {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full"></div>}
-                    </button>
-                    ))}
+              {preferences.tabNavigationStyle === 'scroll' ? (
+                <Carousel>
+                    <div className="flex space-x-8 whitespace-nowrap min-w-max">
+                        {tabs.map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary hover:text-text-primary'}`}>
+                            <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-primary-accent' : 'text-text-secondary'}`} />{tab.label}
+                            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-accent rounded-full shadow-[0_0_10px_var(--color-accent-primary)]"></div>}
+                        </button>
+                        ))}
+                    </div>
+                </Carousel>
+              ) : (
+                <div className="max-w-md mx-auto py-4 relative group">
+                    <select 
+                        value={activeTab}
+                        onChange={(e) => setActiveTab(e.target.value as TabType)}
+                        className="w-full appearance-none bg-bg-secondary/40 border border-primary-accent/30 rounded-2xl py-4 px-6 text-xs font-black uppercase tracking-[0.2em] text-text-primary focus:outline-none focus:border-primary-accent shadow-xl backdrop-blur-md transition-all pr-12"
+                    >
+                        {tabs.map(tab => (
+                            <option key={tab.id} value={tab.id}>{tab.label}</option>
+                        ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-accent pointer-events-none group-hover:scale-110 transition-transform" />
                 </div>
-              </Carousel>
+              )}
             </div>
 
             <div className="pt-4 min-h-[400px]">
@@ -804,6 +857,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                   onToggleLikeComment={() => {}} 
                   onDeleteComment={() => {}} 
                   activeThread={activeCommentThread} 
+                  /* // FIX: Passed setActiveCommentThread instead of undefined setActiveThread to fix build error */
                   setActiveThread={setActiveCommentThread} 
                   follows={follows} 
                 />

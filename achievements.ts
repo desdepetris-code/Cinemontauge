@@ -1,5 +1,4 @@
-
-import { Achievement, Badge, AchievementCategory } from './types';
+import { Achievement, Badge, AchievementCategory, UserData, CalculatedStats } from './types';
 
 /**
  * Helper to generate 25 tiered milestones for a category.
@@ -23,7 +22,8 @@ const generateTieredMerits = (
       tier: (Math.floor(i / 6) + 1) as any,
       visibility: i < 5 ? 'visible' : 'hinted',
       scope: 'global',
-      check: (d, s) => {
+      // FIX: Typed the check function parameters to resolve "Property ... does not exist on type unknown" errors.
+      check: (d: UserData, s: CalculatedStats) => {
           let val = 0;
           switch(prefix) {
               case 'watch': val = d.history.length; break;
@@ -32,8 +32,8 @@ const generateTieredMerits = (
               case 'list_v': val = d.customLists.reduce((acc, l) => acc + l.items.length, 0); break;
               case 'streak': val = s.longestStreak; break;
               case 'mood': val = s.distinctMoodsCount; break;
-              case 'cust_p': val = Object.values(d.customImagePaths).filter(v => v.poster_path).length; break;
-              case 'cust_b': val = Object.values(d.customImagePaths).filter(v => v.backdrop_path).length; break;
+              case 'cust_p': val = Object.values(d.customImagePaths).filter(v => !!v.poster_path).length; break;
+              case 'cust_b': val = Object.values(d.customImagePaths).filter(v => !!v.backdrop_path).length; break;
               case 'disc': val = s.watchedGenreCount; break;
               case 'ser': val = s.completedSeasonsCount || 0; break;
               case 'rew': val = d.history.filter(h => d.history.filter(h2 => h2.id === h.id).length > 1).length; break;

@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings } from '../types';
 /* Added ChatBubbleLeftRightIcon to imports to fix "Cannot find name" error */
@@ -104,7 +103,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
-  // Fix: Move 'today' to component scope so it's accessible by all functions
+  // FIX: Ensure 'today' is accessible in the functional component scope.
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
@@ -115,7 +114,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
       if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
       const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
       const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
-      // Fix: Corrected typo 'unwwatchedCount' to 'unwatchedCount'
+      // FIX: Corrected typo 'unwwatchedCount' to 'unwatchedCount'.
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
@@ -257,7 +256,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
         onSave={handleBulkLogSave}
         initialScope={logDateModalState.scope}
         mediaType="tv"
-        // Fix: Changed undefined 'details' to correct 'showDetails' prop
+        // FIX: Changed undefined 'details' to correct 'showDetails' prop.
         showDetails={showDetails}
         seasonDetails={seasonDetails}
       />

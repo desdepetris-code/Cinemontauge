@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { themes as builtInThemes, holidayThemes } from '../themes';
@@ -23,57 +24,62 @@ const mixColors = (c1: string, c2: string, weight: number) => {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
-export const getNextHoliday = (date: Date) => {
-  const currentYear = date.getFullYear();
-  const holidays = [
-    { name: "New Year's Eve", month: 11, day: 31, id: 'holiday-new-years-eve', daysBefore: 1 },
-    { name: 'New Year', month: 0, day: 1, id: 'holiday-new-year', daysBefore: 1 },
-    { name: "Valentine's Day", month: 1, day: 14, id: 'holiday-valentines', daysBefore: 3 },
-    { name: 'Easter', month: 3, day: 9, id: 'holiday-easter', daysBefore: 3 }, 
-    { name: "Mother's Day", month: 4, day: 11, id: 'holiday-mothers-day', daysBefore: 3 }, 
-    { name: "Father's Day", month: 5, day: 15, id: 'holiday-fathers-day', daysBefore: 3 }, 
-    { name: "Independence Day", month: 6, day: 4, id: 'holiday-independence-day', daysBefore: 3 },
-    { name: 'Halloween', month: 9, day: 31, id: 'holiday-halloween', daysBefore: 7 },
-    { name: 'Thanksgiving', month: 10, day: 27, id: 'holiday-thanksgiving', daysBefore: 3 }, 
-    { name: 'Christmas', month: 11, day: 25, id: 'holiday-christmas', daysBefore: 7 },
-  ];
-  const upcomingHolidays = holidays.map(h => {
-    let holidayDate = new Date(currentYear, h.month, h.day);
-    if (holidayDate < date && (date.getMonth() !== h.month || date.getDate() !== h.day)) {
-        holidayDate = new Date(currentYear + 1, h.month, h.day);
+interface HolidayDef {
+    name: string;
+    month: number; // 0-11
+    day: number;
+    durationDays: number;
+    themeId: string;
+}
+
+const HOLIDAYS: HolidayDef[] = [
+    { name: 'Halloween', month: 9, day: 31, durationDays: 7, themeId: 'holiday-halloween' },
+    { name: 'Winter Holidays', month: 11, day: 25, durationDays: 14, themeId: 'winter-ice' },
+    { name: 'New Year', month: 0, day: 1, durationDays: 3, themeId: 'cyberpunk-city' },
+    { name: 'Valentine\'s Day', month: 1, day: 14, durationDays: 3, themeId: 'holiday-valentines' },
+];
+
+export function getCurrentHoliday(date: Date): HolidayDef | null {
+    for (const holiday of HOLIDAYS) {
+        const holidayDate = new Date(date.getFullYear(), holiday.month, holiday.day);
+        const startDate = new Date(holidayDate);
+        startDate.setDate(holidayDate.getDate() - Math.floor(holiday.durationDays / 2));
+        const endDate = new Date(holidayDate);
+        endDate.setDate(holidayDate.getDate() + Math.ceil(holiday.durationDays / 2));
+        
+        if (date >= startDate && date <= endDate) {
+            return holiday;
+        }
     }
-    const startDate = new Date(holidayDate);
-    startDate.setDate(holidayDate.getDate() - h.daysBefore);
-    return { ...h, date: holidayDate, startDate };
-  }).sort((a, b) => a.date.getTime() - b.date.getTime());
-  return upcomingHolidays[0];
-};
+    return null;
+}
+
+export function getNextHoliday(date: Date): { name: string; date: Date } {
+    const sorted = [...HOLIDAYS].map(h => {
+        let hDate = new Date(date.getFullYear(), h.month, h.day);
+        if (hDate < date) hDate = new Date(date.getFullYear() + 1, h.month, h.day);
+        return { name: h.name, date: hDate };
+    }).sort((a, b) => a.date.getTime() - b.date.getTime());
+    
+    return sorted[0];
+}
 
 export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolean = false): [Theme, (themeId: string) => void, string, string | null] {
   const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'original-dark');
   const prevThemeIdRef = useRef<string | null>(null);
   const allThemes = useMemo(() => [...builtInThemes, ...holidayThemes, ...customThemes], [customThemes]);
   
-  const holidayInfo = useMemo(() => {
-    const now = new Date();
-    const nextHoliday = getNextHoliday(now);
-    const holidayTheme = holidayThemes.find(t => t.id === nextHoliday.id);
-    const isActive = !!(holidayTheme && now >= nextHoliday.startDate && now <= nextHoliday.date);
-    return { 
-        isActive, 
-        theme: holidayTheme, 
-        name: nextHoliday.name, 
-        date: nextHoliday.date,
-        startDate: nextHoliday.startDate
-    };
-  }, []);
+  const holidayOverride = useMemo(() => {
+    if (!autoHolidayThemesEnabled) return null;
+    const current = getCurrentHoliday(new Date());
+    if (!current) return null;
+    return allThemes.find(t => t.id === current.themeId) || null;
+  }, [autoHolidayThemesEnabled, allThemes]);
 
   const activeTheme = useMemo(() => {
-    if (autoHolidayThemesEnabled && holidayInfo.isActive && holidayInfo.theme) {
-      return holidayInfo.theme;
-    }
+    if (holidayOverride) return holidayOverride;
     return allThemes.find(t => t.id === themeId) || builtInThemes[0];
-  }, [themeId, allThemes, autoHolidayThemesEnabled, holidayInfo]);
+  }, [themeId, allThemes, holidayOverride]);
   
   useEffect(() => {
     const root = window.document.documentElement;
@@ -95,6 +101,14 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
     root.style.setProperty('--color-bg-secondary', activeTheme.colors.bgSecondary);
     root.style.setProperty('--color-bg-backdrop', activeTheme.colors.bgBackdrop);
     root.style.setProperty('--on-accent', activeTheme.colors.onAccent || (activeTheme.base === 'dark' ? '#FFFFFF' : '#000000'));
+    
+    // Pattern & Functional Colors
+    root.style.setProperty('--pattern-opacity', activeTheme.colors.patternOpacity || '0.05');
+    root.style.setProperty('--color-error', activeTheme.colors.error || '#EF4444');
+    root.style.setProperty('--color-success', activeTheme.colors.success || '#22C55E');
+
+    // Fonts
+    root.style.setProperty('--font-journal', activeTheme.colors.fontJournal || "'Domine', serif");
 
     const c1 = activeTheme.colors.accentPrimary;
     const c2 = activeTheme.colors.accentSecondary;
@@ -108,5 +122,5 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
     if (allThemes.some(t => t.id === newThemeId)) setThemeId(newThemeId);
   };
 
-  return [activeTheme, setTheme, themeId, autoHolidayThemesEnabled && holidayInfo.isActive ? holidayInfo.name : null];
+  return [activeTheme, setTheme, themeId, holidayOverride?.name || null];
 }

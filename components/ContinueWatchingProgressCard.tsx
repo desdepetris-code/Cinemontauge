@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, TvdbShow, EpisodeTag, LiveWatchMediaInfo, EpisodeProgress, UserData } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
-import { PlayIcon } from './Icons';
+import { PlayIcon, CheckCircleIcon } from './Icons';
 import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
@@ -263,11 +264,11 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
 
     return (
         <div 
-            className="w-full bg-card-gradient rounded-lg shadow-lg flex flex-col relative overflow-hidden group cursor-pointer transition-transform duration-300 hover:-translate-y-2"
+            className="w-full bg-card-gradient rounded-lg shadow-lg flex flex-col relative overflow-hidden group cursor-pointer transition-transform duration-300 hover:-translate-y-2 border border-white/5"
             onClick={() => onSelectShow(item.id, 'tv')}
         >
-            <div className="aspect-[10/16] relative">
-                <BrandedImage title={item.title} status={showStatusText}>
+            <BrandedImage title={item.title} status={showStatusText}>
+                <div className="aspect-[10/16] relative">
                     <FallbackImage 
                         srcs={mainPosterSrcs}
                         placeholder={PLACEHOLDER_POSTER}
@@ -276,70 +277,70 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                         alt={`${item.title} preview`} 
                         className="absolute inset-0 w-full h-full object-cover" 
                     />
-                </BrandedImage>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-                
-                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-20">
-                    {ageRating && (
-                        <div className={`px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 shadow-lg ${getAgeRatingColor(ageRating)}`}>
-                            {ageRating}
-                        </div>
-                    )}
-                    {isNew && <NewReleaseOverlay position="static" color="cyan" />}
-                    {episodeTag && (
-                        <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md backdrop-blur-md border border-white/10 shadow-lg ${episodeTag.className}`}>
-                            {episodeTag.text}
-                        </div>
-                    )}
-                </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                    
+                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-20">
+                        {ageRating && (
+                            <div className={`px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                                {ageRating}
+                            </div>
+                        )}
+                        {isNew && <NewReleaseOverlay position="static" color="cyan" />}
+                        {episodeTag && (
+                            <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md backdrop-blur-md border border-white/10 shadow-lg ${episodeTag.className}`}>
+                                {episodeTag.text}
+                            </div>
+                        )}
+                    </div>
 
-                {nextEpisodeInfo && !isPausedSession && (
-                <div className="absolute bottom-[28%] right-3 z-20">
-                    <FallbackImage 
-                        srcs={episodeStillSrcs} 
-                        placeholder={PLACEHOLDER_STILL}
-                        type="still"
-                        globalPlaceholders={globalPlaceholders}
-                        alt="Next episode thumbnail" 
-                        className="w-28 aspect-video object-cover rounded-md border-2 border-white/20 shadow-lg transition-transform duration-300 group-hover:scale-105"
-                    />
-                </div>
-                )}
+                    {nextEpisodeInfo && !isPausedSession && (
+                    <div className="absolute bottom-[28%] right-3 z-20">
+                        <FallbackImage 
+                            srcs={episodeStillSrcs} 
+                            placeholder={PLACEHOLDER_STILL}
+                            type="still"
+                            globalPlaceholders={globalPlaceholders}
+                            alt="Next episode thumbnail" 
+                            className="w-28 aspect-video object-cover rounded-md border-2 border-white/20 shadow-lg transition-transform duration-300 group-hover:scale-105"
+                        />
+                    </div>
+                    )}
 
-                <div className="absolute bottom-0 left-0 right-0 p-4 pl-8 mt-auto">
-                    <h3 className="font-bold text-white text-lg truncate [text-shadow:0_1px_3px_#000]">{item.title}</h3>
-                    {isPausedSession ? (
-                        <>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 pl-8 mt-auto">
+                        <h3 className="font-bold text-white text-lg truncate [text-shadow:0_1px_3px_#000]">{item.title}</h3>
+                        {isPausedSession ? (
+                            <>
+                                <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
+                                    {`S${item.seasonNumber} E${item.episodeNumber}: ${item.episodeTitle}`}
+                                </p>
+                                <p className="text-xs text-amber-300 font-semibold">{`${formatTime(remainingSeconds)} remaining`}</p>
+                            </>
+                        ) : nextEpisodeInfo ? (
                             <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
-                                {`S${item.seasonNumber} E${item.episodeNumber}: ${item.episodeTitle}`}
+                                {`S${nextEpisodeInfo.season_number} E${nextEpisodeInfo.episode_number}: ${nextEpisodeInfo.name}`}
                             </p>
-                            <p className="text-xs text-amber-300 font-semibold">{`${formatTime(remainingSeconds)} remaining`}</p>
-                        </>
-                    ) : nextEpisodeInfo ? (
-                        <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
-                            {`S${nextEpisodeInfo.season_number} E${nextEpisodeInfo.episode_number}: ${nextEpisodeInfo.name}`}
-                        </p>
-                    ) : (
-                        <p className="text-sm text-green-400 font-semibold">All caught up!</p>
-                    )}
-                </div>
+                        ) : (
+                            <p className="text-sm text-green-400 font-semibold">All caught up!</p>
+                        )}
+                    </div>
 
-                {nextEpisodeInfo && !isPausedSession && (
-                <div
-                    onClick={handleMarkWatched}
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    aria-label="Mark next episode watched"
-                >
-                    <div className="p-4 bg-backdrop rounded-full">
-                        <PlayIcon className="w-8 h-8 text-white" />
+                    {nextEpisodeInfo && !isPausedSession && (
+                    <div
+                        onClick={handleMarkWatched}
+                        className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        aria-label="Mark next episode watched"
+                    >
+                        <div className="p-4 bg-backdrop rounded-full">
+                            <PlayIcon className="w-8 h-8 text-white" />
+                        </div>
+                    </div>
+                    )}
+                    
+                    <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">
+                        <div className="h-full bg-accent-gradient transition-all duration-500" style={{ width: `${isPausedSession ? Math.min(100, episodeProgressPercent) : Math.min(100, overallProgressPercent)}%` }}></div>
                     </div>
                 </div>
-                )}
-                
-                <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">
-                    <div className="h-full bg-accent-gradient transition-all duration-500" style={{ width: `${isPausedSession ? Math.min(100, episodeProgressPercent) : Math.min(100, overallProgressPercent)}%` }}></div>
-                </div>
-            </div>
+            </BrandedImage>
             <div className="p-3 bg-bg-secondary/30 text-xs">
                 <div className="space-y-2">
                     {currentSeasonNumber > 0 && (

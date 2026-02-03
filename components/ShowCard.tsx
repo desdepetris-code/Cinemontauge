@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TrackedItem, TmdbMedia, TmdbMediaDetails, TvdbShow, UserData } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
@@ -137,7 +138,7 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
             {(!inView || (loading && !details)) ? (
                 <ShowCardSkeleton />
             ) : (
-                <div className="relative rounded-lg overflow-hidden shadow-lg">
+                <div className="relative rounded-lg overflow-hidden shadow-lg bg-bg-secondary/20 h-full">
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
                     {recentEpisodeCount > 0 && (
                         <NewReleaseOverlay
@@ -156,10 +157,10 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
                             className="w-full aspect-[2/3] object-cover"
                             loading="lazy"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 pl-8">
+                            <h3 className="text-white text-[11px] font-bold text-center w-full leading-tight">{title}</h3>
+                        </div>
                     </BrandedImage>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 pl-8">
-                        <h3 className="text-white text-sm font-bold text-center w-full">{title}</h3>
-                    </div>
                 </div>
             )}
         </div>

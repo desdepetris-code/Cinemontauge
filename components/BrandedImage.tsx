@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface BrandedImageProps {
@@ -7,10 +8,6 @@ interface BrandedImageProps {
 }
 
 const BrandedImage: React.FC<BrandedImageProps> = ({ title, status, children }) => {
-    if (!status) {
-        return <>{children}</>;
-    }
-
     const textToShow = status ? status.replace('Status: ', '').replace('Ongoing: ', '') : '';
     let colorClass = 'text-white';
     let bgColor = 'bg-black/70';
@@ -36,18 +33,23 @@ const BrandedImage: React.FC<BrandedImageProps> = ({ title, status, children }) 
             colorClass = 'text-emerald-100';
         }
     }
-    
+
+    // Wrap children in a relative container to maintain overlay context for parents
     return (
-        <div className="relative h-full w-full">
-            {children}
-            <div className={`absolute bottom-0 left-0 right-0 h-5 ${bgColor} flex items-center justify-center backdrop-blur-md pointer-events-none z-10 border-t border-white/5`}>
-                <span 
-                    className={`${colorClass} font-black text-[9px] uppercase tracking-[0.2em] px-2 truncate leading-none text-center`}
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
-                >
-                    {textToShow}
-                </span>
+        <div className="flex flex-col h-full w-full">
+            <div className="relative flex-grow">
+                {children}
             </div>
+            {status && (
+                <div className={`flex-shrink-0 h-8 ${bgColor} flex items-center justify-center backdrop-blur-md z-10 border-t border-white/10`}>
+                    <span 
+                        className={`${colorClass} font-black text-[11px] uppercase tracking-[0.15em] px-2 truncate leading-none text-center`}
+                        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+                    >
+                        {textToShow}
+                    </span>
+                </div>
+            )}
         </div>
     );
 };

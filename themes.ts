@@ -1,8 +1,9 @@
+
 import { Theme } from './types';
 
 // --- DARK THEMES ---
 
-const originalDark: Theme = {
+const radiantRed: Theme = {
   id: 'original-dark',
   name: 'Radiant Red',
   base: 'dark',
@@ -11,49 +12,18 @@ const originalDark: Theme = {
     accentGradient: 'linear-gradient(to right, #f87171, #dc2626)',
     cardGradient: 'linear-gradient(to bottom, rgba(185, 28, 28, 0.3), rgba(69, 10, 10, 0.5))',
     textColorPrimary: '#FFFBEB',
-    textColorSecondary: '#FECACA',
+    textColorSecondary: 'rgba(242, 230, 230, 0.75)',
     accentPrimary: '#f87171',
     accentSecondary: '#dc2626',
     bgPrimary: '#450a0a',
     bgSecondary: 'rgba(239, 68, 68, 0.1)',
     bgBackdrop: 'rgba(69, 10, 10, 0.3)',
+    error: '#FACC15', // Gold/Amber for accessibility on red
+    success: '#4ADE80',
+    onAccent: '#FFFFFF',
+    patternOpacity: '0.05',
+    fontJournal: "'Domine', serif"
   }
-};
-
-const crimsonSilver: Theme = {
-  id: 'crimson-silver',
-  name: 'Crimson Silver',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #450a0a, #1c0404)',
-    accentGradient: 'linear-gradient(to right, #A0AEC0, #4A5568)', // Silver to Dark Gray
-    cardGradient: 'linear-gradient(to bottom, rgba(76, 29, 29, 0.5), rgba(45, 55, 72, 0.7))',
-    textColorPrimary: '#F7FAFC', // Lighter (off-white)
-    textColorSecondary: '#CBD5E0', // Light Gray
-    accentPrimary: '#A0AEC0', // Silver
-    accentSecondary: '#4A5568', // Dark Gray
-    bgPrimary: '#2b0808',
-    bgSecondary: 'rgba(160, 174, 192, 0.1)', // Gray tint
-    bgBackdrop: 'rgba(43, 8, 8, 0.3)',
-  },
-};
-
-const rubyFlare: Theme = {
-  id: 'ruby-flare',
-  name: 'Ruby Flare',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #450a0a, #1f2937)',
-    accentGradient: 'linear-gradient(to right, #dc2626, #fca5a5)',
-    cardGradient: 'linear-gradient(to bottom, rgba(127, 29, 29, 0.3), rgba(30, 41, 59, 0.5))',
-    textColorPrimary: '#fee2e2',
-    textColorSecondary: '#fca5a5',
-    accentPrimary: '#dc2626',
-    accentSecondary: '#ef4444',
-    bgPrimary: '#262d3a',
-    bgSecondary: 'rgba(220, 38, 38, 0.1)',
-    bgBackdrop: 'rgba(38, 45, 58, 0.3)',
-  },
 };
 
 const cyberpunkCity: Theme = {
@@ -62,106 +32,19 @@ const cyberpunkCity: Theme = {
   base: 'dark',
   colors: {
     bgGradient: 'linear-gradient(to bottom right, #030712, #1a011d)',
-    accentGradient: 'linear-gradient(to right, #ec4899, #22d3ee)',
+    accentGradient: 'linear-gradient(to right, #22d3ee, #ec4899)',
     cardGradient: 'linear-gradient(to bottom, rgba(20, 4, 32, 0.5), rgba(10, 2, 12, 0.7))',
-    textColorPrimary: '#f0f9ff',
-    textColorSecondary: '#67e8f9',
-    accentPrimary: '#ec4899',
-    accentSecondary: '#22d3ee',
+    textColorPrimary: '#F0F9FF',
+    textColorSecondary: '#94A3B8',
+    accentPrimary: '#22D3EE',
+    accentSecondary: '#EC4899',
     bgPrimary: '#110115',
-    bgSecondary: 'rgba(236, 72, 153, 0.1)',
+    bgSecondary: 'rgba(34, 211, 238, 0.1)',
     bgBackdrop: 'rgba(17, 1, 21, 0.3)',
-  },
-};
-
-const oceanicTwilight: Theme = {
-  id: 'oceanic-twilight',
-  name: 'Oceanic Twilight',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #0a192f, #020c1b)',
-    accentGradient: 'linear-gradient(to right, #3b82f6, #1e40af)',
-    cardGradient: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.1), rgba(30, 64, 175, 0.2))',
-    textColorPrimary: '#e2e8f0',
-    textColorSecondary: '#94a3b8',
-    accentPrimary: '#3b82f6',
-    accentSecondary: '#1e40af',
-    bgPrimary: '#0a192f',
-    bgSecondary: 'rgba(59, 130, 246, 0.1)',
-    bgBackdrop: 'rgba(10, 25, 47, 0.3)',
-  },
-};
-
-const fuchsiaDream: Theme = {
-  id: 'fuchsia-dream',
-  name: 'Fuchsia Dream',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #9d174d, #5f0f3b)',
-    accentGradient: 'linear-gradient(to right, #ec4899, #be185d)',
-    cardGradient: 'linear-gradient(to bottom, rgba(236, 72, 153, 0.15), rgba(95, 15, 59, 0.3))',
-    textColorPrimary: '#fce7f3',
-    textColorSecondary: '#f9a8d4',
-    accentPrimary: '#ec4899',
-    accentSecondary: '#be185d',
-    bgPrimary: '#3d071d',
-    bgSecondary: 'rgba(236, 72, 153, 0.1)',
-    bgBackdrop: 'rgba(61, 7, 29, 0.3)',
-  },
-};
-
-const abyssalTeal: Theme = {
-  id: 'abyssal-teal',
-  name: 'Abyssal Teal',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #0a0a0a, #000000)',
-    accentGradient: 'linear-gradient(to right, #2dd4bf, #0d9488)',
-    cardGradient: 'linear-gradient(to bottom, rgba(20, 184, 166, 0.1), rgba(13, 148, 136, 0.2))',
-    textColorPrimary: '#5eead4',
-    textColorSecondary: '#2dd4bf',
-    accentPrimary: '#2dd4bf',
-    accentSecondary: '#0d9488',
-    bgPrimary: '#0a0a0a',
-    bgSecondary: 'rgba(20, 184, 166, 0.05)',
-    bgBackdrop: 'rgba(10, 10, 10, 0.3)',
-  },
-};
-
-const electricSunset: Theme = {
-  id: 'electric-sunset',
-  name: 'Electric Sunset',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #581c87, #450a0a)',
-    accentGradient: 'linear-gradient(to right, #ec4899, #a855f7)',
-    cardGradient: 'linear-gradient(to bottom, rgba(88, 28, 135, 0.4), rgba(69, 10, 10, 0.6))',
-    textColorPrimary: '#f3e8ff',
-    textColorSecondary: '#e9d5ff',
-    accentPrimary: '#ec4899',
-    accentSecondary: '#a855f7',
-    bgPrimary: '#1e1b4b',
-    bgSecondary: 'rgba(236, 72, 153, 0.1)',
-    bgBackdrop: 'rgba(30, 27, 75, 0.3)',
+    error: '#FB7185',
+    success: '#34D399',
+    fontJournal: "'Roboto Slab', serif"
   }
-};
-
-const emeraldSea: Theme = {
-  id: 'emerald-sea',
-  name: 'Deep Sea',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #004d40, #00251a)',
-    accentGradient: 'linear-gradient(to right, #64ffda, #1de9b6)',
-    cardGradient: 'linear-gradient(to bottom, rgba(0, 77, 64, 0.5), rgba(0, 37, 26, 0.7))',
-    textColorPrimary: '#e0f2f1',
-    textColorSecondary: '#80cbc4',
-    accentPrimary: '#64ffda',
-    accentSecondary: '#1de9b6',
-    bgPrimary: '#00251a',
-    bgSecondary: 'rgba(100, 255, 218, 0.1)',
-    bgBackdrop: 'rgba(0, 37, 26, 0.3)',
-  },
 };
 
 const monochromeNoir: Theme = {
@@ -170,107 +53,126 @@ const monochromeNoir: Theme = {
   base: 'dark',
   colors: {
     bgGradient: 'linear-gradient(to bottom right, #171717, #0a0a0a)',
-    accentGradient: 'linear-gradient(to right, #991b1b, #ef4444)',
+    accentGradient: 'linear-gradient(to right, #DC2626, #ef4444)',
     cardGradient: 'linear-gradient(to bottom, rgba(38, 38, 38, 0.5), rgba(20, 20, 20, 0.7))',
-    textColorPrimary: '#fee2e2',
-    textColorSecondary: '#fca5a5',
-    accentPrimary: '#b91c1c',
+    textColorPrimary: '#E5E5E5',
+    textColorSecondary: '#737373',
+    accentPrimary: '#DC2626',
     accentSecondary: '#ef4444',
-    bgPrimary: '#171717',
-    bgSecondary: 'rgba(255, 255, 255, 0.1)',
-    bgBackdrop: 'rgba(23, 23, 23, 0.3)',
+    bgPrimary: '#0A0A0A',
+    bgSecondary: 'rgba(255, 255, 255, 0.05)',
+    bgBackdrop: 'rgba(10, 10, 10, 0.3)',
+    error: '#F97316',
+    success: '#FAFAFA',
+    patternOpacity: '0.02',
+    fontJournal: "'Domine', serif"
   },
 };
 
-const justBlack: Theme = {
-  id: 'just-black',
-  name: 'Black',
+const oledBlack: Theme = {
+  id: 'oled-black',
+  name: 'OLED Black',
   base: 'dark',
   colors: {
-    bgGradient: 'linear-gradient(to bottom right, #000000, #000000)',
-    accentGradient: 'linear-gradient(to right, #888888, #555555)',
-    cardGradient: 'linear-gradient(to bottom, #181818, #0a0a0a)',
-    textColorPrimary: '#e5e5e5',
-    textColorSecondary: '#a3a3a3',
-    accentPrimary: '#888888',
-    accentSecondary: '#555555',
-    bgPrimary: '#000000',
-    bgSecondary: '#111111',
-    bgBackdrop: 'rgba(17, 17, 17, 0.3)',
-  },
-};
-
-const slate: Theme = {
-  id: 'slate',
-  name: 'Midnight Slate',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #0f172a, #0f172a)',
-    accentGradient: 'linear-gradient(to right, #14b8a6, #2dd4bf)',
-    cardGradient: 'linear-gradient(to bottom, #1e293b, #0f172a)',
-    textColorPrimary: '#e2e8f0',
-    textColorSecondary: '#94a3b8',
-    accentPrimary: '#14b8a6',
-    accentSecondary: '#2dd4bf',
-    bgPrimary: '#0f172a',
-    bgSecondary: '#1e293b',
-    bgBackdrop: 'rgba(15, 23, 42, 0.3)',
-  },
-};
-
-const highContrastDark: Theme = {
-  id: 'high-contrast-dark',
-  name: 'High Contrast Dark',
-  base: 'dark',
-  colors: {
-    bgGradient: '#000000',
-    accentGradient: 'linear-gradient(to right, #FFFF00, #00FFFF)',
+    bgGradient: 'linear-gradient(to bottom, #000000, #000000)',
+    accentGradient: 'linear-gradient(to right, #6366F1, #4f46e5)',
     cardGradient: 'linear-gradient(to bottom, #111111, #000000)',
-    textColorPrimary: '#FFFFFF',
-    textColorSecondary: '#FFFF00',
-    accentPrimary: '#00FFFF',
-    accentSecondary: '#FFFF00',
+    textColorPrimary: '#FAFAFA',
+    textColorSecondary: '#A1A1AA',
+    accentPrimary: '#6366F1',
+    accentSecondary: '#4f46e5',
     bgPrimary: '#000000',
-    bgSecondary: '#222222',
+    bgSecondary: '#09090b',
     bgBackdrop: 'rgba(0, 0, 0, 0.5)',
+    error: '#EF4444',
+    success: '#22C55E'
   }
 };
 
-const tritanopiaFriendly: Theme = {
-  id: 'tritanopia-friendly',
-  name: 'Tritanopia Friendly',
+const winterIce: Theme = {
+  id: 'winter-ice',
+  name: 'Winter Ice',
   base: 'dark',
   colors: {
-    bgGradient: 'linear-gradient(to bottom, #0F172A, #020617)', // Dark blue
-    accentGradient: 'linear-gradient(to right, #F59E0B, #FB923C)', // Orange/Amber
+    bgGradient: 'linear-gradient(to bottom, #0F172A, #020617)',
+    accentGradient: 'linear-gradient(to right, #38BDF8, #93C5FD)',
     cardGradient: 'linear-gradient(to bottom, rgba(30, 41, 59, 0.5), rgba(2, 6, 23, 0.7))',
-    textColorPrimary: '#F8FAFC', // Off-white
-    textColorSecondary: '#94A3B8', // Slate gray
-    accentPrimary: '#F59E0B', // Amber
-    accentSecondary: '#FB923C', // Orange
+    textColorPrimary: '#F1F5F9',
+    textColorSecondary: '#94A3B8',
+    accentPrimary: '#38BDF8',
+    accentSecondary: '#93C5FD',
     bgPrimary: '#020617',
-    bgSecondary: 'rgba(245, 158, 11, 0.1)', // Amber tint
+    bgSecondary: 'rgba(56, 189, 248, 0.1)',
     bgBackdrop: 'rgba(2, 6, 23, 0.3)',
+    error: '#FDA4AF',
+    success: '#99F6E4',
+    particleEffect: ['snow', 'sparkles']
   }
+};
+
+const halloweenNight: Theme = {
+    id: 'holiday-halloween',
+    name: 'Halloween Night',
+    base: 'dark',
+    colors: {
+        bgGradient: 'linear-gradient(to bottom, #1a0b2e, #0c051a)',
+        accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
+        cardGradient: 'linear-gradient(to bottom, rgba(45, 20, 80, 0.4), rgba(20, 10, 30, 0.6))',
+        textColorPrimary: '#fef3c7',
+        textColorSecondary: 'rgba(214, 211, 209, 0.7)',
+        accentPrimary: '#f97316',
+        accentSecondary: '#fb923c',
+        bgPrimary: '#0c051a',
+        bgSecondary: '#1a0b2e',
+        bgBackdrop: 'rgba(12, 5, 26, 0.5)',
+        error: '#ef4444',
+        success: '#4ade80',
+        particleEffect: ['bats', 'ghosts', 'pumpkins']
+    }
+};
+
+const valentinesDay: Theme = {
+    id: 'holiday-valentines',
+    name: 'Valentine\'s Day',
+    base: 'light',
+    colors: {
+        bgGradient: 'linear-gradient(to bottom right, #fff1f2, #ffe4e6)',
+        accentGradient: 'linear-gradient(to right, #e11d48, #be123c)',
+        cardGradient: 'linear-gradient(to bottom, #ffffff, #fff1f2)',
+        textColorPrimary: '#881337',
+        textColorSecondary: 'rgba(159, 18, 57, 0.7)',
+        accentPrimary: '#fb7185',
+        accentSecondary: '#e11d48',
+        bgPrimary: '#fff1f2',
+        bgSecondary: '#ffe4e6',
+        bgBackdrop: 'rgba(255, 241, 242, 0.3)',
+        error: '#9f1239',
+        success: '#059669',
+        particleEffect: ['hearts', 'flowers']
+    }
 };
 
 // --- LIGHT THEMES ---
 
-const originalLight: Theme = {
+const mintyFresh: Theme = {
   id: 'original-light',
   name: 'Minty Fresh',
   base: 'light',
   colors: {
     bgGradient: 'linear-gradient(to bottom right, #f0fdfa, #ccfbf1)',
-    accentGradient: 'linear-gradient(to right, #14b8a6, #0d9488)',
+    accentGradient: 'linear-gradient(to right, #14B8A6, #0d9488)',
     cardGradient: 'linear-gradient(to bottom, #ffffff, #f0fdfa)',
-    textColorPrimary: '#0f766e',
-    textColorSecondary: '#115e59',
-    accentPrimary: '#14b8a6',
+    textColorPrimary: '#0F766E',
+    textColorSecondary: 'rgba(69, 123, 123, 0.8)',
+    accentPrimary: '#14B8A6',
     accentSecondary: '#0d9488',
     bgPrimary: '#f0fdfa',
     bgSecondary: '#ccfbf1',
     bgBackdrop: 'rgba(240, 253, 250, 0.2)',
+    error: '#B91C1C',
+    success: '#059669',
+    onAccent: '#000000',
+    fontJournal: "'Roboto Slab', serif"
   }
 };
 
@@ -280,428 +182,34 @@ const vintageSepia: Theme = {
   base: 'light',
   colors: {
     bgGradient: 'linear-gradient(to bottom right, #fdf6e3, #e8dcb5)',
-    accentGradient: 'linear-gradient(to right, #6d4c41, #4e342e)',
+    accentGradient: 'linear-gradient(to right, #D97706, #4e342e)',
     cardGradient: 'linear-gradient(to bottom, rgba(253, 246, 227, 0.8), rgba(245, 222, 179, 0.9))',
-    textColorPrimary: '#3e2723',
-    textColorSecondary: '#5d4037',
-    accentPrimary: '#6d4c41',
+    textColorPrimary: '#3E2723',
+    textColorSecondary: '#795548',
+    accentPrimary: '#D97706',
     accentSecondary: '#4e342e',
     bgPrimary: '#fdf6e3',
     bgSecondary: '#eee8d5',
     bgBackdrop: 'rgba(253, 246, 227, 0.2)',
+    error: '#991B1B',
+    success: '#15803D',
+    patternOpacity: '0.08',
+    fontJournal: "'Domine', serif"
   },
-};
-
-const goldenHour: Theme = {
-  id: 'golden-hour',
-  name: 'Golden Hour',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #fff7ed, #fef3c7)',
-    accentGradient: 'linear-gradient(to right, #fb923c, #f59e0b)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(254, 243, 199, 0.8))',
-    textColorPrimary: '#7c2d12',
-    textColorSecondary: '#9a3412',
-    accentPrimary: '#fb923c',
-    accentSecondary: '#f59e0b',
-    bgPrimary: '#fff7ed',
-    bgSecondary: '#fef3c7',
-    bgBackdrop: 'rgba(255, 247, 237, 0.3)',
-  }
-};
-
-const lavenderBliss: Theme = {
-  id: 'lavender-bliss',
-  name: 'Lavender Bliss',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #f5f3ff, #ede9fe)',
-    accentGradient: 'linear-gradient(to right, #8b5cf6, #7c3aed)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(237, 233, 254, 0.8))',
-    textColorPrimary: '#4c1d95',
-    textColorSecondary: '#5b21b6',
-    accentPrimary: '#8b5cf6',
-    accentSecondary: '#7c3aed',
-    bgPrimary: '#f5f3ff',
-    bgSecondary: '#ede9fe',
-    bgBackdrop: 'rgba(245, 243, 255, 0.3)',
-  }
-};
-
-const oceanBreeze: Theme = {
-  id: 'ocean-breeze',
-  name: 'Ocean Breeze',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #f0f9ff, #e0f2fe)',
-    accentGradient: 'linear-gradient(to right, #38bdf8, #0ea5e9)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(224, 242, 254, 0.8))',
-    textColorPrimary: '#0c4a6e',
-    textColorSecondary: '#075985',
-    accentPrimary: '#38bdf8',
-    accentSecondary: '#0ea5e9',
-    bgPrimary: '#f0f9ff',
-    bgSecondary: '#e0f2fe',
-    bgBackdrop: 'rgba(240, 249, 255, 0.3)',
-  }
-};
-
-const softPeach: Theme = {
-  id: 'soft-peach',
-  name: 'Soft Peach',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #fff7f5, #ffeadb)',
-    accentGradient: 'linear-gradient(to right, #fb923c, #f97316)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 234, 219, 0.8))',
-    textColorPrimary: '#854d0e',
-    textColorSecondary: '#b45309',
-    accentPrimary: '#fb923c',
-    accentSecondary: '#f97316',
-    bgPrimary: '#fff7f5',
-    bgSecondary: '#ffeadb',
-    bgBackdrop: 'rgba(255, 247, 245, 0.3)',
-  }
-};
-
-const mintMojito: Theme = {
-  id: 'mint-mojito',
-  name: 'Mint Mojito',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #f0fdf4, #dcfce7)',
-    accentGradient: 'linear-gradient(to right, #4ade80, #22c55e)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(220, 252, 231, 0.8))',
-    textColorPrimary: '#14532d',
-    textColorSecondary: '#166534',
-    accentPrimary: '#4ade80',
-    accentSecondary: '#22c55e',
-    bgPrimary: '#f0fdf4',
-    bgSecondary: '#dcfce7',
-    bgBackdrop: 'rgba(240, 253, 244, 0.3)',
-  }
-};
-
-const cherryBlossom: Theme = {
-  id: 'cherry-blossom',
-  name: 'Cherry Blossom',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #fdf2f8, #fce7f3)',
-    accentGradient: 'linear-gradient(to right, #f472b6, #ec4899)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(252, 231, 243, 0.8))',
-    textColorPrimary: '#831843',
-    textColorSecondary: '#9d174d',
-    accentPrimary: '#f472b6',
-    accentSecondary: '#ec4899',
-    bgPrimary: '#fdf2f8',
-    bgSecondary: '#fce7f3',
-    bgBackdrop: 'rgba(253, 242, 248, 0.3)',
-  }
-};
-
-const daybreak: Theme = {
-  id: 'daybreak',
-  name: 'Daybreak',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #e0f2fe, #fef9c3)',
-    accentGradient: 'linear-gradient(to right, #f59e0b, #0ea5e9)',
-    cardGradient: 'linear-gradient(to bottom, rgba(224, 242, 254, 0.8), rgba(254, 249, 195, 0.8))',
-    textColorPrimary: '#0c4a6e',
-    textColorSecondary: '#854d0e',
-    accentPrimary: '#0ea5e9',
-    accentSecondary: '#f59e0b',
-    bgPrimary: '#f0f9ff',
-    bgSecondary: '#fefce8',
-    bgBackdrop: 'rgba(240, 249, 255, 0.3)',
-  }
-};
-
-const powderBlue: Theme = {
-  id: 'powder-blue',
-  name: 'Powder Blue',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #f0f9ff, #f0f9ff)',
-    accentGradient: 'linear-gradient(to right, #7dd3fc, #38bdf8)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.8))',
-    textColorPrimary: '#0369a1',
-    textColorSecondary: '#075985',
-    accentPrimary: '#7dd3fc',
-    accentSecondary: '#38bdf8',
-    bgPrimary: '#f0f9ff',
-    bgSecondary: '#e0f2fe',
-    bgBackdrop: 'rgba(240, 249, 255, 0.3)',
-  }
-};
-
-const cottonCandy: Theme = {
-  id: 'cotton-candy',
-  name: 'Cotton Candy',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to right, #fbcfe8, #a5f3fc)',
-    accentGradient: 'linear-gradient(to right, #ec4899, #22d3ee)',
-    cardGradient: 'linear-gradient(to bottom, rgba(251, 207, 232, 0.8), rgba(165, 243, 252, 0.8))',
-    textColorPrimary: '#831843',
-    textColorSecondary: '#0e7490',
-    accentPrimary: '#ec4899',
-    accentSecondary: '#22d3ee',
-    bgPrimary: '#fdf2f8',
-    bgSecondary: '#ecfeff',
-    bgBackdrop: 'rgba(253, 242, 248, 0.3)',
-  }
-};
-
-const justWhite: Theme = {
-  id: 'just-white',
-  name: 'White',
-  base: 'light',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #ffffff, #f5f5f5)',
-    accentGradient: 'linear-gradient(to right, #555555, #888888)',
-    cardGradient: 'linear-gradient(to bottom, #ffffff, #f5f5f5)',
-    textColorPrimary: '#171717',
-    textColorSecondary: '#525252',
-    accentPrimary: '#555555',
-    accentSecondary: '#888888',
-    bgPrimary: '#ffffff',
-    bgSecondary: '#e5e5e5',
-    bgBackdrop: 'rgba(245, 245, 244, 0.2)',
-  },
-};
-
-const highContrastLight: Theme = {
-  id: 'high-contrast-light',
-  name: 'High Contrast Light',
-  base: 'light',
-  colors: {
-    bgGradient: '#FFFFFF',
-    accentGradient: 'linear-gradient(to right, #0000FF, #FF00FF)',
-    cardGradient: 'linear-gradient(to bottom, #FFFFFF, #EEEEEE)',
-    textColorPrimary: '#000000',
-    textColorSecondary: '#0000FF',
-    accentPrimary: '#0000FF',
-    accentSecondary: '#FF00FF',
-    bgPrimary: '#FFFFFF',
-    bgSecondary: '#DDDDDD',
-    bgBackdrop: 'rgba(255, 255, 255, 0.3)',
-  }
 };
 
 export const themes: Theme[] = [
-    // Dark Themes
-    originalDark,
-    crimsonSilver,
-    rubyFlare,
+    radiantRed,
+    oledBlack,
     cyberpunkCity,
-    oceanicTwilight,
-    fuchsiaDream,
-    abyssalTeal,
-    electricSunset,
-    emeraldSea,
     monochromeNoir,
-    justBlack,
-    slate,
-    highContrastDark,
-    tritanopiaFriendly,
-    // Light Themes
-    originalLight,
+    winterIce,
+    mintyFresh,
     vintageSepia,
-    goldenHour,
-    lavenderBliss,
-    oceanBreeze,
-    softPeach,
-    mintMojito,
-    cherryBlossom,
-    daybreak,
-    powderBlue,
-    cottonCandy,
-    justWhite,
-    highContrastLight,
 ];
 
-// --- HOLIDAY THEMES ---
 export const holidayThemes: Theme[] = [
-  {
-    id: 'holiday-new-years-eve',
-    name: "New Year's Eve",
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #171717, #000000)',
-      accentGradient: 'linear-gradient(to right, #fde047, #facc15)',
-      cardGradient: 'linear-gradient(to bottom, rgba(23, 23, 23, 0.5), rgba(10, 10, 10, 0.7))',
-      textColorPrimary: '#fefce8',
-      textColorSecondary: '#fde047',
-      accentPrimary: '#fde047',
-      accentSecondary: '#facc15',
-      bgPrimary: '#171717',
-      bgSecondary: 'rgba(250, 204, 21, 0.1)',
-      bgBackdrop: 'rgba(23, 23, 23, 0.3)',
-      particleEffect: ['fireworks', 'confetti'],
-    }
-  },
-  {
-    id: 'holiday-new-year',
-    name: 'New Year',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #1e1b4b, #172554)',
-      accentGradient: 'linear-gradient(to right, #a78bfa, #c084fc)',
-      cardGradient: 'linear-gradient(to bottom, rgba(30, 27, 75, 0.5), rgba(23, 37, 84, 0.7))',
-      textColorPrimary: '#e0e7ff',
-      textColorSecondary: '#c7d2fe',
-      accentPrimary: '#a78bfa',
-      accentSecondary: '#c084fc',
-      bgPrimary: '#1e1b4b',
-      bgSecondary: 'rgba(167, 139, 250, 0.1)',
-      bgBackdrop: 'rgba(30, 27, 75, 0.3)',
-      particleEffect: ['confetti', 'sparkles'],
-    }
-  },
-  {
-    id: 'holiday-valentines',
-    name: "Valentine's Day",
-    base: 'light',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom right, #fff1f2, #fce7f3)',
-      accentGradient: 'linear-gradient(to right, #f472b6, #ec4899)',
-      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(252, 231, 243, 0.8))',
-      textColorPrimary: '#831843',
-      textColorSecondary: '#9d174d',
-      accentPrimary: '#f472b6',
-      accentSecondary: '#ec4899',
-      bgPrimary: '#fff1f2',
-      bgSecondary: '#fce7f3',
-      bgBackdrop: 'rgba(253, 242, 248, 0.3)',
-      particleEffect: ['hearts', 'flowers'],
-    }
-  },
-  {
-    id: 'holiday-easter',
-    name: 'Easter',
-    base: 'light',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom right, #f0f9ff, #e0f2fe)',
-      accentGradient: 'linear-gradient(to right, #fbcfe8, #a5f3fc)',
-      cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(240, 249, 255, 0.8))',
-      textColorPrimary: '#075985',
-      textColorSecondary: '#155e75',
-      accentPrimary: '#fbcfe8',
-      accentSecondary: '#a5f3fc',
-      bgPrimary: '#f0f9ff',
-      bgSecondary: '#e0f2fe',
-      bgBackdrop: 'rgba(240, 249, 255, 0.3)',
-      particleEffect: ['eggs', 'flowers'],
-    }
-  },
-  {
-    id: 'holiday-mothers-day',
-    name: "Mother's Day",
-    base: 'light',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom right, #fdf4ff, #fae8ff)',
-      accentGradient: 'linear-gradient(to right, #f472b6, #e879f9)',
-      cardGradient: 'linear-gradient(to bottom, rgba(253, 244, 255, 0.8), rgba(250, 232, 255, 0.8))',
-      textColorPrimary: '#581c87',
-      textColorSecondary: '#701a75',
-      accentPrimary: '#f472b6',
-      accentSecondary: '#e879f9',
-      bgPrimary: '#fdf4ff',
-      bgSecondary: '#fae8ff',
-      bgBackdrop: 'rgba(253, 244, 255, 0.3)',
-      particleEffect: ['flowers', 'hearts'],
-    }
-  },
-  {
-    id: 'holiday-fathers-day',
-    name: "Father's Day",
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #064e3b, #042f2e)',
-      accentGradient: 'linear-gradient(to right, #ca8a04, #f59e0b)',
-      cardGradient: 'linear-gradient(to bottom, rgba(6, 78, 59, 0.5), rgba(4, 47, 46, 0.7))',
-      textColorPrimary: '#d1fae5',
-      textColorSecondary: '#a7f3d0',
-      accentPrimary: '#ca8a04',
-      accentSecondary: '#f59e0b',
-      bgPrimary: '#042f2e',
-      bgSecondary: 'rgba(202, 138, 4, 0.1)',
-      bgBackdrop: 'rgba(4, 47, 46, 0.3)',
-      particleEffect: ['confetti', 'sparkles'],
-    }
-  },
-  {
-    id: 'holiday-independence-day',
-    name: "Independence Day",
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(135deg, #b91c1c 25%, #1e3a8a 25%, #1e3a8a 50%, #b91c1c 50%, #b91c1c 75%, #1e3a8a 75%, #1e3a8a 100%)',
-      accentGradient: 'linear-gradient(to right, #f9fafb, #d1d5db)',
-      cardGradient: 'linear-gradient(to bottom, rgba(30, 58, 138, 0.5), rgba(185, 28, 28, 0.7))',
-      textColorPrimary: '#f9fafb',
-      textColorSecondary: '#e5e7eb',
-      accentPrimary: '#f9fafb',
-      accentSecondary: '#d1d5db',
-      bgPrimary: '#111827',
-      bgSecondary: 'rgba(249, 250, 251, 0.1)',
-      bgBackdrop: 'rgba(17, 24, 39, 0.3)',
-      particleEffect: ['fireworks'],
-    }
-  },
-  {
-    id: 'holiday-halloween',
-    name: 'Halloween',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #1a202c, #000000)',
-      accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
-      cardGradient: 'linear-gradient(to bottom, rgba(28, 25, 23, 0.5), rgba(10, 5, 2, 0.7))',
-      textColorPrimary: '#f3f4f6',
-      textColorSecondary: '#d97706',
-      accentPrimary: '#f97316',
-      accentSecondary: '#ea580c',
-      bgPrimary: '#1c1917',
-      bgSecondary: 'rgba(249, 115, 22, 0.1)',
-      bgBackdrop: 'rgba(28, 25, 23, 0.3)',
-      particleEffect: ['ghosts', 'pumpkins', 'bats'],
-    }
-  },
-  {
-    id: 'holiday-thanksgiving',
-    name: 'Thanksgiving',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #422006, #2d0f00)',
-      accentGradient: 'linear-gradient(to right, #f97316, #d97706)',
-      cardGradient: 'linear-gradient(to bottom, rgba(66, 32, 6, 0.5), rgba(45, 15, 0, 0.7))',
-      textColorPrimary: '#ffedd5',
-      textColorSecondary: '#fed7aa',
-      accentPrimary: '#f97316',
-      accentSecondary: '#d97706',
-      bgPrimary: '#2d0f00',
-      bgSecondary: 'rgba(249, 115, 22, 0.1)',
-      bgBackdrop: 'rgba(45, 15, 0, 0.3)',
-      particleEffect: ['leaves'],
-    }
-  },
-  {
-    id: 'holiday-christmas',
-    name: 'Christmas',
-    base: 'dark',
-    colors: {
-      bgGradient: 'linear-gradient(to bottom, #042f2e, #064e3b)',
-      accentGradient: 'linear-gradient(to right, #ef4444, #b91c1c)',
-      cardGradient: 'linear-gradient(to bottom, rgba(4, 47, 46, 0.5), rgba(6, 78, 59, 0.7))',
-      textColorPrimary: '#e0f2fe',
-      textColorSecondary: '#7dd3fc',
-      accentPrimary: '#ef4444',
-      accentSecondary: '#b91c1c',
-      bgPrimary: '#064e3b',
-      bgSecondary: 'rgba(239, 68, 68, 0.1)',
-      bgBackdrop: 'rgba(4, 47, 46, 0.3)',
-      particleEffect: ['snow', 'sparkles'],
-    }
-  },
+    winterIce,
+    halloweenNight,
+    valentinesDay,
 ];
