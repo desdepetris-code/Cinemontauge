@@ -81,20 +81,10 @@ const Top10Carousel: React.FC<Top10CarouselProps> = ({
                 </div>
             </div>
             <Carousel>
-                <div className="flex overflow-x-auto py-4 -mx-2 px-6 space-x-12 hide-scrollbar items-start">
+                <div className="flex overflow-x-auto py-4 -mx-2 px-6 space-x-6 hide-scrollbar items-start">
                     {media.map((item, index) => (
                         <div key={item.id} className="relative flex-shrink-0 group">
-                            {/* Visual Rank Indicator */}
-                            <div className="absolute -left-8 bottom-4 z-10 pointer-events-none select-none">
-                                <span className="text-9xl font-black italic text-transparent stroke-text" style={{ 
-                                    WebkitTextStroke: '2px rgba(255,255,255,0.4)',
-                                    textShadow: '0 0 30px rgba(0,0,0,0.5)'
-                                }}>
-                                    {index + 1}
-                                </span>
-                            </div>
-                            
-                            <div className="w-56 transform transition-transform duration-500 group-hover:scale-105 group-hover:z-20">
+                            <div className="w-56 relative z-10 transform transition-transform duration-500 group-hover:scale-105">
                                 <ActionCard 
                                     item={item} 
                                     onSelect={onSelectShow}
@@ -108,6 +98,7 @@ const Top10Carousel: React.FC<Top10CarouselProps> = ({
                                     userRating={userData.ratings[item.id]?.rating || 0}
                                     userData={userData}
                                     timeFormat={timeFormat}
+                                    rank={index + 1}
                                 />
                             </div>
                         </div>
@@ -115,14 +106,6 @@ const Top10Carousel: React.FC<Top10CarouselProps> = ({
                     <div className="w-12 flex-shrink-0"></div>
                 </div>
             </Carousel>
-            
-            <style>{`
-                .stroke-text {
-                    color: transparent;
-                    -webkit-text-stroke: 3px rgba(var(--color-accent-primary-rgb), 0.5);
-                    paint-order: stroke fill;
-                }
-            `}</style>
         </div>
     );
 };

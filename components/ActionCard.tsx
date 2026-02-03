@@ -26,6 +26,7 @@ interface ActionCardProps {
     userRating?: number;
     userData: UserData;
     timeFormat?: '12h' | '24h';
+    rank?: number;
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({ 
@@ -40,7 +41,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
     showSeriesInfo = 'expanded',
     userRating = 0,
     userData,
-    timeFormat = '12h'
+    timeFormat = '12h',
+    rank
 }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
@@ -136,15 +138,19 @@ const ActionCard: React.FC<ActionCardProps> = ({
         setIsInfoExpanded(!isInfoExpanded);
     };
 
-    const airYears = useMemo(() => {
-        if (item.media_type !== 'tv' || !details) return null;
-        const start = details.first_air_date?.substring(0, 4);
-        const end = details.status === 'Ended' || details.status === 'Canceled' 
-            ? details.last_episode_to_air?.air_date?.substring(0, 4) 
-            : 'Present';
+    const formattedYears = useMemo(() => {
+        if (!details) return (item.release_date || item.first_air_date)?.substring(0, 4);
+        
+        const start = (details.release_date || details.first_air_date)?.substring(0, 4);
         if (!start) return null;
-        return start === end ? start : `${start} — ${end}`;
-    }, [details, item.media_type]);
+
+        if (item.media_type === 'movie') return start;
+
+        const isOngoing = details.status !== 'Ended' && details.status !== 'Canceled';
+        const end = isOngoing ? 'Ongoing' : (details.last_episode_to_air?.air_date?.substring(0, 4) || start);
+        
+        return `${start} - ${end}`;
+    }, [details, item]);
 
     const shouldShowInfoSection = showSeriesInfo !== 'hidden' && item.media_type === 'tv' && details && isInfoExpanded;
 
@@ -166,7 +172,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-2 z-20">
                         {ageRating && (
-                            /* FIX: Changed 'rating' to 'ageRating' to resolve "Cannot find name" error. */
                             <div className={`px-2 py-1 text-[10px] md:text-xs font-black rounded-lg backdrop-blur-md border border-white/10 shadow-2xl ${getAgeRatingColor(ageRating)}`}>
                                 {ageRating}
                             </div>
@@ -232,12 +237,26 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 </div>
 
                 {showSeriesInfo !== 'hidden' && (
-                    <div className="mt-2 p-2 bg-bg-secondary/20 rounded-xl text-center shadow-inner border border-white/5">
-                        <p className="font-black text-text-primary truncate text-xs uppercase tracking-tight">{title}</p>
-                        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-[10px] font-bold text-text-secondary opacity-60 mt-0.5">
-                             <span className="uppercase tracking-widest">{item.media_type === 'tv' ? 'Series' : 'Film'}</span>
-                             <span>•</span>
-                             <span>{(item.release_date || item.first_air_date)?.substring(0, 4)}</span>
+                    <div className="mt-2 flex bg-bg-secondary/20 rounded-xl shadow-inner border border-white/5 overflow-hidden">
+                        {rank && (
+                            <div className="w-14 flex-shrink-0 flex items-center justify-center bg-primary-accent/5 border-r border-white/5 overflow-hidden">
+                                <span className="text-5xl font-black italic leading-none select-none" style={{ 
+                                    WebkitTextStroke: '1px var(--color-accent-primary)',
+                                    color: 'white',
+                                    opacity: '0.6',
+                                    marginTop: '4px'
+                                }}>
+                                    {rank}
+                                </span>
+                            </div>
+                        )}
+                        <div className="flex-grow p-2 text-center flex flex-col justify-center min-w-0">
+                            <p className="font-black text-text-primary truncate text-xs uppercase tracking-tight">{title}</p>
+                            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-text-secondary opacity-60 mt-0.5">
+                                 <span className="uppercase tracking-widest">{item.media_type === 'tv' ? 'Series' : 'Film'}</span>
+                                 <span>•</span>
+                                 <span>{formattedYears}</span>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -247,7 +266,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         <div className="flex flex-col mb-3 pb-2 border-b border-white/5">
                             <div className="flex justify-between items-center">
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">Runtime Timeline</span>
-                                <span className="text-[9px] font-black text-text-secondary tracking-widest">{airYears}</span>
+                                <span className="text-[9px] font-black text-text-secondary tracking-widest">{formattedYears}</span>
                             </div>
                         </div>
                         <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-2">
