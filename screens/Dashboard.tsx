@@ -20,6 +20,7 @@ import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
 import UpcomingMoviesCarousel from '../components/UpcomingMoviesCarousel';
 import { getEnrichedMediaFromBackend } from '../services/backendService';
+import Top10Carousel from '../components/Top10Carousel';
 
 interface DashboardProps {
   userData: UserData;
@@ -49,6 +50,7 @@ interface DashboardProps {
   preferences: AppPreferences;
   onRemoveWeeklyPick: (pick: any) => void;
   onOpenNominateModal: () => void;
+  showRatings: boolean;
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -58,21 +60,27 @@ const ApiKeyWarning: React.FC = () => (
     </div>
 );
 
-interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences' | 'timeFormat'> {}
+interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences' | 'timeFormat' | 'showRatings'> {}
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
-({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat }) => {
-    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists, userData, timeFormat };
+({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat, showRatings }) => {
+    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists, userData, timeFormat, showRatings };
 
     return (
         <div className="space-y-8">
           <GenericCarousel title="🎞️ Now in Theaters" fetcher={getNowPlayingMovies} {...carouselProps} />
+          
           {preferences.dashShowUpcoming && (
             <>
               <UpcomingPremieresCarousel title="📺 Upcoming TV Premieres" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} />
               <UpcomingMoviesCarousel title="🎬 Upcoming Movie Releases" {...carouselProps} reminders={reminders} onToggleReminder={onToggleReminder} />
             </>
           )}
+
+          {/* Top 10 Lists positioned under Upcoming releases */}
+          <Top10Carousel title="🏆 Top 10 Movies" mediaType="movie" {...carouselProps} />
+          <Top10Carousel title="🏆 Top 10 TV Shows" mediaType="tv" {...carouselProps} />
+          
           {preferences.dashShowTrending && (
             <><NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" {...carouselProps} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} />
             <NewlyPopularEpisodes onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('allNewlyPopularEpisodes')} />
@@ -94,7 +102,8 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 const Dashboard: React.FC<DashboardProps> = ({
     userData, onSelectShow, onSelectShowInModal, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, setCustomLists,
     liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat,
-    reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, onRemoveWeeklyPick, onOpenNominateModal
+    reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, onRemoveWeeklyPick, onOpenNominateModal,
+    showRatings
 }) => {
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
   const [backendMovies, setBackendMovies] = useState<TmdbMedia[]>([]);
@@ -115,8 +124,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   
   const carouselProps = useMemo(() => ({ 
     onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, 
-    favorites, completed: userData.completed, onUpdateLists, userData, timeFormat 
-  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, onUpdateLists]);
+    favorites, completed: userData.completed, onUpdateLists, userData, timeFormat,
+    showRatings
+  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, onUpdateLists, showRatings]);
 
   const recommendationSeedItems = useMemo(() => {
     return [...userData.watching].filter(item => {
@@ -166,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('library-plan-to-watch')} globalPlaceholders={userData.globalPlaceholders} />
       )}
 
-      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} timeFormat={timeFormat} />}
+      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} timeFormat={timeFormat} showRatings={showRatings} />}
       {!isApiKeyMissing && <MyListSuggestions userData={userData} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} />}
       {isApiKeyMissing && <ApiKeyWarning />}
     </div>

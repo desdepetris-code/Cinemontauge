@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
@@ -576,6 +577,8 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onUpdateLists={updateLists} shortcutSettings={shortcutSettings} preferences={preferences} 
                     onRemoveWeeklyPick={(p) => setWeeklyFavorites(prev => prev.filter(item => item.id !== p.id || item.category !== p.category || item.dayIndex !== p.dayIndex))} 
                     onOpenNominateModal={() => setIsNominateModalOpen(true)}
+                    // FIX: Passed showRatings to Dashboard component to resolve destructuring and missing name errors.
+                    showRatings={showRatings}
                 />
             )}
             {activeScreen === 'search' && <SearchScreen {...allUserData} onSelectShow={handleSelectShow} onSelectPerson={setSelectedPerson} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={onUpdateSearchHistory} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} query={searchQuery} onQueryChange={setSearchQuery} onMarkShowAsWatched={handleMarkMovieAsWatched} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} onMarkPreviousEpisodesWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />}

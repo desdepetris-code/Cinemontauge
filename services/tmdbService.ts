@@ -19,6 +19,7 @@ const aliasMap: Record<string, string> = {
 
 const CACHE_TTL = 2 * 60 * 60 * 1000;
 const CACHE_TTL_SHORT = 2 * 60 * 60 * 1000;
+const CACHE_TTL_POPULAR = 1 * 60 * 60 * 1000; // 1 hour for Top 10
 
 export const clearMediaCache = (id: number, mediaType: 'tv' | 'movie'): void => {
     const cacheKey = `tmdb_details_v4_${mediaType}_${id}`;
@@ -324,6 +325,25 @@ export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[
     const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`trending/${mediaType}/week`);
     const results = (data?.results || []).map(item => ({ ...item, media_type: mediaType }));
     setToCache(cacheKey, results, CACHE_TTL_SHORT);
+    return results;
+};
+
+/**
+ * Fetches the top 10 most popular movies or TV shows.
+ * Caches results for 1 hour.
+ */
+export const getPopularMedia = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
+    const cacheKey = `tmdb_popular_top10_${mediaType}_v1`;
+    const cached = getFromCache<TmdbMedia[]>(cacheKey);
+    if (cached) return cached;
+    
+    const data = await fetchFromTmdb<{ results: TmdbMedia[] }>(`${mediaType}/popular?language=en-US`);
+    const results = (data?.results || []).slice(0, 10).map(item => ({ 
+        ...item, 
+        media_type: mediaType 
+    }));
+    
+    setToCache(cacheKey, results, CACHE_TTL_POPULAR);
     return results;
 };
 

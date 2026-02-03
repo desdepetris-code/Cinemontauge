@@ -1,6 +1,7 @@
 
 // TMDB API Key. For a production app, this should be in an environment variable.
-export const TMDB_API_KEY = 'b7922161a07780ff1d7caf291ecfa9ec';
+// Attempt to use VITE_TMDB_KEY from environment, fallback to hardcoded key if not present.
+export const TMDB_API_KEY = (import.meta as any).env?.VITE_TMDB_KEY || 'b7922161a07780ff1d7caf291ecfa9ec';
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
