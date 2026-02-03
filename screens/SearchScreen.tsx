@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, CheckCircleIcon, EyeIcon, EyeSlashIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import RelatedRecommendations from '../components/RelatedRecommendations';
@@ -56,7 +56,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
         <div className="space-y-12 animate-fade-in pb-20">
             {showRecentHistory && searchHistory && searchHistory.length > 0 && (
                 <section>
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-6 px-2">
                         <div className="flex items-center gap-3">
                             <ClockIcon className="w-6 h-6 text-primary-accent" />
                             <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Recent Searches</h2>
@@ -70,7 +70,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
                         </button>
                     </div>
                     <Carousel>
-                        <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar">
+                        <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar px-2">
                             {searchHistory.map((h) => (
                                 <div key={h.timestamp} className="relative group/h flex-shrink-0 w-48">
                                     <button 
@@ -100,7 +100,7 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
                                         <button 
                                             type="button"
                                             onClick={() => onQueryChange(h.query || '')}
-                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all min-h-[100px] flex flex-col justify-center"
+                                            className="w-full h-full bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 text-left hover:bg-bg-secondary transition-all min-h-[100px] flex flex-col justify-center shadow-lg"
                                         >
                                             <p className="text-xs font-black text-text-primary uppercase tracking-tight line-clamp-2">"{h.query}"</p>
                                             <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-50">{new Date(h.timestamp).toLocaleDateString()}</p>
@@ -177,12 +177,19 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
 
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
+interface FilterState {
+    mediaType: 'all' | 'tv' | 'movie';
+    genres: Set<number>;
+    minYear: string;
+    maxYear: string;
+    minRating: number;
+    sort: string;
+}
+
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const { onSelectShow, onSelectPerson, onSelectUser, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences, onUpdateSearchHistory } = props;
   
-  // Independent query state for Search Screen
   const [localQuery, setLocalQuery] = useState('');
-  
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
@@ -194,11 +201,25 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   const [error, setError] = useState<string | null>(null);
   
   const [showFiltersToggle, setShowFiltersToggle] = useState(preferences.searchAlwaysExpandFilters);
-  const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'tv' | 'movie'>('all');
-  const [genreFilter, setGenreFilter] = useState<string>('');
-  const [yearFilter, setYearFilter] = useState<string>('');
-  const [sortFilter, setSortFilter] = useState<string>('popularity.desc');
   const [hideWatched, setHideWatched] = useState(false);
+
+  // Staged Filter States (User is picking but not yet applied)
+  const [stagedMediaType, setStagedMediaType] = useState<'all' | 'tv' | 'movie'>('all');
+  const [stagedGenres, setStagedGenres] = useState<Set<number>>(new Set());
+  const [stagedMinYear, setStagedMinYear] = useState<string>('');
+  const [stagedMaxYear, setStagedMaxYear] = useState<string>('');
+  const [stagedMinRating, setStagedMinRating] = useState<number>(0);
+  const [stagedSort, setStagedSort] = useState<string>('popularity.desc');
+
+  // Applied Filter States (What actually affects the results)
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+      mediaType: 'all',
+      genres: new Set(),
+      minYear: '',
+      maxYear: '',
+      minRating: 0,
+      sort: 'popularity.desc'
+  });
 
   useEffect(() => {
     if (preferences.searchAlwaysExpandFilters) {
@@ -214,7 +235,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         setCommunityListResults([]);
         setUserResults([]);
         setGenreResults([]);
-        if (!preferences.searchAlwaysExpandFilters) setShowFiltersToggle(false);
         return;
     }
 
@@ -224,6 +244,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
         const mediaPromise = searchMediaPaginated(localQuery, 1);
         const peoplePromise = searchPeoplePaginated(localQuery, 1);
         const lowerCaseQuery = localQuery.toLowerCase();
+        
         setMyListResults(userData.customLists.filter(list => list.name.toLowerCase().includes(lowerCaseQuery)));
         setCommunityListResults(searchPublicLists(localQuery, currentUser?.id || null));
         setUserResults(searchUsers(localQuery, currentUser?.id || null));
@@ -234,34 +255,82 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             const [mediaData, peopleData] = await Promise.all([mediaPromise, peoplePromise]);
             setMediaResults(mediaData.results);
             setPeopleResults(peopleData.results);
-            // Update search history with the query string
             onUpdateSearchHistory(localQuery);
         } catch (e) { setError("Could not perform search."); } finally { setLoading(false); }
     };
 
     const debounceTimer = setTimeout(performAllSearches, 800);
     return () => clearTimeout(debounceTimer);
-}, [localQuery, userData.customLists, genres, currentUser?.id, preferences.searchAlwaysExpandFilters, onUpdateSearchHistory]);
+}, [localQuery, userData.customLists, genres, currentUser?.id, onUpdateSearchHistory]);
+
+  const handleApplyFilters = () => {
+      setAppliedFilters({
+          mediaType: stagedMediaType,
+          genres: new Set(stagedGenres),
+          minYear: stagedMinYear,
+          maxYear: stagedMaxYear,
+          minRating: stagedMinRating,
+          sort: stagedSort
+      });
+      // Optionally auto-collapse on mobile if needed, but for now we stay open to let them see result count change
+  };
+
+  const clearFilters = () => {
+      const defaultState: FilterState = {
+          mediaType: 'all',
+          genres: new Set(),
+          minYear: '',
+          maxYear: '',
+          minRating: 0,
+          sort: 'popularity.desc'
+      };
+      setStagedMediaType('all');
+      setStagedGenres(new Set());
+      setStagedMinYear('');
+      setStagedMaxYear('');
+      setStagedMinRating(0);
+      setStagedSort('popularity.desc');
+      setAppliedFilters(defaultState);
+  };
 
   const filteredAndSortedMedia = useMemo(() => {
     let results = [...mediaResults];
     
-    // Hide Watched Filter
     if (hideWatched) {
         results = results.filter(i => {
             const isCompleted = userData.completed.some(c => c.id === i.id);
             const isCaughtUp = userData.allCaughtUp.some(c => c.id === i.id);
-            // Hide if user marked as complete or caught up
             return !isCompleted && !isCaughtUp;
         });
     }
 
-    if (mediaTypeFilter !== 'all') results = results.filter(item => item.media_type === mediaTypeFilter);
-    if (genreFilter) results = results.filter(item => item.genre_ids?.includes(Number(genreFilter)));
-    if (yearFilter && yearFilter.length === 4) results = results.filter(i => (i.release_date || i.first_air_date || '').substring(0, 4) === yearFilter);
+    if (appliedFilters.mediaType !== 'all') results = results.filter(item => item.media_type === appliedFilters.mediaType);
+    
+    if (appliedFilters.genres.size > 0) {
+        results = results.filter(item => 
+            item.genre_ids?.some(gid => appliedFilters.genres.has(gid))
+        );
+    }
+
+    if (appliedFilters.minYear.length === 4) {
+        results = results.filter(i => {
+            const yearStr = (i.release_date || i.first_air_date || '').substring(0, 4);
+            return parseInt(yearStr) >= parseInt(appliedFilters.minYear);
+        });
+    }
+    if (appliedFilters.maxYear.length === 4) {
+        results = results.filter(i => {
+            const yearStr = (i.release_date || i.first_air_date || '').substring(0, 4);
+            return parseInt(yearStr) <= parseInt(appliedFilters.maxYear);
+        });
+    }
+
+    if (appliedFilters.minRating > 0) {
+        results = results.filter(i => (i.vote_average || 0) >= appliedFilters.minRating);
+    }
 
     results.sort((a, b) => {
-      switch (sortFilter) {
+      switch (appliedFilters.sort) {
         case 'release_date.desc': return new Date(b.release_date || b.first_air_date || 0).getTime() - new Date(a.release_date || a.first_air_date || 0).getTime();
         case 'vote_average.desc': return (b.vote_average || 0) - (a.vote_average || 0);
         case 'alphabetical.asc': return (a.title || a.name || '').localeCompare(b.title || b.name || '');
@@ -269,7 +338,16 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
       }
     });
     return results;
-  }, [mediaResults, mediaTypeFilter, genreFilter, yearFilter, sortFilter, hideWatched, userData.completed, userData.allCaughtUp]);
+  }, [mediaResults, appliedFilters, hideWatched, userData.completed, userData.allCaughtUp]);
+
+  const toggleStagedGenre = (id: number) => {
+      setStagedGenres(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+      });
+  };
 
   const handleItemSelect = (id: number, media_type: 'tv' | 'movie', item: TmdbMedia) => {
     const tracked: TrackedItem = { id: item.id, title: item.title || item.name || 'Untitled', media_type: item.media_type, poster_path: item.poster_path, genre_ids: item.genre_ids };
@@ -278,72 +356,24 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   };
 
   const renderSearchResults = () => {
-    if (loading && mediaResults.length === 0) return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
-            {[...Array(12)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-2xl"></div></div>)}
-        </div>
-    );
+    if (loading && mediaResults.length === 0) {
+        return (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-pulse">
+                {[...Array(15)].map((_, i) => <div key={i}><div className="aspect-[2/3] bg-bg-secondary rounded-[1.5rem]"></div></div>)}
+            </div>
+        );
+    }
+    
     if (error) return <div className="text-center p-8 text-red-500 font-bold">{error}</div>;
 
     switch (activeTab) {
         case 'media': return (
-            <div className="space-y-6">
-                {(showFiltersToggle || preferences.searchAlwaysExpandFilters) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-bg-secondary/20 rounded-3xl border border-white/5 animate-fade-in shadow-inner">
-                        <div className="relative">
-                            <select 
-                                value={mediaTypeFilter}
-                                onChange={e => setMediaTypeFilter(e.target.value as any)}
-                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            >
-                                <option value="all">All Media</option>
-                                <option value="movie">Movies Only</option>
-                                <option value="tv">TV Shows Only</option>
-                            </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
-                        </div>
-                        <div className="relative">
-                            <select 
-                                value={genreFilter}
-                                onChange={e => setGenreFilter(e.target.value)}
-                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            >
-                                <option value="">All Genres</option>
-                                {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name as string}</option>)}
-                            </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
-                        </div>
-                        <div className="relative">
-                            <input 
-                                type="text" 
-                                maxLength={4}
-                                placeholder="Year (e.g. 2025)"
-                                value={yearFilter}
-                                onChange={e => setYearFilter(e.target.value.replace(/\D/g, ''))}
-                                className="w-full bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            />
-                        </div>
-                        <div className="relative">
-                            <select 
-                                value={sortFilter}
-                                onChange={e => setSortFilter(e.target.value)}
-                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            >
-                                <option value="popularity.desc">Most Popular</option>
-                                <option value="release_date.desc">Newest First</option>
-                                <option value="vote_average.desc">Highest Rated</option>
-                                <option value="alphabetical.asc">A to Z</option>
-                            </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
-                        </div>
-                    </div>
-                )}
-
+            <div className="space-y-8">
                 {filteredAndSortedMedia.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 animate-fade-in pb-10">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 animate-fade-in pb-10">
                         {filteredAndSortedMedia.map(item => (
                             <ActionCard 
-                                key={item.id} 
+                                key={`${item.id}-${item.media_type}`} 
                                 item={item} 
                                 onSelect={(id, type) => handleItemSelect(id, type, item)} 
                                 onOpenAddToListModal={onOpenAddToListModal} 
@@ -358,7 +388,13 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             />
                         ))}
                     </div>
-                ) : localQuery.length > 0 ? <p className="text-center py-24 text-text-secondary font-bold uppercase tracking-widest opacity-50">No media found matching your criteria.</p> : null}
+                ) : localQuery.length > 0 ? (
+                    <div className="py-40 text-center bg-bg-secondary/10 rounded-[3rem] border-4 border-dashed border-white/5 flex flex-col items-center justify-center">
+                        <SparklesIcon className="w-16 h-16 text-text-secondary/20 mb-6" />
+                        <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">No Media Found</h2>
+                        <p className="text-sm text-text-secondary max-w-sm mx-auto mt-2 font-medium opacity-60">Try adjusting your filters or searching for a broader term.</p>
+                    </div>
+                ) : null}
             </div>
         );
 
@@ -396,15 +432,16 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
             <button 
                 onClick={() => setHideWatched(!hideWatched)}
-                className={`flex items-center justify-center px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 group ${hideWatched ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
+                className={`flex items-center gap-2 justify-center px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 group ${hideWatched ? 'bg-primary-accent text-on-accent border-transparent shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.3)]' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
             >
+                {hideWatched ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                 <span className="text-[10px] font-black uppercase tracking-widest">{hideWatched ? 'Unhide Watched' : 'Hide Watched'}</span>
             </button>
 
-            {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && !preferences.searchAlwaysExpandFilters && (
+            {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && (
                 <button 
                     onClick={() => setShowFiltersToggle(!showFiltersToggle)}
-                    className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 ${showFiltersToggle ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
+                    className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 ${showFiltersToggle ? 'bg-primary-accent text-on-accent border-transparent shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.3)]' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
                 >
                     <FilterIcon className="w-5 h-5" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Filters</span>
@@ -412,6 +449,120 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             )}
           </div>
         </header>
+
+        {/* --- Unified Filter Accordion Panel --- */}
+        {showFiltersToggle && (
+            <div className="mb-12 bg-bg-secondary/20 rounded-[2.5rem] p-8 border border-white/5 animate-fade-in shadow-inner space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {/* Media Type */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Media Archive</label>
+                        <div className="relative">
+                            <select 
+                                value={stagedMediaType}
+                                onChange={e => setStagedMediaType(e.target.value as any)}
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
+                            >
+                                <option value="all">Both Archives</option>
+                                <option value="movie">Movies Only</option>
+                                <option value="tv">TV Shows Only</option>
+                            </select>
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
+                        </div>
+                    </div>
+
+                    {/* Year Range */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Chronological Range</label>
+                        <div className="flex items-center gap-2">
+                            <input 
+                                type="text" 
+                                maxLength={4}
+                                placeholder="From"
+                                value={stagedMinYear}
+                                onChange={e => setStagedMinYear(e.target.value.replace(/\D/g, ''))}
+                                className="w-full bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
+                            />
+                            <span className="text-text-secondary opacity-30">—</span>
+                            <input 
+                                type="text" 
+                                maxLength={4}
+                                placeholder="To"
+                                value={stagedMaxYear}
+                                onChange={e => setStagedMaxYear(e.target.value.replace(/\D/g, ''))}
+                                className="w-full bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Min Rating */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Minimum Merit (Rating)</label>
+                        <div className="relative">
+                            <select 
+                                value={stagedMinRating}
+                                onChange={e => setStagedMinRating(Number(e.target.value))}
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
+                            >
+                                <option value="0">Any Rating</option>
+                                {[9,8,7,6,5,4,3,2,1].map(num => <option key={num} value={num}>{num}.0+</option>)}
+                            </select>
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
+                        </div>
+                    </div>
+
+                    {/* Sorting */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Sort Index</label>
+                        <div className="relative">
+                            <select 
+                                value={stagedSort}
+                                onChange={e => setStagedSort(e.target.value)}
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
+                            >
+                                <option value="popularity.desc">Most Popular</option>
+                                <option value="release_date.desc">Newest First</option>
+                                <option value="vote_average.desc">Highest Rated</option>
+                                <option value="alphabetical.asc">A to Z</option>
+                            </select>
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Genre Multi-select */}
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Genre Affinity Tags</label>
+                    <div className="flex flex-wrap gap-2">
+                        {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => (
+                            <button
+                                key={id}
+                                onClick={() => toggleStagedGenre(Number(id))}
+                                className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${stagedGenres.has(Number(id)) ? 'bg-primary-accent text-on-accent border-transparent shadow-lg scale-105' : 'bg-bg-primary text-text-primary/70 border-white/10 hover:border-white/30'}`}
+                            >
+                                {name as string}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 border-t border-white/5 pt-6">
+                    <button 
+                        onClick={clearFilters}
+                        className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-bg-primary text-red-400 font-black uppercase text-[10px] tracking-widest hover:bg-red-500/10 transition-all border border-white/5"
+                    >
+                        <TrashIcon className="w-4 h-4" /> Clear All Filters
+                    </button>
+                    <button 
+                        onClick={handleApplyFilters}
+                        className="flex items-center gap-3 px-10 py-4 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                        <FilterIcon className="w-5 h-5" />
+                        Filter
+                    </button>
+                </div>
+            </div>
+        )}
 
         {localQuery.length > 0 ? renderSearchResults() : (
             <DiscoverView 
