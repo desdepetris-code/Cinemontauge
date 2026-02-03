@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
-import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon, EyeSlashIcon, EyeIcon } from '../components/Icons';
+import { HeartIcon, SearchIcon, FilterIcon, ChevronDownIcon, XMarkIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, SparklesIcon, TrashIcon, ClockIcon } from '../components/Icons';
 import SearchBar from '../components/SearchBar';
 import { searchPublicLists, searchUsers } from '../utils/userUtils';
 import RelatedRecommendations from '../components/RelatedRecommendations';
@@ -178,7 +178,11 @@ const DiscoverView: React.FC<SearchScreenProps> = (props) => {
 type SearchTab = 'media' | 'people' | 'myLists' | 'communityLists' | 'users' | 'genres';
 
 const SearchScreen: React.FC<SearchScreenProps> = (props) => {
-  const { onSelectShow, onSelectPerson, onSelectUser, query, onQueryChange, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences, onUpdateSearchHistory } = props;
+  const { onSelectShow, onSelectPerson, onSelectUser, onMarkShowAsWatched, onOpenAddToListModal, onToggleFavoriteShow, favorites, genres, userData, currentUser, showRatings, preferences, onUpdateSearchHistory } = props;
+  
+  // Independent query state for Search Screen
+  const [localQuery, setLocalQuery] = useState('');
+  
   const [activeTab, setActiveTab] = useState<SearchTab>('media');
   const [mediaResults, setMediaResults] = useState<TmdbMedia[]>([]);
   const [peopleResults, setPeopleResults] = useState<TmdbPerson[]>([]);
@@ -203,7 +207,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
   }, [preferences.searchAlwaysExpandFilters]);
 
   useEffect(() => {
-    if (query.length < 1) {
+    if (localQuery.length < 1) {
         setMediaResults([]);
         setPeopleResults([]);
         setMyListResults([]);
@@ -217,12 +221,12 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     const performAllSearches = async () => {
         setLoading(true);
         setError(null);
-        const mediaPromise = searchMediaPaginated(query, 1);
-        const peoplePromise = searchPeoplePaginated(query, 1);
-        const lowerCaseQuery = query.toLowerCase();
+        const mediaPromise = searchMediaPaginated(localQuery, 1);
+        const peoplePromise = searchPeoplePaginated(localQuery, 1);
+        const lowerCaseQuery = localQuery.toLowerCase();
         setMyListResults(userData.customLists.filter(list => list.name.toLowerCase().includes(lowerCaseQuery)));
-        setCommunityListResults(searchPublicLists(query, currentUser?.id || null));
-        setUserResults(searchUsers(query, currentUser?.id || null));
+        setCommunityListResults(searchPublicLists(localQuery, currentUser?.id || null));
+        setUserResults(searchUsers(localQuery, currentUser?.id || null));
         const genreArray = Object.entries(genres).map(([id, name]) => ({id: Number(id), name: name as string}));
         setGenreResults(genreArray.filter(g => g.name.toLowerCase().includes(lowerCaseQuery)));
 
@@ -231,13 +235,13 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             setMediaResults(mediaData.results);
             setPeopleResults(peopleData.results);
             // Update search history with the query string
-            onUpdateSearchHistory(query);
+            onUpdateSearchHistory(localQuery);
         } catch (e) { setError("Could not perform search."); } finally { setLoading(false); }
     };
 
     const debounceTimer = setTimeout(performAllSearches, 800);
     return () => clearTimeout(debounceTimer);
-}, [query, userData.customLists, genres, currentUser?.id, preferences.searchAlwaysExpandFilters, onUpdateSearchHistory]);
+}, [localQuery, userData.customLists, genres, currentUser?.id, preferences.searchAlwaysExpandFilters, onUpdateSearchHistory]);
 
   const filteredAndSortedMedia = useMemo(() => {
     let results = [...mediaResults];
@@ -284,30 +288,6 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
     switch (activeTab) {
         case 'media': return (
             <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                    <div className="flex-grow w-full md:w-auto">
-                        <button 
-                            onClick={() => setHideWatched(!hideWatched)}
-                            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 group ${hideWatched ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
-                        >
-                            {hideWatched ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                            <span className="text-xs font-black uppercase tracking-widest">{hideWatched ? 'Unhide Watched' : 'Hide/Unhide Watched'}</span>
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && !preferences.searchAlwaysExpandFilters && (
-                            <button 
-                                onClick={() => setShowFiltersToggle(!showFiltersToggle)}
-                                className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-all ${showFiltersToggle ? 'bg-primary-accent text-on-accent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
-                            >
-                                <FilterIcon className="w-5 h-5" />
-                                <span className="text-xs font-black uppercase tracking-widest">Filters</span>
-                            </button>
-                        )}
-                    </div>
-                </div>
-
                 {(showFiltersToggle || preferences.searchAlwaysExpandFilters) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-bg-secondary/20 rounded-3xl border border-white/5 animate-fade-in shadow-inner">
                         <div className="relative">
@@ -378,7 +358,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             />
                         ))}
                     </div>
-                ) : query.length > 0 ? <p className="text-center py-24 text-text-secondary font-bold uppercase tracking-widest opacity-50">No media found matching your criteria.</p> : null}
+                ) : localQuery.length > 0 ? <p className="text-center py-24 text-text-secondary font-bold uppercase tracking-widest opacity-50">No media found matching your criteria.</p> : null}
             </div>
         );
 
@@ -407,13 +387,36 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
 
   return (
     <div className="px-6 relative min-h-screen pb-48">
-        <header className="mb-10">
-          <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Exploration</h1>
-          <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60">Discover your next obsession</p>
+        <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div>
+            <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Exploration</h1>
+            <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60">Discover your next obsession</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+            <button 
+                onClick={() => setHideWatched(!hideWatched)}
+                className={`flex items-center justify-center px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 group ${hideWatched ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border-white/5 hover:bg-bg-secondary'}`}
+            >
+                <span className="text-[10px] font-black uppercase tracking-widest">{hideWatched ? 'Unhide Watched' : 'Hide Watched'}</span>
+            </button>
+
+            {(preferences.searchShowFilters || preferences.searchAlwaysExpandFilters) && !preferences.searchAlwaysExpandFilters && (
+                <button 
+                    onClick={() => setShowFiltersToggle(!showFiltersToggle)}
+                    className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-all border shadow-xl active:scale-95 ${showFiltersToggle ? 'bg-primary-accent text-on-accent border-transparent' : 'bg-bg-secondary/40 text-text-primary border border-white/5 shadow-lg'}`}
+                >
+                    <FilterIcon className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Filters</span>
+                </button>
+            )}
+          </div>
         </header>
-        {query.length > 0 ? renderSearchResults() : (
+
+        {localQuery.length > 0 ? renderSearchResults() : (
             <DiscoverView 
-                {...props} 
+                {...props}
+                onQueryChange={setLocalQuery}
             />
         )}
         
@@ -421,7 +424,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
             <div className="nav-spectral-bg animate-spectral-flow rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.7)] p-5 border border-white/20 backdrop-blur-2xl transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)]">
                 <div className="absolute inset-0 bg-black/50 rounded-[2.5rem] pointer-events-none"></div>
                 <div className="relative z-10 flex flex-col space-y-5">
-                    {query.length > 0 && (
+                    {localQuery.length > 0 && (
                         <Carousel>
                             <div className="flex space-x-3 overflow-x-auto pb-1 hide-scrollbar px-2">
                                 <TabButton tabId="media" label="Media" count={filteredAndSortedMedia.length} />
@@ -441,8 +444,8 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                                 else onSelectShow(id, type);
                             }} 
                             onMarkShowAsWatched={onMarkShowAsWatched}
-                            value={query}
-                            onChange={onQueryChange}
+                            value={localQuery}
+                            onChange={setLocalQuery}
                             disableDropdown
                         />
                     </div>

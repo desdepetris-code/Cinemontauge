@@ -27,7 +27,7 @@ interface HeaderProps {
   hoverReveal?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onMarkShowAsWatched, query, onQueryChange, isOnSearchScreen, isHoliday, holidayName, hoverReveal }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthClick, onGoToProfile, onSelectShow, onMarkShowAsWatched, query, onQueryChange, isHoliday, holidayName, hoverReveal }) => {
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   
   const hoverClasses = hoverReveal ? "opacity-0 hover:opacity-100 transition-opacity duration-300" : "opacity-100";
@@ -52,17 +52,15 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
                       <span className="text-[10px] font-black uppercase tracking-widest text-primary-accent">{holidayName}</span>
                   </div>
               )}
-              {!isOnSearchScreen && (
-                  <div className="w-full max-w-2xl px-2">
-                      <SearchBar 
-                          onSelectResult={onSelectShow} 
-                          onMarkShowAsWatched={onMarkShowAsWatched} 
-                          value={query} 
-                          onChange={onQueryChange}
-                          dropdownWider
-                      />
-                  </div>
-              )}
+              <div className="w-full max-w-2xl px-2">
+                  <SearchBar 
+                      onSelectResult={onSelectShow} 
+                      onMarkShowAsWatched={onMarkShowAsWatched} 
+                      value={query} 
+                      onChange={onQueryChange}
+                      dropdownWider
+                  />
+              </div>
           </div>
           
           <div className="flex items-center justify-end flex-shrink-0">

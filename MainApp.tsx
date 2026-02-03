@@ -157,7 +157,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [liveWatchPauseCount, setLiveWatchPauseCount] = useState(0);
   const [isLiveWatchMinimized, setIsLiveWatchMinimized] = useState(false);
   const [addToListModalState, setAddToListModalState] = useState<{ isOpen: boolean; item: TmdbMedia | TrackedItem | null }>({ isOpen: false, item: null });
-  const [searchQuery, setSearchQuery] = useState('');
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [genres, setGenres] = useState<Record<number, string>>({});
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [follows, setFollows] = useLocalStorage<Follows>(`follows_${userId}`, {});
@@ -560,7 +560,8 @@ export const MainApp: React.FC<MainAppProps> = ({
             currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} 
             onGoToProfile={() => setActiveScreen('profile')} onGoHome={() => setActiveScreen('home')} 
             onSelectShow={handleSelectShow} onMarkShowAsWatched={handleMarkMovieAsWatched} 
-            query={searchQuery} onQueryChange={setSearchQuery} isHoliday={!!currentHolidayName} holidayName={currentHolidayName} 
+            query={headerSearchQuery} onQueryChange={setHeaderSearchQuery} isHoliday={!!currentHolidayName} holidayName={currentHolidayName} 
+            isOnSearchScreen={activeScreen === 'search'}
         />
         <main className="container mx-auto mt-8">
             {activeScreen === 'home' && (
@@ -577,11 +578,10 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onUpdateLists={updateLists} shortcutSettings={shortcutSettings} preferences={preferences} 
                     onRemoveWeeklyPick={(p) => setWeeklyFavorites(prev => prev.filter(item => item.id !== p.id || item.category !== p.category || item.dayIndex !== p.dayIndex))} 
                     onOpenNominateModal={() => setIsNominateModalOpen(true)}
-                    // FIX: Passed showRatings to Dashboard component to resolve destructuring and missing name errors.
                     showRatings={showRatings}
                 />
             )}
-            {activeScreen === 'search' && <SearchScreen {...allUserData} onSelectShow={handleSelectShow} onSelectPerson={setSelectedPerson} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={onUpdateSearchHistory} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} query={searchQuery} onQueryChange={setSearchQuery} onMarkShowAsWatched={handleMarkMovieAsWatched} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} onMarkPreviousEpisodesWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />}
+            {activeScreen === 'search' && <SearchScreen {...allUserData} onSelectShow={handleSelectShow} onSelectPerson={setSelectedPerson} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={onUpdateSearchHistory} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} query={''} onQueryChange={() => {}} onMarkShowAsWatched={handleMarkMovieAsWatched} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} onMarkPreviousEpisodesWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />}
             {activeScreen === 'calendar' && <CalendarScreen userData={allUserData} onSelectShow={handleSelectShow} timezone={timezone} timeFormat={timeFormat} reminders={reminders} onToggleReminder={(newRem, id) => setReminders(prev => newRem ? [...prev, newRem] : prev.filter(r => r.id !== id))} onToggleEpisode={handleToggleEpisode} watchProgress={watchProgress} />}
             {activeScreen === 'progress' && (
                 <ProgressScreen 
