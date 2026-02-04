@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
@@ -125,6 +124,17 @@ const DetailedActionButton: React.FC<{
   </button>
 );
 
+const statusExplanations: Record<string, string> = {
+  'Ended': 'This series has officially concluded its run and no further episodes are expected.',
+  'Canceled': 'This series was ended prematurely by its network and will not return for future seasons.',
+  'In Season': 'New episodes for this show are currently airing or scheduled on a consistent weekly basis.',
+  'Off Season': 'The current season has ended, and the show is waiting to start its next confirmed season.',
+  'Upcoming': 'This title has not premiered yet but has a confirmed release date or is in active production.',
+  'Hiatus': 'The series is on an extended break, and its return date has not yet been announced.',
+  'Released': 'This movie is currently available to watch in theaters or on digital platforms.',
+  'In Production': 'The title is currently being filmed or is in post-production.'
+};
+
 const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const { 
     id, mediaType, onBack, watchProgress, history, trackedLists, onUpdateLists, customImagePaths, 
@@ -159,6 +169,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isReminderOptionsOpen, setIsReminderOptionsOpen] = useState(false);
+  const [isStatusExplanationOpen, setIsStatusExplanationOpen] = useState(false);
   const [selectedEpisodeForDetail, setSelectedEpisodeForDetail] = useState<Episode | null>(null);
   const [activeCommentThread, setActiveCommentThread] = useState('general');
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
@@ -325,8 +336,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [mediaType, details, watchProgress, id]);
 
   const showStatus = useMemo(() => details ? getShowStatus(details) : null, [details]);
-  const isUpcomingContent = showStatus?.text?.toLowerCase().includes('upcoming');
-
+  
   const releaseDate = details?.first_air_date || details?.release_date;
   const reminderId = releaseDate ? `rem-${mediaType}-${id}-${releaseDate}` : '';
   const currentReminder = reminders.find(r => r.id === reminderId);
@@ -338,9 +348,33 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     return day === 0 ? 6 : day - 1;
   }, []);
 
-  const isWeeklyFavorite = useMemo(() => {
+  const isWeeklyPick = useMemo(() => {
     return weeklyFavorites.some(p => p.id === id && p.category === mediaType && p.dayIndex === todayIndex);
   }, [weeklyFavorites, id, mediaType, todayIndex]);
+
+  const handleWeeklyPickAction = () => {
+    if (!details) return;
+    
+    const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const currentPicksToday = weeklyFavorites.filter(p => p.dayIndex === todayIndex && p.category === mediaType);
+    const alreadyPick = currentPicksToday.find(p => p.id === id);
+
+    if (alreadyPick) {
+      onToggleWeeklyFavorite(alreadyPick); 
+    } else if (currentPicksToday.length < 5) {
+      const pick: WeeklyPick = {
+        id: details.id,
+        title: details.title || details.name || 'Untitled',
+        media_type: mediaType as any,
+        poster_path: details.poster_path,
+        dayIndex: todayIndex,
+        category: mediaType as any
+      };
+      onToggleWeeklyFavorite(pick);
+    } else {
+      setIsNominationModalOpen(true);
+    }
+  };
 
   const handleLogWatchSave = async (data: { date: string; note: string; scope: LogWatchScope; selectedEpisodeIds?: number[] }) => {
     const showTitle = details?.title || details?.name || 'Unknown Show';
@@ -373,6 +407,52 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         console.error(e);
         confirmationService.show("Bulk logging failed.");
     }
+  };
+
+  const handleUnmarkMovie = () => {
+    const movieHistory = history.filter(h => h.id === id);
+    const hasLiveSessionRecord = movieHistory.some(h => h.logId.startsWith('live-'));
+    
+    if (hasLiveSessionRecord) {
+        if (window.confirm("You have a live watch session record for this movie in history. Would you like to delete its history and progress as well?\n\nClick OK to 'remove' it from history, progress, and Continue Watching.\nClick Cancel to 'Don't remove' it (only manual finished logs will be removed).")) {
+            props.onUnmarkMovieWatched(id, true);
+        } else {
+            props.onUnmarkMovieWatched(id, false);
+        }
+    } else {
+        props.onUnmarkMovieWatched(id, false);
+    }
+  };
+
+  const handleCommentsAction = () => {
+    if (!currentUser) {
+        onAuthClick();
+        return;
+    }
+    handleCommentOpen(null);
+  };
+
+  const handleShare = async () => {
+      const shareData = {
+          title: details?.title || details?.name || 'CineMontauge',
+          text: `Check out ${details?.title || details?.name} on CineMontauge!`,
+          url: window.location.href,
+      };
+
+      if (navigator.share) {
+          try {
+              await navigator.share(shareData);
+          } catch (err) {
+              console.error('Error sharing:', err);
+          }
+      } else {
+          try {
+              await navigator.clipboard.writeText(window.location.href);
+              confirmationService.show("Link copied to clipboard!");
+          } catch (err) {
+              console.error('Clipboard failed:', err);
+          }
+      }
   };
 
   const handleReminderToggle = () => {
@@ -450,21 +530,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     if (status.includes('off season') || status.includes('Undetermined') || status.includes('Hiatus')) return 'bg-purple-900/60 text-purple-200 border-purple-800';
     if (status.includes('Upcoming')) return 'bg-teal-900/60 text-teal-100 border-teal-800';
     return 'bg-bg-secondary text-text-secondary border-primary-accent/20';
-  }
-
-  const handleJournalOpen = (seasonNum: number, ep: Episode) => {
-      setSelectedJournalEpisode({ season: seasonNum, ep });
-      setIsJournalModalOpen(true);
-  };
-
-  const handleRatingOpen = (ep: Episode) => {
-      setSelectedRatingEpisode(ep);
-      setIsRatingModalOpen(true);
-  };
-
-  const handleCommentOpen = (ep: Episode | null) => {
-      setSelectedCommentEpisode(ep);
-      setIsCommentModalOpen(true);
   };
 
   const handleRatingSave = (rating: number) => {
@@ -482,60 +547,39 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   };
 
   const handleCommentSave = (text: string, visibility: CommentVisibility) => {
-    const key = selectedCommentEpisode 
+    const mediaKey = selectedCommentEpisode 
         ? `tv-${id}-s${selectedCommentEpisode.season_number}-e${selectedCommentEpisode.episode_number}`
-        : mediaKey;
-    onSaveComment({ mediaKey: key, text, parentId: null, isSpoiler: false, visibility });
+        : `${details?.media_type}-${details?.id}`;
+    onSaveComment({ mediaKey: mediaKey!, text, parentId: null, isSpoiler: false, visibility });
     setSelectedCommentEpisode(null);
     setActiveTab('discussion');
-    setActiveCommentThread(selectedCommentEpisode ? key : 'general');
+    setActiveCommentThread(selectedCommentEpisode ? mediaKey! : 'general');
   };
 
-  const handleUnmarkMovie = () => {
-    const movieHistory = history.filter(h => h.id === id);
-    const hasLiveSessionRecord = movieHistory.some(h => h.logId.startsWith('live-'));
-    
-    if (hasLiveSessionRecord) {
-        if (window.confirm("You have a live watch session record for this movie in history. Would you like to delete its history and progress as well?\n\nClick OK to 'remove' it from history, progress, and Continue Watching.\nClick Cancel to 'Don't remove' it (only manual finished logs will be removed).")) {
-            props.onUnmarkMovieWatched(id, true);
-        } else {
-            props.onUnmarkMovieWatched(id, false);
+  const handleJournalOpen = (seasonNum: number, ep: Episode) => {
+      setSelectedJournalEpisode({ season: seasonNum, ep });
+      setIsJournalModalOpen(true);
+  };
+
+  const handleRatingOpen = (ep: Episode) => {
+      setSelectedRatingEpisode(ep);
+      setIsRatingModalOpen(true);
+  };
+
+  const handleCommentOpen = (ep: Episode | null) => {
+      setSelectedCommentEpisode(ep);
+      setIsCommentModalOpen(true);
+  };
+
+  const handleThreadChange = (key: string) => {
+    if (key.startsWith('s')) {
+        const seasonNum = parseInt(key.replace('s', ''));
+        if (!seasonDetailsMap[seasonNum]) {
+            handleToggleSeason(seasonNum);
         }
-    } else {
-        props.onUnmarkMovieWatched(id, false);
     }
-  };
-
-  const handleCommentsAction = () => {
-    if (!currentUser) {
-        onAuthClick();
-        return;
-    }
-    handleCommentOpen(null);
-  };
-
-  const handleShare = async () => {
-      const shareData = {
-          title: details?.title || details?.name || 'CineMontauge',
-          text: `Check out ${details?.title || details?.name} on CineMontauge!`,
-          url: window.location.href,
-      };
-
-      if (navigator.share) {
-          try {
-              await navigator.share(shareData);
-          } catch (err) {
-              console.error('Error sharing:', err);
-          }
-      } else {
-          try {
-              await navigator.clipboard.writeText(window.location.href);
-              confirmationService.show("Link copied to clipboard!");
-          } catch (err) {
-              console.error('Clipboard failed:', err);
-          }
-      }
-  };
+    setActiveCommentThread(key === `s${details?.last_episode_to_air?.season_number}` ? `tv-${details?.id}-s${details?.last_episode_to_air?.season_number}-e${details?.last_episode_to_air?.episode_number}` : key);
+  }
 
   if (loading) return <div className="p-20 text-center animate-pulse text-text-secondary">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
@@ -571,15 +615,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <RatingModal 
         isOpen={isRatingModalOpen} 
         onClose={() => { setIsRatingModalOpen(false); setSelectedRatingEpisode(null); }} 
-        onSave={(r) => handleRatingSave(r)} 
-        currentRating={selectedRatingEpisode ? (episodeRatings[id]?.[selectedRatingEpisode.season_number]?.[selectedRatingEpisode.episode_number] || 0) : ratings[id]?.rating || 0} 
+        onSave={handleRatingSave} 
+        currentRating={selectedRatingEpisode ? (episodeRatings[id]?.[selectedRatingEpisode.season_number]?.[selectedRatingEpisode.episode_number] || 0) : userRating} 
         mediaTitle={selectedRatingEpisode ? `S${selectedRatingEpisode.season_number} E${selectedRatingEpisode.episode_number}: ${selectedRatingEpisode.name}` : (details.title || details.name || '')} 
       />
       <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} history={history.filter(h => h.id === id)} mediaTitle={details.title || details.name || ''} mediaDetails={details} onDeleteHistoryItem={onDeleteHistoryItem} onClearMediaHistory={onClearMediaHistory} />
+      
       <NominationModal 
-        isOpen={isNominationModalOpen} onClose={() => setIsNominationModalOpen(false)} item={details as any} 
-        category={mediaType} onNominate={onToggleWeeklyFavorite} currentPicks={weeklyFavorites} 
+        isOpen={isNominationModalOpen} 
+        onClose={() => setIsNominationModalOpen(false)} 
+        item={details as any} 
+        category={mediaType} 
+        onNominate={onToggleWeeklyFavorite} 
+        currentPicks={weeklyFavorites} 
       />
+
       <MarkAsWatchedModal 
         isOpen={isLogWatchModalOpen} onClose={() => setIsLogWatchModalOpen(false)} mediaTitle={details.title || details.name || ''} 
         onSave={handleLogWatchSave} initialScope={mediaType === 'tv' ? 'show' : 'single'} mediaType={mediaType} showDetails={details}
@@ -593,7 +643,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         initialFrequency={currentReminder?.frequency}
       />
       <ImageSelectorModal isOpen={isPosterSelectorOpen} onClose={() => setIsPosterSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path as string)} initialTab="posters" />
-      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.posters || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path as string)} initialTab="backdrops" />
+      <ImageSelectorModal isOpen={isBackdropSelectorOpen} onClose={() => setIsBackdropSelectorOpen(false)} posters={details.images?.backdrops || []} backdrops={details.images?.backdrops || []} onSelect={(type, path) => props.onSetCustomImage(id, type, path as string)} initialTab="backdrops" />
       <ImageSelectorModal 
         isOpen={isEpisodeSelectorOpen.isOpen} 
         onClose={() => setIsEpisodeSelectorOpen({ isOpen: false, ep: null })} 
@@ -610,13 +660,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <JournalModal 
         isOpen={isJournalModalOpen} 
         onClose={() => { setIsJournalModalOpen(false); setSelectedJournalEpisode(null); }} 
-        onSave={(entry, s, e) => handleJournalSave(entry, s, e)} 
+        onSave={handleJournalSave} 
         mediaDetails={details} 
         initialSeason={selectedJournalEpisode?.season}
         initialEpisode={selectedJournalEpisode?.ep}
         watchProgress={watchProgress} 
       />
-      <WatchlistModal isOpen={isWatchlistModalOpen} onClose={() => setIsWatchlistModalOpen(false)} onUpdateList={(newList) => { onUpdateLists(details as any, currentStatus, newList as WatchStatus); }} currentList={currentStatus} customLists={customLists} mediaType={mediaType} movieData={movieLibraryItem as any} />
+      <WatchlistModal isOpen={isWatchlistModalOpen} onClose={() => setIsWatchlistModalOpen(false)} onUpdateList={(newList) => { onUpdateLists(details as any, currentStatus, newList as WatchStatus); }} currentList={currentStatus} customLists={customLists} mediaType={mediaType} />
       <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={handleReportIssue} options={["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Wrong Air Time", "Wrong Streaming / Where to Watch listed", "Other Error"]} />
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={handleAirtimeSend} onDiscard={handleAirtimeDiscard} showDetails={details} />
       <CommentModal 
@@ -625,17 +675,48 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
         mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} 
         onSave={handleCommentSave} 
       />
-      
-      <EpisodeDetailModal 
-        isOpen={!!selectedEpisodeForDetail} onClose={() => setSelectedEpisodeForDetail(null)} episode={selectedEpisodeForDetail} showDetails={details} 
-        seasonDetails={seasonDetailsMap[selectedEpisodeForDetail?.season_number || 0] || { episodes: [] }} isWatched={watchProgress[id]?.[selectedEpisodeForDetail?.season_number || 0]?.[selectedEpisodeForDetail?.episode_number || 0]?.status === 2}
-        onToggleWatched={() => selectedEpisodeForDetail && props.onToggleEpisode(id, selectedEpisodeForDetail.season_number, selectedEpisodeForDetail.episode_number, watchProgress[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number]?.status || 0, details as any, selectedEpisodeForDetail.name, selectedEpisodeForDetail.still_path, seasonDetailsMap[selectedEpisodeForDetail.season_number]?.poster_path)}
-        onOpenJournal={() => selectedEpisodeForDetail && handleJournalOpen(selectedEpisodeForDetail.season_number, selectedEpisodeForDetail)} isFavorited={!!props.favoriteEpisodes[id]?.[selectedEpisodeForDetail?.season_number || 0]?.[selectedEpisodeForDetail?.episode_number || 0]}
-        onToggleFavorite={() => selectedEpisodeForDetail && props.onToggleFavoriteEpisode(id, selectedEpisodeForDetail.season_number, selectedEpisodeForDetail.episode_number)}
-        onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} watchProgress={watchProgress} onNext={() => {}} onPrevious={() => {}} onAddWatchHistory={onAddWatchHistory} onRate={() => selectedEpisodeForDetail && handleRatingOpen(selectedEpisodeForDetail)} 
-        episodeRating={selectedEpisodeForDetail ? (episodeRatings[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number] || 0) : 0}
-        onDiscuss={() => selectedEpisodeForDetail && handleCommentOpen(selectedEpisodeForDetail)} showRatings={showRatings} episodeNotes={episodeNotes} preferences={preferences} timezone={props.allUserData.timezone}
-      />
+
+      {/* Description Popup Modal */}
+      {isDescriptionModalOpen && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsDescriptionModalOpen(false)}>
+              <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-2xl p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setIsDescriptionModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors"><XMarkIcon className="w-5 h-5" /></button>
+                <div className="mb-6">
+                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-1">Show Description</h2>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.3em] opacity-60 truncate">{details.title || details.name}</p>
+                </div>
+                <div className="flex-grow overflow-y-auto custom-scrollbar max-h-[60vh] pr-2">
+                    <p className="text-lg text-text-secondary leading-relaxed font-medium">{details.overview || "No description provided by the registry."}</p>
+                </div>
+                <footer className="mt-8 pt-6 border-t border-white/5 flex justify-end">
+                    <button onClick={() => setIsDescriptionModalOpen(false)} className="px-10 py-3 rounded-full bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition-transform">Close</button>
+                </footer>
+              </div>
+          </div>
+      )}
+
+      {/* Status Explanation Modal */}
+      {isStatusExplanationOpen && showStatus && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsStatusExplanationOpen(false)}>
+            <div className="bg-bg-primary rounded-[2rem] shadow-2xl w-full max-w-sm p-8 border border-white/10 relative text-center" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setIsStatusExplanationOpen(false)} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary"><XMarkIcon className="w-5 h-5" /></button>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 border ${getStatusBadgeStyle(showStatus.text)}`}>
+                    <InformationCircleIcon className="w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-black text-text-primary uppercase tracking-tighter mb-4">Status: {showStatus.text}</h3>
+                <p className="text-sm text-text-secondary leading-relaxed font-medium">
+                    {statusExplanations[showStatus.text] || "This status indicates the current availability and production stage of this registry item."}
+                </p>
+                {showStatus.date && (
+                    <div className="mt-6 p-3 bg-primary-accent/10 border border-primary-accent/20 rounded-xl">
+                        <p className="text-[10px] font-black text-primary-accent uppercase tracking-widest">Target Date</p>
+                        <p className="text-sm font-bold text-text-primary">{new Date(showStatus.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                )}
+                <button onClick={() => setIsStatusExplanationOpen(false)} className="w-full mt-8 py-4 rounded-2xl bg-bg-secondary border border-white/5 text-text-primary font-black uppercase tracking-widest text-[10px] hover:bg-bg-secondary/70 transition-all">Close</button>
+            </div>
+        </div>
+      )}
 
       <div className="relative h-[40vh] md:h-[60vh] overflow-hidden">
         <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
@@ -697,21 +778,14 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     />
                   </>
                 )}
-                {isUpcomingContent ? (
-                  <DetailedActionButton 
-                      label="Reminder" 
-                      icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} 
-                      isActive={isReminderSet}
-                      onClick={handleReminderToggle} 
-                  />
-                ) : (
-                  <DetailedActionButton 
-                      label="Nominate" 
-                      icon={<TrophyIcon className="w-6 h-6" />} 
-                      isActive={isWeeklyFavorite}
-                      onClick={() => setIsNominationModalOpen(true)} 
-                  />
-                )}
+                
+                <DetailedActionButton 
+                    label="Reminder" 
+                    icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} 
+                    isActive={isReminderSet}
+                    onClick={handleReminderToggle} 
+                />
+                
                 <DetailedActionButton 
                     label="Favorite" 
                     icon={<HeartIcon filled={isFavorited} className="w-6 h-6" />} 
@@ -740,6 +814,12 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                   </>
                 )}
+                <DetailedActionButton 
+                    label={isWeeklyPick ? "Picked" : "Weekly Pick"} 
+                    icon={<TrophyIcon className="w-6 h-6" />} 
+                    isActive={isWeeklyPick}
+                    onClick={handleWeeklyPickAction} 
+                />
                 <DetailedActionButton label="Share" icon={<ShareIcon className="w-6 h-6" />} onClick={handleShare} />
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
@@ -753,7 +833,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           <div className="flex-grow min-w-0 space-y-8">
             <header>
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                {showStatus && <span className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</span>}
+                {showStatus && <button onClick={() => setIsStatusExplanationOpen(true)} className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest transition-transform hover:scale-105 active:scale-95 ${getStatusBadgeStyle(showStatus.text)}`}>{showStatus.text}</button>}
                 <span className="text-text-secondary font-bold flex items-center">
                     <span className="mx-1"> • </span>
                     <span className="mx-1 metadata-caption">{details.genres?.slice(0, 3).map(g => g.name.toLowerCase()).join(', ')}</span>

@@ -1,7 +1,5 @@
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings } from '../types';
-// FIX: Added ChatBubbleLeftRightIcon to imports to fix "Cannot find name" error.
 import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, ChatBubbleLeftRightIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, isNewRelease } from '../utils/formatUtils';
@@ -104,7 +102,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
-  // FIX: Moved 'today' to component scope so it's accessible by all functions and hooks.
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
@@ -115,7 +112,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
       if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
       const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
       const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
-      // FIX: Corrected typo 'unwwatchedCount' to 'unwatchedCount'.
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
@@ -257,7 +253,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
         onSave={handleBulkLogSave}
         initialScope={logDateModalState.scope}
         mediaType="tv"
-        // FIX: Changed undefined 'details' variable to 'showDetails' to correctly pass the show's metadata.
         showDetails={showDetails}
         seasonDetails={seasonDetails}
       />

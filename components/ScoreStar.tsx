@@ -17,7 +17,7 @@ const getScoreStyle = (percentage: number): { strokeColor: string; solidColor: s
     if (percentage <= 70) return { strokeColor: '#A3B1C6', solidColor: '#A3B1C6' };
     if (percentage <= 80) return { strokeColor: '#4DD0C6', solidColor: '#4DD0C6' };
     if (percentage <= 90) return { strokeColor: '#00BFA5', solidColor: '#00BFA5' };
-    return { strokeColor: '#1A237E', solidColor: '#1A237E' };
+    return { strokeColor: '#00E5FF', solidColor: '#00E5FF' }; // Light cyan for high scores to improve legibility
 };
 
 const ScoreStar: React.FC<ScoreStarProps> = ({ score, voteCount, size = 'md', className = '' }) => {
