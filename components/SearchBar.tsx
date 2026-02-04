@@ -173,33 +173,33 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
             mediaTitle={markAsWatchedModalState.item?.title || markAsWatchedModalState.item?.name || ''}
             onSave={handleSaveWatchedDate}
         />
-        <div className="relative w-full" onBlur={() => setTimeout(() => setIsFocused(false), 200)}>
-          <div className="flex items-center bg-bg-primary rounded-xl md:rounded-2xl border-2 border-primary-accent/30 focus-within:border-primary-accent focus-within:ring-4 focus-within:ring-primary-accent/10 transition-all shadow-xl overflow-hidden group">
-            <div className="flex items-center justify-center pl-4 pr-3 py-3 border-r border-white/5 bg-white/5 group-focus-within:border-primary-accent/30 transition-colors">
-              <SearchIcon className="h-4 w-4 md:h-5 md:w-5 text-text-primary opacity-60 group-focus-within:opacity-100 transition-opacity" />
+        <div className="relative w-full min-w-0" onBlur={() => setTimeout(() => setIsFocused(false), 200)}>
+          <div className="flex items-center bg-bg-primary rounded-xl md:rounded-2xl border-2 border-primary-accent/30 focus-within:border-primary-accent focus-within:ring-4 focus-within:ring-primary-accent/10 transition-all shadow-xl overflow-hidden group h-9 md:h-12">
+            <div className="flex items-center justify-center pl-3 md:pl-4 pr-2 md:pr-3 h-full border-r border-white/5 bg-white/5 group-focus-within:border-primary-accent/30 transition-colors">
+              <SearchIcon className="h-3.5 w-3.5 md:h-5 md:w-5 text-text-primary opacity-60 group-focus-within:opacity-100 transition-opacity" />
             </div>
             <input
               type="text"
               value={value}
               onChange={handleChange}
               onFocus={() => setIsFocused(true)}
-              placeholder="Search shows & movies..."
-              className="flex-grow !bg-transparent !border-none !shadow-none !ring-0 !outline-none text-text-primary placeholder-text-secondary/60 !py-2 md:!py-3 !px-4 font-bold text-sm md:text-base h-full"
+              placeholder="Search..."
+              className="flex-grow min-w-0 !bg-transparent !border-none !shadow-none !ring-0 !outline-none text-text-primary placeholder-text-secondary/60 !py-1 md:!py-3 !px-2 md:!px-4 font-bold text-xs md:text-base h-full"
             />
             
             {value.length > 0 && (
                 <button 
                     onClick={handleClear}
-                    className="px-3 text-text-secondary hover:text-text-primary transition-all"
+                    className="px-2 md:px-3 text-text-secondary hover:text-text-primary transition-all"
                     title="Clear search"
                 >
-                    <XMarkIcon className="w-4 h-4 md:w-5 md:h-5" />
+                    <XMarkIcon className="w-3.5 h-3.5 md:w-5 md:h-5" />
                 </button>
             )}
           </div>
           {!disableDropdown && isFocused && (value.length > 0 || results.length > 0 || error) && (
             <div className={`absolute z-50 mt-2 bg-bg-primary border border-bg-secondary rounded-xl shadow-2xl max-h-[70vh] flex flex-col overflow-hidden ${dropdownWider ? 'w-[calc(100vw-2rem)] sm:w-[32rem] left-1/2 -translate-x-1/2' : 'w-full'}`}>
-              {loading && <div className="p-4 text-center text-text-secondary animate-pulse font-bold uppercase tracking-widest text-xs">Loading...</div>}
+              {loading && <div className="p-4 text-center text-text-secondary animate-pulse font-black uppercase tracking-widest text-[10px]">Loading Registry...</div>}
               {error && <div className="p-4 text-center text-red-500 text-sm font-bold">{error}</div>}
               <ul className="divide-y divide-bg-secondary/50 overflow-y-auto custom-scrollbar">
                 {results.map(item => (
@@ -213,7 +213,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSelectResult, onMarkShowAsWatch
                 ))}
               </ul>
               {!loading && !error && results.length === 0 && value.length > 2 && (
-                <div className="p-6 text-center text-text-secondary font-bold uppercase tracking-widest text-xs">No matching results found.</div>
+                <div className="p-6 text-center text-text-secondary font-black uppercase tracking-widest text-[10px]">No registry matches found.</div>
               )}
             </div>
           )}
