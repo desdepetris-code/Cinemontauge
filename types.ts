@@ -289,6 +289,7 @@ export interface AppNotification {
   poster_path?: string | null;
   followerInfo?: { userId: string };
   likerInfo?: { userId: string };
+  commentInfo?: { commentId: string, authorId: string };
 }
 
 export interface WeeklyPick extends TrackedItem {

@@ -59,7 +59,7 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-6 right-6 p-2 text-text-secondary hover:text-text-primary"><XMarkIcon className="w-5 h-5" /></button>
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">Update Avatar</h2>
@@ -132,6 +132,7 @@ interface ProfileProps {
   onMarkAllRead: () => void;
   onMarkOneRead: (id: string) => void;
   onAddNotifications: (notifs: AppNotification[]) => void;
+  onDeleteNotification: (id: string) => void;
   autoHolidayThemesEnabled: boolean;
   setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   holidayAnimationsEnabled: boolean;
@@ -169,7 +170,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences, onMarkAllRead, onMarkOneRead, onDeleteNotification, onSelectUser } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
@@ -235,6 +236,8 @@ const Profile: React.FC<ProfileProps> = (props) => {
     { id: 'settings', label: 'Settings', icon: CogIcon },
   ];
 
+  const unreadNotifCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return (
@@ -272,6 +275,17 @@ const Profile: React.FC<ProfileProps> = (props) => {
     <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-32">
         <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} userId={currentUser?.id || 'guest'} onSave={setProfilePictureUrl} />
         
+        <NotificationsModal 
+            isOpen={isNotificationsModalOpen} 
+            onClose={() => setIsNotificationsModalOpen(false)} 
+            notifications={notifications} 
+            onMarkAllRead={onMarkAllRead} 
+            onMarkOneRead={onMarkOneRead} 
+            onDeleteNotification={onDeleteNotification}
+            onSelectShow={onSelectShow} 
+            onSelectUser={onSelectUser} 
+        />
+
         <div className="flex flex-col md:flex-row items-center md:items-end gap-8 mb-20 relative pt-12">
             <div className="relative group flex-shrink-0">
                 <div className="absolute inset-0 pointer-events-none">
@@ -309,9 +323,16 @@ const Profile: React.FC<ProfileProps> = (props) => {
             </div>
 
             <div className="flex-shrink-0 flex items-center gap-3">
-                <button onClick={() => setIsNotificationsModalOpen(true)} className="p-4 rounded-2xl bg-bg-secondary/40 border border-white/5 text-text-primary hover:border-primary-accent/50 hover:brightness-125 transition-all shadow-xl relative backdrop-blur-md">
-                    <BellIcon className="w-6 h-6" />
-                    {notifications.filter(n => !n.read).length > 0 && <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary-accent rounded-full border-2 border-bg-secondary shadow-[0_0_8px_var(--color-accent-primary)]"></div>}
+                <button 
+                    onClick={() => setIsNotificationsModalOpen(true)} 
+                    className="p-4 rounded-2xl bg-bg-secondary/40 border border-white/5 text-text-primary hover:border-primary-accent/50 hover:brightness-125 transition-all shadow-xl relative backdrop-blur-md group/bell"
+                >
+                    <BellIcon className={`w-6 h-6 ${unreadNotifCount > 0 ? 'text-primary-accent animate-pulse' : ''}`} />
+                    {unreadNotifCount > 0 && (
+                        <div className="absolute top-2.5 right-2.5 min-w-[18px] h-[18px] px-1 bg-primary-accent text-on-accent rounded-full border-2 border-bg-primary shadow-[0_0_10px_var(--color-accent-primary)] flex items-center justify-center text-[8px] font-black">
+                            {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                        </div>
+                    )}
                 </button>
                 <button onClick={() => setActiveTab('settings')} className="p-4 rounded-2xl bg-bg-secondary/40 border border-white/5 text-text-primary hover:border-primary-accent/50 hover:brightness-125 transition-all shadow-xl backdrop-blur-md">
                     <CogIcon className="w-6 h-6" />
