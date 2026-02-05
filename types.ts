@@ -291,8 +291,11 @@ export interface AppNotification {
 }
 
 export interface WeeklyPick extends TrackedItem {
-  category: 'tv' | 'movie' | 'actor' | 'actress';
+  category: 'tv' | 'movie' | 'actor' | 'actress' | 'episode';
   dayIndex: number;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
 }
 
 export interface DeletedHistoryItem extends HistoryItem {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences } from '../types';
+import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences, JournalEntry, WeeklyPick } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
@@ -49,6 +49,12 @@ interface DashboardProps {
   onRemoveWeeklyPick: (pick: any) => void;
   onOpenNominateModal: () => void;
   showRatings: boolean;
+  onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
+  onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
+  onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
+  onSaveJournal: (showId: number, season: number, episode: number, entry: JournalEntry | null) => void;
+  onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
+  onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -67,10 +73,10 @@ const SectionHeader: React.FC<{ title: string; icon?: React.ReactNode }> = ({ ti
     </div>
 );
 
-interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences' | 'timeFormat' | 'showRatings'> {}
+interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'onOpenAddToListModal' | 'onMarkShowAsWatched' | 'onToggleFavoriteShow' | 'favorites' | 'userData' | 'timezone' | 'onShortcutNavigate' | 'genres' | 'reminders' | 'onToggleReminder' | 'onUpdateLists' | 'preferences' | 'timeFormat' | 'showRatings' | 'onToggleEpisode' | 'onStartLiveWatch' | 'onToggleFavoriteEpisode' | 'onRateEpisode' | 'onSaveJournal' | 'onAddWatchHistory' | 'pausedLiveSessions' | 'onToggleWeeklyFavorite'> {}
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
-({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat, showRatings }) => {
+({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat, showRatings, onToggleEpisode, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, pausedLiveSessions, onToggleWeeklyFavorite }) => {
     const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists, userData, timeFormat, showRatings };
 
     return (
@@ -113,7 +119,20 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
           {preferences.dashShowTrending && (
             <>
               <NewReleases mediaType="movie" title="🍿 New Popular Movie Releases" {...carouselProps} timezone={timezone} onViewMore={() => onShortcutNavigate('allNewReleases')} />
-              <NewlyPopularEpisodes onSelectShow={onSelectShow} />
+              <NewlyPopularEpisodes 
+                onSelectShow={onSelectShow} 
+                userData={userData} 
+                onToggleEpisode={onToggleEpisode} 
+                onStartLiveWatch={onStartLiveWatch} 
+                preferences={preferences}
+                onToggleFavoriteEpisode={onToggleFavoriteEpisode}
+                onRateEpisode={onRateEpisode}
+                onSaveJournal={onSaveJournal}
+                onAddWatchHistory={onAddWatchHistory}
+                onUpdateLists={onUpdateLists}
+                pausedLiveSessions={pausedLiveSessions}
+                onToggleWeeklyFavorite={onToggleWeeklyFavorite}
+              />
               <TrendingSection mediaType="tv" title="🔥 Trending TV Shows" {...carouselProps} onViewMore={() => onShortcutNavigate('allTrendingTV')} />
               <TrendingSection mediaType="movie" title="🔥 Trending Movies" {...carouselProps} onViewMore={() => onShortcutNavigate('allTrendingMovies')} />
             </>
@@ -132,7 +151,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 };
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
-  const { userData, onSelectShow, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAs_Watched, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat, reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, showRatings } = props;
+  const { userData, onSelectShow, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat, reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, showRatings, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, onToggleWeeklyFavorite } = props;
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
   const [backendMovies, setBackendMovies] = useState<TmdbMedia[]>([]);
   const [backendShows, setBackendShows] = useState<TmdbMedia[]>([]);
@@ -202,7 +221,31 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         <PlanToWatch items={userData.planToWatch} onSelectShow={onSelectShow} onViewMore={() => onShortcutNavigate('library-plan-to-watch')} globalPlaceholders={userData.globalPlaceholders} />
       )}
 
-      {!isApiKeyMissing && <DiscoverContent onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} onMarkShowAsWatched={onMarkShowAsWatched} onToggleFavoriteShow={onToggleFavoriteShow} favorites={favorites} userData={userData} timezone={timezone} onShortcutNavigate={onShortcutNavigate} genres={genres} reminders={reminders} onToggleReminder={onToggleReminder} onUpdateLists={onUpdateLists} preferences={preferences} timeFormat={timeFormat} showRatings={showRatings} />}
+      {!isApiKeyMissing && <DiscoverContent 
+          onSelectShow={onSelectShow} 
+          onOpenAddToListModal={onOpenAddToListModal} 
+          onMarkShowAsWatched={onMarkShowAsWatched} 
+          onToggleFavoriteShow={onToggleFavoriteShow} 
+          favorites={favorites} 
+          userData={userData} 
+          timezone={timezone} 
+          onShortcutNavigate={onShortcutNavigate} 
+          genres={genres} 
+          reminders={reminders} 
+          onToggleReminder={onToggleReminder} 
+          onUpdateLists={onUpdateLists} 
+          preferences={preferences} 
+          timeFormat={timeFormat} 
+          showRatings={showRatings} 
+          onToggleEpisode={onToggleEpisode} 
+          onStartLiveWatch={onStartLiveWatch} 
+          onToggleFavoriteEpisode={onToggleFavoriteEpisode}
+          onRateEpisode={onRateEpisode}
+          onSaveJournal={onSaveJournal}
+          onAddWatchHistory={onAddWatchHistory}
+          pausedLiveSessions={pausedLiveSessions}
+          onToggleWeeklyFavorite={onToggleWeeklyFavorite}
+      />}
       
       {!isApiKeyMissing && (
         <section className="px-6">

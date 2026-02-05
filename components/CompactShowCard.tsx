@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrackedItem, TmdbMediaDetails } from '../types';
 import FallbackImage from './FallbackImage';
@@ -8,7 +7,7 @@ import { getMediaDetails } from '../services/tmdbService';
 import { getShowStatus } from '../utils/statusUtils';
 
 interface CompactShowCardProps {
-  item: TrackedItem;
+  item: TrackedItem & { seasonNumber?: number; episodeNumber?: number; episodeTitle?: string };
   onSelect: (id: number, media_type: 'tv' | 'movie') => void;
   showAddedAt?: boolean;
 }
@@ -58,6 +57,8 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect, showA
         return new Date(item.addedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     }, [item.addedAt]);
 
+    const isEpisodePick = item.seasonNumber !== undefined && item.episodeNumber !== undefined;
+
     return (
         <div
             onClick={() => onSelect(item.id, item.media_type)}
@@ -79,8 +80,15 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect, showA
                                 {ageRating}
                             </div>
                         )}
+                        
+                        {isEpisodePick && (
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-primary-accent text-on-accent text-[7px] font-black rounded uppercase shadow-lg z-20 border border-black/10">
+                                S{item.seasonNumber} E{item.episodeNumber}
+                            </div>
+                        )}
+
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2 pl-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <h3 className="text-white text-xs font-bold text-center w-full leading-tight">{title}</h3>
+                            <h3 className="text-white text-xs font-bold text-center w-full leading-tight">{isEpisodePick ? item.episodeTitle : title}</h3>
                             {showAddedAt && formattedAddedDate && (
                                 <p className="text-[8px] font-black text-primary-accent uppercase tracking-widest text-center w-full mt-1">Added: {formattedAddedDate}</p>
                             )}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { UserData, WeeklyPick } from '../types';
 import CompactShowCard from '../components/CompactShowCard';
-import { XMarkIcon, TrophyIcon, ChevronDownIcon, ClockIcon, PlusIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, TrashIcon } from '../components/Icons';
+import { XMarkIcon, TrophyIcon, ChevronDownIcon, ClockIcon, PlusIcon, TvIcon, FilmIcon, UserIcon, UsersIcon, TrashIcon, ListBulletIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface WeeklyPicksScreenProps {
@@ -33,6 +33,7 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
         };
     };
 
+    // FIX: Corrected date sorting logic to properly parse string keys and return a numeric difference for sort.
     const historyWeeks = Object.keys(weeklyFavoritesHistory).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
     const formatWeekLabel = (weekKey: string) => {
@@ -41,7 +42,8 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
     };
 
     const categories: { id: WeeklyPick['category'], label: string, icon: React.ReactNode }[] = [
-        { id: 'tv', label: 'TV Show', icon: <TvIcon className="w-5 h-5 text-red-400" /> },
+        { id: 'tv', label: 'Series', icon: <TvIcon className="w-5 h-5 text-red-400" /> },
+        { id: 'episode', label: 'Episode', icon: <ListBulletIcon className="w-5 h-5 text-purple-400" /> },
         { id: 'movie', label: 'Movie', icon: <FilmIcon className="w-5 h-5 text-blue-400" /> },
         { id: 'actor', label: 'Actor', icon: <UserIcon className="w-5 h-5 text-yellow-400" /> },
         { id: 'actress', label: 'Actress', icon: <UsersIcon className="w-5 h-5 text-pink-400" /> },
@@ -84,7 +86,7 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
                     </div>
                     <div>
                         <h2 className="text-4xl font-black text-text-primary uppercase tracking-tighter leading-none">Weekly Gems</h2>
-                        <p className="text-sm text-text-secondary font-black uppercase tracking-[0.2em] mt-2">Elite 140 Selection • 5 Per Category Per Day</p>
+                        <p className="text-sm text-text-secondary font-black uppercase tracking-[0.2em] mt-2">Elite Selection • 5 Per Category Per Day</p>
                     </div>
                 </div>
                 
@@ -107,16 +109,16 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
             {activeSubTab === 'nominations' ? (
                 <div className="space-y-12">
                     <div className="bg-card-gradient rounded-3xl p-6 md:p-8 border border-white/10 shadow-2xl overflow-x-auto">
-                        <div className="min-w-[1000px]">
+                        <div className="min-w-[1200px]">
                             {/* Header Row */}
                             <div className="grid grid-cols-[150px_repeat(7,1fr)] gap-4 mb-8">
-                                <div className="flex items-center justify-center font-black text-text-secondary uppercase tracking-widest text-[10px]">Categories</div>
+                                <div className="flex items-center justify-center font-black text-text-secondary uppercase tracking-widest text-[10px]">Registry Day</div>
                                 {[0,1,2,3,4,5,6].map(dayIdx => {
                                     const { dayName, dateStr } = getFormattedDayDate(currentWeekKey, dayIdx);
                                     return (
-                                        <div key={dayIdx} className="text-center py-2 bg-bg-secondary/30 rounded-xl">
+                                        <div key={dayIdx} className="text-center py-2 bg-bg-secondary/30 rounded-xl border border-white/5">
                                             <div className="font-black text-text-primary uppercase tracking-widest text-[10px] leading-tight">{dayName}</div>
-                                            <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">{dateStr}</div>
+                                            <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40">{dateStr}</div>
                                         </div>
                                     );
                                 })}
@@ -135,7 +137,7 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
                                             <div key={`${cat.id}-${dayIndex}`} className="space-y-2">
                                                 <div className="flex flex-col gap-2">
                                                     {picks.map(p => (
-                                                        <div key={p.id} className="aspect-[2/3] w-full">
+                                                        <div key={`${p.id}-${p.episodeNumber}-${p.dayIndex}`} className="aspect-[2/3] w-full">
                                                             {renderPickCard(p)}
                                                         </div>
                                                     ))}
@@ -185,7 +187,7 @@ const WeeklyPicksScreen: React.FC<WeeklyPicksScreenProps> = ({ userData, onSelec
                                                 {weeklyFavoritesHistory[weekKey].map(item => {
                                                     const { dayName, dateStr } = getFormattedDayDate(weekKey, item.dayIndex);
                                                     return (
-                                                        <div key={`${weekKey}-${item.id}-${item.category}-${item.dayIndex}`} className="space-y-2">
+                                                        <div key={`${weekKey}-${item.id}-${item.category}-${item.dayIndex}-${item.episodeNumber}`} className="space-y-2">
                                                             <div className="flex flex-col px-1 leading-tight">
                                                                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-tighter">
                                                                     {dayName}, {dateStr}

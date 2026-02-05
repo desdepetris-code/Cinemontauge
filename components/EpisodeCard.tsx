@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { NewlyPopularEpisode, TmdbMediaDetails } from '../types';
 import FallbackImage from './FallbackImage';
 import { getImageUrl } from '../utils/imageUtils';
@@ -10,11 +10,13 @@ import { getMediaDetails } from '../services/tmdbService';
 interface EpisodeCardProps {
     item: NewlyPopularEpisode;
     onSelectShow: (id: number, media_type: 'tv') => void;
+    onOpenDetail?: (item: NewlyPopularEpisode) => void;
 }
 
-const EpisodeCard: React.FC<EpisodeCardProps> = ({ item, onSelectShow }) => {
+const EpisodeCard: React.FC<EpisodeCardProps> = ({ item, onSelectShow, onOpenDetail }) => {
     const { showInfo, episode } = item;
     const [showDetails, setShowDetails] = useState<TmdbMediaDetails | null>(null);
+    const longPressTimer = useRef<number | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -23,6 +25,19 @@ const EpisodeCard: React.FC<EpisodeCardProps> = ({ item, onSelectShow }) => {
         }).catch(() => {});
         return () => { isMounted = false; };
     }, [showInfo.id]);
+
+    const handleTouchStart = () => {
+        longPressTimer.current = window.setTimeout(() => {
+            if (onOpenDetail) onOpenDetail(item);
+        }, 500);
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     const ageRating = useMemo(() => {
         if (!showDetails) return null;
@@ -48,14 +63,28 @@ const EpisodeCard: React.FC<EpisodeCardProps> = ({ item, onSelectShow }) => {
 
     const isNew = isNewRelease(episode.air_date);
 
+    const handleClick = () => {
+        if (onOpenDetail) {
+            onOpenDetail(item);
+        } else {
+            onSelectShow(showInfo.id, 'tv');
+        }
+    };
+
     return (
         <div 
             className="w-64 flex-shrink-0 cursor-pointer group h-full"
-            onClick={() => onSelectShow(showInfo.id, 'tv')}
+            onClick={handleClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleTouchStart}
+            onMouseUp={handleTouchEnd}
+            onMouseLeave={handleTouchEnd}
         >
             <div className="relative rounded-lg overflow-hidden shadow-lg">
                 {isNew && <NewReleaseOverlay />}
                 {ageRating && (
+                    /* // FIX: Changed 'rating' to 'ageRating' to resolve "Cannot find name 'rating'" error */
                     <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 z-20 shadow-lg ${getAgeRatingColor(ageRating)}`}>
                         {ageRating}
                     </div>
