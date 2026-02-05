@@ -8,16 +8,15 @@ interface ScoreStarProps {
 }
 
 const getScoreStyle = (percentage: number): { strokeColor: string; solidColor: string; } => {
-    if (percentage <= 10) return { strokeColor: '#6F1F2B', solidColor: '#6F1F2B' };
-    if (percentage <= 20) return { strokeColor: '#800000', solidColor: '#800000' };
-    if (percentage <= 30) return { strokeColor: '#5C0000', solidColor: '#5C0000' };
-    if (percentage <= 40) return { strokeColor: '#800020', solidColor: '#800020' };
-    if (percentage <= 50) return { strokeColor: 'url(#gold-gradient)', solidColor: '#FFD700' };
-    if (percentage <= 60) return { strokeColor: 'url(#silver-gradient)', solidColor: '#C0C0C0' };
-    if (percentage <= 70) return { strokeColor: '#A3B1C6', solidColor: '#A3B1C6' };
-    if (percentage <= 80) return { strokeColor: '#4DD0C6', solidColor: '#4DD0C6' };
-    if (percentage <= 90) return { strokeColor: '#00BFA5', solidColor: '#00BFA5' };
-    return { strokeColor: '#00E5FF', solidColor: '#00E5FF' }; // Light cyan for high scores to improve legibility
+    // Colors updated to be brighter and more vibrant for high contrast on dark backgrounds
+    if (percentage <= 20) return { strokeColor: '#FF4D4D', solidColor: '#FF4D4D' }; // Bright Red-Orange
+    if (percentage <= 40) return { strokeColor: '#FF8C42', solidColor: '#FF8C42' }; // Bright Orange
+    if (percentage <= 50) return { strokeColor: 'url(#gold-gradient)', solidColor: '#FFD700' }; // Gold
+    if (percentage <= 60) return { strokeColor: 'url(#silver-gradient)', solidColor: '#E0E0E0' }; // Light Silver
+    if (percentage <= 70) return { strokeColor: '#B2FF59', solidColor: '#B2FF59' }; // Light Lime
+    if (percentage <= 80) return { strokeColor: '#64FFDA', solidColor: '#64FFDA' }; // Bright Aquamarine
+    if (percentage <= 90) return { strokeColor: '#18FFFF', solidColor: '#18FFFF' }; // Electric Cyan
+    return { strokeColor: '#FFFFFF', solidColor: '#FFFFFF' }; // Pure White for top tier
 };
 
 const ScoreStar: React.FC<ScoreStarProps> = ({ score, voteCount, size = 'md', className = '' }) => {
@@ -42,22 +41,22 @@ const ScoreStar: React.FC<ScoreStarProps> = ({ score, voteCount, size = 'md', cl
   return (
     <div className={`relative flex items-center justify-center flex-shrink-0 ${container} ${className}`} title={title}>
       {/* Background circle */}
-      <div className="absolute inset-0 bg-bg-secondary rounded-full opacity-50"></div>
+      <div className="absolute inset-0 bg-black/40 rounded-full"></div>
 
       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
         <defs>
             <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#B8860B" />
-                <stop offset="100%" stopColor="#FFD700" />
+                <stop offset="0%" stopColor="#FFC107" />
+                <stop offset="100%" stopColor="#FFE082" />
             </linearGradient>
             <linearGradient id="silver-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#D3D3D3" />
-                <stop offset="100%" stopColor="#C0C0C0" />
+                <stop offset="0%" stopColor="#BDBDBD" />
+                <stop offset="100%" stopColor="#F5F5F5" />
             </linearGradient>
         </defs>
           {/* Track */}
           <circle
-            className="text-bg-secondary"
+            className="text-white/10"
             cx="18"
             cy="18"
             r={radius}
@@ -81,8 +80,8 @@ const ScoreStar: React.FC<ScoreStarProps> = ({ score, voteCount, size = 'md', cl
       </svg>
 
       <div
-        className={`absolute font-bold ${text}`}
-        style={{ color: solidColor }}
+        className={`absolute font-black ${text}`}
+        style={{ color: solidColor, textShadow: '0 0 10px rgba(0,0,0,0.5)' }}
       >
         {percentage}<span className="text-[0.6em] align-super">%</span>
       </div>

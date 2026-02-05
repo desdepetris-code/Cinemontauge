@@ -3,7 +3,6 @@ import { discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, Reminder, ReminderType, WatchStatus } from '../types';
 import Carousel from './Carousel';
 import PremiereCard from './PremiereCard';
-import { ChevronRightIcon } from './Icons';
 
 interface UpcomingPremieresCarouselProps {
   title: string;
@@ -11,13 +10,12 @@ interface UpcomingPremieresCarouselProps {
   completed: TrackedItem[];
   reminders: Reminder[];
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
-  onViewMore?: () => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   onOpenAddToListModal: (item: TmdbMedia | TrackedItem) => void;
 }
 
 const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (props) => {
-    const { title, onSelectShow, completed, reminders, onToggleReminder, onViewMore, onUpdateLists, onOpenAddToListModal } = props;
+    const { title, onSelectShow, completed, reminders, onToggleReminder, onUpdateLists, onOpenAddToListModal } = props;
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -70,14 +68,9 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
     }
 
     return (
-        <div className="mb-8">
-            <div className="flex justify-between items-center mb-4 px-6">
+        <div className="my-8">
+            <div className="mb-4 px-6">
                 <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
-                {onViewMore && (
-                    <button onClick={onViewMore} className="text-sm view-more-button flex items-center rounded-full px-3 py-1 transition-colors">
-                        <span>View Full Calendar</span> <ChevronRightIcon className="w-4 h-4 ml-1" />
-                    </button>
-                )}
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">

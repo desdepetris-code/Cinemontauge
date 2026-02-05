@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getMediaDetails } from '../services/tmdbService';
-import { getNewSeasons as getGeneralNewSeasons } from '../services/tmdbService';
 import { TmdbMediaDetails, TrackedItem, WatchProgress, EpisodeProgress, UserData } from '../types';
 import { ArrowPathIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
@@ -29,12 +28,12 @@ const NewSeasonCard: React.FC<NewSeasonCardProps> = ({ item, onSelectShow, globa
         <div onClick={() => onSelectShow(item.showId, 'tv')} className="w-48 flex-shrink-0 cursor-pointer group transform hover:-translate-y-2 transition-transform duration-300">
             <div className="relative rounded-lg overflow-hidden shadow-lg">
                 <img src={posterUrl} alt={item.showTitle} className="w-full aspect-[2/3] object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full self-start mb-1 text-white backdrop-blur-sm ${item.isSeriesPremiere ? 'bg-purple-600/80' : 'bg-blue-600/80'}`}>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full self-start mb-2 text-white backdrop-blur-md ${item.isSeriesPremiere ? 'bg-purple-600/80' : 'bg-red-600/80'}`}>
                         {item.isSeriesPremiere ? 'Series Premiere' : 'New Season'}
                     </span>
-                    <h4 className="font-bold text-white text-sm truncate">{item.showTitle}</h4>
-                    <p className="text-xs text-white/80 truncate">{item.seasonName}</p>
+                    <h4 className="font-black text-white text-sm uppercase tracking-tight truncate leading-none">{item.showTitle}</h4>
+                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest truncate mt-1">{item.seasonName}</p>
                 </div>
             </div>
         </div>
@@ -46,7 +45,6 @@ const isSeasonFullyWatched = (seasonProgress: Record<number, EpisodeProgress> | 
     const watchedEpisodes = Object.values(seasonProgress).filter(ep => ep.status === 2).length;
     return watchedEpisodes >= episodeCount;
 };
-
 
 interface NewSeasonsProps {
   title: string;
@@ -60,28 +58,30 @@ interface NewSeasonsProps {
 const NewSeasons: React.FC<NewSeasonsProps> = ({ title, onSelectShow, trackedShows, watchProgress, timezone, globalPlaceholders }) => {
     const [newSeasons, setNewSeasons] = useState<NewSeasonInfo[]>([]);
     const [loading, setLoading] = useState(true);
-    const isPersonalized = trackedShows.length > 0;
 
-    const fetchReleases = useCallback(async (forceRefresh = false) => {
+    const fetchReleases = useCallback(async () => {
+        // Rule: Don't fetch if user has no tracked shows
+        if (!trackedShows || trackedShows.length === 0) {
+            setNewSeasons([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const now = new Date();
             const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-            let detailedShows: TmdbMediaDetails[];
-
-            if (isPersonalized) {
-                const detailPromises = trackedShows.map(s => getMediaDetails(s.id, 'tv').catch(() => null));
-                detailedShows = (await Promise.all(detailPromises)).filter((d): d is TmdbMediaDetails => d !== null);
-            } else {
-                detailedShows = await getGeneralNewSeasons(forceRefresh, timezone);
-            }
+            // Strictly only process user's tracked shows
+            const detailPromises = trackedShows.map(s => getMediaDetails(s.id, 'tv').catch(() => null));
+            const detailedShows = (await Promise.all(detailPromises)).filter((d): d is TmdbMediaDetails => d !== null);
 
             const foundSeasons: NewSeasonInfo[] = [];
 
             for (const details of detailedShows) {
                 if (!details.seasons) continue;
 
+                // Sort seasons to find the latest ones
                 const sortedSeasons = [...details.seasons].sort((a,b) => b.season_number - a.season_number);
 
                 for (const season of sortedSeasons) {
@@ -89,13 +89,13 @@ const NewSeasons: React.FC<NewSeasonsProps> = ({ title, onSelectShow, trackedSho
 
                     if (season.air_date) {
                         const airDate = new Date(`${season.air_date}T00:00:00Z`);
+                        // Rule: Must be within past month
                         if (airDate >= thirtyDaysAgo && airDate <= now) {
                             
-                            if (isPersonalized) {
-                                const progressForSeason = watchProgress[details.id]?.[season.season_number];
-                                if (isSeasonFullyWatched(progressForSeason, season.episode_count)) {
-                                    continue;
-                                }
+                            const progressForSeason = watchProgress[details.id]?.[season.season_number];
+                            // Skip if user already watched the new content
+                            if (isSeasonFullyWatched(progressForSeason, season.episode_count)) {
+                                continue;
                             }
 
                             foundSeasons.push({
@@ -108,7 +108,7 @@ const NewSeasons: React.FC<NewSeasonsProps> = ({ title, onSelectShow, trackedSho
                                 airDate: season.air_date,
                                 isSeriesPremiere: season.season_number === 1,
                             });
-                            break; 
+                            break; // Move to next show
                         }
                     }
                 }
@@ -117,61 +117,53 @@ const NewSeasons: React.FC<NewSeasonsProps> = ({ title, onSelectShow, trackedSho
             foundSeasons.sort((a, b) => new Date(b.airDate).getTime() - new Date(a.airDate).getTime());
             setNewSeasons(foundSeasons);
         } catch (error) {
-            console.error("Failed to fetch new seasons/premieres", error);
+            console.error("Failed to fetch personalized new seasons", error);
         } finally {
             setLoading(false);
         }
-    }, [trackedShows, isPersonalized, timezone, watchProgress]);
+    }, [trackedShows, watchProgress]);
 
     useEffect(() => {
         fetchReleases();
     }, [fetchReleases]);
     
-    const subtitle = !isPersonalized && title.includes("All") ? "Popular premieres from the last 30 days. Track shows to personalize this section." : null;
-
-    return (
-        <div className="my-8 px-6">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
-                {subtitle && <p className="text-sm text-text-secondary mt-1">{subtitle}</p>}
-              </div>
-              <button
-                onClick={() => fetchReleases(true)}
-                disabled={loading}
-                className="p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-                aria-label="Refresh new seasons"
-              >
-                  <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            {loading ? (
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
-                    {[...Array(5)].map((_, i) => (
-                         <div key={i} className="w-48 flex-shrink-0">
-                             <div className="aspect-[2/3] bg-bg-secondary rounded-lg"></div>
-                        </div>
+    if (loading) {
+        if (!trackedShows || trackedShows.length === 0) return null;
+        return (
+             <div className="my-10 px-6">
+                <div className="h-10 w-48 bg-bg-secondary/40 rounded-lg mb-6 animate-pulse"></div>
+                <div className="flex space-x-6">
+                    {[...Array(4)].map((_, i) => (
+                         <div key={i} className="w-48 aspect-[2/3] bg-bg-secondary/20 rounded-lg animate-pulse"></div>
                     ))}
                 </div>
-            ) : newSeasons.length > 0 ? (
-                <Carousel>
-                    <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
-                        {newSeasons.map(item => (
-                            <NewSeasonCard key={`${item.showId}-${item.seasonNumber}`} item={item} onSelectShow={onSelectShow as any} globalPlaceholders={globalPlaceholders} />
-                        ))}
-                        <div className="w-4 flex-shrink-0"></div>
-                    </div>
-                </Carousel>
-            ) : (
-                <div className="bg-card-gradient rounded-lg shadow-md p-8 text-center">
-                    <p className="text-text-secondary">
-                        {isPersonalized
-                            ? "No recent premieres from your tracked shows."
-                            : "No new premieres found in the last 30 days."
-                        }
-                    </p>
+            </div>
+        )
+    }
+
+    // Rule: Return null if no matches in past month
+    if (newSeasons.length === 0) return null;
+
+    return (
+        <div className="my-10 px-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">{title}</h2>
+                <button
+                    onClick={fetchReleases}
+                    disabled={loading}
+                    className="p-3 rounded-2xl text-text-secondary bg-bg-secondary/40 border border-white/5 hover:text-text-primary transition-all shadow-xl"
+                >
+                    <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+            </div>
+            <Carousel>
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-6 hide-scrollbar items-start">
+                    {newSeasons.map(item => (
+                        <NewSeasonCard key={`${item.showId}-${item.seasonNumber}`} item={item} onSelectShow={onSelectShow as any} globalPlaceholders={globalPlaceholders} />
+                    ))}
+                    <div className="w-12 flex-shrink-0"></div>
                 </div>
-            )}
+            </Carousel>
         </div>
     );
 };

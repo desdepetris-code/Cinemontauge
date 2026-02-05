@@ -1,27 +1,26 @@
-
 import { Theme } from './types';
 
-// --- DARK THEMES ---
+// --- THEMES ---
 
 const radiantRed: Theme = {
   id: 'original-dark',
   name: 'Radiant Red',
   base: 'dark',
   colors: {
-    bgGradient: 'radial-gradient(ellipse at top, #b91c1c, #450a0a)',
-    accentGradient: 'linear-gradient(to right, #f87171, #dc2626)',
-    cardGradient: 'linear-gradient(to bottom, rgba(185, 28, 28, 0.3), rgba(69, 10, 10, 0.5))',
-    textColorPrimary: '#FFFBEB',
-    textColorSecondary: 'rgba(242, 230, 230, 0.75)',
-    accentPrimary: '#f87171',
-    accentSecondary: '#dc2626',
-    bgPrimary: '#450a0a',
-    bgSecondary: 'rgba(239, 68, 68, 0.1)',
-    bgBackdrop: 'rgba(69, 10, 10, 0.3)',
-    error: '#FACC15', // Gold/Amber for accessibility on red
-    success: '#4ADE80',
-    onAccent: '#FFFFFF',
-    patternOpacity: '0.05',
+    bgGradient: 'radial-gradient(circle at top, #e11d48, #be123c, #881337)',
+    accentGradient: 'linear-gradient(to right, #ffffff, #fecaca)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(136, 19, 55, 0.4))',
+    textColorPrimary: '#ffffff',
+    textColorSecondary: '#ffffff', // Strictly white
+    accentPrimary: '#ffffff', // For white glow highlights
+    accentSecondary: '#ffffff',
+    bgPrimary: '#be123c',
+    bgSecondary: 'rgba(255, 255, 255, 0.12)',
+    bgBackdrop: 'rgba(136, 19, 55, 0.85)',
+    error: '#ffffff',
+    success: '#ffffff',
+    onAccent: '#881337', // Deep red for text ON solid white buttons
+    patternOpacity: '0.02',
     fontJournal: "'Domine', serif"
   }
 };

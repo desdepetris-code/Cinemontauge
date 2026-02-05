@@ -3,14 +3,12 @@ import { getNewlyPopularEpisodes } from '../services/tmdbService';
 import { NewlyPopularEpisode } from '../types';
 import Carousel from './Carousel';
 import EpisodeCard from './EpisodeCard';
-import { ChevronRightIcon } from './Icons';
 
 interface NewlyPopularEpisodesProps {
   onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
-  onViewMore?: () => void;
 }
 
-const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({ onSelectShow, onViewMore }) => {
+const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({ onSelectShow }) => {
     const [episodes, setEpisodes] = useState<NewlyPopularEpisode[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -52,13 +50,8 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({ onSelectSho
 
     return (
         <div className="my-8">
-            <div className="flex justify-between items-center mb-4 px-6">
+            <div className="mb-4 px-6">
                 <h2 className="text-2xl font-bold text-text-primary">📺 Newly Popular Episodes</h2>
-                {onViewMore && (
-                    <button onClick={onViewMore} className="text-sm view-more-button flex items-center rounded-full px-3 py-1 transition-colors">
-                        <span>View More</span> <ChevronRightIcon className="w-4 h-4 ml-1" />
-                    </button>
-                )}
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">

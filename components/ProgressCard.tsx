@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { TrackedItem, TmdbMediaDetails, Episode, LiveWatchMediaInfo, UserData } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -6,7 +5,6 @@ import { PlayIcon, CheckCircleIcon, HeartIcon } from './Icons';
 import BrandedImage from './BrandedImage';
 import { getShowStatus } from '../utils/statusUtils';
 
-// This type is based on what ProgressScreen prepares
 export interface EnrichedShowData extends TrackedItem {
     details: TmdbMediaDetails;
     nextEpisodeInfo: Episode | null;
@@ -32,19 +30,7 @@ interface ProgressCardProps {
 const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, onSelectShow, onToggleEpisode, onStartLiveWatch, onToggleFavoriteEpisode, globalPlaceholders }) => {
     const { details, nextEpisodeInfo, watchedCount, totalEpisodes } = item;
     const progressPercent = totalEpisodes > 0 ? (watchedCount / totalEpisodes) * 100 : 0;
-
-    const showStatus = useMemo(() => {
-        if (!details) return null;
-        return getShowStatus(details);
-    }, [details]);
-    
-    const handleMarkWatched = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (nextEpisodeInfo) {
-            const season = details.seasons?.find(s => s.season_number === nextEpisodeInfo.season_number);
-            onToggleEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number, 0, item, nextEpisodeInfo.name, nextEpisodeInfo.still_path, season?.poster_path);
-        }
-    };
+    const showStatus = useMemo(() => details ? getShowStatus(details) : null, [details]);
     
     const bannerImageUrl = useMemo(() => {
         const season = details.seasons?.find(s => s.season_number === nextEpisodeInfo?.season_number);
@@ -52,7 +38,7 @@ const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, o
     }, [details.seasons, nextEpisodeInfo, item.poster_path]);
 
     return (
-        <div className="bg-card-gradient rounded-lg shadow-md flex overflow-hidden h-48 border border-white/5">
+        <div className="bg-card-gradient rounded-3xl shadow-xl flex overflow-hidden h-48 border border-white/10 group/card">
             <div className="w-32 flex-shrink-0 cursor-pointer relative" onClick={() => onSelectShow(item.id, 'tv')}>
                 <BrandedImage title={item.title} status={showStatus?.text}>
                     <img src={bannerImageUrl} alt={item.title} className="w-full h-full object-cover" />
@@ -60,55 +46,35 @@ const ProgressCard: React.FC<ProgressCardProps> = ({ item, isEpisodeFavorited, o
             </div>
 
             <div className="flex-grow relative group cursor-pointer" onClick={() => onSelectShow(item.id, 'tv')}>
-                <img src={getImageUrl(details.backdrop_path, 'w500', 'backdrop')} alt={item.title} className="w-full h-full object-cover" />
+                <img src={getImageUrl(details.backdrop_path, 'w500', 'backdrop')} alt={item.title} className="w-full h-full object-cover grayscale-[0.2] transition-all duration-700 group-hover:grayscale-0" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                 
-                <div 
-                    onClick={handleMarkWatched}
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                >
-                    <div className="p-3 bg-backdrop rounded-full">
-                        <PlayIcon className="w-6 h-6 text-white"/>
+                <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+                    <div className="bg-black px-3 py-1 rounded-lg border border-white/5 inline-block mb-1 shadow-lg">
+                        <h3 className="font-black text-white uppercase tracking-tighter truncate leading-none text-sm">{item.title}</h3>
+                    </div>
+                    {nextEpisodeInfo ? (
+                        <div className="bg-primary-accent px-2 py-0.5 rounded-md border border-black inline-block shadow-xl">
+                            <p className="text-[10px] font-black text-black uppercase tracking-tighter">
+                                NEXT: S{nextEpisodeInfo.season_number} E{nextEpisodeInfo.episode_number} &bull; {nextEpisodeInfo.name}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="bg-green-500 px-2 py-0.5 rounded-md border border-black inline-block shadow-xl">
+                            <p className="text-[10px] font-black text-black uppercase tracking-tighter">Registry Complete</p>
+                        </div>
+                    )}
+                    
+                    <div className="mt-3 w-full bg-white/10 rounded-full h-1.5 overflow-hidden border border-white/5">
+                        <div className="bg-accent-gradient h-full rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
                     </div>
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-                    <h3 className="font-bold text-white truncate">{item.title}</h3>
-                    {nextEpisodeInfo ? (
-                        <p className="text-sm text-white/80 truncate">
-                            Up next: S{nextEpisodeInfo.season_number} E{nextEpisodeInfo.episode_number} - {nextEpisodeInfo.name}
-                        </p>
-                    ) : (
-                        <p className="text-sm text-green-400">All caught up!</p>
-                    )}
-                    <div className="mt-2">
-                        <div className="flex justify-between text-xs text-white/80">
-                            <span>Overall Progress</span>
-                            <span>{Math.round(progressPercent)}%</span>
-                        </div>
-                        <div className="w-full bg-white/20 rounded-full h-1 mt-1">
-                            <div className="bg-accent-gradient h-1 rounded-full" style={{ width: `${progressPercent}%` }}></div>
-                        </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="p-4 bg-backdrop/60 backdrop-blur-md rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform">
+                        <PlayIcon className="w-8 h-8 text-white"/>
                     </div>
                 </div>
-                
-                {nextEpisodeInfo && (
-                    <div className="absolute top-2 right-2 flex space-x-1">
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleFavoriteEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number); }}
-                            className="p-1.5 bg-backdrop rounded-full text-white/80 hover:text-white hover:bg-yellow-500/50 transition-colors"
-                            title={isEpisodeFavorited ? "Unfavorite episode" : "Favorite episode"}
-                        >
-                            <HeartIcon filled={isEpisodeFavorited} className={`w-5 h-5 ${isEpisodeFavorited ? 'text-yellow-400' : ''}`} />
-                        </button>
-                        <button 
-                            onClick={handleMarkWatched}
-                            className="p-1.5 bg-backdrop rounded-full text-white/80 hover:text-white hover:bg-green-500/50 transition-colors"
-                            title="Mark next episode as watched"
-                        >
-                            <CheckCircleIcon className="w-5 h-5" />
-                        </button>
-                    </div>
-                )}
             </div>
         </div>
     );

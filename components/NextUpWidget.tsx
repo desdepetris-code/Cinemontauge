@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TmdbMediaDetails, Episode, LiveWatchMediaInfo, FavoriteEpisodes, WatchProgress, JournalEntry, Comment, TmdbSeasonDetails, TrackedItem } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
@@ -177,8 +176,8 @@ const NextUpWidget: React.FC<NextUpWidgetProps> = (props) => {
                             S{episodeDetails.season_number} E{episodeDetails.episode_number}
                         </p>
                         {airtimeTruth && (
-                            <div className="bg-primary-accent text-black text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-white/10 shadow-lg flex items-center gap-1.5 animate-fade-in">
-                                <ClockIcon className="w-3 h-3 text-black" />
+                            <div className="bg-black text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-md border border-white/10 shadow-lg flex items-center gap-1.5 animate-fade-in">
+                                <ClockIcon className="w-3 h-3 text-white" />
                                 {airtimeTruth}
                             </div>
                         )}

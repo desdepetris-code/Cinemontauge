@@ -117,8 +117,8 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone, se
                         <InfoRow 
                             label="Scheduled Premiere" 
                             value={
-                                <div className="flex items-center gap-2 text-primary-accent font-black uppercase tracking-widest text-[10px]">
-                                    <ClockIcon className="w-4 h-4" />
+                                <div className="flex items-center gap-2 px-3 py-1 bg-black text-white rounded-md border border-white/10 shadow-lg font-black uppercase tracking-widest text-[10px]">
+                                    <ClockIcon className="w-4 h-4 text-white" />
                                     {precisionTime}
                                 </div>
                             } 
