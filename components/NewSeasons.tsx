@@ -26,14 +26,14 @@ const NewSeasonCard: React.FC<NewSeasonCardProps> = ({ item, onSelectShow, globa
     const posterUrl = getImageUrl(item.seasonPoster || item.showPoster, 'w342');
     return (
         <div onClick={() => onSelectShow(item.showId, 'tv')} className="w-48 flex-shrink-0 cursor-pointer group transform hover:-translate-y-2 transition-transform duration-300">
-            <div className="relative rounded-lg overflow-hidden shadow-lg">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/5">
                 <img src={posterUrl} alt={item.showTitle} className="w-full aspect-[2/3] object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-3">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full self-start mb-2 text-white backdrop-blur-md ${item.isSeriesPremiere ? 'bg-purple-600/80' : 'bg-red-600/80'}`}>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-4">
+                    <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full self-start mb-3 text-white backdrop-blur-md shadow-lg border border-white/10 ${item.isSeriesPremiere ? 'bg-purple-600/80' : 'bg-red-600/80'}`}>
                         {item.isSeriesPremiere ? 'Series Premiere' : 'New Season'}
                     </span>
-                    <h4 className="font-black text-white text-sm uppercase tracking-tight truncate leading-none">{item.showTitle}</h4>
-                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest truncate mt-1">{item.seasonName}</p>
+                    <h4 className="font-black text-white text-base uppercase tracking-tighter truncate leading-none shadow-sm">{item.showTitle}</h4>
+                    <p className="text-[10px] font-black text-white/90 uppercase tracking-widest truncate mt-1.5">{item.seasonName}</p>
                 </div>
             </div>
         </div>

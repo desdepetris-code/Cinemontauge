@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, Theme, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
-import { UserIcon, StarIcon, BookmarkIcon, ClockIcon, BadgeIcon, CogIcon, CloudArrowUpIcon, CollectionIcon, RectangleStackIcon, HeartIcon, SearchIcon, ChatBubbleOvalLeftEllipsisIcon, XMarkIcon, MegaphoneIcon, Squares2X2Icon, ChartPieIcon, InformationCircleIcon, BellIcon, ArchiveBoxIcon, ChevronLeftIcon, ChevronRightIcon, UserGroupIcon, EllipsisVerticalIcon, PencilSquareIcon, TrophyIcon, MountainIcon, FireIcon, TrashIcon, PlayPauseIcon, ArrowTrendingUpIcon, QueueListIcon, TableCellsIcon, WritingBookIcon, ListBulletIcon, ChartBarIcon, SparklesIcon, PhotoIcon, PresentationChartLineIcon, BoltIcon, InboxIcon, HandThumbUpIcon, CircleStackIcon, HashtagIcon, FingerPrintIcon, ChatBubbleLeftRightIcon, DocumentTextIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, ArrowPathIcon, ChevronDownIcon } from '../components/Icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
+import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, BadgeIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -14,14 +13,12 @@ import { useAchievements } from '../hooks/useAchievements';
 import OverviewStats from '../components/profile/OverviewStats';
 import StatsNarrative from '../components/StatsNarrative';
 import StatsScreen from './StatsScreen';
-import FollowListModal from '../components/FollowListModal';
 import FriendsActivity from '../components/profile/FriendsActivity';
 import LibraryScreen from './LibraryScreen';
 import NotificationsModal from '../components/NotificationsModal';
 import RecentActivityWidget from '../components/profile/RecentActivityWidget';
 import AchievementsWidget from '../components/profile/AchievementsWidget';
 import ListsWidget from '../components/profile/ListsWidget';
-import ActivityScreen from './ActivityScreen';
 import WeeklyPicksScreen from './WeeklyPicksScreen';
 import ProgressScreen from './ProgressScreen';
 import UpdatesScreen from './UpdatesScreen';
@@ -108,9 +105,6 @@ interface ProfileProps {
   setFavoriteEpisodes: React.Dispatch<React.SetStateAction<FavoriteEpisodes>>;
   setTheme: (themeId: string) => void;
   baseThemeId: string;
-  currentHolidayName: string | null;
-  customThemes: Theme[];
-  setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
   onLogout: () => void;
   onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
   onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
@@ -133,10 +127,6 @@ interface ProfileProps {
   onMarkOneRead: (id: string) => void;
   onAddNotifications: (notifs: AppNotification[]) => void;
   onDeleteNotification: (id: string) => void;
-  autoHolidayThemesEnabled: boolean;
-  setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  holidayAnimationsEnabled: boolean;
-  setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   profileTheme: ProfileTheme | null;
   setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
   textSize: number;
@@ -170,7 +160,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onAuthClick, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences, onMarkAllRead, onMarkOneRead, onDeleteNotification, onSelectUser } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences, onMarkAllRead, onMarkOneRead, onDeleteNotification, onSelectUser } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
@@ -193,8 +183,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const badgeOrbit = useMemo(() => {
       if (!preferences.showBadgesOnProfile || badges.length === 0) return null;
       const radius = 100; 
-      const maxBadgesInOrbit = 12; 
-      const orbitItems = badges.slice(0, maxBadgesInOrbit);
+      const orbitItems = badges.slice(0, 12);
       return orbitItems.map((badge, index) => {
           const angle = (index / orbitItems.length) * 2 * Math.PI - Math.PI / 2;
           const x = Math.cos(angle) * radius;
@@ -265,7 +254,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'imports': return <ImportsScreen userData={userData} onImportCompleted={props.onImportCompleted} onTraktImportCompleted={props.onTraktImportCompleted} onTmdbImportCompleted={props.onTmdbImportCompleted} onJsonImportCompleted={props.onJsonImportCompleted} />;
-      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={props.baseThemeId} currentHolidayName={props.currentHolidayName} onTabNavigate={onTabNavigate} />;
+      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={props.baseThemeId} onTabNavigate={onTabNavigate} />;
       case 'weeklyPicks': return <WeeklyPicksScreen userData={userData} onSelectShow={onSelectShow} onRemovePick={props.onToggleWeeklyFavorite} onNominate={props.onOpenNominateModal} />;
       default: return null;
     }
@@ -308,18 +297,6 @@ const Profile: React.FC<ProfileProps> = (props) => {
                     </div>
                 </div>
                 <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60">{currentUser?.email || 'Archive access limited'}</p>
-                {currentUser && (
-                    <div className="flex justify-center md:justify-start space-x-8 mt-4 pt-4 border-t border-white/5">
-                        <button onClick={() => setFollowModalState({isOpen: true, title: 'Network Followers', userIds: []})} className="group flex flex-col items-center md:items-start transition-all hover:translate-y-[-2px]">
-                            <span className="text-xl font-black text-text-primary group-hover:text-primary-accent transition-colors">0</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Followers</span>
-                        </button>
-                        <button onClick={() => setFollowModalState({isOpen: true, title: 'Tracking Network', userIds: []})} className="group flex flex-col items-center md:items-start transition-all hover:translate-y-[-2px]">
-                            <span className="text-xl font-black text-text-primary group-hover:text-primary-accent transition-colors">0</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Following</span>
-                        </button>
-                    </div>
-                )}
             </div>
 
             <div className="flex-shrink-0 flex items-center gap-3">

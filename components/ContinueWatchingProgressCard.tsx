@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, TvdbShow, EpisodeTag, LiveWatchMediaInfo, EpisodeProgress, UserData } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
@@ -264,7 +263,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
 
     return (
         <div 
-            className="w-full bg-card-gradient rounded-lg shadow-lg flex flex-col relative overflow-hidden group cursor-pointer transition-transform duration-300 hover:-translate-y-2 border border-white/5"
+            className="w-full bg-card-gradient rounded-2xl shadow-2xl flex flex-col relative overflow-hidden group cursor-pointer transition-transform duration-300 hover:-translate-y-2 border border-white/10"
             onClick={() => onSelectShow(item.id, 'tv')}
         >
             <BrandedImage title={item.title} status={showStatusText}>
@@ -277,94 +276,93 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                         alt={`${item.title} preview`} 
                         className="absolute inset-0 w-full h-full object-cover" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
                     
-                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-20">
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2 z-20">
                         {ageRating && (
-                            <div className={`px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md border border-white/10 shadow-lg ${getAgeRatingColor(ageRating)}`}>
+                            <div className={`px-2 py-0.5 text-[10px] font-black rounded-md backdrop-blur-md border border-white/20 shadow-2xl ${getAgeRatingColor(ageRating)}`}>
                                 {ageRating}
                             </div>
                         )}
-                        {isNew && <NewReleaseOverlay position="static" color="cyan" />}
+                        {isNew && <NewReleaseOverlay position="static" color="cyan" className="scale-110" />}
                         {episodeTag && (
-                            <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-md backdrop-blur-md border border-white/10 shadow-lg ${episodeTag.className}`}>
+                            <div className={`text-[10px] font-black uppercase px-3 py-1 rounded-md backdrop-blur-md border border-white/20 shadow-2xl ${episodeTag.className}`}>
                                 {episodeTag.text}
                             </div>
                         )}
                     </div>
 
                     {nextEpisodeInfo && !isPausedSession && (
-                    <div className="absolute bottom-[28%] right-3 z-20">
+                    <div className="absolute bottom-[32%] right-4 z-20">
                         <FallbackImage 
                             srcs={episodeStillSrcs} 
                             placeholder={PLACEHOLDER_STILL}
                             type="still"
                             globalPlaceholders={globalPlaceholders}
                             alt="Next episode thumbnail" 
-                            className="w-28 aspect-video object-cover rounded-md border-2 border-white/20 shadow-lg transition-transform duration-300 group-hover:scale-105"
+                            className="w-32 aspect-video object-cover rounded-xl border-2 border-white/20 shadow-2xl transition-transform duration-300 group-hover:scale-110"
                         />
                     </div>
                     )}
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 pl-8 mt-auto">
-                        <h3 className="font-bold text-white text-lg truncate [text-shadow:0_1px_3px_#000]">{item.title}</h3>
+                    <div className="absolute bottom-0 left-0 right-0 p-5 pl-8 mt-auto">
+                        <h3 className="font-black text-white text-xl uppercase tracking-tighter truncate leading-tight [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">{item.title}</h3>
                         {isPausedSession ? (
-                            <>
-                                <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
-                                    {`S${item.seasonNumber} E${item.episodeNumber}: ${item.episodeTitle}`}
+                            <div className="mt-1">
+                                <p className="text-xs font-black text-primary-accent uppercase tracking-widest truncate">
+                                    {`S${item.seasonNumber} E${item.episodeNumber} Resume`}
                                 </p>
-                                <p className="text-xs text-amber-300 font-semibold">{`${formatTime(remainingSeconds)} remaining`}</p>
-                            </>
+                                <p className="text-xs text-amber-300 font-black uppercase mt-0.5">{`${formatTime(remainingSeconds)} left`}</p>
+                            </div>
                         ) : nextEpisodeInfo ? (
-                            <p className="text-sm text-white/80 truncate [text-shadow:0_1px_3px_#000]">
-                                {`S${nextEpisodeInfo.season_number} E${nextEpisodeInfo.episode_number}: ${nextEpisodeInfo.name}`}
+                            <p className="text-xs font-black text-text-primary truncate uppercase tracking-widest mt-1">
+                                {`S${nextEpisodeInfo.season_number} E${nextEpisodeInfo.episode_number} Next`}
                             </p>
                         ) : (
-                            <p className="text-sm text-green-400 font-semibold">All caught up!</p>
+                            <p className="text-xs text-emerald-400 font-black uppercase tracking-widest mt-1">Registry Fully Sequenced</p>
                         )}
                     </div>
 
                     {nextEpisodeInfo && !isPausedSession && (
                     <div
                         onClick={handleMarkWatched}
-                        className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                         aria-label="Mark next episode watched"
                     >
-                        <div className="p-4 bg-backdrop rounded-full">
-                            <PlayIcon className="w-8 h-8 text-white" />
+                        <div className="p-5 bg-white/20 backdrop-blur-md border border-white/40 rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-500">
+                            <PlayIcon className="w-10 h-10 text-white" />
                         </div>
                     </div>
                     )}
                     
-                    <div className="absolute bottom-0 left-0 w-full h-1.5 bg-white/20">
-                        <div className="h-full bg-accent-gradient transition-all duration-500" style={{ width: `${isPausedSession ? Math.min(100, episodeProgressPercent) : Math.min(100, overallProgressPercent)}%` }}></div>
+                    <div className="absolute bottom-0 left-0 w-full h-2 bg-white/10">
+                        <div className="h-full bg-accent-gradient transition-all duration-1000 shadow-[0_0_15px_white]" style={{ width: `${isPausedSession ? Math.min(100, episodeProgressPercent) : Math.min(100, overallProgressPercent)}%` }}></div>
                     </div>
                 </div>
             </BrandedImage>
-            <div className="p-3 bg-bg-secondary/30 text-xs">
-                <div className="space-y-2">
+            
+            <div className="p-4 bg-bg-secondary/40 text-sm border-t border-white/5 shadow-inner">
+                <div className="space-y-4">
                     {currentSeasonNumber > 0 && (
                         <div>
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-text-primary">Season {currentSeasonNumber}</span>
-                                <span className="text-text-secondary">{episodesLeftInSeason} aired episodes left</span>
+                            <div className="flex justify-between items-end mb-1.5">
+                                <span className="font-black text-text-primary uppercase tracking-widest text-[10px]">Season {currentSeasonNumber}</span>
+                                <span className="text-[10px] font-black text-text-primary uppercase">{episodesLeftInSeason} Aired Left</span>
                             </div>
-                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1 overflow-hidden">
-                                <div className="bg-accent-gradient h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}></div>
+                            <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden border border-white/5">
+                                <div className="bg-accent-gradient h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, seasonProgressPercent)}%` }}></div>
                             </div>
-                            <div className="text-right text-text-secondary/80">{watchedEpisodesInSeason} / {totalEpisodesInSeason} aired ({Math.round(Math.min(100, seasonProgressPercent))}%)</div>
                         </div>
                     )}
                     {totalEpisodes > 0 && (
                         <div>
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-text-primary">Overall Aired</span>
-                                <span className="text-text-secondary">{episodesLeftInShow} left</span>
+                            <div className="flex justify-between items-end mb-1.5">
+                                <span className="font-black text-text-primary uppercase tracking-widest text-[10px]">Registry Total</span>
+                                <span className="text-[10px] font-black text-text-primary uppercase">{watchedEpisodes} / {totalEpisodes}</span>
                             </div>
-                            <div className="w-full bg-black/20 rounded-full h-1.5 mt-1 overflow-hidden">
-                                <div className="bg-accent-gradient h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, overallProgressPercent)}%` }}></div>
+                            <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden border border-white/5">
+                                <div className="bg-white/80 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, overallProgressPercent)}%` }}></div>
                             </div>
-                            <div className="text-right text-text-secondary/80">{watchedEpisodes} / {totalEpisodes} aired ({Math.round(Math.min(100, overallProgressPercent))}%)</div>
                         </div>
                     )}
                 </div>

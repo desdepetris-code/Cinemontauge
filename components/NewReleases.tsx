@@ -163,16 +163,16 @@ const NewReleaseCard: React.FC<{
                     </button>
                 </div>
                  {details ? (
-                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
+                    <div className="mt-2 p-3 bg-bg-secondary/40 rounded-xl text-sm border border-white/5 space-y-1 shadow-md">
                         {recentEpisodeCount > 0 && (
-                            <div className="bg-rose-600/80 text-white font-bold text-[10px] text-center rounded-md py-1 mb-1.5 tracking-wider">
+                            <div className="bg-rose-600/80 text-white font-black text-[10px] text-center rounded-md py-1 mb-2 tracking-widest shadow-sm">
                                 {recentEpisodeCount > 1 ? `${recentEpisodeCount} NEW EPISODES` : 'NEW EPISODE'}
                             </div>
                         )}
                         {item.media_type === 'tv' ? (
                             <>
-                                <p className="font-bold text-text-primary truncate">{details.name}</p>
-                                <div className="flex justify-between text-text-secondary">
+                                <p className="font-black text-text-primary truncate uppercase tracking-tight">{details.name}</p>
+                                <div className="flex justify-between text-xs font-black text-text-primary uppercase tracking-widest">
                                     <span>{details.number_of_seasons} Season{details.number_of_seasons !== 1 ? 's' : ''}</span>
                                     <span>
                                         {details.first_air_date?.substring(0, 4)} - 
@@ -182,16 +182,16 @@ const NewReleaseCard: React.FC<{
                             </>
                         ) : (
                             <>
-                                <p className="font-bold text-text-primary truncate">{details.title}</p>
-                                <p className="text-text-secondary">
-                                    {details.release_date ? new Date(details.release_date + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+                                <p className="font-black text-text-primary truncate uppercase tracking-tight">{details.title}</p>
+                                <p className="text-xs font-black text-text-primary uppercase tracking-widest">
+                                    {details.release_date ? new Date(details.release_date + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}
                                 </p>
                             </>
                         )}
                     </div>
                 ) : (
-                    <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1 animate-pulse">
-                        <div className="h-3 bg-bg-secondary rounded w-3/4"></div>
+                    <div className="mt-2 p-3 bg-bg-secondary/50 rounded-xl space-y-2 animate-pulse">
+                        <div className="h-4 bg-bg-secondary rounded w-3/4"></div>
                         <div className="h-3 bg-bg-secondary rounded w-1/2"></div>
                     </div>
                 )}

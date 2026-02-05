@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
@@ -20,14 +19,11 @@ const App: React.FC = () => {
     const [missingPassword, setMissingPassword] = useState(false);
     
     const userId = currentUser ? currentUser.id : 'guest';
-
-    const [autoHolidayThemesEnabled, setAutoHolidayThemesEnabled] = useLocalStorage<boolean>(`autoHolidayThemesEnabled_${userId}`, true);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
     const checkProfileStatus = useCallback(async (supabaseUser: any) => {
         if (!supabaseUser) return;
 
-        // 1. Check database for username
         const { data: profile, error } = await supabase
             .from('profiles')
             .select('username')
@@ -35,15 +31,11 @@ const App: React.FC = () => {
             .single();
 
         const hasUsername = !!(profile?.username);
-        
-        // 2. Check if user has a password (email provider identity)
-        // If they only have OAuth identities (like google), they don't have a password yet.
         const hasPassword = supabaseUser.identities?.some((identity: any) => identity.provider === 'email') || false;
 
         setMissingUsername(!hasUsername);
         setMissingPassword(!hasPassword);
 
-        // If username is established, we can finalize the session
         if (hasUsername) {
             setCurrentUser({
                 id: supabaseUser.id,
@@ -54,7 +46,6 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        // Initial session check
         supabase.auth.getSession().then(({ data: { session }, error }) => {
             if (error) {
                 console.error("Supabase Session Error:", error.message);
@@ -65,7 +56,6 @@ const App: React.FC = () => {
             setLoading(false);
         });
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session) {
                 if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
@@ -140,19 +130,16 @@ const App: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return "User session not found.";
 
-        // 1. Establish Password if missing
         if (data.password) {
             const { error: authError } = await supabase.auth.updateUser({ password: data.password });
             if (authError) return authError.message;
         }
 
-        // 2. Establish Username if missing
         if (data.username) {
-            // Using upsert with just ID and Username to avoid overwriting existing columns like email/xp
             const { error: profileError } = await supabase.from('profiles').upsert({ 
                 id: user.id, 
                 username: data.username,
-                email: user.email // Keep email in sync
+                email: user.email
             }, { onConflict: 'id' });
             
             if (profileError) {
@@ -161,9 +148,7 @@ const App: React.FC = () => {
             }
         }
 
-        // Re-check status to close modal and update local state
         await checkProfileStatus(user);
-        
         confirmationService.show(`Registry updated! Welcome to CineMontauge.`);
         return null;
   }, [checkProfileStatus]);
@@ -179,14 +164,12 @@ const App: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return "No active session.";
 
-        // 1. Handle Email Change (Auth Level)
         if (details.email !== user.email) {
             const { error: emailError } = await supabase.auth.updateUser({ email: details.email });
             if (emailError) return emailError.message;
             confirmationService.show("Check your emails to confirm the address change.");
         }
 
-        // 2. Handle Username Change (Database Level)
         const { error: dbError } = await supabase
             .from('profiles')
             .update({ username: details.username, email: details.email })
@@ -243,8 +226,6 @@ const App: React.FC = () => {
                 onAuthClick={() => setIsAuthModalOpen(true)}
                 onForgotPasswordRequest={handleForgotPasswordRequest}
                 onForgotPasswordReset={handleForgotPasswordReset}
-                autoHolidayThemesEnabled={autoHolidayThemesEnabled}
-                setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled}
             />
             <AuthModal
                 isOpen={isAuthModalOpen}

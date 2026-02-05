@@ -1,8 +1,14 @@
-
 import { useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from './useLocalStorage';
-import { themes as builtInThemes, holidayThemes } from '../themes';
+import { themes as builtInThemes } from '../themes';
 import { Theme } from '../types';
+
+const hexToRgbValues = (hex: string): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r}, ${g}, ${b}`;
+};
 
 const mixColors = (c1: string, c2: string, weight: number) => {
     const hex1 = c1.replace('#', '');
@@ -24,62 +30,13 @@ const mixColors = (c1: string, c2: string, weight: number) => {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
-interface HolidayDef {
-    name: string;
-    month: number; // 0-11
-    day: number;
-    durationDays: number;
-    themeId: string;
-}
-
-const HOLIDAYS: HolidayDef[] = [
-    { name: 'Halloween', month: 9, day: 31, durationDays: 7, themeId: 'holiday-halloween' },
-    { name: 'Winter Holidays', month: 11, day: 25, durationDays: 14, themeId: 'winter-ice' },
-    { name: 'New Year', month: 0, day: 1, durationDays: 3, themeId: 'cyberpunk-city' },
-    { name: 'Valentine\'s Day', month: 1, day: 14, durationDays: 3, themeId: 'holiday-valentines' },
-];
-
-export function getCurrentHoliday(date: Date): HolidayDef | null {
-    for (const holiday of HOLIDAYS) {
-        const holidayDate = new Date(date.getFullYear(), holiday.month, holiday.day);
-        const startDate = new Date(holidayDate);
-        startDate.setDate(holidayDate.getDate() - Math.floor(holiday.durationDays / 2));
-        const endDate = new Date(holidayDate);
-        endDate.setDate(holidayDate.getDate() + Math.ceil(holiday.durationDays / 2));
-        
-        if (date >= startDate && date <= endDate) {
-            return holiday;
-        }
-    }
-    return null;
-}
-
-export function getNextHoliday(date: Date): { name: string; date: Date } {
-    const sorted = [...HOLIDAYS].map(h => {
-        let hDate = new Date(date.getFullYear(), h.month, h.day);
-        if (hDate < date) hDate = new Date(date.getFullYear() + 1, h.month, h.day);
-        return { name: h.name, date: hDate };
-    }).sort((a, b) => a.date.getTime() - b.date.getTime());
-    
-    return sorted[0];
-}
-
-export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolean = false): [Theme, (themeId: string) => void, string, string | null] {
-  const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'original-dark');
+export function useTheme(): [Theme, (themeId: string) => void, string] {
+  const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'noir-electric');
   const prevThemeIdRef = useRef<string | null>(null);
-  const allThemes = useMemo(() => [...builtInThemes, ...holidayThemes, ...customThemes], [customThemes]);
   
-  const holidayOverride = useMemo(() => {
-    if (!autoHolidayThemesEnabled) return null;
-    const current = getCurrentHoliday(new Date());
-    if (!current) return null;
-    return allThemes.find(t => t.id === current.themeId) || null;
-  }, [autoHolidayThemesEnabled, allThemes]);
-
   const activeTheme = useMemo(() => {
-    if (holidayOverride) return holidayOverride;
-    return allThemes.find(t => t.id === themeId) || builtInThemes[0];
-  }, [themeId, allThemes, holidayOverride]);
+    return builtInThemes.find(t => t.id === themeId) || builtInThemes[0];
+  }, [themeId]);
   
   useEffect(() => {
     const root = window.document.documentElement;
@@ -96,18 +53,16 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
     root.style.setProperty('--text-color-primary', activeTheme.colors.textColorPrimary);
     root.style.setProperty('--text-color-secondary', activeTheme.colors.textColorSecondary);
     root.style.setProperty('--color-accent-primary', activeTheme.colors.accentPrimary);
+    root.style.setProperty('--color-accent-primary-rgb', hexToRgbValues(activeTheme.colors.accentPrimary));
     root.style.setProperty('--color-accent-secondary', activeTheme.colors.accentSecondary);
     root.style.setProperty('--color-bg-primary', activeTheme.colors.bgPrimary);
     root.style.setProperty('--color-bg-secondary', activeTheme.colors.bgSecondary);
     root.style.setProperty('--color-bg-backdrop', activeTheme.colors.bgBackdrop);
     root.style.setProperty('--on-accent', activeTheme.colors.onAccent || (activeTheme.base === 'dark' ? '#FFFFFF' : '#000000'));
     
-    // Pattern & Functional Colors
     root.style.setProperty('--pattern-opacity', activeTheme.colors.patternOpacity || '0.05');
     root.style.setProperty('--color-error', activeTheme.colors.error || '#EF4444');
     root.style.setProperty('--color-success', activeTheme.colors.success || '#22C55E');
-
-    // Fonts
     root.style.setProperty('--font-journal', activeTheme.colors.fontJournal || "'Domine', serif");
 
     const c1 = activeTheme.colors.accentPrimary;
@@ -119,8 +74,8 @@ export function useTheme(customThemes: Theme[], autoHolidayThemesEnabled: boolea
   }, [activeTheme]);
 
   const setTheme = (newThemeId: string) => {
-    if (allThemes.some(t => t.id === newThemeId)) setThemeId(newThemeId);
+    if (builtInThemes.some(t => t.id === newThemeId)) setThemeId(newThemeId);
   };
 
-  return [activeTheme, setTheme, themeId, holidayOverride?.name || null];
+  return [activeTheme, setTheme, themeId];
 }

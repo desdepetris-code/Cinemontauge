@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TrackedItem, TmdbMedia, TmdbMediaDetails, TvdbShow, UserData } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
@@ -138,7 +137,7 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
             {(!inView || (loading && !details)) ? (
                 <ShowCardSkeleton />
             ) : (
-                <div className="relative rounded-lg overflow-hidden shadow-lg bg-bg-secondary/20 h-full">
+                <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-bg-secondary/20 h-full border border-white/5">
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
                     {recentEpisodeCount > 0 && (
                         <NewReleaseOverlay
@@ -154,11 +153,11 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
                             type="poster"
                             globalPlaceholders={globalPlaceholders}
                             alt={title}
-                            className="w-full aspect-[2/3] object-cover"
+                            className="w-full aspect-[2/3] object-cover transition-transform duration-700 group-hover:scale-105"
                             loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2 pl-8">
-                            <h3 className="text-white text-[11px] font-bold text-center w-full leading-tight">{title}</h3>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex items-end p-4 pl-8">
+                            <h3 className="text-white text-xs sm:text-sm font-black text-center w-full leading-tight uppercase tracking-tight [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">{title}</h3>
                         </div>
                     </BrandedImage>
                 </div>

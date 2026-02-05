@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { UserData, WatchProgress, Theme, HistoryItem, TrackedItem, UserRatings, 
+import { UserData, WatchProgress, HistoryItem, TrackedItem, UserRatings, 
   EpisodeRatings, SeasonRatings, CustomList, AppNotification, FavoriteEpisodes, 
   LiveWatchMediaInfo, SearchHistoryItem, Comment, Note, ProfileTab, 
   WatchStatus, WeeklyPick, DeletedHistoryItem, CustomImagePaths, Reminder, 
@@ -17,14 +17,13 @@ import { useTheme } from './hooks/useTheme';
 import BottomTabNavigator from './navigation/BottomTabNavigator';
 import SearchScreen from './screens/SearchScreen';
 import ProgressScreen from './screens/ProgressScreen';
-// FIX: Imported missing CalendarScreen component to resolve build error.
 import CalendarScreen from './screens/CalendarScreen';
 import PersonDetailModal from './components/PersonDetailModal';
 import AddToListModal from './components/AddToListModal';
 import WelcomeModal from './components/WelcomeModal';
 import ConfirmationContainer from './components/ConfirmationContainer';
 import { confirmationService } from './services/confirmationService';
-import { supabase, uploadCustomMedia, syncJournalEntry, syncWatchStatusRpc, toggleFavoriteRpc, syncRatingRpc, syncHistoryItemRpc } from './services/supabaseClient';
+import { supabase, uploadCustomMedia, syncJournalEntry, syncRatingRpc } from './services/supabaseClient';
 import AnimationContainer from './components/AnimationContainer';
 import LiveWatchTracker from './components/LiveWatchTracker';
 import NominatePicksModal from './components/NominatePicksModal';
@@ -49,16 +48,13 @@ interface MainAppProps {
     onAuthClick: () => void;
     onForgotPasswordRequest: (email: string) => Promise<string | null>;
     onForgotPasswordReset: (data: { code: string; newPassword: string }) => Promise<string | null>;
-    autoHolidayThemesEnabled: boolean;
-    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const MainApp: React.FC<MainAppProps> = ({ 
     userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick, 
-    onForgotPasswordRequest, onForgotPasswordReset, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled 
+    onForgotPasswordRequest, onForgotPasswordReset 
 }) => {
-  const [customThemes, setCustomThemes] = useLocalStorage<Theme[]>(`customThemes_${userId}`, []);
-  const [activeTheme, setTheme, baseThemeId, currentHolidayName] = useTheme(customThemes, autoHolidayThemesEnabled);
+  const [activeTheme, setTheme, baseThemeId] = useTheme();
   
   const [watching, setWatching] = useLocalStorage<TrackedItem[]>(`watching_list_${userId}`, []);
   const [planToWatch, setPlanToWatch] = useLocalStorage<TrackedItem[]>(`plan_to_watch_list_${userId}`, []);
@@ -127,7 +123,6 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [privacySettings, setPrivacySettings] = useLocalStorage<PrivacySettings>(`privacy_settings_${userId}`, {
     activityVisibility: 'public'
   });
-  const [holidayAnimationsEnabled, setHolidayAnimationsEnabled] = useLocalStorage<boolean>(`holidayAnimationsEnabled_${userId}`, true);
   const [profileTheme, setProfileTheme] = useLocalStorage<ProfileTheme | null>(`profileTheme_${userId}`, null);
   const [textSize, setTextSize] = useLocalStorage<number>(`textSize_${userId}`, 16);
   const [timeFormat, setTimeFormat] = useLocalStorage<'12h' | '24h'>(`timeFormat_${userId}`, '12h');
@@ -355,7 +350,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       setTimeout(() => syncLibraryItem(item.id, 'movie'), 10);
   }, [setHistory, setUserXp, syncLibraryItem]);
 
-  // FIX: Added missing handleSaveJournal to update registry progress and sync with Supabase.
   const handleSaveJournal = useCallback(async (showId: number, season: number, episode: number, entry: JournalEntry | null) => {
     setWatchProgress(prev => {
         const next = { ...prev };
@@ -369,7 +363,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, setWatchProgress]);
 
-  // FIX: Added missing handleSetCustomImage to facilitate registry asset personalization and cloud syncing.
   const handleSetCustomImage = useCallback(async (mediaId: number, type: 'poster' | 'backdrop', path: string | File) => {
     let finalUrl: string | null = null;
     if (path instanceof File) {
@@ -391,7 +384,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, setCustomImagePaths]);
 
-  // FIX: Added missing handleRateItem to process user ratings and synchronize with the backend.
   const handleRateItem = useCallback(async (mediaId: number, rating: number) => {
     const item = [...watching, ...planToWatch, ...completed, ...onHold, ...dropped, ...allCaughtUp].find(i => i.id === mediaId);
     const mediaType = item?.media_type || 'movie';
@@ -405,13 +397,11 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, watching, planToWatch, completed, onHold, dropped, allCaughtUp, setRatings]);
 
-  // FIX: Added missing handleAddToList to manage custom collection memberships.
   const handleAddToList = useCallback((listId: string, item: CustomListItem) => {
     setCustomLists(prev => prev.map(l => l.id === listId ? { ...l, items: [...l.items, item] } : l));
     confirmationService.show(`Added to list.`);
   }, [setCustomLists]);
 
-  // FIX: Added missing handleCreateAndAddToList to streamline collection creation and assignment.
   const handleCreateAndAddToList = useCallback((listName: string, item: CustomListItem) => {
     const newList: CustomList = {
         id: `cl-${Date.now()}`,
@@ -426,7 +416,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show(`Created "${listName}" and added item.`);
   }, [setCustomLists]);
 
-  // FIX: Defined allUserData by aggregating local registry states to satisfy UserData requirement.
   const allUserData: UserData = useMemo(() => ({
     watching, planToWatch, completed, onHold, dropped, allCaughtUp, favorites,
     watchProgress, history, deletedHistory, deletedNotes, customLists,
@@ -443,7 +432,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     blockedUserIds
   ]);
 
-  // FIX: Derived activeStandardStatus to identify if an item resides in a primary watch list.
   const activeStandardStatus = useMemo(() => {
     if (!addToListModalState.item) return null;
     const id = addToListModalState.item.id;
@@ -467,12 +455,12 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   return (
     <div className={`min-h-screen ${activeTheme.base} transition-colors duration-500 pb-20`}>
-        <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={holidayAnimationsEnabled} />
+        <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={true} />
         <Header 
             currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} 
             onGoToProfile={() => setActiveScreen('profile')} onGoHome={() => setActiveScreen('home')} 
             onSelectShow={handleSelectShow} onMarkShowAsWatched={handleMarkMovieAsWatched} 
-            query={headerSearchQuery} onQueryChange={setHeaderSearchQuery} isHoliday={!!currentHolidayName} holidayName={currentHolidayName} 
+            query={headerSearchQuery} onQueryChange={setHeaderSearchQuery} isHoliday={false} holidayName={null} 
             isOnSearchScreen={activeScreen === 'search'}
         />
         <main className="container mx-auto mt-8">
@@ -530,7 +518,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                     preferences={preferences} 
                 />
             )}
-            {activeScreen === 'profile' && <Profile userData={allUserDataFull} genres={genres} onSelectShow={handleSelectShow} onImportCompleted={() => {}} onTraktImportCompleted={() => {}} onTmdbImportCompleted={() => {}} onJsonImportCompleted={() => {}} onToggleEpisode={handleToggleEpisode} onToggleFavoriteEpisode={() => {}} setCustomLists={setCustomLists} initialTab={profileInitialTab} initialLibraryStatus={initialLibraryStatus} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={(i) => setHistory(prev => prev.filter(h => h.logId !== i.logId))} onRestoreHistoryItem={() => {}} onPermanentDeleteHistoryItem={() => {}} onClearAllDeletedHistory={() => {}} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} baseThemeId={baseThemeId} currentHolidayName={currentHolidayName} customThemes={customThemes} setCustomThemes={setCustomThemes} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={setSelectedUserId} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={() => {}} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} onMarkOneRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))} onDeleteNotification={(id) => setNotifications(prev => prev.filter(n => n.id !== id))} onAddNotifications={(notifs) => setNotifications(prev => [...notifs, ...prev].slice(0, 50))} autoHolidayThemesEnabled={autoHolidayThemesEnabled} setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} holidayAnimationsEnabled={holidayAnimationsEnabled} setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} profileTheme={profileTheme} setProfileTheme={setProfileTheme} textSize={textSize} setTextSize={setTextSize} onFeedbackSubmit={() => {}} levelInfo={levelInfo} timeFormat={timeFormat} setTimeFormat={setTimeFormat} pin={pin} setPin={setPin} showRatings={showRatings} setShowRatings={setShowRatings} setSeasonRatings={setSeasonRatings} onToggleWeeklyFavorite={handleToggleFavoriteShow} onOpenNominateModal={() => setIsNominateModalOpen(true)} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} shortcutSettings={shortcutSettings} setShortcutSettings={setShortcutSettings} navSettings={navSettings} setNavSettings={setNavSettings} preferences={preferences} setPreferences={setPreferences} onPermanentDeleteNote={() => {}} onRestoreNote={() => {}} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} />}
+            {activeScreen === 'profile' && <Profile userData={allUserDataFull} genres={genres} onSelectShow={handleSelectShow} onImportCompleted={() => {}} onTraktImportCompleted={() => {}} onTmdbImportCompleted={() => {}} onJsonImportCompleted={() => {}} onToggleEpisode={handleToggleEpisode} onToggleFavoriteEpisode={() => {}} setCustomLists={setCustomLists} initialTab={profileInitialTab} initialLibraryStatus={initialLibraryStatus} notificationSettings={notificationSettings} setNotificationSettings={setNotificationSettings} onDeleteHistoryItem={(i) => setHistory(prev => prev.filter(h => h.logId !== i.logId))} onRestoreHistoryItem={() => {}} onPermanentDeleteHistoryItem={() => {}} onClearAllDeletedHistory={() => {}} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} setHistory={setHistory} setWatchProgress={setWatchProgress} setEpisodeRatings={setEpisodeRatings} setFavoriteEpisodes={setFavoriteEpisodes} setTheme={setTheme} baseThemeId={baseThemeId} onLogout={onLogout} onUpdatePassword={onUpdatePassword} onUpdateProfile={onUpdateProfile} currentUser={currentUser} onAuthClick={onAuthClick} onForgotPasswordRequest={onForgotPasswordRequest} onForgotPasswordReset={onForgotPasswordReset} profilePictureUrl={profilePictureUrl} setProfilePictureUrl={setProfilePictureUrl} setCompleted={setCompleted} follows={follows} privacySettings={privacySettings} setPrivacySettings={setPrivacySettings} onSelectUser={setSelectedUserId} timezone={timezone} setTimezone={setTimezone} onRemoveDuplicateHistory={() => {}} notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} onMarkOneRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))} onDeleteNotification={(id) => setNotifications(prev => prev.filter(n => n.id !== id))} onAddNotifications={(notifs) => setNotifications(prev => [...notifs, ...prev].slice(0, 50))} profileTheme={profileTheme} setProfileTheme={setProfileTheme} textSize={textSize} setTextSize={setTextSize} onFeedbackSubmit={() => {}} levelInfo={levelInfo} timeFormat={timeFormat} setTimeFormat={setTimeFormat} pin={pin} setPin={setPin} showRatings={showRatings} setShowRatings={setShowRatings} setSeasonRatings={setSeasonRatings} onToggleWeeklyFavorite={handleToggleFavoriteShow} onOpenNominateModal={() => setIsNominateModalOpen(true)} pausedLiveSessions={pausedLiveSessions} onStartLiveWatch={handleStartLiveWatch} shortcutSettings={shortcutSettings} setShortcutSettings={setShortcutSettings} navSettings={navSettings} setNavSettings={setNavSettings} preferences={preferences} setPreferences={setPreferences} onPermanentDeleteNote={() => {}} onRestoreNote={() => {}} onUpdateLists={updateLists} favoriteEpisodes={favoriteEpisodes} />}
         </main>
         
         {allMediaConfig && (

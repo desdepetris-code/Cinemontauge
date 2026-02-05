@@ -1,214 +1,129 @@
 import { Theme } from './types';
 
-// --- THEMES ---
+// --- THEME REGISTRY (EXACTLY 5 PERMANENT THEMES) ---
 
-const radiantRed: Theme = {
-  id: 'original-dark',
-  name: 'Radiant Red',
+const midnightBlue: Theme = {
+  id: 'noir-electric',
+  name: 'Midnight Blue',
+  description: 'Cinematic obsidian with anamorphic lens-flare accents.',
   base: 'dark',
   colors: {
-    bgGradient: 'radial-gradient(circle at top, #e11d48, #be123c, #881337)',
-    accentGradient: 'linear-gradient(to right, #ffffff, #fecaca)',
-    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(136, 19, 55, 0.4))',
+    // Deepest Obsidian to a very dark Navy for depth
+    bgGradient: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+    // Electric Cobalt to Cyan - The "Lens Flare" look
+    accentGradient: 'linear-gradient(to right, #2e5cfc, #0ea5e9)',
+    cardGradient: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(0, 0, 0, 0.9))',
+    // Indigo-tinted white for "Starlight" text
+    textColorPrimary: '#e0e7ff', 
+    textColorSecondary: 'rgba(148, 163, 184, 0.8)',
+    accentPrimary: '#3b82f6',
+    accentSecondary: '#0ea5e9',
+    bgPrimary: '#020617',
+    bgSecondary: 'rgba(30, 58, 138, 0.15)',
+    bgBackdrop: 'rgba(0, 0, 0, 0.85)',
+    error: '#f87171',
+    success: '#34d399',
+    onAccent: '#ffffff',
+    patternOpacity: '0.04'
+  }
+};
+
+const roseLight: Theme = {
+  id: 'vibrant-rose',
+  name: 'Rose Light',
+  description: 'Vibrant, expressive, and personality-driven.',
+  base: 'dark',
+  colors: {
+    bgGradient: 'linear-gradient(to bottom, #831843, #500724)',
+    accentGradient: 'linear-gradient(to right, #f472b6, #fb7185)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(80, 7, 36, 0.4))',
     textColorPrimary: '#ffffff',
-    textColorSecondary: '#ffffff', // Strictly white
-    accentPrimary: '#ffffff', // For white glow highlights
-    accentSecondary: '#ffffff',
-    bgPrimary: '#be123c',
+    textColorSecondary: 'rgba(255, 255, 255, 0.7)',
+    accentPrimary: '#f472b6',
+    accentSecondary: '#fb7185',
+    bgPrimary: '#831843',
     bgSecondary: 'rgba(255, 255, 255, 0.12)',
-    bgBackdrop: 'rgba(136, 19, 55, 0.85)',
+    bgBackdrop: 'rgba(80, 7, 36, 0.85)',
     error: '#ffffff',
     success: '#ffffff',
-    onAccent: '#881337', // Deep red for text ON solid white buttons
-    patternOpacity: '0.02',
-    fontJournal: "'Domine', serif"
+    onAccent: '#500724',
+    patternOpacity: '0.02'
   }
 };
 
-const cyberpunkCity: Theme = {
-  id: 'cyberpunk-city',
-  name: 'Cyberpunk City',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #030712, #1a011d)',
-    accentGradient: 'linear-gradient(to right, #22d3ee, #ec4899)',
-    cardGradient: 'linear-gradient(to bottom, rgba(20, 4, 32, 0.5), rgba(10, 2, 12, 0.7))',
-    textColorPrimary: '#F0F9FF',
-    textColorSecondary: '#94A3B8',
-    accentPrimary: '#22D3EE',
-    accentSecondary: '#EC4899',
-    bgPrimary: '#110115',
-    bgSecondary: 'rgba(34, 211, 238, 0.1)',
-    bgBackdrop: 'rgba(17, 1, 21, 0.3)',
-    error: '#FB7185',
-    success: '#34D399',
-    fontJournal: "'Roboto Slab', serif"
-  }
-};
-
-const monochromeNoir: Theme = {
-  id: 'monochrome-noir',
-  name: 'Noir Redux',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom right, #171717, #0a0a0a)',
-    accentGradient: 'linear-gradient(to right, #DC2626, #ef4444)',
-    cardGradient: 'linear-gradient(to bottom, rgba(38, 38, 38, 0.5), rgba(20, 20, 20, 0.7))',
-    textColorPrimary: '#E5E5E5',
-    textColorSecondary: '#737373',
-    accentPrimary: '#DC2626',
-    accentSecondary: '#ef4444',
-    bgPrimary: '#0A0A0A',
-    bgSecondary: 'rgba(255, 255, 255, 0.05)',
-    bgBackdrop: 'rgba(10, 10, 10, 0.3)',
-    error: '#F97316',
-    success: '#FAFAFA',
-    patternOpacity: '0.02',
-    fontJournal: "'Domine', serif"
-  },
-};
-
-const oledBlack: Theme = {
-  id: 'oled-black',
-  name: 'OLED Black',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #000000, #000000)',
-    accentGradient: 'linear-gradient(to right, #6366F1, #4f46e5)',
-    cardGradient: 'linear-gradient(to bottom, #111111, #000000)',
-    textColorPrimary: '#FAFAFA',
-    textColorSecondary: '#A1A1AA',
-    accentPrimary: '#6366F1',
-    accentSecondary: '#4f46e5',
-    bgPrimary: '#000000',
-    bgSecondary: '#09090b',
-    bgBackdrop: 'rgba(0, 0, 0, 0.5)',
-    error: '#EF4444',
-    success: '#22C55E'
-  }
-};
-
-const winterIce: Theme = {
-  id: 'winter-ice',
-  name: 'Winter Ice',
-  base: 'dark',
-  colors: {
-    bgGradient: 'linear-gradient(to bottom, #0F172A, #020617)',
-    accentGradient: 'linear-gradient(to right, #38BDF8, #93C5FD)',
-    cardGradient: 'linear-gradient(to bottom, rgba(30, 41, 59, 0.5), rgba(2, 6, 23, 0.7))',
-    textColorPrimary: '#F1F5F9',
-    textColorSecondary: '#94A3B8',
-    accentPrimary: '#38BDF8',
-    accentSecondary: '#93C5FD',
-    bgPrimary: '#020617',
-    bgSecondary: 'rgba(56, 189, 248, 0.1)',
-    bgBackdrop: 'rgba(2, 6, 23, 0.3)',
-    error: '#FDA4AF',
-    success: '#99F6E4',
-    particleEffect: ['snow', 'sparkles']
-  }
-};
-
-const halloweenNight: Theme = {
-    id: 'holiday-halloween',
-    name: 'Halloween Night',
-    base: 'dark',
-    colors: {
-        bgGradient: 'linear-gradient(to bottom, #1a0b2e, #0c051a)',
-        accentGradient: 'linear-gradient(to right, #f97316, #ea580c)',
-        cardGradient: 'linear-gradient(to bottom, rgba(45, 20, 80, 0.4), rgba(20, 10, 30, 0.6))',
-        textColorPrimary: '#fef3c7',
-        textColorSecondary: 'rgba(214, 211, 209, 0.7)',
-        accentPrimary: '#f97316',
-        accentSecondary: '#fb923c',
-        bgPrimary: '#0c051a',
-        bgSecondary: '#1a0b2e',
-        bgBackdrop: 'rgba(12, 5, 26, 0.5)',
-        error: '#ef4444',
-        success: '#4ade80',
-        particleEffect: ['bats', 'ghosts', 'pumpkins']
-    }
-};
-
-const valentinesDay: Theme = {
-    id: 'holiday-valentines',
-    name: 'Valentine\'s Day',
-    base: 'light',
-    colors: {
-        bgGradient: 'linear-gradient(to bottom right, #fff1f2, #ffe4e6)',
-        accentGradient: 'linear-gradient(to right, #e11d48, #be123c)',
-        cardGradient: 'linear-gradient(to bottom, #ffffff, #fff1f2)',
-        textColorPrimary: '#881337',
-        textColorSecondary: 'rgba(159, 18, 57, 0.7)',
-        accentPrimary: '#fb7185',
-        accentSecondary: '#e11d48',
-        bgPrimary: '#fff1f2',
-        bgSecondary: '#ffe4e6',
-        bgBackdrop: 'rgba(255, 241, 242, 0.3)',
-        error: '#9f1239',
-        success: '#059669',
-        particleEffect: ['hearts', 'flowers']
-    }
-};
-
-// --- LIGHT THEMES ---
-
-const mintyFresh: Theme = {
-  id: 'original-light',
-  name: 'Minty Fresh',
+const softDaylight: Theme = {
+  id: 'modern-minimal',
+  name: 'Soft Daylight',
+  description: 'Clean, modern, and easy on the eyes.',
   base: 'light',
   colors: {
-    bgGradient: 'linear-gradient(to bottom right, #f0fdfa, #ccfbf1)',
-    accentGradient: 'linear-gradient(to right, #14B8A6, #0d9488)',
-    cardGradient: 'linear-gradient(to bottom, #ffffff, #f0fdfa)',
-    textColorPrimary: '#0F766E',
-    textColorSecondary: 'rgba(69, 123, 123, 0.8)',
-    accentPrimary: '#14B8A6',
-    accentSecondary: '#0d9488',
-    bgPrimary: '#f0fdfa',
-    bgSecondary: '#ccfbf1',
-    bgBackdrop: 'rgba(240, 253, 250, 0.2)',
-    error: '#B91C1C',
-    success: '#059669',
-    onAccent: '#000000',
-    fontJournal: "'Roboto Slab', serif"
+    bgGradient: 'linear-gradient(to bottom, #ffffff, #f9fafb)',
+    accentGradient: 'linear-gradient(to right, #94a3b8, #64748b)',
+    cardGradient: 'linear-gradient(to bottom, #ffffff, #f3f4f6)',
+    textColorPrimary: '#1f2937',
+    textColorSecondary: '#6b7280',
+    accentPrimary: '#94a3b8',
+    accentSecondary: '#64748b',
+    bgPrimary: '#ffffff',
+    bgSecondary: '#f3f4f6',
+    bgBackdrop: 'rgba(255, 255, 255, 0.2)',
+    error: '#dc2626',
+    success: '#16a34a',
+    onAccent: '#ffffff',
+    patternOpacity: '0.05'
   }
 };
 
-const vintageSepia: Theme = {
-  id: 'vintage-sepia',
-  name: 'Old Parchment',
+const creamGlow: Theme = {
+  id: 'warm-parchment',
+  name: 'Cream Glow',
+  description: 'Warm, cozy, and relaxed browsing.',
   base: 'light',
   colors: {
-    bgGradient: 'linear-gradient(to bottom right, #fdf6e3, #e8dcb5)',
-    accentGradient: 'linear-gradient(to right, #D97706, #4e342e)',
-    cardGradient: 'linear-gradient(to bottom, rgba(253, 246, 227, 0.8), rgba(245, 222, 179, 0.9))',
-    textColorPrimary: '#3E2723',
-    textColorSecondary: '#795548',
-    accentPrimary: '#D97706',
-    accentSecondary: '#4e342e',
-    bgPrimary: '#fdf6e3',
-    bgSecondary: '#eee8d5',
-    bgBackdrop: 'rgba(253, 246, 227, 0.2)',
-    error: '#991B1B',
-    success: '#15803D',
-    patternOpacity: '0.08',
-    fontJournal: "'Domine', serif"
-  },
+    bgGradient: 'linear-gradient(to bottom, #fffbeb, #fef3c7)',
+    accentGradient: 'linear-gradient(to right, #d97706, #fbbf24)',
+    cardGradient: 'linear-gradient(to bottom, #ffffff, #fffbeb)',
+    textColorPrimary: '#451a03',
+    textColorSecondary: '#92400e',
+    accentPrimary: '#d97706',
+    accentSecondary: '#fbbf24',
+    bgPrimary: '#fffbeb',
+    bgSecondary: '#fef3c7',
+    bgBackdrop: 'rgba(254, 243, 199, 0.3)',
+    error: '#991b1b',
+    success: '#065f46',
+    onAccent: '#ffffff',
+    patternOpacity: '0.04'
+  }
+};
+
+const twilightSlate: Theme = {
+  id: 'slate-balance',
+  name: 'Twilight Slate',
+  description: 'Balanced mid-tone with a calm, neutral feel.',
+  base: 'dark',
+  colors: {
+    bgGradient: 'linear-gradient(to bottom, #475569, #334155)',
+    accentGradient: 'linear-gradient(to right, #a78bfa, #c084fc)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(51, 65, 85, 0.7))',
+    textColorPrimary: '#f8fafc',
+    textColorSecondary: '#cbd5e1',
+    accentPrimary: '#a78bfa',
+    accentSecondary: '#c084fc',
+    bgPrimary: '#475569',
+    bgSecondary: '#334155',
+    bgBackdrop: 'rgba(0, 0, 0, 0.2)',
+    error: '#fda4af',
+    success: '#6ee7b7',
+    onAccent: '#1e293b',
+    patternOpacity: '0.03'
+  }
 };
 
 export const themes: Theme[] = [
-    radiantRed,
-    oledBlack,
-    cyberpunkCity,
-    monochromeNoir,
-    winterIce,
-    mintyFresh,
-    vintageSepia,
-];
-
-export const holidayThemes: Theme[] = [
-    winterIce,
-    halloweenNight,
-    valentinesDay,
+    midnightBlue,
+    roseLight,
+    softDaylight,
+    creamGlow,
+    twilightSlate,
 ];

@@ -278,7 +278,14 @@ const CustomThemeModal: React.FC<CustomThemeModalProps> = ({ isOpen, onClose, on
             };
         }
 
-        const newTheme: Theme = { id: `custom-${Date.now()}`, name: name.trim(), base, colors: finalColors };
+        // FIX: Added missing 'description' property to custom theme object to satisfy 'Theme' interface requirements.
+        const newTheme: Theme = { 
+            id: `custom-${Date.now()}`, 
+            name: name.trim(), 
+            description: `A custom theme created on ${new Date().toLocaleDateString()}`,
+            base, 
+            colors: finalColors 
+        };
         onSave(newTheme);
         onClose();
     };

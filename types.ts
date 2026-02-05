@@ -1,7 +1,7 @@
-
 export interface Theme {
   id: string;
   name: string;
+  description: string;
   base: 'light' | 'dark';
   colors: {
     bgGradient: string;
@@ -28,9 +28,8 @@ export interface Theme {
   };
 }
 
-export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'bats' | 'flowers' | 'pumpkins' | 'ghosts' | 'eggs';
+export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles';
 
-// Add 'favorites' to WatchStatus to support ListFilterBar and MainApp library mapping
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'allCaughtUp' | 'favorites';
 
 export interface TrackedItem {
@@ -106,7 +105,6 @@ export interface TmdbMediaDetails extends TmdbMedia {
   runtime?: number;
   last_episode_to_air?: Episode;
   next_episode_to_air?: Episode;
-  // Add missing seasons property to support several components that iterate over seasons
   seasons?: {
     id: number;
     name: string;
@@ -200,7 +198,7 @@ export interface JournalEntry {
 }
 
 export interface EpisodeProgress {
-  status: 0 | 1 | 2; // 0: unwatched, 1: watching, 2: watched
+  status: 0 | 1 | 2;
   journal?: JournalEntry;
 }
 
@@ -387,7 +385,6 @@ export interface ProfileTheme {
 
 export type ProfileTab = 'overview' | 'history' | 'progress' | 'updates' | 'ongoing' | 'weeklyPicks' | 'library' | 'achievements' | 'lists' | 'seasonLog' | 'journal' | 'activity' | 'stats' | 'imports' | 'settings' | 'airtime_management';
 
-// Add missing types required by the application
 export type Follows = Record<string, string[]>;
 
 export interface PublicCustomList extends CustomList {

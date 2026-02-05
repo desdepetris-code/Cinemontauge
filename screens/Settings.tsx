@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, UploadIcon, DownloadIcon, ChevronDownIcon, ChevronLeftIcon, PlusIcon, XMarkIcon, LockClosedIcon, PhotoIcon, CloudArrowUpIcon, UserIcon, EnvelopeIcon, PencilSquareIcon, Squares2X2Icon, ListBulletIcon } from '../components/Icons';
+import React, { useState } from 'react';
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, ChevronDownIcon, XMarkIcon, PencilSquareIcon, EnvelopeIcon, ListBulletIcon, Squares2X2Icon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
-import { NotificationSettings, Theme, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { NotificationSettings, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
 import ThemeSettings from '../components/ThemeSettings';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import UpdateProfileModal from '../components/UpdateProfileModal';
@@ -81,8 +80,6 @@ interface SettingsProps {
     setEpisodeRatings: React.Dispatch<React.SetStateAction<EpisodeRatings>>;
     setFavoriteEpisodes: React.Dispatch<React.SetStateAction<FavoriteEpisodes>>;
     setTheme: (themeId: string) => void;
-    customThemes: Theme[];
-    setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
     onLogout: () => void;
     onUpdatePassword: (passwords: { currentPassword: string; newPassword: string; }) => Promise<string | null>;
     onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
@@ -93,10 +90,6 @@ interface SettingsProps {
     timezone: string;
     setTimezone: (timezone: string) => void;
     onRemoveDuplicateHistory: () => void;
-    autoHolidayThemesEnabled: boolean;
-    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-    holidayAnimationsEnabled: boolean;
-    setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
     profileTheme: ProfileTheme | null;
     setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
     textSize: number;
@@ -117,10 +110,11 @@ interface SettingsProps {
     preferences: AppPreferences;
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
     onTabNavigate?: (tabId: string) => void;
+    baseThemeId: string;
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, setCustomThemes, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, baseThemeId } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
@@ -411,17 +405,10 @@ export const Settings: React.FC<SettingsProps> = (props) => {
         </SettingsCard>
 
         <ThemeSettings 
-            customThemes={props.customThemes} 
-            setCustomThemes={setCustomThemes} 
-            autoHolidayThemesEnabled={autoHolidayThemesEnabled} 
-            setAutoHolidayThemesEnabled={setAutoHolidayThemesEnabled} 
-            holidayAnimationsEnabled={holidayAnimationsEnabled} 
-            setHolidayAnimationsEnabled={setHolidayAnimationsEnabled} 
             profileTheme={profileTheme} 
             setProfileTheme={setProfileTheme} 
             setTheme={setTheme} 
             baseThemeId={props.baseThemeId} 
-            currentHolidayName={props.currentHolidayName}
         />
 
         <SettingsCard title="Localization">

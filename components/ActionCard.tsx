@@ -97,7 +97,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
                                 loading="lazy"
                             />
-                            {/* Cinematic Overlay (No Boxes) */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent flex items-end p-4">
                                 <div className="w-full group-hover/card:translate-y-[-4px] transition-transform duration-300 text-center">
                                     <h3 className="text-white text-[11px] sm:text-xs font-black uppercase tracking-tight leading-tight [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">
@@ -125,17 +124,17 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 </div>
 
                 {showSeriesInfo !== 'hidden' && (
-                    <div className="mt-2 flex bg-bg-secondary/20 rounded-xl shadow-inner border border-white/5 overflow-hidden">
+                    <div className="mt-2 flex bg-bg-secondary/40 rounded-xl shadow-xl border border-white/10 overflow-hidden">
                         {rank && (
-                            <div className="w-12 flex-shrink-0 flex items-center justify-center border-r border-black/10">
-                                <span className="text-4xl font-black italic leading-none select-none text-primary-accent drop-shadow-md">
+                            <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/5 bg-black/20">
+                                <span className="text-4xl font-black italic leading-none select-none text-primary-accent drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
                                     {rank}
                                 </span>
                             </div>
                         )}
-                        <div className="flex-grow p-2 text-center flex flex-col justify-center min-w-0">
-                            <p className="font-black text-text-primary truncate text-[10px] uppercase tracking-tight mb-0.5">{title}</p>
-                            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] leading-none opacity-50">
+                        <div className="flex-grow p-3 text-center flex flex-col justify-center min-w-0">
+                            <p className="font-black text-text-primary truncate text-xs sm:text-sm uppercase tracking-tight mb-1">{title}</p>
+                            <p className="text-[10px] sm:text-xs font-black text-text-primary uppercase tracking-[0.1em] leading-none">
                                 {item.media_type === 'tv' ? 'Series' : 'Film'} • {formattedYears}
                             </p>
                         </div>

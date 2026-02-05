@@ -130,7 +130,7 @@ const OngoingShowCard: React.FC<OngoingShowCardProps> = ({ item, watchProgress, 
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
                         <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 px-2 py-0.5 rounded border border-primary-accent/20 shadow-sm">
-                            {stats?.seasonsRemaining} Seasons Left
+                            {stats?.seasonsRemaining} {stats?.seasonsRemaining === 1 ? 'Season' : 'Seasons'} Left
                         </span>
                         <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-60">
                             {stats?.unwatchedEpisodes} Left to Aired

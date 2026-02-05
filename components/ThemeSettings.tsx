@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { themes as builtInThemes, holidayThemes } from '../themes';
-import { Theme, ProfileTheme } from '../types';
-import { PlusIcon, TrashIcon, InformationCircleIcon, SparklesIcon } from './Icons';
-import CustomThemeModal from './CustomThemeModal';
-import { getNextHoliday } from '../hooks/useTheme';
+import { themes as builtInThemes } from '../themes';
+import { ProfileTheme, Theme } from '../types';
 import ProfilePersonalizationModal from './ProfilePersonalizationModal';
+import { CheckCircleIcon, SparklesIcon } from './Icons';
 
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
-    <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8">
-      <div className="p-4 border-b border-bg-secondary/50">
+    <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8 border border-white/5">
+      <div className="p-4 border-b border-bg-secondary/50 bg-black/10">
         <h2 className="text-xl font-bold bg-clip-text text-transparent bg-accent-gradient">{title}</h2>
       </div>
       <div className="animate-fade-in">
@@ -17,213 +15,146 @@ const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({
     </div>
 );
 
-const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
-    <div 
-        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50' : ''} ${disabled ? 'opacity-50' : ''}`}
-        onClick={disabled ? undefined : onClick}
-    >
-        <div>
-            <h3 className={`font-semibold ${isDestructive ? '' : 'text-text-primary'}`}>{title}</h3>
-            <p className="text-sm text-text-secondary">{subtitle}</p>
-        </div>
-        <div className="flex-shrink-0 ml-4">
-            {children}
-        </div>
-    </div>
-);
+const ThemePreviewCard: React.FC<{ 
+    theme: Theme; 
+    isSelected: boolean; 
+    onClick: () => void;
+}> = ({ theme, isSelected, onClick }) => {
+    return (
+        <button 
+            onClick={onClick}
+            className={`group w-full flex flex-col text-left bg-bg-secondary/20 rounded-[2rem] border-2 transition-all duration-500 ease-out overflow-hidden transform active:scale-[0.97] outline-none focus:ring-2 focus:ring-primary-accent/50 ${
+                isSelected 
+                    ? 'border-primary-accent shadow-[0_20px_50px_-12px_rgba(var(--color-accent-primary-rgb),0.5)] scale-[1.03] z-10' 
+                    : 'border-white/5 opacity-70 hover:opacity-100 hover:border-white/20 hover:scale-[1.01] hover:shadow-xl'
+            }`}
+        >
+            {/* Visual Sample Section */}
+            <div 
+                style={{ background: theme.colors.bgGradient }}
+                className="h-44 w-full p-4 relative overflow-hidden flex flex-col justify-center items-center gap-3"
+            >
+                {/* Visual Polish: Moving Gradients inside the sample */}
+                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                
+                {/* Sample Text */}
+                <div 
+                    style={{ color: theme.colors.textColorPrimary }}
+                    className="text-[10px] font-black uppercase tracking-[0.2em] opacity-90 drop-shadow-sm"
+                >
+                    System Registry
+                </div>
 
-const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean }> = ({ enabled, onChange, disabled }) => (
-    <button
-        onClick={() => !disabled && onChange(!enabled)}
-        disabled={disabled}
-        className={`w-11 h-6 flex items-center rounded-full p-1 duration-300 ease-in-out ${enabled ? 'bg-primary-accent' : 'bg-bg-secondary'} ${disabled ? 'cursor-not-allowed' : 'pointer-events-auto cursor-pointer'}`}
-    >
-        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${enabled ? 'translate-x-5' : ''}`}/>
-    </button>
-);
+                {/* Sample Button */}
+                <div 
+                    style={{ background: theme.colors.accentGradient, color: theme.colors.onAccent }}
+                    className="px-6 py-2 rounded-full text-[8px] font-black uppercase tracking-[0.3em] shadow-2xl transition-transform group-hover:scale-110 active:scale-95"
+                >
+                    Capture Item
+                </div>
+
+                {/* Selection Overlay */}
+                {isSelected && (
+                    <div className="absolute top-4 right-4 bg-primary-accent text-on-accent p-2 rounded-full shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.5)] animate-bounce-in">
+                        <CheckCircleIcon className="w-5 h-5" />
+                    </div>
+                )}
+                
+                {/* Accent Highlight Line */}
+                <div 
+                    style={{ background: theme.colors.accentPrimary }}
+                    className={`w-20 h-1.5 rounded-full transition-all duration-700 ${isSelected ? 'opacity-100 shadow-[0_0_10px_currentColor]' : 'opacity-20 group-hover:opacity-40'}`}
+                ></div>
+            </div>
+
+            {/* Content Section */}
+            <div className={`p-6 w-full transition-colors duration-500 ${isSelected ? 'bg-primary-accent/5' : ''}`}>
+                <div className="flex justify-between items-start mb-3">
+                    <h3 className={`text-xl font-black uppercase tracking-tighter leading-none transition-colors ${isSelected ? 'text-primary-accent' : 'text-text-primary'}`}>
+                        {theme.name}
+                    </h3>
+                    {isSelected && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary-accent text-on-accent text-[8px] font-black uppercase rounded-lg shadow-lg">
+                            <SparklesIcon className="w-3 h-3" />
+                            Active
+                        </div>
+                    )}
+                </div>
+                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.15em] opacity-60 leading-relaxed">
+                    {theme.description}
+                </p>
+                
+                {isSelected ? (
+                    <div className="mt-4 pt-4 border-t border-primary-accent/20 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-primary-accent animate-pulse"></div>
+                        <span className="text-[9px] font-black text-primary-accent uppercase tracking-widest">Active Registry Policy</span>
+                    </div>
+                ) : (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                        <span className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest group-hover:text-text-primary transition-colors">Apply Cinematic Profile →</span>
+                    </div>
+                )}
+            </div>
+        </button>
+    );
+};
 
 interface ThemeSettingsProps {
-    customThemes: Theme[];
-    setCustomThemes: React.Dispatch<React.SetStateAction<Theme[]>>;
-    autoHolidayThemesEnabled: boolean;
-    setAutoHolidayThemesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-    holidayAnimationsEnabled: boolean;
-    setHolidayAnimationsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
     profileTheme: ProfileTheme | null;
     setProfileTheme: React.Dispatch<React.SetStateAction<ProfileTheme | null>>;
     setTheme: (themeId: string) => void;
     baseThemeId: string;
-    currentHolidayName: string | null;
 }
 
-const ThemeSettings: React.FC<ThemeSettingsProps> = ({ customThemes, setCustomThemes, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled, holidayAnimationsEnabled, setHolidayAnimationsEnabled, profileTheme, setProfileTheme, setTheme, baseThemeId, currentHolidayName }) => {
-    const [isCustomThemeModalOpen, setIsCustomThemeModalOpen] = useState(false);
+const ThemeSettings: React.FC<ThemeSettingsProps> = ({ profileTheme, setProfileTheme, setTheme, baseThemeId }) => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'dark' | 'light' | 'custom' | 'holiday'>('dark');
-    
-    const nextHoliday = getNextHoliday(new Date());
 
-    const handleSaveCustomTheme = (newTheme: Theme) => {
-        setCustomThemes(prev => [...prev, newTheme]);
-        setTheme(newTheme.id);
-    };
-
-    const handleDeleteCustomTheme = (e: React.MouseEvent, themeId: string) => {
-        e.stopPropagation();
-        if (window.confirm("Are you sure you want to delete this theme?")) {
-            setCustomThemes(prev => prev.filter(t => t.id !== themeId));
-            if (baseThemeId === themeId) {
-                setTheme('original-dark');
-            }
-        }
-    };
-
-    const darkThemes = builtInThemes.filter(theme => theme.base === 'dark');
-    const lightThemes = builtInThemes.filter(theme => theme.base === 'light');
-
-    const renderThemes = () => {
-        let themesToRender: Theme[] = [];
-        if (activeTab === 'dark') themesToRender = darkThemes;
-        if (activeTab === 'light') themesToRender = lightThemes;
-        if (activeTab === 'holiday') themesToRender = holidayThemes;
-        
-        if (activeTab === 'custom') {
-            return (
-                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div onClick={() => setIsCustomThemeModalOpen(true)} className="group cursor-pointer">
-                        <div className="h-20 rounded-lg border-2 border-dashed border-text-secondary/50 bg-bg-secondary/30 flex items-center justify-center transition-all group-hover:border-primary-accent group-hover:bg-bg-secondary/50">
-                            <PlusIcon className="w-8 h-8 text-text-secondary/80 group-hover:text-primary-accent transition-colors" />
-                        </div>
-                        <p className="text-center text-sm mt-2 font-semibold text-text-secondary group-hover:text-text-primary transition-colors">
-                            Create New
-                        </p>
-                    </div>
-                    {customThemes.map(theme => {
-                         const isSelected = baseThemeId === theme.id;
-                         const borderColor = isSelected 
-                            ? 'border-primary-accent shadow-[0_0_10px_rgba(var(--color-accent-primary-rgb),0.3)]' 
-                            : theme.base === 'dark' 
-                                ? 'border-white/10' 
-                                : 'border-black/10';
-                        return (
-                        <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group relative">
-                            <button onClick={(e) => handleDeleteCustomTheme(e, theme.id)} className="absolute -top-2 -right-2 z-10 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700">
-                                <TrashIcon className="w-3 h-3"/>
-                            </button>
-                            <div 
-                                style={{ 
-                                    backgroundImage: theme.colors.bgGradient,
-                                    backgroundSize: theme.colors.patternBgSize,
-                                    backgroundColor: theme.colors.patternBgColor,
-                                    backgroundPosition: theme.colors.patternBgPosition
-                                }}
-                                className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${borderColor}`}
-                            >
-                            </div>
-                            <p className={`text-center text-sm mt-2 font-semibold transition-colors ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                {theme.name}
-                            </p>
-                        </div>
-                        );
-                    })}
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-6">
-                {activeTab === 'holiday' && (
-                    <div className="bg-bg-secondary/20 rounded-2xl p-4 border border-white/5 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h4 className="text-sm font-black text-text-primary uppercase tracking-widest">Automated Holiday Experience</h4>
-                                <p className="text-[10px] text-text-secondary font-bold uppercase opacity-60">Sync app theme with upcoming global celebrations</p>
-                            </div>
-                            <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
-                        </div>
-                        
-                        {currentHolidayName ? (
-                            <div className="p-3 bg-primary-accent/10 border border-primary-accent/20 rounded-xl flex items-center gap-3 animate-fade-in">
-                                <SparklesIcon className="w-5 h-5 text-primary-accent" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary-accent">
-                                    {currentHolidayName} Override Active
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="p-3 bg-bg-primary/40 border border-white/5 rounded-xl flex items-center gap-3">
-                                <InformationCircleIcon className="w-4 h-4 text-text-secondary/50" />
-                                <p className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-tighter">
-                                    Next celebration: {nextHoliday.name} ({nextHoliday.date.toLocaleDateString()})
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {themesToRender.map(theme => {
-                        const isSelected = baseThemeId === theme.id;
-                        const borderColor = isSelected 
-                            ? 'border-primary-accent shadow-[0_0_10px_rgba(var(--color-accent-primary-rgb),0.3)]' 
-                            : theme.base === 'dark' 
-                                ? 'border-white/10' 
-                                : 'border-black/10';
-                        return (
-                            <div key={theme.id} onClick={() => setTheme(theme.id)} className="cursor-pointer group">
-                                <div 
-                                    style={{ backgroundImage: theme.colors.bgGradient }}
-                                    className={`h-20 rounded-lg border-2 transition-all group-hover:scale-105 ${borderColor}`}
-                                >
-                                </div>
-                                <p className={`text-center text-sm mt-2 font-semibold transition-colors ${isSelected ? 'text-text-primary' : 'text-text-secondary'}`}>
-                                    {theme.name}
-                                </p>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
+    const activeThemeName = builtInThemes.find(t => t.id === baseThemeId)?.name || 'Noir Electric';
 
     return (
         <>
-            <CustomThemeModal 
-                isOpen={isCustomThemeModalOpen}
-                onClose={() => setIsCustomThemeModalOpen(false)}
-                onSave={handleSaveCustomTheme}
-            />
             <ProfilePersonalizationModal
                 isOpen={isProfileModalOpen}
                 onClose={() => setIsProfileModalOpen(false)}
                 onSave={setProfileTheme}
                 currentTheme={profileTheme}
             />
-            <SettingsCard title="Theme Customization">
-                <div className="p-4">
-                    <button onClick={() => setIsProfileModalOpen(true)} className="w-full text-center p-3 text-sm rounded-md font-semibold transition-colors bg-accent-gradient text-on-accent hover:opacity-90">
-                        Personalize Profile
+            <SettingsCard title="Visual Identity Registry">
+                <div className="p-6">
+                    <button 
+                        onClick={() => setIsProfileModalOpen(true)} 
+                        className="w-full text-center p-5 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all bg-accent-gradient text-on-accent hover:opacity-90 shadow-2xl active:scale-[0.98] transform"
+                    >
+                        Personalize Profile Layout
                     </button>
                 </div>
-                <div className="p-4 border-t border-b border-bg-secondary/50">
-                    <p className="text-text-secondary mb-3 font-semibold">Select an App Theme</p>
-                    <div className="flex p-1 bg-bg-secondary rounded-full">
-                        <button onClick={() => setActiveTab('dark')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'dark' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Dark</button>
-                        <button onClick={() => setActiveTab('light')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'light' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Light</button>
-                        <button onClick={() => setActiveTab('holiday')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'holiday' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Holiday</button>
-                        <button onClick={() => setActiveTab('custom')} className={`w-full py-1.5 text-sm font-semibold rounded-full transition-all ${activeTab === 'custom' ? 'bg-accent-gradient text-on-accent shadow-lg' : 'text-text-secondary'}`}>Custom</button>
+                <div className="p-6 border-t border-white/5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 px-2">
+                        <div className="flex items-center gap-4">
+                            <div className="w-2 h-8 bg-accent-gradient rounded-full shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.3)]"></div>
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-primary-accent">Cinematic Color Profiles</p>
+                                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.1em] opacity-40">System-wide UI Transformation</p>
+                            </div>
+                        </div>
+                        
+                        {/* Phase 4: Active Theme Label */}
+                        <div className="px-5 py-2.5 bg-bg-secondary/40 rounded-2xl border border-primary-accent/20 flex items-center gap-3 animate-fade-in shadow-inner">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary opacity-60">Currently Active:</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent">{activeThemeName}</span>
+                        </div>
                     </div>
-                </div>
-                <div className="p-4">
-                    {renderThemes()}
-                </div>
-                <div className="border-t border-bg-secondary/50">
-                    <SettingsRow 
-                        title="Holiday Theme Animations" 
-                        subtitle="Enable or disable animated holiday decorations like snow, hearts, and stars."
-                    >
-                        <ToggleSwitch enabled={holidayAnimationsEnabled} onChange={setHolidayAnimationsEnabled} />
-                    </SettingsRow>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        {builtInThemes.map(theme => (
+                            <ThemePreviewCard 
+                                key={theme.id}
+                                theme={theme}
+                                isSelected={baseThemeId === theme.id}
+                                onClick={() => setTheme(theme.id)}
+                            />
+                        ))}
+                    </div>
                 </div>
             </SettingsCard>
         </>

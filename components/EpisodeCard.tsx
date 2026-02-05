@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { NewlyPopularEpisode, TmdbMediaDetails } from '../types';
 import FallbackImage from './FallbackImage';
@@ -71,12 +70,14 @@ const EpisodeCard: React.FC<EpisodeCardProps> = ({ item, onSelectShow }) => {
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
             </div>
-            <div className="mt-1.5 p-2 bg-bg-secondary/50 rounded-lg text-xs space-y-1">
-                <p className="font-bold text-text-primary truncate">{showInfo.title}</p>
-                <p className="text-text-secondary truncate">
-                    S{episode.season_number} E{episode.episode_number}: {episode.name}
-                </p>
-                <p className="text-text-secondary/80 font-semibold">{formatDate(episode.air_date, 'UTC')}</p>
+            <div className="mt-2 p-3 bg-bg-secondary/40 rounded-xl text-sm space-y-1.5 border border-white/5 shadow-md">
+                <p className="font-black text-text-primary truncate uppercase tracking-tight">{showInfo.title}</p>
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-xs font-bold text-primary-accent truncate uppercase tracking-widest">
+                        S{episode.season_number} E{episode.episode_number}: {episode.name}
+                    </p>
+                    <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">{formatDate(episode.air_date, 'UTC')}</p>
+                </div>
             </div>
         </div>
     );

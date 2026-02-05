@@ -371,30 +371,65 @@ export const getTopPicksMixed = async (): Promise<TmdbMedia[]> => {
     }
 };
 
+/**
+ * Optimized fetch for "Newly Popular Episodes".
+ * Queries TMDb for popular shows that have aired an episode within the last week.
+ */
 export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> => {
-  const trendingShows = await getTrending('tv');
-  const popularShows = await discoverMedia('tv', { sortBy: 'popularity.desc' });
-  const uniqueShows = Array.from(new Map([...trendingShows, ...popularShows].map(item => [item.id, item])).values());
-  const showsToFetch = uniqueShows.slice(0, 30);
+  const cacheKey = 'tmdb_newly_popular_episodes_v5';
+  const cached = getFromCache<NewlyPopularEpisode[]>(cacheKey);
+  if (cached) return cached;
+
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  
+  const todayStr = today.toISOString().split('T')[0];
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+  // Strategy: Discover popular shows with air_date in last week
+  const popularShows = await discoverMedia('tv', { 
+    sortBy: 'popularity.desc',
+    'air_date.gte': sevenDaysAgoStr,
+    'air_date.lte': todayStr
+  });
+
+  const showsToFetch = popularShows.slice(0, 30);
   const showDetailsList: (TmdbMediaDetails | null)[] = [];
+  
+  // Batch processing
   for (let i = 0; i < showsToFetch.length; i += 10) {
       const batch = showsToFetch.slice(i, i + 10);
       showDetailsList.push(...await Promise.all(batch.map(s => getMediaDetails(s.id, 'tv').catch(() => null))));
-      if (i + 10 < showsToFetch.length) await new Promise(r => setTimeout(r, 400));
+      if (i + 10 < showsToFetch.length) await new Promise(r => setTimeout(r, 300));
   }
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
   const episodes: NewlyPopularEpisode[] = [];
   for (const details of showDetailsList) {
     if (details?.last_episode_to_air) {
-      const airDate = new Date(`${details.last_episode_to_air.air_date}T00:00:00Z`);
-      if (airDate >= oneMonthAgo && airDate <= new Date()) {
-        episodes.push({ showInfo: { id: details.id, title: details.name || 'Untitled', media_type: 'tv', poster_path: details.poster_path, genre_ids: details.genres.map(g => g.id) }, episode: details.last_episode_to_air });
+      const epDate = details.last_episode_to_air.air_date;
+      if (epDate && epDate >= sevenDaysAgoStr && epDate <= todayStr) {
+        episodes.push({ 
+          showInfo: { 
+            id: details.id, 
+            title: details.name || 'Untitled', 
+            media_type: 'tv', 
+            poster_path: details.poster_path, 
+            genre_ids: details.genres.map(g => g.id) 
+          }, 
+          episode: details.last_episode_to_air 
+        });
       }
     }
   }
+
+  // Sort by air date (newest first)
   episodes.sort((a,b) => new Date(b.episode.air_date).getTime() - new Date(a.episode.air_date).getTime());
-  return episodes.slice(0, 30);
+  // User requested to change number of episodes to 15
+  const finalResults = episodes.slice(0, 15);
+  
+  setToCache(cacheKey, finalResults, 60 * 60 * 1000); // 1 hour cache
+  return finalResults;
 };
 
 export const getUpcomingMovies = async (): Promise<TmdbMedia[]> => {

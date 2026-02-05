@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { getNewlyPopularEpisodes } from '../services/tmdbService';
 import { NewlyPopularEpisode } from '../types';
@@ -16,6 +17,7 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({ onSelectSho
         const fetchEpisodes = async () => {
             setLoading(true);
             try {
+                // This now fetches what's truly popular and new on TMDb
                 const results = await getNewlyPopularEpisodes();
                 setEpisodes(results);
             } catch (error) {
@@ -55,7 +57,7 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({ onSelectSho
             </div>
             <Carousel>
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
-                    {episodes.slice(0, 10).map(item => (
+                    {episodes.map(item => (
                         <EpisodeCard 
                             key={`${item.showInfo.id}-${item.episode.id}`}
                             item={item}
