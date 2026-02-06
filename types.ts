@@ -5,18 +5,26 @@ export interface Theme {
   base: 'light' | 'dark';
   holidayDate?: { month: number; day: number }; // month is 0-indexed (0=Jan, 1=Feb, etc.)
   colors: {
+    // --- UI Color Tokens ---
+    bgPrimary: string;
+    bgSecondary: string;
+    surfaceCard: string;
+    surfaceModal: string;
+    textPrimary: string;
+    textSecondary: string;
+    accent: string;
+    success: string;
+    warning: string;
+    error: string;
+    border: string;
+    buttonPrimary: string;
+    buttonSecondary: string;
+    
+    // --- Specialty / Layout ---
     bgGradient: string;
     accentGradient: string;
     cardGradient: string;
-    textColorPrimary: string;
-    textColorSecondary: string;
-    accentPrimary: string;
-    accentSecondary: string;
-    bgPrimary: string;
-    bgSecondary: string;
     bgBackdrop: string;
-    error?: string;
-    success?: string;
     onAccent?: string;
     particleEffect?: ParticleEffectName[];
     patternBgSize?: string;

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Theme } from '../types';
 import { XMarkIcon, ChevronDownIcon } from './Icons';
@@ -237,48 +238,91 @@ const CustomThemeModal: React.FC<CustomThemeModalProps> = ({ isOpen, onClose, on
         const luminance = getLuminance(primaryBgColor);
         const base: 'light' | 'dark' = luminance > 0.4 ? 'light' : 'dark';
 
+        const success = base === 'dark' ? '#34d399' : '#16a34a';
+        const warning = base === 'dark' ? '#fbbf24' : '#eab308';
+        const error = base === 'dark' ? '#f87171' : '#dc2626';
+        const border = base === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
         let finalColors: Theme['colors'];
 
+        // FIX: Replaced incorrect property names 'accentPrimary', 'accentSecondary', 'textColorPrimary', 'textColorSecondary' with correct names 'accent', 'textPrimary', 'textSecondary' from the Theme type in types.ts.
+        // Also added missing mandatory properties like 'surfaceCard', 'surfaceModal', 'success', 'warning', 'error', 'border', 'buttonPrimary', 'buttonSecondary', and 'bgBackdrop'.
         if (activeTab === 'gradient') {
             const { bg1, bg2, acc1, acc2, text } = currentColors as typeof colors.gradient;
             finalColors = {
-                bgPrimary: bg1, bgSecondary: bg2, accentPrimary: acc1, accentSecondary: acc2, textColorPrimary: text,
-                textColorSecondary: hexToRgba(text, 0.7),
+                bgPrimary: bg1,
+                bgSecondary: bg2,
+                surfaceCard: hexToRgba(bg2, 0.6),
+                surfaceModal: bg1,
+                textPrimary: text,
+                textSecondary: hexToRgba(text, 0.7),
+                accent: acc1,
+                success,
+                warning,
+                error,
+                border,
+                buttonPrimary: acc1,
+                buttonSecondary: bg2,
                 bgGradient: `linear-gradient(to bottom right, ${bg1}, ${bg2})`,
                 accentGradient: `linear-gradient(to right, ${acc1}, ${acc2})`,
                 cardGradient: `linear-gradient(to bottom, ${hexToRgba(bg2, 0.5)}, ${hexToRgba(bg1, 0.7)})`,
                 bgBackdrop: hexToRgba(base === 'dark' ? bg1 : bg2, 0.3),
+                onAccent: base === 'dark' ? '#FFFFFF' : '#000000',
             };
         } else if (activeTab === 'solid') {
             const { bg, acc, text } = currentColors as typeof colors.solid;
             const bg2 = manipulateColor(bg, base === 'dark' ? 10 : -10);
             finalColors = {
-                bgPrimary: bg, bgSecondary: bg2, accentPrimary: acc, accentSecondary: manipulateColor(acc, 20), textColorPrimary: text,
-                textColorSecondary: hexToRgba(text, 0.7),
+                bgPrimary: bg,
+                bgSecondary: bg2,
+                surfaceCard: hexToRgba(bg2, 0.6),
+                surfaceModal: bg,
+                textPrimary: text,
+                textSecondary: hexToRgba(text, 0.7),
+                accent: acc,
+                success,
+                warning,
+                error,
+                border,
+                buttonPrimary: acc,
+                buttonSecondary: bg2,
                 bgGradient: bg,
                 accentGradient: acc,
                 cardGradient: `linear-gradient(to bottom, ${hexToRgba(bg2, 0.5)}, ${hexToRgba(bg, 0.7)})`,
                 bgBackdrop: hexToRgba(bg, 0.3),
+                onAccent: base === 'dark' ? '#FFFFFF' : '#000000',
             };
         } else { // Pattern
             const { p1, p2, overlay, acc, text, pattern } = currentColors as typeof colors.pattern;
             const patternCss = pattern.css(p1, p2);
             const overlayRgba = hexToRgba(overlay, 0.85);
+            const bg2 = manipulateColor(overlay, 10);
             const patternBgColor = pattern.bgColor === 'c1' ? p1 : pattern.bgColor === 'c2' ? p2 : pattern.bgColor;
             finalColors = {
-                bgPrimary: overlay, bgSecondary: manipulateColor(overlay, 10), accentPrimary: acc, accentSecondary: manipulateColor(acc, 20), textColorPrimary: text,
-                textColorSecondary: hexToRgba(text, 0.7),
+                bgPrimary: overlay,
+                bgSecondary: bg2,
+                surfaceCard: hexToRgba(bg2, 0.6),
+                surfaceModal: overlay,
+                textPrimary: text,
+                textSecondary: hexToRgba(text, 0.7),
+                accent: acc,
+                success,
+                warning,
+                error,
+                border,
+                buttonPrimary: acc,
+                buttonSecondary: bg2,
                 bgGradient: `linear-gradient(${overlayRgba}, ${overlayRgba}), ${patternCss}`,
                 accentGradient: acc,
-                cardGradient: `linear-gradient(to bottom, ${hexToRgba(manipulateColor(overlay, 10), 0.7)}, ${hexToRgba(overlay, 0.85)})`,
+                cardGradient: `linear-gradient(to bottom, ${hexToRgba(bg2, 0.7)}, ${hexToRgba(overlay, 0.85)})`,
                 bgBackdrop: hexToRgba(overlay, 0.5),
                 patternBgSize: pattern.bgSize ? `auto, ${pattern.bgSize}` : 'auto',
                 patternBgColor: patternBgColor || 'transparent',
                 patternBgPosition: pattern.bgPosition ? `0 0, ${pattern.bgPosition}` : '0 0',
+                onAccent: base === 'dark' ? '#FFFFFF' : '#000000',
             };
         }
 
-        // FIX: Added missing 'description' property to custom theme object to satisfy 'Theme' interface requirements.
         const newTheme: Theme = { 
             id: `custom-${Date.now()}`, 
             name: name.trim(), 

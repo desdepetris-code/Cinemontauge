@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Theme } from '../types';
 import { XMarkIcon, SearchIcon, HomeIcon, UserIcon, CheckCircleIcon, TrophyIcon, FireIcon, ChevronDownIcon, FilmIcon, TvIcon, ClockIcon } from './Icons';
@@ -29,15 +30,17 @@ const ThemePreviewModal: React.FC<ThemePreviewModalProps> = ({ isOpen, onClose, 
 
     if (!isOpen) return null;
 
+    // FIX: Updated styles object keys to match the Theme['colors'] property names from types.ts.
+    // Replaced 'textColorPrimary' with 'textPrimary', 'textColorSecondary' with 'textSecondary', and 'accentPrimary' with 'accent'.
     const styles = {
         bg: theme.colors.bgGradient,
         card: theme.colors.cardGradient,
         accent: theme.colors.accentGradient,
-        textPrimary: theme.colors.textColorPrimary,
-        textSecondary: theme.colors.textColorSecondary,
+        textPrimary: theme.colors.textPrimary,
+        textSecondary: theme.colors.textSecondary,
         bgPrimary: theme.colors.bgPrimary,
         onAccent: theme.colors.onAccent || '#FFFFFF',
-        accentPrimary: theme.colors.accentPrimary
+        accentPrimary: theme.colors.accent
     };
 
     return (

@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
-import { PhotoIcon, PlusIcon, InformationCircleIcon, CheckCircleIcon, XMarkIcon, TrashIcon } from './Icons';
+import { PhotoIcon, PlusIcon, InformationCircleIcon, CheckCircleIcon, XMarkIcon, TrashIcon, ArrowPathIcon } from './Icons';
 import { CustomImagePaths, TmdbImage } from '../types';
 import { TMDB_IMAGE_BASE_URL } from '../constants';
 
@@ -21,6 +20,7 @@ interface CustomizeTabProps {
   };
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
   onRemoveCustomImage?: (showId: number, imagePath: string) => void;
+  onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
 }
 
 const CustomizeTab: React.FC<CustomizeTabProps> = ({ 
@@ -32,7 +32,8 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
     customImagePaths, 
     details,
     onSetCustomImage,
-    onRemoveCustomImage
+    onRemoveCustomImage,
+    onResetCustomImage
 }) => {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
 
@@ -108,20 +109,38 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="space-y-6">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary px-2">Primary Poster</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary px-2 text-center md:text-left">Primary Poster</h3>
                 <div onClick={onOpenPosterSelector} className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 aspect-[2/3] bg-bg-secondary/40 cursor-pointer group">
                     <img src={posterUrl} alt="Current poster" className="w-full h-full object-cover transition-transform duration-1000" />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"><PhotoIcon className="w-12 h-12 text-white" /></div>
                     <div className="absolute top-6 left-6 z-10 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/80 shadow-lg">{hasCustomPoster ? 'Custom Selection' : 'Registry Default'}</div>
                 </div>
+                {hasCustomPoster && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onResetCustomImage(showId, 'poster'); }}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-lg active:scale-95"
+                    >
+                        <ArrowPathIcon className="w-3.5 h-3.5 text-primary-accent" />
+                        Return to Original Poster
+                    </button>
+                )}
             </div>
             <div className="space-y-6">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary px-2">Primary Backdrop</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary px-2 text-center md:text-left">Primary Backdrop</h3>
                 <div onClick={onOpenBackdropSelector} className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 aspect-video bg-bg-secondary/40 cursor-pointer group">
                     <img src={backdropUrl} alt="Current backdrop" className="w-full h-full object-cover transition-transform duration-1000" />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"><PhotoIcon className="w-12 h-12 text-white" /></div>
                     <div className="absolute top-6 left-6 z-10 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/80 shadow-lg">{hasCustomBackdrop ? 'Custom Selection' : 'Registry Default'}</div>
                 </div>
+                {hasCustomBackdrop && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onResetCustomImage(showId, 'backdrop'); }}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-lg active:scale-95"
+                    >
+                        <ArrowPathIcon className="w-3.5 h-3.5 text-primary-accent" />
+                        Return to Original Backdrop
+                    </button>
+                )}
             </div>
         </div>
 

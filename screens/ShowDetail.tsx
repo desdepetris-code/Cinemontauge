@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
@@ -50,6 +49,7 @@ interface ShowDetailProps {
   customImagePaths: CustomImagePaths;
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
   onRemoveCustomImage: (mediaId: number, url: string) => void;
+  onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   weeklyFavorites: WeeklyPick[];
@@ -96,10 +96,13 @@ interface ShowDetailProps {
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onAuthClick: () => void;
   onNoteDeleted: (note: Note, mediaTitle: string, context: string) => void;
-  onRestoreNote: (note: DeletedNote) => void;
-  onTabNavigate?: (tabId: string) => void;
-  viewerId?: string; 
-  isFollowerOfProfile?: boolean;
+  onDiscardRequest: (item: DeletedHistoryItem) => void;
+  onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
+  onClearMediaHistory: (mediaId: number, mediaType: 'tv' | 'movie') => void;
+  reminders: Reminder[];
+  onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
+  episodeRatings: EpisodeRatings;
+  pendingRecommendationChecks: PendingRecommendationCheck[];
   setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
   setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
@@ -136,7 +139,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
     onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onNoteDeleted,
-    onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, reminders, onToggleReminder,
+    onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, onResetCustomImage, reminders, onToggleReminder,
     pendingRecommendationChecks, setPendingRecommendationChecks
   } = props;
   
@@ -622,7 +625,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 </div>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none mb-4">{details.title || details.name}</h1>
+              <h1 className="text-5xl md:text-7xl font-black text-text-primary uppercase tracking-tighter leading-none mb-4">{details.title || details.name}</h1>
 
               {premiereMessage && (
                 <div className="mb-4 animate-fade-in">
@@ -688,7 +691,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               {activeTab === 'discussion' && (
                   <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
               )}
-              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} />}
+              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} onResetCustomImage={onResetCustomImage} />}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>
           </div>

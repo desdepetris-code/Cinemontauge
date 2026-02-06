@@ -27,16 +27,26 @@
               modern: ['Roboto Slab', 'serif'],
             },
             colors: {
-              'primary-accent': 'var(--color-accent-primary)',
-              'secondary-accent': 'var(--color-accent-secondary)',
-              'bg-primary': 'var(--color-bg-primary)',
-              'bg-secondary': 'var(--color-bg-secondary)',
+              // --- Theme Token Mappings ---
+              'bg-primary': 'var(--bg-primary)',
+              'bg-secondary': 'var(--bg-secondary)',
+              'surface-card': 'var(--surface-card)',
+              'surface-modal': 'var(--surface-modal)',
+              'text-primary': 'var(--text-primary)',
+              'text-secondary': 'var(--text-secondary)',
+              'accent': 'var(--accent)',
+              'success': 'var(--success)',
+              'warning': 'var(--warning)',
+              'error': 'var(--error)',
+              'border-color': 'var(--border-color)',
+              'btn-primary': 'var(--btn-primary)',
+              'btn-secondary': 'var(--btn-secondary)',
+              
+              // Maintain legacy mappings for component compatibility
+              'primary-accent': 'var(--accent)',
+              'secondary-accent': 'var(--accent)', // Map to same base for now
               'backdrop': 'var(--color-bg-backdrop)',
-              'text-primary': 'var(--text-color-primary)',
-              'text-secondary': 'var(--text-color-secondary)',
               'on-accent': 'var(--on-accent)',
-              'error': 'var(--color-error)',
-              'success': 'var(--color-success)',
             },
             backgroundImage: {
               'accent-gradient': 'var(--accent-gradient)',
@@ -72,7 +82,7 @@
         background-size: var(--pattern-bg-size, cover);
         background-position: var(--pattern-bg-position, center);
         background-color: var(--pattern-bg-color, transparent);
-        color: var(--text-color-primary);
+        color: var(--text-primary);
         font-family: 'Poppins', sans-serif;
         overflow-x: hidden;
         overscroll-behavior-y: contain;
@@ -125,9 +135,9 @@
       }
 
       input, select, textarea {
-        background-color: var(--color-bg-primary);
-        color: var(--text-color-primary);
-        border: 2px solid rgba(var(--text-color-primary-rgb, 255, 255, 255), 0.3);
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        border: 2px solid var(--border-color);
         border-radius: 14px;
         padding: 12px 16px;
         font-weight: 700;
@@ -135,8 +145,8 @@
       }
 
       input:focus, select:focus, textarea:focus {
-        border-color: var(--color-accent-primary);
-        box-shadow: 0 0 15px rgba(var(--color-accent-primary-rgb), 0.2);
+        border-color: var(--accent);
+        box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.2);
         outline: none;
       }
 

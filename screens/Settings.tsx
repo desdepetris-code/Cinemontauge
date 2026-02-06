@@ -12,7 +12,7 @@ import { confirmationService } from '../services/confirmationService';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
     <div 
-        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
+        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-not-allowed hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
         onClick={disabled ? undefined : onClick}
     >
         <div>
@@ -28,7 +28,7 @@ const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.R
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
     <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8">
       <div className="p-4 border-b border-bg-secondary/50">
-        <h2 className="text-xl font-bold bg-clip-text text-transparent bg-accent-gradient">{title}</h2>
+        <h2 className="text-xl font-bold text-transparent bg-clip-text bg-accent-gradient">{title}</h2>
       </div>
       <div className="animate-fade-in">
         {children}
@@ -111,12 +111,10 @@ interface SettingsProps {
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
     onTabNavigate?: (tabId: string) => void;
     baseThemeId: string;
-    autoHolidayThemesEnabled: boolean;
-    setAutoHolidayThemesEnabled: (enabled: boolean) => void;
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, baseThemeId, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, baseThemeId } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
@@ -204,12 +202,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </SettingsRow>
             <SettingsRow title="Enable Spoiler Shield" subtitle="Helpful when episodes are marked out of order.">
                 <ToggleSwitch enabled={preferences.enableSpoilerShield} onChange={() => handleTogglePreference('enableSpoilerShield')} />
-            </SettingsRow>
-            <SettingsRow title="Auto-Holiday Themes" subtitle="Automatically transform the interface for seasonal events.">
-                <div className="flex items-center gap-2">
-                    <SparklesIcon className={`w-4 h-4 transition-colors ${autoHolidayThemesEnabled ? 'text-primary-accent' : 'text-text-secondary/30'}`} />
-                    <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
-                </div>
             </SettingsRow>
         </SettingsCard>
 

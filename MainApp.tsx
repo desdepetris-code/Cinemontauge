@@ -54,7 +54,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick, 
     onForgotPasswordRequest, onForgotPasswordReset 
 }) => {
-  const [activeTheme, setTheme, baseThemeId, autoHolidayEnabled, setAutoHolidayEnabled] = useTheme();
+  const [activeTheme, setTheme, baseThemeId] = useTheme();
   
   const [watching, setWatching] = useLocalStorage<TrackedItem[]>(`watching_list_${userId}`, []);
   const [planToWatch, setPlanToWatch] = useLocalStorage<TrackedItem[]>(`plan_to_watch_list_${userId}`, []);
@@ -181,7 +181,7 @@ export const MainApp: React.FC<MainAppProps> = ({
       setActiveScreen('home'); window.history.pushState({ app: 'sceneit' }, ''); return;
     }
     window.history.back();
-  }, [selectedShow, selectedPerson, selectedUserId, activeScreen, allMediaConfig]);
+  }, [selectedShow, selectedPerson, setSelectedUserId, activeScreen, allMediaConfig]);
 
   useEffect(() => {
     window.history.pushState({ app: 'sceneit' }, '');
@@ -386,6 +386,22 @@ export const MainApp: React.FC<MainAppProps> = ({
     }
   }, [currentUser, setCustomImagePaths]);
 
+  const handleResetCustomImage = useCallback((mediaId: number, type: 'poster' | 'backdrop') => {
+    setCustomImagePaths(prev => {
+        const current = prev[mediaId];
+        if (!current) return prev;
+        
+        return {
+            ...prev,
+            [mediaId]: {
+                ...current,
+                [type === 'poster' ? 'poster_path' : 'backdrop_path']: undefined
+            }
+        };
+    });
+    confirmationService.show(`Primary ${type} restored to original.`);
+  }, [setCustomImagePaths]);
+
   const handleRemoveCustomImage = useCallback(async (mediaId: number, url: string) => {
     if (currentUser) {
         await deleteCustomMedia(currentUser.id, mediaId, url);
@@ -553,10 +569,6 @@ export const MainApp: React.FC<MainAppProps> = ({
   return (
     <div className={`min-h-screen ${activeTheme.base} transition-colors duration-500 pb-20`}>
         <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={true} />
-        {/* Glass Sheet Layer for Holiday Themes */}
-        {activeTheme.holidayDate && (
-          <div className="fixed inset-0 z-[-10] backdrop-blur-[15px] bg-black/10 pointer-events-none" />
-        )}
         <Header 
             currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} 
             onGoToProfile={() => setActiveScreen('profile')} onGoHome={() => setActiveScreen('home')} 
@@ -704,8 +716,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                 favoriteEpisodes={favoriteEpisodes} 
                 setPendingRecommendationChecks={setPendingRecommendationChecks} 
                 setFailedRecommendationReports={setFailedRecommendationReports}
-                autoHolidayThemesEnabled={autoHolidayEnabled}
-                setAutoHolidayThemesEnabled={setAutoHolidayEnabled}
               />
             )}
         </main>
@@ -737,6 +747,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onSaveJournal={handleSaveJournal} trackedLists={{ watching, planToWatch, completed, onHold, dropped, allCaughtUp }} 
                     onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={handleSetCustomImage} 
                     onRemoveCustomImage={handleRemoveCustomImage}
+                    onResetCustomImage={handleResetCustomImage}
                     favorites={favorites} onToggleFavoriteShow={handleToggleFavoriteShow} weeklyFavorites={weeklyFavorites} 
                     onToggleWeeklyFavorite={handleToggleWeeklyFavorite} onSelectShow={handleSelectShow} 
                     onOpenCustomListModal={() => {}} ratings={ratings} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} 
