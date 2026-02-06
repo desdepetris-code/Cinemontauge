@@ -1,7 +1,6 @@
-
 import React, { useMemo } from 'react';
 import { TmdbMediaDetails, UserData, EpisodeProgress } from '../types';
-import { TrophyIcon, CheckCircleIcon, BookOpenIcon, StarIcon, PhotoIcon, PlayPauseIcon, FireIcon, ArchiveBoxIcon, ClockIcon, PencilSquareIcon, HeartIcon } from './Icons';
+import { TrophyIcon, CheckCircleIcon, BookOpenIcon, StarIcon, PhotoIcon, PlayPauseIcon, FireIcon, ArchiveBoxIcon, ClockIcon, PencilSquareIcon, HeartIcon, TvIcon, CalendarIcon } from './Icons';
 
 interface ShowAchievementsTabProps {
   details: TmdbMediaDetails;
@@ -25,7 +24,6 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
       const history = userData.history.filter(h => h.id === id);
       const progress = userData.watchProgress[id] || {};
       const rating = userData.ratings[id]?.rating || 0;
-      const custom = userData.customImagePaths[id];
       const notes = userData.mediaNotes[id] || [];
       const fav = userData.favorites.some(f => f.id === id);
       const isTV = details.media_type === 'tv';
@@ -69,20 +67,57 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
 
       if (isTV) {
           const totalAired = details.number_of_episodes || 0;
+          const totalSeasons = details.number_of_seasons || 0;
+          
           let watchedCount = 0;
           Object.values(progress).forEach(s => Object.values(s).forEach(e => { if ((e as any).status === 2) watchedCount++; }));
 
-          results.push({
-              id: 'binge',
-              name: 'Binge Analyst',
-              description: 'Logged 10 or more episodes of this series.',
-              icon: <FireIcon className="w-6 h-6" />,
-              unlocked: watchedCount >= 10,
-              progress: watchedCount,
-              goal: 10,
-              tier: 'Core'
+          let completedSeasonsCount = 0;
+          (details.seasons || []).forEach(s => {
+              if (s.season_number <= 0) return;
+              let seasonWatched = 0;
+              const seasonProgress = progress[s.season_number] || {};
+              Object.values(seasonProgress).forEach(ep => {
+                  if ((ep as EpisodeProgress).status === 2) seasonWatched++;
+              });
+              if (s.episode_count > 0 && seasonWatched >= s.episode_count) completedSeasonsCount++;
           });
 
+          // --- Episode Milestones (50, 100, 150, 200, 250, 300, 400, 500, 1000) ---
+          const episodeMilestones = [50, 100, 150, 200, 250, 300, 400, 500, 1000];
+          episodeMilestones.forEach(milestone => {
+              if (totalAired >= milestone) {
+                  results.push({
+                      id: `ep_milestone_${milestone}`,
+                      name: `${milestone} Episode Landmark`,
+                      description: `Logged ${milestone} episodes of this series.`,
+                      icon: <TvIcon className="w-6 h-6" />,
+                      unlocked: watchedCount >= milestone,
+                      progress: watchedCount,
+                      goal: milestone,
+                      tier: milestone < 150 ? 'Core' : milestone < 300 ? 'Elite' : 'Master'
+                  });
+              }
+          });
+
+          // --- Season/Year Milestones (Every 5 years/seasons) ---
+          const seasonMilestones = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+          seasonMilestones.forEach(milestone => {
+              if (totalSeasons >= milestone) {
+                  results.push({
+                      id: `season_milestone_${milestone}`,
+                      name: `Watched ${milestone} Years`,
+                      description: `Completed ${milestone} full seasons of this show.`,
+                      icon: <CalendarIcon className="w-6 h-6" />,
+                      unlocked: completedSeasonsCount >= milestone,
+                      progress: completedSeasonsCount,
+                      goal: milestone,
+                      tier: milestone < 15 ? 'Elite' : 'Master'
+                  });
+              }
+          });
+
+          // Completion Achievement
           results.push({
               id: 'completionist',
               name: 'Show Stopper',
@@ -118,6 +153,16 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
       return results;
   }, [details, userData]);
 
+  // Sort: Unlocked first, then by tier, then by goal
+  const sortedAchievements = useMemo(() => {
+      const tierOrder = { 'Core': 0, 'Elite': 1, 'Master': 2 };
+      return [...titleAchievements].sort((a, b) => {
+          if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+          if (a.tier !== b.tier) return tierOrder[a.tier] - tierOrder[b.tier];
+          return (a.goal || 0) - (b.goal || 0);
+      });
+  }, [titleAchievements]);
+
   return (
     <div className="space-y-12 animate-fade-in pb-20">
       <header className="flex flex-col items-center text-center space-y-4">
@@ -131,7 +176,7 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {titleAchievements.map(ach => (
+          {sortedAchievements.map(ach => (
               <div key={ach.id} className={`p-8 rounded-[2.5rem] border transition-all duration-700 relative overflow-hidden group ${
                   ach.unlocked 
                       ? 'bg-bg-secondary/40 border-primary-accent/40 shadow-[0_20px_50px_-12px_rgba(var(--color-accent-primary-rgb),0.3)]' 
@@ -150,8 +195,8 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
                       </span>
                   </div>
                   
-                  <h4 className="text-xl font-black text-text-primary uppercase tracking-tighter mb-2">{ach.name}</h4>
-                  <p className="text-xs text-text-secondary font-medium leading-relaxed mb-6">{ach.description}</p>
+                  <h4 className="text-xl font-black text-text-primary uppercase tracking-tighter mb-2 leading-none">{ach.name}</h4>
+                  <p className="text-xs text-text-secondary font-medium leading-relaxed mb-6 h-10 line-clamp-2">{ach.description}</p>
                   
                   {ach.goal !== undefined && !ach.unlocked && (
                       <div className="space-y-2">
@@ -162,7 +207,7 @@ const ShowAchievementsTab: React.FC<ShowAchievementsTabProps> = ({ details, user
                           <div className="w-full bg-bg-primary/50 h-1.5 rounded-full overflow-hidden shadow-inner border border-white/5">
                               <div 
                                   className="h-full bg-text-secondary/30 transition-all duration-1000"
-                                  style={{ width: `${(ach.progress! / ach.goal!) * 100}%` }}
+                                  style={{ width: `${Math.min(100, (ach.progress! / ach.goal!) * 100)}%` }}
                               ></div>
                           </div>
                       </div>

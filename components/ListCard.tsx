@@ -38,7 +38,7 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
                 ) : (
                     <div className="flex flex-col items-center opacity-20">
                         <ListBulletIcon className="w-12 h-12 text-text-secondary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest mt-2">Empty Collection</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest mt-2">Empty List</span>
                     </div>
                 )}
                 
@@ -78,7 +78,7 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
                 
                 <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-text-secondary/40">
                     <span>Created {new Date(list.createdAt).toLocaleDateString()}</span>
-                    <span className="group-hover:text-primary-accent transition-colors">Open Collection →</span>
+                    <span className="group-hover:text-primary-accent transition-colors">Open List →</span>
                 </div>
             </div>
         </div>

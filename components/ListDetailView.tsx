@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CustomList, AppPreferences, TrackedItem } from '../types';
 import ListGrid from './ListGrid';
@@ -22,7 +21,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
     const [genreFilter, setGenreFilter] = useState<string>('');
     const [showFilters, setShowFilters] = useState(preferences?.searchAlwaysExpandFilters || false);
     
-    // Inline editing state
+    // Inline editing state for description
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [tempDescription, setTempDescription] = useState(list.description || '');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -67,99 +66,104 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
 
     return (
         <div className="animate-fade-in space-y-8 pb-20">
-            {/* Sticky Navigation Bar */}
+            {/* Header Section */}
             <div className="sticky top-16 md:top-2 z-40 -mx-4 px-4 py-3 bg-backdrop/80 backdrop-blur-xl border-b border-white/5 md:bg-transparent md:backdrop-blur-none md:border-none md:static">
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="flex items-center gap-6">
+                <header className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                    <div className="flex items-start gap-6 flex-grow min-w-0">
                         <button 
                             onClick={onBack}
                             className="p-4 bg-bg-secondary/60 backdrop-blur-xl rounded-2xl text-text-primary hover:text-primary-accent hover:bg-bg-secondary transition-all border border-white/10 shadow-2xl group flex-shrink-0"
                         >
                             <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                         </button>
-                        <div className="min-w-0 flex-grow">
+                        
+                        <div className="flex-grow min-w-0">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl md:text-4xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
-                                <span className="px-2 py-0.5 bg-primary-accent text-on-accent text-[9px] font-black rounded uppercase tracking-widest flex-shrink-0">{list.items.length}</span>
+                                <h1 className="text-2xl md:text-5xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
+                                <span className="px-3 py-1 bg-primary-accent text-on-accent text-[10px] font-black rounded-lg uppercase tracking-widest flex-shrink-0 shadow-lg">{list.items.length} Items</span>
                             </div>
                             
-                            <div className="mt-2 group/desc relative max-w-xl">
+                            <div className="mt-4 max-w-2xl">
                                 {isEditingDescription ? (
-                                    <div className="space-y-2 animate-fade-in">
+                                    <div className="space-y-3 animate-fade-in bg-bg-secondary/30 p-6 rounded-[2rem] border border-primary-accent/20">
+                                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-primary-accent ml-1">Update List Narrative</label>
                                         <textarea
                                             ref={textareaRef}
                                             value={tempDescription}
                                             onChange={(e) => setTempDescription(e.target.value)}
-                                            className="w-full bg-bg-primary/50 text-sm font-medium text-text-primary p-3 rounded-xl border border-primary-accent/50 focus:outline-none focus:ring-2 focus:ring-primary-accent/20 min-h-[80px]"
-                                            placeholder="Enter list description..."
+                                            className="w-full bg-bg-primary/50 text-sm font-medium text-text-primary p-4 rounded-2xl border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary-accent/20 min-h-[120px] shadow-inner resize-none"
+                                            placeholder="What is the mission of this list?"
                                         />
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2 pt-2">
                                             <button 
                                                 onClick={handleCancelDescription}
-                                                className="px-3 py-1.5 rounded-lg bg-bg-secondary text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-primary transition-all"
+                                                className="px-5 py-2 rounded-xl bg-bg-secondary text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-primary transition-all"
                                             >
                                                 Cancel
                                             </button>
                                             <button 
                                                 onClick={handleSaveDescription}
-                                                className="px-4 py-1.5 rounded-lg bg-accent-gradient text-on-accent text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5"
+                                                className="px-6 py-2 rounded-xl bg-accent-gradient text-on-accent text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:scale-105 transition-transform"
                                             >
-                                                <CheckCircleIcon className="w-3 h-3" />
-                                                Save Description
+                                                <CheckCircleIcon className="w-3.5 h-3.5" />
+                                                Archive Changes
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div 
-                                        className="flex items-start gap-2 cursor-pointer group/text"
-                                        onClick={() => setIsEditingDescription(true)}
-                                    >
-                                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 leading-relaxed">
-                                            {list.description || (isSystemList ? "A system-managed built-in collection. Tap to add a description." : "Personal curated collection. Tap to add a description.")}
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 leading-relaxed pl-1">
+                                            {list.description || (isSystemList ? "A system-managed built-in list. No narrative set." : "Personal curated list. No narrative set.")}
                                         </p>
-                                        <PencilSquareIcon className="w-4 h-4 text-primary-accent opacity-0 group-hover/text:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                                        <button 
+                                            onClick={() => setIsEditingDescription(true)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-md active:scale-95"
+                                        >
+                                            <PencilSquareIcon className="w-3.5 h-3.5 text-primary-accent" />
+                                            Edit List Description
+                                        </button>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="bg-bg-secondary/30 px-4 py-2 rounded-2xl border border-white/5 flex items-center gap-4">
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="bg-bg-secondary/30 px-5 py-3 rounded-2xl border border-white/5 flex items-center gap-5 shadow-inner">
                             <div className="flex items-center gap-2">
                                 <PlayPauseIcon className="w-4 h-4 text-red-400 opacity-60" />
-                                <span className="text-[10px] font-black text-text-primary">{stats.tvCount} <span className="text-text-secondary opacity-40">Shows</span></span>
+                                <span className="text-[11px] font-black text-text-primary">{stats.tvCount} <span className="text-text-secondary opacity-40">Shows</span></span>
                             </div>
                             <div className="w-px h-4 bg-white/5"></div>
                             <div className="flex items-center gap-2">
                                 <FilmIcon className="w-4 h-4 text-blue-400 opacity-60" />
-                                <span className="text-[10px] font-black text-text-primary">{stats.movieCount} <span className="text-text-secondary opacity-40">Movies</span></span>
+                                <span className="text-[11px] font-black text-text-primary">{stats.movieCount} <span className="text-text-secondary opacity-40">Movies</span></span>
                             </div>
                         </div>
-                        <button onClick={() => onEdit(list)} className="p-3 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-6">Edit Meta</button>
+                        <button onClick={() => onEdit(list)} className="p-3.5 bg-bg-secondary/40 rounded-2xl text-primary-accent hover:brightness-125 transition-all border border-white/5 text-[10px] font-black uppercase tracking-widest px-8 shadow-xl">Manage Meta</button>
                         {!isSystemList && (
-                            <button onClick={() => onDelete(list.id)} className="p-3 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-6">Delete</button>
+                            <button onClick={() => onDelete(list.id)} className="p-3.5 bg-red-500/10 rounded-2xl text-red-400 hover:bg-red-500/20 transition-all border border-red-500/10 text-[10px] font-black uppercase tracking-widest px-8 shadow-xl">Purge</button>
                         )}
                     </div>
                 </header>
             </div>
 
-            {/* Local Search and Filter Section */}
+            {/* Filter Controls */}
             <section className="space-y-6 px-4">
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                     <div className="relative flex-grow w-full">
                         <input
                             type="text"
-                            placeholder={`Search items in ${list.name}...`}
+                            placeholder={`Search registry for items in ${list.name}...`}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-bg-secondary/40 border border-white/5 rounded-2xl font-black uppercase text-xs focus:border-primary-accent focus:outline-none shadow-xl"
+                            className="w-full pl-12 pr-4 py-4 bg-bg-secondary/40 border border-white/5 rounded-[1.5rem] font-black uppercase text-xs focus:border-primary-accent focus:outline-none shadow-2xl"
                         />
                         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary" />
                     </div>
                     <button 
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl transition-all border ${showFilters ? 'bg-primary-accent text-on-accent shadow-lg border-transparent' : 'bg-bg-secondary/40 text-text-secondary hover:text-text-primary border-white/5 shadow-xl'}`}
+                        className={`flex items-center justify-center space-x-3 px-8 py-4 rounded-[1.5rem] transition-all border ${showFilters ? 'bg-primary-accent text-on-accent shadow-[0_15px_30px_-12px_rgba(var(--color-accent-primary-rgb),0.4)] border-transparent' : 'bg-bg-secondary/40 text-text-secondary hover:text-text-primary border-white/5 shadow-xl'}`}
                     >
                         <FilterIcon className="w-5 h-5" />
                         <span className="text-xs font-black uppercase tracking-widest">Filters</span>
@@ -167,36 +171,44 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                 </div>
 
                 {showFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6 bg-bg-secondary/20 rounded-3xl border border-white/5 animate-fade-in shadow-inner">
-                        <div className="relative">
-                            <select 
-                                value={typeFilter}
-                                onChange={e => setTypeFilter(e.target.value as any)}
-                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            >
-                                <option value="all">All Media Types</option>
-                                <option value="movie">Movies Only</option>
-                                <option value="tv">TV Shows Only</option>
-                            </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none opacity-40" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-8 bg-bg-secondary/20 rounded-[2.5rem] border border-white/5 animate-fade-in shadow-inner">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-primary-accent ml-1">Media Archive</label>
+                            <div className="relative">
+                                <select 
+                                    value={typeFilter}
+                                    onChange={e => setTypeFilter(e.target.value as any)}
+                                    className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase text-text-primary focus:outline-none shadow-md"
+                                >
+                                    <option value="all">All Content</option>
+                                    <option value="movie">Films Only</option>
+                                    <option value="tv">Series Only</option>
+                                </select>
+                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none opacity-40" />
+                            </div>
                         </div>
-                        <div className="relative">
-                            <select 
-                                value={genreFilter}
-                                onChange={e => setGenreFilter(e.target.value)}
-                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase text-text-primary focus:outline-none shadow-md"
-                            >
-                                <option value="">All Genres</option>
-                                {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name as string}</option>)}
-                            </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none opacity-40" />
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-primary-accent ml-1">Genre Affinity</label>
+                            <div className="relative">
+                                <select 
+                                    value={genreFilter}
+                                    onChange={e => setGenreFilter(e.target.value)}
+                                    className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase text-text-primary focus:outline-none shadow-md"
+                                >
+                                    <option value="">All Tags</option>
+                                    {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name as string}</option>)}
+                                </select>
+                                <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none opacity-40" />
+                            </div>
                         </div>
-                        <button 
-                            onClick={() => { setSearch(''); setTypeFilter('all'); setGenreFilter(''); }}
-                            className="px-6 py-3 bg-bg-primary text-text-secondary hover:text-red-400 transition-colors text-[10px] font-black uppercase tracking-widest rounded-xl shadow-md border border-white/5"
-                        >
-                            Reset Results
-                        </button>
+                        <div className="flex items-end">
+                            <button 
+                                onClick={() => { setSearch(''); setTypeFilter('all'); setGenreFilter(''); }}
+                                className="w-full py-3 bg-bg-primary text-text-secondary hover:text-red-400 transition-colors text-[10px] font-black uppercase tracking-widest rounded-xl shadow-md border border-white/5"
+                            >
+                                Reset Calibration
+                            </button>
+                        </div>
                     </div>
                 )}
             </section>
@@ -206,7 +218,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                     <ListGrid items={filteredItems} onSelect={onSelectShow} listId={list.id} onRemoveItem={onRemoveItem} />
                 ) : (
                     <div className="py-40 text-center bg-bg-secondary/10 rounded-[3rem] border-4 border-dashed border-white/5">
-                        <p className="text-xl font-black text-text-secondary/30 uppercase tracking-[0.2em]">No results found in this collection</p>
+                        <p className="text-xl font-black text-text-secondary/30 uppercase tracking-[0.2em]">No registry matches found in this sector</p>
                     </div>
                 )}
             </div>

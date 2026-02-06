@@ -58,7 +58,7 @@ const ListsWidget: React.FC<ListsWidgetProps> = ({ watching, planToWatch, custom
 
     return (
         <div className="bg-card-gradient rounded-[1.5rem] shadow-xl p-6 border border-white/5">
-            <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter mb-6">Collections</h3>
+            <h3 className="text-xl font-black text-text-primary uppercase tracking-tighter mb-6">Custom Lists</h3>
             <div className="space-y-8">
                 <ListPreview title="Currently Watching" items={watching} />
                 <ListPreview title="Plan to Watch" items={planToWatch} />

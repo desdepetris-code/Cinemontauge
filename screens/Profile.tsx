@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote } from '../types';
+import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote, PendingRecommendationCheck } from '../types';
 import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, BadgeIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
@@ -23,9 +23,11 @@ import WeeklyPicksScreen from './WeeklyPicksScreen';
 import ProgressScreen from './ProgressScreen';
 import UpdatesScreen from './UpdatesScreen';
 import OngoingShowsScreen from './OngoingShowsScreen';
+import AirtimeManagement from './AirtimeManagement';
 import { PLACEHOLDER_PROFILE } from '../constants';
 import Carousel from '../components/Carousel';
 import { supabase } from '../services/supabaseClient';
+import { confirmationService } from '../services/confirmationService';
 
 interface User {
   id: string;
@@ -46,20 +48,30 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
         setIsUploading(true);
         try {
             const fileExt = file.name.split('.').pop();
-            const filePath = `${userId}/avatar.${fileExt}`;
+            const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
             const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
             if (uploadError) throw uploadError;
             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
             setUrl(publicUrl);
-        } catch (error: any) { alert('Upload failed: ' + error.message); } finally { setIsUploading(false); }
+            // Auto-save on successful upload
+            onSave(publicUrl);
+            confirmationService.show("Avatar uploaded to registry.");
+            onClose();
+        } catch (error: any) { 
+            console.error("Upload failed:", error);
+            alert('Upload failed: ' + error.message); 
+        } finally { 
+            setIsUploading(false); 
+        }
     };
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[250] p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-6 right-6 p-2 text-text-secondary hover:text-text-primary"><XMarkIcon className="w-5 h-5" /></button>
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter">Update Avatar</h2>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-2 opacity-60">Visual Identity Registry</p>
                 </div>
                 <div className="flex justify-center mb-8">
                     <div className="relative">
@@ -67,12 +79,20 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
                         {isUploading && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center"><ArrowPathIcon className="w-8 h-8 text-white animate-spin" /></div>}
                     </div>
                 </div>
-                <input type="text" placeholder="Direct Image Link" value={url} onChange={e => setUrl(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary border border-white/10 mb-4" />
-                <label className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 cursor-pointer mb-6">
-                    <CloudArrowUpIcon className="w-5 h-5" /> <span>Upload Local File</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                </label>
-                <button onClick={() => { onSave(url || null); onClose(); }} className="w-full py-5 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs">Save Avatar</button>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Direct Image URL</label>
+                        <input type="text" placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary border border-white/10 focus:border-primary-accent outline-none" />
+                    </div>
+                    <label className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 cursor-pointer hover:border-primary-accent transition-all shadow-inner">
+                        <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" /> <span className="text-xs font-black uppercase tracking-widest">Upload Local File</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                    </label>
+                </div>
+                <div className="mt-8 flex flex-col gap-2">
+                    <button onClick={() => { onSave(url || null); onClose(); }} className="w-full py-5 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-transform">Save Avatar</button>
+                    <button onClick={onClose} className="w-full py-2 text-[9px] font-black text-text-secondary uppercase tracking-widest hover:text-text-primary transition-colors">Cancel</button>
+                </div>
             </div>
         </div>
     );
@@ -157,20 +177,26 @@ interface ProfileProps {
   isFollowerOfProfile?: boolean;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   favoriteEpisodes: FavoriteEpisodes;
+  setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
+  setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, onTabNavigate, viewerId, isFollowerOfProfile, notifications, preferences, onMarkAllRead, onMarkOneRead, onDeleteNotification, onSelectUser } = props;
+  const { userData, genres, onSelectShow, initialTab, initialLibraryStatus, currentUser, onLogout, profilePictureUrl, setProfilePictureUrl, follows, privacySettings, setPrivacySettings, levelInfo, viewerId, isFollowerOfProfile, notifications, preferences, onMarkAllRead, onMarkOneRead, onDeleteNotification, onSelectUser } = props;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab || 'overview');
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
-  const [followModalState, setFollowModalState] = useState<{isOpen: boolean, title: string, userIds: string[]}>({isOpen: false, title: '', userIds: []});
   
   const stats = useCalculatedStats(userData);
   const { badges } = useAchievements(userData);
 
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
+
+  const handleTabNavigate = (tabId: string) => {
+      setActiveTab(tabId as ProfileTab);
+      window.scrollTo(0, 0);
+  };
 
   const auraStyle = useMemo(() => {
     if (badges.length === 0) return '';
@@ -216,7 +242,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
     { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon },
     { id: 'library', label: 'Library', icon: CabinetIcon },
     { id: 'achievements', label: 'Main Achievements', icon: BadgeIcon },
-    { id: 'lists', label: 'Collections', icon: TagIcon },
+    { id: 'lists', label: 'Custom Lists', icon: TagIcon },
     { id: 'seasonLog', label: 'Season Logs', icon: ScrollIcon },
     { id: 'journal', label: 'Journal', icon: QuillIcon },
     { id: 'activity', label: 'Social Feed', icon: UserGroupIcon },
@@ -254,8 +280,9 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
       case 'imports': return <ImportsScreen userData={userData} onImportCompleted={props.onImportCompleted} onTraktImportCompleted={props.onTraktImportCompleted} onTmdbImportCompleted={props.onTmdbImportCompleted} onJsonImportCompleted={props.onJsonImportCompleted} />;
-      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={props.baseThemeId} onTabNavigate={onTabNavigate} />;
+      case 'settings': return <Settings {...props} userLevel={levelInfo.level} baseThemeId={props.baseThemeId} onTabNavigate={handleTabNavigate} />;
       case 'weeklyPicks': return <WeeklyPicksScreen userData={userData} onSelectShow={onSelectShow} onRemovePick={props.onToggleWeeklyFavorite} onNominate={props.onOpenNominateModal} />;
+      case 'airtime_management': return <AirtimeManagement onBack={() => setActiveTab('settings')} userData={userData} setPendingRecommendationChecks={props.setPendingRecommendationChecks} setFailedRecommendationReports={props.setFailedRecommendationReports} />;
       default: return null;
     }
   };

@@ -17,7 +17,6 @@ interface NewlyPopularEpisodesProps {
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
-  // --- PICK PROPS ---
   onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
 }
 
@@ -59,9 +58,13 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({
     }, []);
 
     const handleOpenDetail = async (item: NewlyPopularEpisode) => {
+        // Instant update: Set selectedItem immediately to trigger modal mount
         setSelectedItem(item);
         setIsFetchingDetails(true);
+        setExtraDetails(null); // Clear previous details to avoid stale data flashing
+
         try {
+            // Background fetch for high-fidelity data
             const [show, season] = await Promise.all([
                 getMediaDetails(item.showInfo.id, 'tv'),
                 getSeasonDetails(item.showInfo.id, item.episode.season_number)
@@ -69,7 +72,7 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({
             setExtraDetails({ show, season });
         } catch (error) {
             console.error("Failed to fetch episode popup details", error);
-            setSelectedItem(null);
+            // We don't close the modal on error because we have enough partial data to show the basics
         } finally {
             setIsFetchingDetails(false);
         }
@@ -163,14 +166,21 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({
                 </div>
             </Carousel>
 
-            {/* Episode Pop-Up Modal */}
-            {selectedItem && extraDetails && (
+            {/* Episode Pop-Up Modal - Instant Render with selectedItem */}
+            {selectedItem && (
                 <EpisodeDetailModal 
                     isOpen={!!selectedItem}
                     onClose={handleCloseDetail}
                     episode={selectedItem.episode}
-                    showDetails={extraDetails.show}
-                    seasonDetails={extraDetails.season}
+                    // Fallback to showInfo metadata if full extraDetails aren't loaded yet
+                    showDetails={extraDetails?.show || ({ 
+                        id: selectedItem.showInfo.id, 
+                        name: selectedItem.showInfo.title, 
+                        poster_path: selectedItem.showInfo.poster_path, 
+                        media_type: 'tv',
+                        genres: [] 
+                    } as any)}
+                    seasonDetails={extraDetails?.season || ({ episodes: [selectedItem.episode] } as any)}
                     isWatched={isWatched}
                     onToggleWatched={handleToggleWatchedInModal}
                     onOpenJournal={() => {}} 
@@ -199,12 +209,11 @@ const NewlyPopularEpisodes: React.FC<NewlyPopularEpisodesProps> = ({
                 />
             )}
             
-            {isFetchingDetails && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[210] flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-primary-accent border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-xs font-black uppercase tracking-widest text-white animate-pulse">Syncing Episode Archive...</p>
-                    </div>
+            {/* Soft fetching indicator overlay (optional, but good UX for the 'lazy load' part) */}
+            {isFetchingDetails && selectedItem && (
+                <div className="fixed top-24 right-8 z-[300] bg-primary-accent/90 text-on-accent px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in border border-white/20">
+                    <div className="w-3 h-3 border-2 border-on-accent border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">Updating Archive...</p>
                 </div>
             )}
         </div>

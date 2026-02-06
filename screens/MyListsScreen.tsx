@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserData, CustomList, CustomListItem, AppPreferences, ListVisibility } from '../types';
 import ListCard from '../components/ListCard';
@@ -40,7 +39,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[200] p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-6">{listToEdit ? 'Edit Collection' : 'New Collection'}</h2>
+                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-6">{listToEdit ? 'Edit Custom List' : 'New Custom List'}</h2>
                 
                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2">
                     <div className="space-y-1">
@@ -50,7 +49,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 ml-2">Description (Optional)</label>
-                        <textarea placeholder="Tell the story of this collection..." value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-medium leading-relaxed" />
+                        <textarea placeholder="Tell the story of this list..." value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 p-4 bg-bg-secondary rounded-2xl text-text-primary focus:outline-none border border-white/5 shadow-inner font-medium leading-relaxed" />
                     </div>
                     
                     <div className="space-y-3">
@@ -78,7 +77,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
 
                 <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 flex-shrink-0">
                     <button onClick={onClose} className="px-8 py-3 rounded-full text-text-secondary font-black uppercase tracking-widest text-xs hover:text-text-primary transition-colors">Cancel</button>
-                    <button onClick={handleSave} className="px-10 py-3 rounded-full text-on-accent bg-accent-gradient font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-105 transition-transform">Save Collection</button>
+                    <button onClick={handleSave} className="px-10 py-3 rounded-full text-on-accent bg-accent-gradient font-black uppercase tracking-[0.2em] text-xs shadow-xl hover:scale-105 transition-transform">Save List</button>
                 </div>
             </div>
         </div>
@@ -107,13 +106,13 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
   const handleCreateList = (name: string, description: string, visibility: ListVisibility) => {
     const newList: CustomList = { id: `cl-${Date.now()}`, name, description, items: [], createdAt: new Date().toISOString(), visibility, likes: [] };
     setCustomLists(prev => [newList, ...prev]);
-    confirmationService.show(`Collection "${name}" added.`);
+    confirmationService.show(`Custom List "${name}" added.`);
   };
     
   const handleEditList = (name: string, description: string, visibility: ListVisibility) => {
     if (!listToEdit) return;
     setCustomLists(prev => prev.map(l => l.id === listToEdit.id ? { ...l, name, description, visibility } : l));
-    confirmationService.show(`Collection details updated.`);
+    confirmationService.show(`List details updated.`);
   };
 
   const handleUpdateList = (updatedList: CustomList) => {
@@ -123,13 +122,13 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
   const handleDeleteList = (listId: string) => {
     const mandatoryIds = ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'];
     if (mandatoryIds.includes(listId)) {
-        confirmationService.show("Mandatory collections cannot be removed from the registry.");
+        confirmationService.show("Mandatory lists cannot be removed from the registry.");
         return;
     }
-    if (window.confirm("ARE YOU SURE?\n\nDeleting this collection is permanent and cannot be undone.")) {
+    if (window.confirm("ARE YOU SURE?\n\nDeleting this list is permanent and cannot be undone.")) {
         setCustomLists(prev => prev.filter(l => l.id !== listId));
         setActiveListId(null);
-        confirmationService.show("Collection removed.");
+        confirmationService.show("List removed.");
     }
   };
 
@@ -164,11 +163,11 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
         
         <header className="flex flex-col sm:flex-row justify-between items-center mb-12 gap-6">
             <div>
-                <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Collections</h1>
+                <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">Custom Lists</h1>
                 <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-2 opacity-60">Curated libraries of your cinematic legacy</p>
             </div>
              <button onClick={() => { setListToEdit(null); setIsModalOpen(true); }} className="flex items-center px-10 py-4 text-xs font-black uppercase tracking-[0.2em] rounded-full bg-accent-gradient text-on-accent hover:opacity-90 transition-all shadow-2xl transform hover:scale-105 active:scale-95">
-                <PlusIcon className="w-5 h-5 mr-2" /> New Collection
+                <PlusIcon className="w-5 h-5 mr-2" /> New Custom List
             </button>
         </header>
 
@@ -186,7 +185,7 @@ const MyListsScreen: React.FC<MyListsScreenProps> = ({ userData, onSelectShow, s
             <div className="text-center py-40 bg-bg-secondary/10 rounded-[3rem] border-4 border-dashed border-white/5 flex flex-col items-center justify-center">
                 <ListBulletIcon className="w-20 h-20 text-text-secondary/20 mb-8" />
                 <h2 className="text-2xl font-black text-text-primary uppercase tracking-widest">Library Empty</h2>
-                <p className="mt-2 text-sm text-text-secondary max-w-sm mx-auto uppercase tracking-widest font-bold italic opacity-60 leading-relaxed">Your collections are the chapters of your viewing journey. Create your first list to start organizing.</p>
+                <p className="mt-2 text-sm text-text-secondary max-w-sm mx-auto uppercase tracking-widest font-bold italic opacity-60 leading-relaxed">Your custom lists are the chapters of your viewing journey. Create your first list to start organizing.</p>
                 <button 
                     onClick={() => { setListToEdit(null); setIsModalOpen(true); }}
                     className="mt-10 px-10 py-4 bg-primary-accent/10 border border-primary-accent/20 text-primary-accent font-black text-xs uppercase tracking-[0.2em] rounded-full hover:bg-primary-accent/20 transition-all"

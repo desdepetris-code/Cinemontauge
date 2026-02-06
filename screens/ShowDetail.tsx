@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
-import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification } from '../types';
+import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, DeletedNote, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
 import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
@@ -48,6 +49,7 @@ interface ShowDetailProps {
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   customImagePaths: CustomImagePaths;
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
+  onRemoveCustomImage: (mediaId: number, url: string) => void;
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   weeklyFavorites: WeeklyPick[];
@@ -61,8 +63,8 @@ interface ShowDetailProps {
   onMarkMediaAsWatched: (item: any, date?: string) => void;
   onUnmarkMovieWatched: (mediaId: number, deleteLive?: boolean) => void;
   onMarkSeasonWatched: (showId: number, seasonNumber: number, showInfo: TrackedItem) => void;
-  onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   onMarkPreviousEpisodesWatched: (showId: number, seasonNumber: number, lastEpisodeNumber: number) => void;
+  onUnmarkSeasonWatched: (showId: number, seasonNumber: number) => void;
   favoriteEpisodes: FavoriteEpisodes;
   onSelectPerson: (personId: number) => void;
   onSelectShowInModal: (id: number, media_type: 'tv' | 'movie') => void;
@@ -94,12 +96,12 @@ interface ShowDetailProps {
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onAuthClick: () => void;
   onNoteDeleted: (note: Note, mediaTitle: string, context: string) => void;
-  onDiscardRequest: (item: DeletedHistoryItem) => void;
-  onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
-  onClearMediaHistory: (mediaId: number, mediaType: 'tv' | 'movie') => void;
-  reminders: Reminder[];
-  onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
-  episodeRatings: EpisodeRatings;
+  onRestoreNote: (note: DeletedNote) => void;
+  onTabNavigate?: (tabId: string) => void;
+  viewerId?: string; 
+  isFollowerOfProfile?: boolean;
+  setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
+  setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 type TabType = 'seasons' | 'specials' | 'info' | 'cast' | 'discussion' | 'recs' | 'customize' | 'achievements';
@@ -133,8 +135,9 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
-    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onNoteDeleted, onDiscardRequest,
-    onSetCustomEpisodeImage, onSetCustomImage, reminders, onToggleReminder
+    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onNoteDeleted,
+    onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, reminders, onToggleReminder,
+    pendingRecommendationChecks, setPendingRecommendationChecks
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -513,7 +516,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={() => {}} onDiscard={() => {}} showDetails={details} />
       <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} onSave={handleCommentSave} />
       
-      <div className="relative h-[40vh] md:h-[60vh] overflow-hidden">
+      <div className="relative w-full aspect-video md:aspect-[21/9] md:h-auto overflow-hidden">
         <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent"></div>
         <button onClick={onBack} className="absolute top-6 left-6 p-3 bg-black/60 backdrop-blur-sm rounded-full text-white hover:bg-bg-secondary transition-all z-20 shadow-2xl border border-white/10">
@@ -681,11 +684,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 </div>
               )}
               {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
-              {activeTab === 'recs' && <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} />}
+              {activeTab === 'recs' && <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} onRefresh={handleRefresh} />}
               {activeTab === 'discussion' && (
-                  <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={setActiveCommentThread} follows={follows} />
+                  <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
               )}
-              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} />}
+              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} />}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>
           </div>

@@ -42,6 +42,16 @@ export interface TrackedItem {
   addedAt?: string;
 }
 
+export interface PendingRecommendationCheck {
+  id: number;
+  title: string;
+  mediaType: 'tv' | 'movie';
+  firstNoticedDate: string;
+  lastCheckedDate: string;
+  retryCount: number;
+  poster_path: string | null;
+}
+
 export interface TmdbMedia {
   id: number;
   title?: string;
@@ -429,6 +439,8 @@ export interface UserData {
   timezone: string;
   timeFormat: '12h' | '24h';
   blockedUserIds: string[];
+  pendingRecommendationChecks: PendingRecommendationCheck[];
+  failedRecommendationReports: TrackedItem[];
 }
 
 export interface CalculatedStats {

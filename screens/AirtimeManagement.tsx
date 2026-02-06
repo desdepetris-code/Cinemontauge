@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings } from '../types';
-import { getMediaDetails, getSeasonDetails, discoverMediaPaginated } from '../services/tmdbService';
+import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings, PendingRecommendationCheck } from '../types';
+import { getMediaDetails, getSeasonDetails, discoverMediaPaginated, getTrending } from '../services/tmdbService';
 import { generateAirtimePDF, generateSupabaseSpecPDF, generateSummaryReportPDF } from '../utils/pdfExportUtils';
-import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon, ListBulletIcon } from '../components/Icons';
+import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon, ListBulletIcon, TrophyIcon, DocumentTextIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
@@ -14,6 +14,8 @@ import Logo from '../components/Logo';
 interface AirtimeManagementProps {
     onBack: () => void;
     userData: UserData;
+    setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
+    setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 const MASTER_PIN = "999236855421340";
@@ -22,17 +24,14 @@ const DEFAULT_MATCH_LIMIT = 100;
 /**
  * Owner portal for registry truth database auditing and system management.
  */
-const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData }) => {
+const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData, setPendingRecommendationChecks, setFailedRecommendationReports }) => {
     const [pin, setPin] = useState('');
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [pinError, setPinError] = useState(false);
-    const [isGenerating, setIsGenerating] = useState<ReportType | 'library_dump' | null>(null);
+    const [isGenerating, setIsGenerating] = useState<ReportType | 'library_dump' | 'recommendation_audit' | 'rec_gap_report' | 'cast_crew_audit' | null>(null);
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, matches: 0 });
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
     const [downloadedPdfs, setDownloadedPdfs] = useLocalStorage<DownloadedPdf[]>('cinemontauge_reports', []);
-
-    // Brand Asset Capture
-    const logoRef = useRef<SVGSVGElement>(null);
 
     const [reportOffsets, setReportOffsets] = useLocalStorage<Record<string, any>>('cinemontauge_report_offsets', {
         ongoing: { page: 1, index: 0, part: 1, mediaType: 'tv' },
@@ -72,11 +71,224 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
         setIsGenerating(null);
     };
 
-    const deviceCount = useMemo(() => {
-        const globalRegistryStr = localStorage.getItem('cinemontauge_global_device_tokens');
-        const globalRegistry = globalRegistryStr ? JSON.parse(globalRegistryStr) : [];
-        return globalRegistry.length;
-    }, []);
+    /**
+     * DEDICATED AUDIT: Cast & Crew Missing Images
+     * Generates a report of any individual in the credits registry that is using a placeholder.
+     */
+    const runCastCrewAudit = async () => {
+        setIsGenerating('cast_crew_audit');
+        setScanProgress({ current: 0, total: 0, matches: 0 });
+        
+        const rows: { title: string; status: string; details: string }[] = [];
+        const processedPersonIds = new Set<number>();
+        
+        // Stage 1: Identify Media to Scan (Library + Trending)
+        const libraryItems = [...userData.watching, ...userData.completed].slice(0, 15);
+        const trendingItems = await getTrending('tv');
+        const scanPool = [...libraryItems, ...trendingItems.slice(0, 15)];
+        
+        const totalItems = scanPool.length;
+        let matchesCount = 0;
+
+        try {
+            for (let i = 0; i < totalItems; i++) {
+                const media = scanPool[i];
+                setScanProgress(prev => ({ ...prev, current: i + 1, total: totalItems }));
+                
+                // Fetch Credits
+                const details = await getMediaDetails(media.id, media.media_type as 'tv' | 'movie').catch(() => null);
+                if (!details || !details.credits) continue;
+
+                const allPeople = [...(details.credits.cast || []), ...(details.credits.crew || [])];
+                const mediaTitle = details.title || details.name || 'Untitled';
+
+                for (const person of allPeople) {
+                    // Rule: Only scan new unique people
+                    if (processedPersonIds.has(person.id)) continue;
+                    processedPersonIds.add(person.id);
+
+                    // Check for missing image
+                    if (!person.profile_path) {
+                        const role = (person as any).character || (person as any).job || 'Talent';
+                        rows.push({
+                            title: person.name,
+                            status: `ID: ${person.id}`,
+                            details: `Media: ${mediaTitle} • Role: ${role}`
+                        });
+                        matchesCount++;
+                        setScanProgress(prev => ({ ...prev, matches: matchesCount }));
+                    }
+
+                    if (matchesCount >= 200) break; // Limit individual PDF size
+                }
+                if (matchesCount >= 200) break;
+                
+                // Rate Limit protection
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            if (rows.length > 0) {
+                const reportTitle = "CineMontauge Cast & Crew Placeholder Registry";
+                const { blob, fileName } = generateSummaryReportPDF(reportTitle, rows, {
+                    totalScanned: processedPersonIds.size,
+                    matchesFound: rows.length,
+                    criteria: "Missing or Placeholder profile images in credits sector.",
+                    partNumber: 1
+                });
+
+                // Download
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                // Save record
+                setDownloadedPdfs(prev => [{
+                    id: `rep-cast-${Date.now()}`,
+                    title: reportTitle,
+                    timestamp: new Date().toISOString(),
+                    part: 1,
+                    rows: []
+                }, ...prev]);
+
+                confirmationService.show(`Cast & Crew audit complete. Found ${rows.length} placeholders.`);
+            } else {
+                confirmationService.show("Registry health check: All scanned talent have valid imagery.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Talent Registry Scan failed.");
+        } finally {
+            setIsGenerating(null);
+        }
+    };
+
+    const runRecommendationAudit = async () => {
+        setIsGenerating('recommendation_audit');
+        const pending = [...userData.pendingRecommendationChecks];
+        const failed = [...userData.failedRecommendationReports];
+        const now = new Date();
+        
+        let checkedCount = 0;
+        const totalToCheck = pending.length;
+        
+        const newPending: PendingRecommendationCheck[] = [];
+        const newlyFailed: TrackedItem[] = [];
+
+        for (const check of pending) {
+            checkedCount++;
+            setScanProgress({ current: checkedCount, total: totalToCheck, matches: failed.length });
+            
+            const lastCheckDate = new Date(check.lastCheckedDate);
+            const diffInHours = (now.getTime() - lastCheckDate.getTime()) / (1000 * 60 * 60);
+            
+            if (diffInHours < 24) {
+                newPending.push(check);
+                continue;
+            }
+
+            try {
+                const details = await getMediaDetails(check.id, check.mediaType);
+                const hasRecs = details.recommendations?.results && details.recommendations.results.length > 0;
+                
+                if (hasRecs) {
+                    continue; 
+                } else {
+                    if (check.retryCount >= 10) {
+                        newlyFailed.push({
+                            id: check.id,
+                            title: check.title,
+                            media_type: check.mediaType,
+                            poster_path: check.poster_path,
+                            addedAt: new Date().toISOString()
+                        });
+                    } else {
+                        newPending.push({
+                            ...check,
+                            lastCheckedDate: now.toISOString(),
+                            retryCount: check.retryCount + 1
+                        });
+                    }
+                }
+            } catch (e) {
+                newPending.push({ ...check, lastCheckedDate: now.toISOString() });
+            }
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        setPendingRecommendationChecks(newPending);
+        if (newlyFailed.length > 0) {
+            setFailedRecommendationReports(prev => [...prev, ...newlyFailed]);
+        }
+        
+        setIsGenerating(null);
+        confirmationService.show(`Audit complete. ${newlyFailed.length} dead-ends found.`);
+    };
+
+    /**
+     * GENERATE THE SPECIFIC "movie and show detail pages without recommendations" PDF
+     */
+    const generateRecGapReport = async () => {
+        setIsGenerating('rec_gap_report');
+        
+        // 1. Gather all unique items with 0 recommendations
+        const deadEnds = userData.failedRecommendationReports;
+        const currentPending = userData.pendingRecommendationChecks;
+        
+        const combinedGaps = [
+            ...deadEnds.map(i => ({ ...i, note: 'DEAD END (Retried 10 days)' })),
+            ...currentPending.map(p => ({ id: p.id, title: p.title, media_type: p.mediaType, note: `PENDING (Day ${p.retryCount}/10)` }))
+        ];
+
+        if (combinedGaps.length === 0) {
+            confirmationService.show("Registry health check: No recommendation gaps found.");
+            setIsGenerating(null);
+            return;
+        }
+
+        const rows = combinedGaps.map(item => ({
+            title: item.title,
+            status: item.id.toString(), // ID column
+            details: `Registry Sector: ${item.media_type.toUpperCase()} • Status: ${item.note}`
+        }));
+
+        const title = "movie and show detail pages without recommendations";
+        const { blob, fileName } = generateSummaryReportPDF(
+            title, 
+            rows, 
+            {
+                totalScanned: combinedGaps.length,
+                matchesFound: rows.length,
+                criteria: "Missing TMDB Recommendations following airing/registry insertion.",
+                partNumber: 1
+            }
+        );
+
+        // Save locally in Owner Portal "Registry Reports"
+        const reportId = `rep-rec-${Date.now()}`;
+        setDownloadedPdfs(prev => [{
+            id: reportId,
+            title: title,
+            timestamp: new Date().toISOString(),
+            part: 1,
+            rows: [] 
+        }, ...prev]);
+
+        // Trigger browser download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        
+        setIsGenerating(null);
+        confirmationService.show("Gap report generated and saved to portal archives.");
+    };
 
     const runAuditReport = async (type: ReportType, label: string) => {
         setIsGenerating(type);
@@ -155,7 +367,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                         }));
                         break;
                     }
-                    if (totalScanned % 5 === 0) await new Promise(r => setTimeout(r, 50)); // Prevent lockout
+                    if (totalScanned % 5 === 0) await new Promise(r => setTimeout(r, 50)); 
                 }
                 if (matchesFound >= DEFAULT_MATCH_LIMIT) break;
                 currentPage++;
@@ -169,16 +381,14 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                     partNumber: offset.part
                 });
                 
-                // Upload to Supabase
                 await uploadAdminReport(fileName, blob);
                 
-                // Save locally for UI
                 setDownloadedPdfs(prev => [{
                     id: `rep-${Date.now()}`,
                     title: label,
                     timestamp: new Date().toISOString(),
                     part: offset.part,
-                    rows: [] // Don't store huge rows in localStorage
+                    rows: [] 
                 }, ...prev]);
 
                 setReportOffsets(prev => ({
@@ -257,6 +467,16 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
 
                          <button 
                             disabled={!!isGenerating}
+                            onClick={runCastCrewAudit}
+                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
+                         >
+                            <UsersIcon className="w-6 h-6 text-emerald-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Cast & Crew Audit</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Missing Profile Images</span>
+                         </button>
+
+                         <button 
+                            disabled={!!isGenerating}
                             onClick={() => runAuditReport('missing_airtime', 'Airdates Gap Analysis')}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
@@ -277,26 +497,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
 
                          <button 
                             disabled={!!isGenerating}
-                            onClick={() => runAuditReport('placeholder_people', 'Person Meta Audit')}
-                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
-                         >
-                            <UsersIcon className="w-6 h-6 text-teal-400 mb-4" />
-                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Person Images</span>
-                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Cast & Crew</span>
-                         </button>
-
-                         <button 
-                            disabled={!!isGenerating}
-                            onClick={() => runAuditReport('no_recommendations', 'Recommendation Gaps')}
-                            className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
-                         >
-                            <SparklesIcon className="w-6 h-6 text-purple-400 mb-4" />
-                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Recommendation Gap</span>
-                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Discovery Feed</span>
-                         </button>
-
-                         <button 
-                            disabled={!!isGenerating}
                             onClick={runFullLibraryDump}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
@@ -306,12 +506,48 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                          </button>
                     </div>
 
+                    <div className="pt-8 border-t border-white/5 space-y-6">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                            <SparklesIcon className="w-6 h-6 text-purple-400" />
+                            Recommendation Intelligence
+                        </h2>
+                        
+                        <div className="bg-bg-primary/40 rounded-3xl p-6 border border-white/5 flex flex-col sm:flex-row items-center gap-6">
+                            <div className="flex-grow">
+                                <p className="text-sm font-bold text-text-primary uppercase tracking-tight">Active Recommendation Monitoring</p>
+                                <p className="text-[10px] text-text-secondary font-medium mt-1 leading-relaxed">
+                                    Queue: <span className="text-primary-accent font-black">{userData.pendingRecommendationChecks.length} In Progress</span><br />
+                                    Dead-Ends: <span className="text-red-400 font-black">{userData.failedRecommendationReports.length} Confirmed</span>
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <button 
+                                    disabled={!!isGenerating || userData.pendingRecommendationChecks.length === 0}
+                                    onClick={runRecommendationAudit}
+                                    className="flex items-center gap-2 px-6 py-3 bg-bg-secondary text-text-primary rounded-2xl font-black uppercase text-[10px] tracking-widest border border-white/10 hover:border-primary-accent disabled:opacity-30"
+                                >
+                                    <ArrowPathIcon className={`w-4 h-4 ${isGenerating === 'recommendation_audit' ? 'animate-spin' : ''}`} />
+                                    Process Daily Cycle
+                                </button>
+                                <button 
+                                    disabled={!!isGenerating}
+                                    onClick={generateRecGapReport}
+                                    className="flex items-center gap-2 px-6 py-3 bg-accent-gradient text-on-accent rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-transform disabled:opacity-30"
+                                >
+                                    <DownloadIcon className="w-4 h-4" />
+                                    Registry Rec Audit (PDF)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {isGenerating && (
                         <div className="p-6 bg-bg-primary/60 rounded-2xl border border-primary-accent/20 animate-fade-in">
                             <p className="text-[10px] font-black uppercase text-primary-accent mb-3">Pipeline processing registry...</p>
                             <div className="w-full bg-bg-secondary rounded-full h-1.5 overflow-hidden">
                                 <div className="bg-accent-gradient h-full transition-all duration-300" style={{ width: `${scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 50}%` }}></div>
                             </div>
+                            <p className="text-[8px] font-black text-text-secondary/40 mt-2 uppercase tracking-widest">Target matches: {scanProgress.matches}</p>
                         </div>
                     )}
                 </div>
@@ -319,15 +555,38 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData 
                 <div className="space-y-8">
                     <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
                         <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
+                            <DocumentTextIcon className="w-6 h-6 text-primary-accent" />
+                            Registry Reports
+                        </h2>
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                            {downloadedPdfs.length > 0 ? downloadedPdfs.map(report => (
+                                <div key={report.id} className="p-4 bg-bg-secondary/40 rounded-2xl border border-white/5 group hover:border-primary-accent/30 transition-all">
+                                    <p className="text-[11px] font-black text-text-primary uppercase truncate mb-1">{report.title}</p>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[8px] font-bold text-text-secondary opacity-40 uppercase tracking-widest">{new Date(report.timestamp).toLocaleDateString()}</span>
+                                        <DownloadIcon className="w-3.5 h-3.5 text-primary-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-10 opacity-20">
+                                    <ArchiveBoxIcon className="w-10 h-10 mx-auto mb-2" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest">No local archives</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-card-gradient rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
+                        <h2 className="text-xl font-black text-text-primary uppercase tracking-widest flex items-center gap-3">
                             <InformationCircleIcon className="w-6 h-6 text-primary-accent" />
-                            System Blueprint
+                            Technical Ops
                         </h2>
                         <button 
                             onClick={generateSupabaseSpecPDF}
                             className="w-full flex items-center justify-center gap-4 py-5 bg-bg-secondary/40 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-text-primary hover:bg-bg-secondary transition-all"
                         >
                             <DownloadIcon className="w-5 h-5 text-primary-accent" />
-                            Export Technical Spec
+                            Export Blueprint
                         </button>
                     </div>
                 </div>
