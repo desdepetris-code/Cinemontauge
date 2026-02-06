@@ -19,6 +19,8 @@ import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import { getEnrichedMediaFromBackend } from '../services/backendService';
 import Top10Carousel from '../components/Top10Carousel';
 import { FilmIcon, TvIcon, TrophyIcon, SparklesIcon, MountainIcon } from '../components/Icons';
+import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
+import UpcomingMoviesCarousel from '../components/UpcomingMoviesCarousel';
 
 interface DashboardProps {
   userData: UserData;
@@ -88,22 +90,24 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
           
           {preferences.dashShowUpcoming && (
             <>
-              <div>
-                <SectionHeader title="Upcoming TV Premieres" icon={<TvIcon className="w-8 h-8 text-rose-500" />} />
-                <GenericCarousel 
-                    title="TV Premieres" 
-                    fetcher={() => discoverMedia('tv', { sortBy: 'popularity.desc', 'first_air_date.gte': new Date().toISOString().split('T')[0] })} 
-                    {...carouselProps} 
-                />
-              </div>
-              <div>
-                <SectionHeader title="Upcoming Movie Releases" icon={<FilmIcon className="w-8 h-8 text-sky-500" />} />
-                <GenericCarousel 
-                    title="Movie Releases" 
-                    fetcher={() => discoverMedia('movie', { sortBy: 'popularity.desc', 'primary_release_date.gte': new Date().toISOString().split('T')[0] })} 
-                    {...carouselProps} 
-                />
-              </div>
+              <UpcomingPremieresCarousel 
+                title="Upcoming TV Premieres"
+                onSelectShow={onSelectShow}
+                completed={userData.completed}
+                reminders={reminders}
+                onToggleReminder={onToggleReminder}
+                onUpdateLists={onUpdateLists}
+                onOpenAddToListModal={onOpenAddToListModal}
+              />
+              <UpcomingMoviesCarousel 
+                title="Upcoming Movie Releases"
+                onSelectShow={onSelectShow}
+                completed={userData.completed}
+                reminders={reminders}
+                onToggleReminder={onToggleReminder}
+                onUpdateLists={onUpdateLists}
+                onOpenAddToListModal={onOpenAddToListModal}
+              />
             </>
           )}
 
@@ -232,6 +236,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           onShortcutNavigate={onShortcutNavigate} 
           genres={genres} 
           reminders={reminders} 
+          /* // FIX: Corrected handleToggleReminder to onToggleReminder destructured from props */
           onToggleReminder={onToggleReminder} 
           onUpdateLists={onUpdateLists} 
           preferences={preferences} 
@@ -249,7 +254,10 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       
       {!isApiKeyMissing && (
         <section className="px-6">
-            <SectionHeader title="Registry Discoveries" icon={<SparklesIcon className="w-8 h-8 text-yellow-400" />} />
+            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-6 flex items-center gap-3">
+              <span role="img" aria-label="Sparkles" className="w-8 h-8 text-yellow-400">✨</span>
+              Registry Discoveries
+            </h2>
             <MyListSuggestions userData={userData} onSelectShow={onSelectShow} onOpenAddToListModal={onOpenAddToListModal} />
         </section>
       )}

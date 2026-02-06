@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { discoverMedia } from '../services/tmdbService';
-import { TmdbMedia, TrackedItem, Reminder, ReminderType, WatchStatus } from '../types';
+import { TmdbMedia, TrackedItem, Reminder, WatchStatus } from '../types';
 import Carousel from './Carousel';
 import PremiereCard from './PremiereCard';
+import { TvIcon } from './Icons';
 
 interface UpcomingPremieresCarouselProps {
   title: string;
@@ -15,7 +16,7 @@ interface UpcomingPremieresCarouselProps {
 }
 
 const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (props) => {
-    const { title, onSelectShow, completed, reminders, onToggleReminder, onUpdateLists, onOpenAddToListModal } = props;
+    const { title, onSelectShow, completed, reminders, onToggleReminder, onOpenAddToListModal } = props;
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -49,31 +50,29 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
 
     if (loading) {
         return (
-             <div className="mb-8">
-                <div className="h-8 w-3/4 bg-bg-secondary rounded-md mb-4 px-6"></div>
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 animate-pulse space-x-4 hide-scrollbar">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="w-72 flex-shrink-0">
-                             <div className="aspect-video bg-bg-secondary rounded-lg"></div>
-                             <div className="h-9 bg-bg-secondary rounded-md mt-2"></div>
-                        </div>
+             <div className="my-16 px-6">
+                <div className="h-10 w-48 bg-bg-secondary/40 rounded-md mb-8 animate-pulse"></div>
+                <div className="flex space-x-6 overflow-hidden">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="w-72 h-44 bg-bg-secondary/20 rounded-3xl animate-pulse flex-shrink-0"></div>
                     ))}
                 </div>
             </div>
         )
     }
 
-    if (media.length === 0) {
-        return null;
-    }
+    if (media.length === 0) return null;
 
     return (
-        <div className="my-8">
-            <div className="mb-4 px-6">
-                <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
+        <div className="my-16">
+            <div className="flex items-center gap-3 mb-8 px-6">
+                <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500 shadow-inner">
+                    <TvIcon className="w-8 h-8" />
+                </div>
+                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none">{title}</h2>
             </div>
             <Carousel>
-                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
+                <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-6 hide-scrollbar">
                     {media.map(item => {
                         const isCompleted = completed.some(c => c.id === item.id);
                         return (
@@ -88,7 +87,7 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
                             />
                         );
                     })}
-                    <div className="w-4 flex-shrink-0"></div>
+                    <div className="w-8 flex-shrink-0"></div>
                 </div>
             </Carousel>
         </div>
