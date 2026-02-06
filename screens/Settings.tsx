@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrashIcon, ChevronRightIcon, ArrowPathIcon, ChevronDownIcon, XMarkIcon, PencilSquareIcon, EnvelopeIcon, ListBulletIcon, Squares2X2Icon } from '../components/Icons';
+import { TrashIcon, ChevronRightIcon, ArrowPathIcon, ChevronDownIcon, XMarkIcon, PencilSquareIcon, EnvelopeIcon, ListBulletIcon, Squares2X2Icon, SparklesIcon } from '../components/Icons';
 import FeedbackForm from '../components/FeedbackForm';
 import Legal from './Legal';
 import { NotificationSettings, WatchProgress, HistoryItem, EpisodeRatings, FavoriteEpisodes, TrackedItem, PrivacySettings, UserData, ProfileTheme, SeasonRatings, ShortcutSettings, NavSettings, ProfileTab, AppPreferences } from '../types';
@@ -111,10 +111,12 @@ interface SettingsProps {
     setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
     onTabNavigate?: (tabId: string) => void;
     baseThemeId: string;
+    autoHolidayThemesEnabled: boolean;
+    setAutoHolidayThemesEnabled: (enabled: boolean) => void;
 }
 
 export const Settings: React.FC<SettingsProps> = (props) => {
-  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, baseThemeId } = props;
+  const { onFeedbackSubmit, notificationSettings, setNotificationSettings, privacySettings, setPrivacySettings, setHistory, setWatchProgress, setEpisodeRatings, setFavoriteEpisodes, setTheme, onLogout, onUpdatePassword, onUpdateProfile, onForgotPasswordRequest, onForgotPasswordReset, currentUser, setCompleted, userData, timezone, setTimezone, onRemoveDuplicateHistory, profileTheme, setProfileTheme, textSize, setTextSize, userLevel, timeFormat, setTimeFormat, showRatings, setShowRatings, setSeasonRatings, pin, setPin, shortcutSettings, setShortcutSettings, navSettings, setNavSettings, preferences, setPreferences, onTabNavigate, baseThemeId, autoHolidayThemesEnabled, setAutoHolidayThemesEnabled } = props;
   const [activeView, setActiveView] = useState<'settings' | 'legal'>('settings');
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
@@ -202,6 +204,12 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </SettingsRow>
             <SettingsRow title="Enable Spoiler Shield" subtitle="Helpful when episodes are marked out of order.">
                 <ToggleSwitch enabled={preferences.enableSpoilerShield} onChange={() => handleTogglePreference('enableSpoilerShield')} />
+            </SettingsRow>
+            <SettingsRow title="Auto-Holiday Themes" subtitle="Automatically transform the interface for seasonal events.">
+                <div className="flex items-center gap-2">
+                    <SparklesIcon className={`w-4 h-4 transition-colors ${autoHolidayThemesEnabled ? 'text-primary-accent' : 'text-text-secondary/30'}`} />
+                    <ToggleSwitch enabled={autoHolidayThemesEnabled} onChange={setAutoHolidayThemesEnabled} />
+                </div>
             </SettingsRow>
         </SettingsCard>
 

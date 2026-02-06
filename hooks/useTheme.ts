@@ -30,13 +30,45 @@ const mixColors = (c1: string, c2: string, weight: number) => {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
-export function useTheme(): [Theme, (themeId: string) => void, string] {
-  const [themeId, setThemeId] = useLocalStorage<string>('themeId', 'noir-electric');
+/**
+ * Checks if a date falls within 14 days before a holiday, up until the day of.
+ */
+export const isHolidayActive = (holidayDate: { month: number; day: number }) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Create the holiday date for the current year
+    const holiday = new Date(currentYear, holidayDate.month, holidayDate.day);
+    
+    // Window start: 14 days before
+    const start = new Date(holiday);
+    start.setDate(holiday.getDate() - 14);
+    
+    // Window end: end of the holiday day (1 day after holiday at midnight)
+    const end = new Date(holiday);
+    end.setDate(holiday.getDate() + 1);
+
+    return now >= start && now < end;
+};
+
+export function useTheme(): [Theme, (themeId: string) => void, string, boolean, (enabled: boolean) => void] {
+  // preferredThemeId stores the user's manual selection
+  const [preferredThemeId, setPreferredThemeId] = useLocalStorage<string>('preferredThemeId', 'noir-electric');
+  // autoHolidayThemesEnabled determines if the app should auto-switch
+  const [autoHolidayEnabled, setAutoHolidayEnabled] = useLocalStorage<boolean>('autoHolidayThemesEnabled', true);
+  
   const prevThemeIdRef = useRef<string | null>(null);
   
   const activeTheme = useMemo(() => {
-    return builtInThemes.find(t => t.id === themeId) || builtInThemes[0];
-  }, [themeId]);
+    // 1. If auto-holiday is enabled, look for an active holiday theme
+    if (autoHolidayEnabled) {
+        const holidayTheme = builtInThemes.find(t => t.holidayDate && isHolidayActive(t.holidayDate));
+        if (holidayTheme) return holidayTheme;
+    }
+
+    // 2. Otherwise return user preferred theme
+    return builtInThemes.find(t => t.id === preferredThemeId) || builtInThemes[0];
+  }, [preferredThemeId, autoHolidayEnabled]);
   
   useEffect(() => {
     const root = window.document.documentElement;
@@ -74,8 +106,13 @@ export function useTheme(): [Theme, (themeId: string) => void, string] {
   }, [activeTheme]);
 
   const setTheme = (newThemeId: string) => {
-    if (builtInThemes.some(t => t.id === newThemeId)) setThemeId(newThemeId);
+    if (builtInThemes.some(t => t.id === newThemeId)) {
+        setPreferredThemeId(newThemeId);
+        // If they manually select something during a holiday, we'll let it stick?
+        // Actually, the prompt implies "activated two weeks prior... disappear day after".
+        // To strictly follow that while allowing choice, we'll keep preferredThemeId as the base.
+    }
   };
 
-  return [activeTheme, setTheme, themeId];
+  return [activeTheme, setTheme, preferredThemeId, autoHolidayEnabled, setAutoHolidayEnabled];
 }

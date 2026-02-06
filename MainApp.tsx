@@ -54,7 +54,7 @@ export const MainApp: React.FC<MainAppProps> = ({
     userId, currentUser, onLogout, onUpdatePassword, onUpdateProfile, onAuthClick, 
     onForgotPasswordRequest, onForgotPasswordReset 
 }) => {
-  const [activeTheme, setTheme, baseThemeId] = useTheme();
+  const [activeTheme, setTheme, baseThemeId, autoHolidayEnabled, setAutoHolidayEnabled] = useTheme();
   
   const [watching, setWatching] = useLocalStorage<TrackedItem[]>(`watching_list_${userId}`, []);
   const [planToWatch, setPlanToWatch] = useLocalStorage<TrackedItem[]>(`plan_to_watch_list_${userId}`, []);
@@ -553,6 +553,10 @@ export const MainApp: React.FC<MainAppProps> = ({
   return (
     <div className={`min-h-screen ${activeTheme.base} transition-colors duration-500 pb-20`}>
         <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={true} />
+        {/* Glass Sheet Layer for Holiday Themes */}
+        {activeTheme.holidayDate && (
+          <div className="fixed inset-0 z-[-10] backdrop-blur-[15px] bg-black/10 pointer-events-none" />
+        )}
         <Header 
             currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} 
             onGoToProfile={() => setActiveScreen('profile')} onGoHome={() => setActiveScreen('home')} 
@@ -560,7 +564,7 @@ export const MainApp: React.FC<MainAppProps> = ({
             query={headerSearchQuery} onQueryChange={setHeaderSearchQuery} isHoliday={false} holidayName={null} 
             isOnSearchScreen={activeScreen === 'search'}
         />
-        <main className="container mx-auto mt-8">
+        <main className="container mx-auto mt-8 relative z-10">
             {activeScreen === 'home' && (
                 <Dashboard 
                     userData={allUserDataFull} onSelectShow={handleSelectShow} onSelectShowInModal={handleSelectShow} 
@@ -699,7 +703,9 @@ export const MainApp: React.FC<MainAppProps> = ({
                 onUpdateLists={updateLists} 
                 favoriteEpisodes={favoriteEpisodes} 
                 setPendingRecommendationChecks={setPendingRecommendationChecks} 
-                setFailedRecommendationReports={setFailedRecommendationReports} 
+                setFailedRecommendationReports={setFailedRecommendationReports}
+                autoHolidayThemesEnabled={autoHolidayEnabled}
+                setAutoHolidayThemesEnabled={setAutoHolidayEnabled}
               />
             )}
         </main>

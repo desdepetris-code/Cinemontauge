@@ -13,8 +13,9 @@ const particleConfig = {
     confetti: { content: ['🎉', '🎊', '✨'], count: 40, minSize: 10, maxSize: 20 },
     fireworks: { content: ['🎆', '🎇'], count: 15, minSize: 20, maxSize: 40 },
     sparkles: { content: '✨', count: 35, minSize: 8, maxSize: 16 },
+    cherry_blossoms: { content: '🌸', count: 25, minSize: 12, maxSize: 22 },
     bats: { content: '🦇', count: 12, minSize: 15, maxSize: 25 },
-    flowers: { content: ['🌸', '🌼', '🌷'], count: 25, minSize: 15, maxSize: 25 },
+    flowers: { content: ['🌸', '🌼', '🌷', '🌺'], count: 30, minSize: 15, maxSize: 25 },
     pumpkins: { content: '🎃', count: 8, minSize: 20, maxSize: 30 },
     ghosts: { content: '👻', count: 10, minSize: 15, maxSize: 25 },
     eggs: { content: ['🥚', '🐣'], count: 25, minSize: 15, maxSize: 25 },
@@ -43,7 +44,7 @@ const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ e
 
                 const duration = Math.random() * 8 + 8;
                 const delay = Math.random() * -16;
-                const animationName = ['leaves'].includes(effectName) ? 'sway-and-fall' : 'fall';
+                const animationName = ['leaves', 'cherry_blossoms'].includes(effectName) ? 'sway-and-fall' : 'fall';
                 style = {
                     ...style,
                     left: `${Math.random() * 100}vw`,
@@ -96,7 +97,7 @@ const BackgroundParticleEffects: React.FC<BackgroundParticleEffectsProps> = ({ e
     if (!enabled || !effect || particles.length === 0) return null;
 
     return (
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="fixed inset-0 pointer-events-none z-[-20] overflow-hidden">
             {particles.map(p => {
                 if (p.effectName === 'pumpkins') {
                     return (

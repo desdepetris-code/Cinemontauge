@@ -3,6 +3,7 @@ export interface Theme {
   name: string;
   description: string;
   base: 'light' | 'dark';
+  holidayDate?: { month: number; day: number }; // month is 0-indexed (0=Jan, 1=Feb, etc.)
   colors: {
     bgGradient: string;
     accentGradient: string;
@@ -28,7 +29,8 @@ export interface Theme {
   };
 }
 
-export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles';
+/* // FIX: Expanded ParticleEffectName to include all effects supported by BackgroundParticleEffects.tsx and ThemeTransitionAnimation.tsx */
+export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'cherry_blossoms' | 'bats' | 'flowers' | 'pumpkins' | 'ghosts' | 'eggs';
 
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'allCaughtUp' | 'favorites';
 

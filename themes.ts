@@ -1,6 +1,14 @@
 import { Theme } from './types';
 
-// --- THEME REGISTRY (EXACTLY 5 PERMANENT THEMES) ---
+// --- Decorative SVG Patterns (Inanimate/Fixed) ---
+
+// Scattered Cherry Blossoms - 🌸
+const sakuraPattern = "url(\"data:image/svg+xml,%3Csvg width='150' height='150' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='25' font-size='14' opacity='0.4'%3E🌸%3C/text%3E%3Ctext x='75' y='45' font-size='10' opacity='0.2'%3E🌸%3C/text%3E%3Ctext x='45' y='85' font-size='16' opacity='0.3'%3E🌸%3C/text%3E%3Ctext x='85' y='90' font-size='8' opacity='0.15'%3E🌸%3C/text%3E%3Ctext x='10' y='60' font-size='12' opacity='0.25'%3E🌸%3C/text%3E%3C/svg%3E\")";
+
+// Scattered Vanilla Flowers - 🌼
+const vanillaPattern = "url(\"data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='20' y='35' font-size='14' opacity='0.3'%3E🌼%3C/text%3E%3Ctext x='80' y='25' font-size='10' opacity='0.1'%3E🌼%3C/text%3E%3Ctext x='55' y='75' font-size='18' opacity='0.2'%3E🌼%3C/text%3E%3Ctext x='95' y='95' font-size='8' opacity='0.08'%3E🌼%3C/text%3E%3Ctext x='15' y='65' font-size='12' opacity='0.15'%3E🌼%3C/text%3E%3C/svg%3E\")";
+
+// --- THEME REGISTRY ---
 
 const midnightBlue: Theme = {
   id: 'noir-electric',
@@ -8,12 +16,9 @@ const midnightBlue: Theme = {
   description: 'Cinematic obsidian with anamorphic lens-flare accents.',
   base: 'dark',
   colors: {
-    // Deepest Obsidian to a very dark Navy for depth
     bgGradient: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-    // Electric Cobalt to Cyan - The "Lens Flare" look
     accentGradient: 'linear-gradient(to right, #2e5cfc, #0ea5e9)',
     cardGradient: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(0, 0, 0, 0.9))',
-    // Indigo-tinted white for "Starlight" text
     textColorPrimary: '#e0e7ff', 
     textColorSecondary: 'rgba(148, 163, 184, 0.8)',
     accentPrimary: '#3b82f6',
@@ -25,6 +30,52 @@ const midnightBlue: Theme = {
     success: '#34d399',
     onAccent: '#ffffff',
     patternOpacity: '0.04'
+  }
+};
+
+const sakuraSerenity: Theme = {
+  id: 'sakura-blossom',
+  name: 'Sakura Serenity',
+  description: 'A serene spring afternoon with fixed cherry blossom petals.',
+  base: 'light',
+  colors: {
+    bgGradient: `${sakuraPattern}, linear-gradient(rgba(255, 245, 247, 0.93), rgba(255, 245, 247, 0.85)), url('https://images.unsplash.com/photo-1522383225653-ed111181a951?q=80&w=2000&auto=format&fit=crop')`,
+    accentGradient: 'linear-gradient(to right, #FFB7C5, #FA8072)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 209, 220, 0.3))',
+    textColorPrimary: '#3D2422', 
+    textColorSecondary: 'rgba(61, 36, 34, 0.7)',
+    accentPrimary: '#FFB7C5',
+    accentSecondary: '#FA8072',
+    bgPrimary: '#FFF5F7',
+    bgSecondary: 'rgba(255, 183, 197, 0.2)',
+    bgBackdrop: 'rgba(255, 245, 247, 0.4)',
+    error: '#E57373',
+    success: '#81C784',
+    onAccent: '#ffffff',
+    patternOpacity: '0.02'
+  }
+};
+
+const velvetVanilla: Theme = {
+  id: 'vanilla-bean',
+  name: 'Velvet Vanilla',
+  description: 'Smooth ivory aesthetic with fixed vanilla flowers.',
+  base: 'light',
+  colors: {
+    bgGradient: `${vanillaPattern}, linear-gradient(rgba(253, 252, 240, 0.95), rgba(253, 252, 240, 0.85)), url('https://images.unsplash.com/photo-1614084153099-28c92a945f34?q=80&w=2000&auto=format&fit=crop')`,
+    accentGradient: 'linear-gradient(to right, #C2A14E, #8B4513)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.98), rgba(243, 229, 171, 0.2))',
+    textColorPrimary: '#4E342E', 
+    textColorSecondary: 'rgba(78, 52, 46, 0.7)',
+    accentPrimary: '#C2A14E',
+    accentSecondary: '#8B4513',
+    bgPrimary: '#FDFCF0',
+    bgSecondary: 'rgba(194, 161, 78, 0.1)',
+    bgBackdrop: 'rgba(253, 252, 240, 0.5)',
+    error: '#B03A2E',
+    success: '#1E8449',
+    onAccent: '#ffffff',
+    patternOpacity: '0.03'
   }
 };
 
@@ -120,10 +171,38 @@ const twilightSlate: Theme = {
   }
 };
 
+const valentinesDay: Theme = {
+  id: 'valentines-day',
+  name: 'Valentine\'s Day',
+  description: 'A romantic atmosphere of deep reds and soft pinks with falling hearts and flowers.',
+  base: 'dark',
+  holidayDate: { month: 1, day: 14 }, // February 14th
+  colors: {
+    bgGradient: 'linear-gradient(135deg, #590d22 0%, #800f2f 50%, #a4133c 100%)',
+    accentGradient: 'linear-gradient(to right, #ff4d6d, #ff758f)',
+    cardGradient: 'linear-gradient(to bottom, rgba(255, 77, 109, 0.15), rgba(0, 0, 0, 0.4))',
+    textColorPrimary: '#fff0f3',
+    textColorSecondary: 'rgba(255, 184, 199, 0.8)',
+    accentPrimary: '#ff4d6d',
+    accentSecondary: '#ff758f',
+    bgPrimary: '#590d22',
+    bgSecondary: 'rgba(255, 77, 109, 0.15)',
+    bgBackdrop: 'rgba(89, 13, 34, 0.8)',
+    error: '#ff85a1',
+    success: '#34d399',
+    onAccent: '#ffffff',
+    particleEffect: ['hearts', 'flowers'],
+    patternOpacity: '0.02'
+  }
+};
+
 export const themes: Theme[] = [
     midnightBlue,
+    sakuraSerenity,
+    velvetVanilla,
     roseLight,
     softDaylight,
     creamGlow,
     twilightSlate,
+    valentinesDay,
 ];
