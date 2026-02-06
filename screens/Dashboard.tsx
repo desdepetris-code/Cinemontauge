@@ -77,7 +77,7 @@ interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'on
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
 ({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat, showRatings, onToggleEpisode, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, pausedLiveSessions, onToggleWeeklyFavorite }) => {
-    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, onUpdateLists, userData, timeFormat, showRatings };
+    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, userData, timeFormat, showRatings };
 
     return (
         <div className="space-y-16">
@@ -109,11 +109,11 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 
           <div>
             <SectionHeader title="Top 10 Movies" icon={<TrophyIcon className="w-8 h-8 text-yellow-500" />} />
-            <Top10Carousel mediaType="movie" {...carouselProps} title="Top 10 Movies" />
+            <Top10Carousel mediaType="movie" {...carouselProps} title="Top 10 Movies" onUpdateLists={onUpdateLists} />
           </div>
           <div>
             <SectionHeader title="Top 10 TV Shows" icon={<TrophyIcon className="w-8 h-8 text-yellow-500" />} />
-            <Top10Carousel mediaType="tv" {...carouselProps} title="Top 10 TV Shows" />
+            <Top10Carousel mediaType="tv" {...carouselProps} title="Top 10 TV Shows" onUpdateLists={onUpdateLists} />
           </div>
           
           {preferences.dashShowTrending && (
@@ -171,9 +171,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   
   const carouselProps = useMemo(() => ({ 
     onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, 
-    favorites, completed: userData.completed, onUpdateLists, userData, timeFormat,
+    favorites, completed: userData.completed, userData, timeFormat,
     showRatings
-  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, onUpdateLists, showRatings]);
+  }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, showRatings]);
 
   const recommendationSeedItems = useMemo(() => {
     return [...userData.watching].filter(item => {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ReminderType } from '../types';
-import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon } from './Icons';
+import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon, ListBulletIcon } from './Icons';
 
 interface ReminderOptionsModalProps {
     isOpen: boolean;
@@ -11,48 +11,52 @@ interface ReminderOptionsModalProps {
     initialFrequency?: 'first' | 'all';
 }
 
-const showTimingOptions: { id: ReminderType; label: string }[] = [
-    { id: 'release', label: 'At time of release' },
-    { id: 'hour_before', label: '1 hour before' },
-    { id: 'hour_after', label: '1 hour after' },
-    { id: '5min_before', label: '5 minutes before' },
-    { id: '5min_after', label: '5 minutes after' },
-    { id: 'day_before', label: '1 day before' },
-    { id: 'day_after', label: '1 day after' },
-    { id: '2days_before', label: '2 days before' },
-    { id: '2days_after', label: '2 days after' },
-    { id: 'week_before', label: '1 week before' },
-    { id: 'week_after', label: '1 week after' },
-    { id: '2weeks_before', label: '2 weeks before' },
-    { id: '2weeks_after', label: '2 weeks after' },
+const showTimingOptions: { id: ReminderType; label: string; group: 'before' | 'at' | 'after' }[] = [
+    { id: '2weeks_before', label: 'Two Weeks Before', group: 'before' },
+    { id: 'week_before', label: 'One Week Before', group: 'before' },
+    { id: '2days_before', label: 'Two Days Before', group: 'before' },
+    { id: 'day_before', label: 'One Day Before', group: 'before' },
+    { id: 'hour_before', label: 'One Hour Before', group: 'before' },
+    { id: '5min_before', label: 'Five Minutes Before', group: 'before' },
+    { id: 'release', label: 'At Time of Release', group: 'at' },
+    { id: '5min_after', label: 'Five Minutes After', group: 'after' },
+    { id: 'hour_after', label: 'One Hour After', group: 'after' },
+    { id: '2days_after', label: 'Two Days After', group: 'after' },
+    { id: 'week_after', label: 'One Week After', group: 'after' },
+    { id: '2weeks_after', label: 'Two Weeks After', group: 'after' },
 ];
 
-const movieTimingOptions: { id: ReminderType; label: string }[] = [
-    { id: 'day_before', label: 'One day before' },
-    { id: 'release', label: 'Day of release' },
-    { id: 'day_after', label: 'One day after' },
-    { id: 'week_before', label: 'One week before' },
-    { id: 'week_after', label: 'One week after' },
-    { id: '2days_before', label: '2 days before' },
-    { id: '2days_after', label: '2 days after' },
-    { id: '2weeks_before', label: '2 weeks before' },
-    { id: '2weeks_after', label: '2 weeks after' },
-    { id: 'daily_7_before', label: 'Every day for 7 days before' },
-    { id: 'daily_7_after', label: 'Every day for 7 days after' },
+const movieTimingOptions: { id: ReminderType; label: string; group: 'before' | 'at' | 'after' }[] = [
+    { id: '2weeks_before', label: 'Two Weeks Before', group: 'before' },
+    { id: 'week_before', label: 'One Week Before', group: 'before' },
+    { id: '2days_before', label: 'Two Days Before', group: 'before' },
+    { id: 'day_before', label: 'One Day Before', group: 'before' },
+    { id: 'daily_7_before', label: '7-Day Daily Countdown', group: 'before' },
+    { id: 'release', label: 'Day of Release', group: 'at' },
+    { id: 'day_after', label: 'One Day After', group: 'after' },
+    { id: '2days_after', label: 'Two Days After', group: 'after' },
+    { id: 'week_after', label: 'One Week After', group: 'after' },
+    { id: '2weeks_after', label: 'Two Weeks After', group: 'after' },
 ];
 
-const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onClose, onSave, mediaType, initialTypes = [], initialFrequency = 'all' }) => {
-    const [selectedTypes, setSelectedTypes] = useState<ReminderType[]>(initialTypes);
-    const [frequency, setFrequency] = useState<'first' | 'all'>(initialFrequency);
+const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onClose, onSave, mediaType, initialTypes, initialFrequency }) => {
+    // If no initial types, default to "Select All"
+    const defaultTypes = useMemo(() => {
+        if (mediaType === 'tv') {
+            return showTimingOptions.map(opt => opt.id);
+        }
+        return movieTimingOptions.map(opt => opt.id);
+    }, [mediaType]);
 
-    const timingOptions = mediaType === 'movie' ? movieTimingOptions : showTimingOptions;
+    const [selectedTypes, setSelectedTypes] = useState<ReminderType[]>(initialTypes || defaultTypes);
+    const [frequency, setFrequency] = useState<'first' | 'all'>(initialFrequency || 'all');
 
     useEffect(() => {
         if (isOpen) {
-            setSelectedTypes(initialTypes);
-            setFrequency(initialFrequency);
+            setSelectedTypes(initialTypes || defaultTypes);
+            setFrequency(initialFrequency || 'all');
         }
-    }, [isOpen, initialTypes, initialFrequency]);
+    }, [isOpen, initialTypes, initialFrequency, defaultTypes]);
 
     if (!isOpen) return null;
 
@@ -62,10 +66,72 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
         );
     };
 
+    const handleSelectAll = () => {
+        if (mediaType === 'tv') {
+            setSelectedTypes(showTimingOptions.map(o => o.id));
+        } else {
+            setSelectedTypes(movieTimingOptions.map(o => o.id));
+        }
+    };
+
     const handleSave = () => {
         if (selectedTypes.length === 0) return;
         onSave(selectedTypes, frequency);
         onClose();
+    };
+
+    const renderOptions = () => {
+        const options = mediaType === 'tv' ? showTimingOptions : movieTimingOptions;
+        const groups = {
+            before: options.filter(o => o.group === 'before'),
+            at: options.filter(o => o.group === 'at'),
+            after: options.filter(o => o.group === 'after'),
+        };
+
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">Before Release</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {groups.before.map(opt => renderOptionButton(opt))}
+                    </div>
+                </div>
+                <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">{mediaType === 'movie' ? 'Launch Day' : 'At Release'}</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                        {groups.at.map(opt => renderOptionButton(opt))}
+                    </div>
+                </div>
+                <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">After Release</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {groups.after.map(opt => renderOptionButton(opt))}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderOptionButton = (opt: { id: ReminderType; label: string }) => {
+        const isActive = selectedTypes.includes(opt.id);
+        return (
+            <button
+                key={opt.id}
+                onClick={() => toggleType(opt.id)}
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left group ${
+                    isActive 
+                        ? 'bg-accent-gradient text-on-accent border-transparent shadow-md' 
+                        : 'bg-bg-secondary/20 border-white/5 text-text-primary hover:border-white/10'
+                }`}
+            >
+                <span className="text-[11px] font-bold uppercase tracking-tight">{opt.label}</span>
+                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                    isActive ? 'bg-white border-white' : 'border-white/10'
+                }`}>
+                    {isActive && <CheckCircleIcon className="w-4 h-4 text-primary-accent" />}
+                </div>
+            </button>
+        );
     };
 
     return (
@@ -89,66 +155,57 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
                 </header>
                 
                 <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-8">
-                    {/* Frequency Selection - Only for TV Shows */}
+                    <div className="flex justify-end px-2">
+                        <button 
+                            onClick={handleSelectAll}
+                            className="text-[10px] font-black uppercase tracking-widest text-primary-accent hover:underline flex items-center gap-2"
+                        >
+                            <ListBulletIcon className="w-3 h-3" />
+                            Select All Options
+                        </button>
+                    </div>
+
                     {mediaType === 'tv' && (
                         <section>
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-4 px-2">Broadcast Frequency</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-4 px-2">Broadcast Scope</h4>
                             <div className="grid grid-cols-2 gap-3">
-                                {(['all', 'first'] as const).map(freq => (
-                                    <button
-                                        key={freq}
-                                        onClick={() => setFrequency(freq)}
-                                        className={`p-4 rounded-2xl border transition-all text-center group ${
-                                            frequency === freq 
-                                                ? 'bg-primary-accent/20 border-primary-accent text-primary-accent' 
-                                                : 'bg-bg-secondary/40 border-white/5 text-text-secondary hover:bg-bg-secondary'
-                                        }`}
-                                    >
-                                        <span className="text-xs font-black uppercase tracking-widest">{freq === 'all' ? 'All Episodes' : 'Just the First'}</span>
-                                        <p className="text-[8px] font-bold opacity-60 mt-1 uppercase tracking-tighter">
-                                            {freq === 'all' ? 'Default behavior' : 'Series/Season Premiere'}
-                                        </p>
-                                    </button>
-                                ))}
+                                <button
+                                    onClick={() => setFrequency('all')}
+                                    className={`p-4 rounded-2xl border transition-all text-center group ${
+                                        frequency === 'all' 
+                                            ? 'bg-primary-accent/20 border-primary-accent text-primary-accent' 
+                                            : 'bg-bg-secondary/40 border-white/5 text-text-secondary hover:bg-bg-secondary'
+                                    }`}
+                                >
+                                    <span className="text-xs font-black uppercase tracking-widest">All Episodes</span>
+                                    <p className="text-[8px] font-bold opacity-60 mt-1 uppercase tracking-tighter">Every release alert</p>
+                                </button>
+                                <button
+                                    onClick={() => setFrequency('first')}
+                                    className={`p-4 rounded-2xl border transition-all text-center group ${
+                                        frequency === 'first' 
+                                            ? 'bg-primary-accent/20 border-primary-accent text-primary-accent' 
+                                            : 'bg-bg-secondary/40 border-white/5 text-text-secondary hover:bg-bg-secondary'
+                                    }`}
+                                >
+                                    <span className="text-xs font-black uppercase tracking-widest">First Episode Only</span>
+                                    <p className="text-[8px] font-bold opacity-60 mt-1 uppercase tracking-tighter">Season/Series Premiere</p>
+                                </button>
                             </div>
                         </section>
                     )}
 
-                    {/* Timing Options */}
                     <section>
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-4 px-2">Trigger Times (Select Multiple)</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {timingOptions.map(opt => {
-                                const isActive = selectedTypes.includes(opt.id);
-                                return (
-                                    <button
-                                        key={opt.id}
-                                        onClick={() => toggleType(opt.id)}
-                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left group ${
-                                            isActive 
-                                                ? 'bg-accent-gradient text-on-accent border-transparent shadow-md' 
-                                                : 'bg-bg-secondary/20 border-white/5 text-text-primary hover:border-white/10'
-                                        }`}
-                                    >
-                                        <span className="text-[11px] font-bold uppercase tracking-tight">{opt.label}</span>
-                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                                            isActive ? 'bg-white border-white' : 'border-white/10'
-                                        }`}>
-                                            {isActive && <CheckCircleIcon className="w-4 h-4 text-primary-accent" />}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        {renderOptions()}
                     </section>
 
                     <div className="p-4 bg-primary-accent/5 rounded-2xl border border-primary-accent/10 flex items-start gap-3">
                         <InformationCircleIcon className="w-5 h-5 text-primary-accent flex-shrink-0 mt-0.5" />
                         <p className="text-[10px] text-text-secondary leading-relaxed font-medium">
                             <strong className="text-text-primary uppercase block mb-1">
-                                {mediaType === 'movie' ? 'Theatrical Truth Sync' : 'Trakt Truth Sync'}
+                                {mediaType === 'movie' ? 'Theatrical Truth Sync' : 'Broadcast Sync'}
                             </strong>
-                            Alerts use exact {mediaType === 'movie' ? 'release day' : 'minute-by-minute broadcast'} records. Some international delays may apply based on your streaming provider.
+                            Alerts use exact release timestamps. Deep links in alerts will take you directly to this archive.
                         </p>
                     </div>
                 </div>

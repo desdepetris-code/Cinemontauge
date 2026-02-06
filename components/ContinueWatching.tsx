@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { TrackedItem, WatchProgress, HistoryItem, LiveWatchMediaInfo, UserData } from '../types';
+import { TrackedItem, WatchProgress, HistoryItem, LiveWatchMediaInfo, UserData, EpisodeProgress } from '../types';
 import ContinueWatchingProgressCard from './ContinueWatchingProgressCard';
 import ContinueWatchingMovieCard from './ContinueWatchingMovieCard';
 import Carousel from './Carousel';
@@ -21,7 +21,12 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
             return list.filter(item => {
                 if (item.media_type !== 'tv') return false;
                 const progress = watchProgress[item.id];
-                return progress && Object.keys(progress).length > 0;
+                if (!progress) return false;
+                
+                // Strictly check if ANY episode in ANY season is actually marked as watched
+                return Object.values(progress).some(season => 
+                    Object.values(season).some(ep => (ep as EpisodeProgress).status === 2)
+                );
             });
         };
     

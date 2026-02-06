@@ -224,6 +224,34 @@ export const MainApp: React.FC<MainAppProps> = ({
         confirmationService.show(newList ? `"${showName}" added to ${newList}` : `Removed ${showName}`);
     }, [setWatching, setPlanToWatch, setCompleted, setOnHold, setDropped, setAllCaughtUp, setManualPresets]);
 
+  const handleToggleReminder = useCallback((newReminder: Reminder | null, reminderId: string) => {
+    if (newReminder) {
+        setReminders(prev => [...prev, newReminder]);
+        
+        const trackedItem: TrackedItem = {
+          id: newReminder.mediaId,
+          title: newReminder.title,
+          media_type: newReminder.mediaType,
+          poster_path: newReminder.poster_path,
+        };
+
+        let currentStatus: WatchStatus | null = null;
+        if (watching.some(i => i.id === trackedItem.id)) currentStatus = 'watching';
+        else if (planToWatch.some(i => i.id === trackedItem.id)) currentStatus = 'planToWatch';
+        else if (completed.some(i => i.id === trackedItem.id)) currentStatus = 'completed';
+        else if (onHold.some(i => i.id === trackedItem.id)) currentStatus = 'onHold';
+        else if (dropped.some(i => i.id === trackedItem.id)) currentStatus = 'dropped';
+        else if (allCaughtUp.some(i => i.id === trackedItem.id)) currentStatus = 'allCaughtUp';
+
+        // Requirement: Setting a reminder adds to Plan to Watch if not already active
+        if (currentStatus === null || currentStatus === 'dropped') {
+            updateLists(trackedItem, currentStatus, 'planToWatch');
+        }
+    } else {
+        setReminders(prev => prev.filter(r => r.id !== reminderId));
+    }
+  }, [watching, planToWatch, completed, onHold, dropped, allCaughtUp, updateLists, setReminders]);
+
   const syncLibraryItem = useCallback(async (mediaId: number, mediaType: 'tv' | 'movie', updatedProgress?: WatchProgress, watchActionJustHappened: boolean = false) => {
       try {
           const details = await getMediaDetails(mediaId, mediaType);
@@ -607,7 +635,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onLiveWatchTogglePause={() => setLiveWatchIsPaused(!liveWatchIsPaused)} onLiveWatchStop={handleLiveWatchStop} 
                     onMarkShowAsWatched={handleMarkMovieAsWatched} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} 
                     pausedLiveSessions={pausedLiveSessions} timezone={timezone} genres={genres} timeFormat={timeFormat} reminders={reminders} 
-                    onToggleReminder={(newRem, id) => setReminders(prev => newRem ? [...prev, newRem] : prev.filter(r => r.id !== id))} 
+                    onToggleReminder={handleToggleReminder} 
                     onUpdateLists={updateLists} shortcutSettings={shortcutSettings} preferences={preferences} 
                     onRemoveWeeklyPick={handleToggleWeeklyFavorite} 
                     onOpenNominateModal={() => setIsNominateModalOpen(true)}
@@ -621,7 +649,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                 />
             )}
             {activeScreen === 'search' && <SearchScreen {...allUserDataFull} onSelectShow={handleSelectShow} onSelectPerson={setSelectedPerson} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={onUpdateSearchHistory} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} query={''} onQueryChange={() => {}} onMarkShowAsWatched={handleMarkMovieAsWatched} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} onMarkPreviousEpisodesWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserDataFull} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />}
-            {activeScreen === 'calendar' && <CalendarScreen userData={allUserDataFull} onSelectShow={handleSelectShow} timezone={timezone} timeFormat={timeFormat} reminders={reminders} onToggleReminder={(newRem, id) => setReminders(prev => newRem ? [...prev, newRem] : prev.filter(r => r.id !== id))} onToggleEpisode={handleToggleEpisode} watchProgress={watchProgress} />}
+            {activeScreen === 'calendar' && <CalendarScreen userData={allUserDataFull} onSelectShow={handleSelectShow} timezone={timezone} timeFormat={timeFormat} reminders={reminders} onToggleReminder={handleToggleReminder} onToggleEpisode={handleToggleEpisode} watchProgress={watchProgress} />}
             {activeScreen === 'progress' && (
                 <ProgressScreen 
                     userData={allUserDataFull}
@@ -764,7 +792,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} preferences={preferences} 
                     follows={follows} pausedLiveSessions={pausedLiveSessions} onAuthClick={onAuthClick} 
                     onDiscardRequest={() => {}} onSetCustomEpisodeImage={() => {}} onClearMediaHistory={() => {}} 
-                    reminders={reminders} onToggleReminder={(newRem, id) => setReminders(prev => newRem ? [...prev, newRem] : prev.filter(r => r.id !== id))} 
+                    reminders={reminders} onToggleReminder={handleToggleReminder} 
                     episodeRatings={episodeRatings} 
                     pendingRecommendationChecks={pendingRecommendationChecks}
                     setPendingRecommendationChecks={setPendingRecommendationChecks}

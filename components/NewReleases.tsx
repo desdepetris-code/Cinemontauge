@@ -25,8 +25,7 @@ const NewReleaseCard: React.FC<{
     isFavorite: boolean;
     isCompleted: boolean;
     timezone: string;
-    onPlanToWatch: () => void;
-}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, timezone, onPlanToWatch }) => {
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, timezone }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
 
@@ -71,9 +70,9 @@ const NewReleaseCard: React.FC<{
         return 'bg-stone-500 text-white';
     };
 
-    const handlePlanToWatchClick = (e: React.MouseEvent) => {
+    const handleAddClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onPlanToWatch();
+        onAdd(item);
     };
 
     const handleMarkWatchedClick = (e: React.MouseEvent) => {
@@ -155,7 +154,7 @@ const NewReleaseCard: React.FC<{
                     <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handlePlanToWatchClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Plan to Watch">
+                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
                     <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Set Watched Date">
@@ -211,10 +210,9 @@ interface NewReleasesProps {
   completed: TrackedItem[];
   timezone: string;
   onViewMore?: () => void;
-  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
 }
 
-const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore, onUpdateLists }) => {
+const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, timezone, onViewMore }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -274,7 +272,6 @@ const NewReleases: React.FC<NewReleasesProps> = ({ mediaType, title, onSelectSho
                             isFavorite={favorites.some(f => f.id === item.id)}
                             isCompleted={completed.some(c => c.id === item.id)}
                             timezone={timezone}
-                            onPlanToWatch={() => onUpdateLists({ id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path }, null, 'planToWatch')}
                         />
                     ))}
                     <div className="w-4 flex-shrink-0"></div>

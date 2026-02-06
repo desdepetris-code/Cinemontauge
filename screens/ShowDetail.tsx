@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
-import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, DeletedNote, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
+import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
 import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
@@ -340,19 +340,40 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [mediaType, details, watchProgress, id]);
 
   const showStatus = useMemo(() => details ? getShowStatus(details) : null, [details]);
+  const hasUpcomingContent = useMemo(() => {
+    if (!details) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const statusText = showStatus?.text || '';
+    
+    if (mediaType === 'tv') {
+        if (statusText === 'Upcoming' || statusText === 'In Season') return true;
+        if (details.next_episode_to_air) return true;
+        return !!details.seasons?.some(s => s.air_date && s.air_date > today);
+    } else {
+        // For movies: Upcoming status and a future date
+        return statusText === 'Upcoming' && !!details.release_date && details.release_date > today;
+    }
+  }, [details, mediaType, showStatus]);
+
   const isUpcoming = showStatus?.text === 'Upcoming';
   
   // PREMIERE MESSAGE LOGIC
   const premiereMessage = useMemo(() => {
-    if (mediaType !== 'tv' || !details) return null;
-    
-    const nextEp = details.next_episode_to_air;
+    if (!details) return null;
     const today = new Date().toISOString().split('T')[0];
     
     const formatDateFriendly = (dateStr: string) => {
         return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
     };
 
+    if (mediaType === 'movie') {
+        if (details.release_date && details.release_date > today) {
+            return `${details.title} releases on ${formatDateFriendly(details.release_date)}`;
+        }
+        return null;
+    }
+
+    const nextEp = details.next_episode_to_air;
     const getOrdinalWord = (n: number) => {
        const words = ["zero", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"];
        return words[n] || `${n}th`;
@@ -505,7 +526,24 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     );
   };
 
-  const isReminderSet = reminders.some(r => r.mediaId === id);
+  const releaseDateForReminder = details.first_air_date || details.release_date;
+  const reminderId = releaseDateForReminder ? `rem-${mediaType}-${id}-${releaseDateForReminder}` : '';
+  const isReminderSet = reminders.some(r => r.id === reminderId);
+
+  const handleReminderSave = (selectedTypes: ReminderType[], frequency: 'first' | 'all') => {
+      const newReminder: Reminder = {
+          id: reminderId,
+          mediaId: id,
+          mediaType: mediaType,
+          releaseDate: releaseDateForReminder!,
+          title: details.title || details.name || 'Untitled',
+          poster_path: details.poster_path,
+          episodeInfo: mediaType === 'tv' ? 'New Episodes Alert' : 'Movie Release',
+          selectedTypes,
+          frequency
+      };
+      onToggleReminder(newReminder, reminderId);
+  };
 
   return (
     <div className="animate-fade-in relative pb-20">
@@ -518,6 +556,14 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={() => {}} options={["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Wrong Air Time", "Wrong Streaming / Where to Watch listed", "Other Error"]} />
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={() => {}} onDiscard={() => {}} showDetails={details} />
       <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} onSave={handleCommentSave} />
+      <ReminderOptionsModal 
+          isOpen={isReminderOptionsOpen} 
+          onClose={() => setIsReminderOptionsOpen(false)} 
+          onSave={handleReminderSave} 
+          mediaType={mediaType} 
+          initialTypes={reminders.find(r => r.id === reminderId)?.selectedTypes}
+          initialFrequency={reminders.find(r => r.id === reminderId)?.frequency}
+      />
       
       <div className="relative w-full aspect-video md:aspect-[21/9] md:h-auto overflow-hidden">
         <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
@@ -555,8 +601,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label={mediaType === 'tv' ? "Watch All" : "Watched"} isActive={mediaType === 'tv' ? isAllWatched : currentStatus === 'completed'} icon={<CheckCircleIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onMarkAllWatched(id, details as any) : onMarkMediaAsWatched(details)} />
                 <DetailedActionButton label={mediaType === 'tv' ? "Unmark All" : "Unmark"} icon={<XMarkIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onUnmarkAllWatched(id) : props.onUnmarkMovieWatched(id, false)} />
                 
-                {/* UPCOMING SPECIFIC LOGIC: Reminder left of Weekly Pick */}
-                {isUpcoming ? (
+                {/* UPCOMING SPECIFIC LOGIC: Reminder left of Weekly Pick if upcoming content exists */}
+                {hasUpcomingContent ? (
                     <>
                         <DetailedActionButton 
                             label="Reminder" 
@@ -576,23 +622,23 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               
               <div className="grid grid-cols-4 gap-2">
                 {/* Row 2 logic: If upcoming, Favorite starts here */}
-                {isUpcoming && (
+                {hasUpcomingContent && (
                     <DetailedActionButton label="Favorite" icon={<HeartIcon filled={isFavorited} className="w-6 h-6" />} isActive={isFavorited} onClick={() => onToggleFavoriteShow(details as any)} />
                 )}
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                {!isUpcoming && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
+                {!hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {isUpcoming && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
+                {hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
                 <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                 
                 {/* Standard placement for Reminder/LiveWatch if not handled in top row */}
-                {!isUpcoming && (
+                {!hasUpcomingContent && (
                   mediaType === 'tv' ? (
                     <DetailedActionButton label="Reminder" icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} isActive={isReminderSet} onClick={() => setIsReminderOptionsOpen(true)} />
                   ) : (

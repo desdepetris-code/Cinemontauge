@@ -49,6 +49,7 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect, showA
         return 'bg-stone-500 text-white';
     };
 
+    // Upgraded from w92/w154 to w342 for sharper look on larger list grids
     const posterSrcs = [item.poster_path ? `${TMDB_IMAGE_BASE_URL}w342${item.poster_path}` : null];
     const title = item.title;
 
@@ -62,9 +63,9 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect, showA
     return (
         <div
             onClick={() => onSelect(item.id, item.media_type)}
-            className="cursor-pointer group transform hover:-translate-y-1 transition-transform duration-300 h-full"
+            className="cursor-pointer group transform hover:-translate-y-1.5 transition-all duration-300 h-full"
         >
-            <div className="relative rounded-md overflow-hidden shadow-lg h-full bg-bg-secondary/20">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl h-full bg-bg-secondary/20 border border-white/5">
                 <BrandedImage title={title} status={item.media_type === 'tv' ? showStatusText : null}>
                     <div className="relative">
                         <FallbackImage
@@ -72,33 +73,33 @@ const CompactShowCard: React.FC<CompactShowCardProps> = ({ item, onSelect, showA
                             placeholder={PLACEHOLDER_POSTER}
                             noPlaceholder={true}
                             alt={title}
-                            className="w-full aspect-[2/3] object-cover bg-bg-secondary"
+                            className="w-full aspect-[2/3] object-cover bg-bg-secondary transition-transform duration-700 group-hover:scale-110"
                             loading="lazy"
                         />
                         {ageRating && (
-                            <div className={`absolute top-1 right-1 px-1 py-0.5 text-[8px] font-black rounded-sm backdrop-blur-md z-20 shadow-md border border-white/10 ${getAgeRatingColor(ageRating)}`}>
+                            <div className={`absolute top-2 right-2 px-1.5 py-0.5 text-[9px] font-black rounded-md backdrop-blur-md z-20 shadow-lg border border-white/10 ${getAgeRatingColor(ageRating)}`}>
                                 {ageRating}
                             </div>
                         )}
                         
                         {isEpisodePick && (
-                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-primary-accent text-on-accent text-[7px] font-black rounded uppercase shadow-lg z-20 border border-black/10">
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-primary-accent text-on-accent text-[8px] font-black rounded-lg uppercase shadow-lg z-20 border border-black/10">
                                 S{item.seasonNumber} E{item.episodeNumber}
                             </div>
                         )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2 pl-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <h3 className="text-white text-xs font-bold text-center w-full leading-tight">{isEpisodePick ? item.episodeTitle : title}</h3>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4 pl-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <h3 className="text-white text-xs font-black uppercase tracking-tight text-center w-full leading-tight shadow-sm">{isEpisodePick ? item.episodeTitle : title}</h3>
                             {showAddedAt && formattedAddedDate && (
-                                <p className="text-[8px] font-black text-primary-accent uppercase tracking-widest text-center w-full mt-1">Added: {formattedAddedDate}</p>
+                                <p className="text-[8px] font-black text-primary-accent uppercase tracking-widest text-center w-full mt-2">Captured: {formattedAddedDate}</p>
                             )}
                         </div>
                     </div>
                 </BrandedImage>
             </div>
-            {showAddedAt && formattedAddedDate && (
-                <div className="mt-1 text-center">
-                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-60">Added: {formattedAddedDate}</p>
+            {(showAddedAt && formattedAddedDate) && (
+                <div className="mt-2 text-center">
+                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-40">Added {formattedAddedDate}</p>
                 </div>
             )}
         </div>

@@ -23,10 +23,9 @@ const TrendingCard: React.FC<{
     onToggleFavoriteShow: (item: TrackedItem) => void;
     isFavorite: boolean;
     isCompleted: boolean;
-    onPlanToWatch: () => void;
     userData: UserData;
     timeFormat: '12h' | '24h';
-}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, onPlanToWatch, userData, timeFormat }) => {
+}> = ({ item, onSelect, onAdd, onMarkShowAsWatched, onToggleFavoriteShow, isFavorite, isCompleted, userData, timeFormat }) => {
     const [markAsWatchedModalState, setMarkAsWatchedModalState] = useState<{ isOpen: boolean; item: TmdbMedia | null }>({ isOpen: false, item: null });
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
 
@@ -150,7 +149,7 @@ const TrendingCard: React.FC<{
                     <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onPlanToWatch(); }} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Plan to Watch">
+                    <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
                     <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
@@ -187,12 +186,11 @@ interface TrendingSectionProps {
   favorites: TrackedItem[];
   completed: TrackedItem[];
   onViewMore?: () => void;
-  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   userData: UserData;
   timeFormat: '12h' | '24h';
 }
 
-const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, onViewMore, onUpdateLists, userData, timeFormat }) => {
+const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed, onViewMore, userData, timeFormat }) => {
     const [media, setMedia] = useState<TmdbMedia[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -251,7 +249,6 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
                             onToggleFavoriteShow={onToggleFavoriteShow}
                             isFavorite={favorites.some(f => f.id === item.id)}
                             isCompleted={completed.some(c => c.id === item.id)}
-                            onPlanToWatch={() => onUpdateLists({ id: item.id, title: item.title || item.name || '', media_type: item.media_type, poster_path: item.poster_path }, null, 'planToWatch')}
                             userData={userData}
                             timeFormat={timeFormat}
                         />

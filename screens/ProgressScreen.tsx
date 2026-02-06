@@ -303,7 +303,12 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
 
     const sortedMedia = useMemo(() => {
         let results = enrichedMedia.filter(item => {
-            if (item.media_type === 'tv') return (item as EnrichedShowData).nextEpisodeInfo !== null || (item as EnrichedShowData).watchedCount < (item as EnrichedShowData).totalEpisodes;
+            if (item.media_type === 'tv') {
+                const show = item as EnrichedShowData;
+                // STICKY RULE: If 0 episodes are marked as watched, it's not a "Progress" item
+                return show.watchedCount > 0;
+            }
+            // Movies in enrichedMedia are only there if they have a paused session
             return true;
         });
 
@@ -323,7 +328,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         }
 
         const sortFunction = (a: EnrichedMediaData, b: EnrichedMediaData): number => {
-            // FIX: Ensure media_type access is consistent across union members.
             const aType = (a as TrackedItem).media_type;
             const bType = (b as TrackedItem).media_type;
 
@@ -368,10 +372,13 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         enrichedMedia.forEach(item => {
             if (item.media_type === 'tv') {
                 const show = item as EnrichedShowData;
-                const remaining = Math.max(0, show.totalEpisodes - show.watchedCount);
-                episodesLeft += remaining;
-                hoursLeft += remaining * 45;
-                showsInProgress++;
+                // Only count stats for items with at least 1 watched episode
+                if (show.watchedCount > 0) {
+                    const remaining = Math.max(0, show.totalEpisodes - show.watchedCount);
+                    episodesLeft += remaining;
+                    hoursLeft += remaining * 45;
+                    showsInProgress++;
+                }
             } else {
                 const movie = item as EnrichedMovieData;
                 const remainingSeconds = (movie.details.runtime || 0) * 60 - movie.elapsedSeconds;
