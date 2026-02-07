@@ -2,12 +2,13 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UserData, TmdbMediaDetails, TmdbMedia, Episode, TrackedItem, DownloadedPdf, CustomImagePaths, ReportType, CastMember, CrewMember, AppNotification, NotificationSettings, PendingRecommendationCheck } from '../types';
 import { getMediaDetails, getSeasonDetails, discoverMediaPaginated, getTrending } from '../services/tmdbService';
 import { generateAirtimePDF, generateSupabaseSpecPDF, generateSummaryReportPDF } from '../utils/pdfExportUtils';
-import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon, ListBulletIcon, TrophyIcon, DocumentTextIcon } from '../components/Icons';
+import { ChevronLeftIcon, CloudArrowUpIcon, CheckCircleIcon, ArchiveBoxIcon, FireIcon, ClockIcon, ArrowPathIcon, InformationCircleIcon, PlayPauseIcon, LockClosedIcon, SparklesIcon, DownloadIcon, PhotoIcon, TvIcon, FilmIcon, SearchIcon, XMarkIcon, UserIcon, MegaphoneIcon, TrashIcon, CircleStackIcon, BoltIcon, UsersIcon, ListBulletIcon, TrophyIcon, DocumentTextIcon, QuestionMarkCircleIcon } from '../components/Icons';
 import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { confirmationService } from '../services/confirmationService';
 import * as pushNotificationService from '../services/pushNotificationService';
 import BroadcastModal from '../components/BroadcastModal';
+import MissingInfoModal from '../components/MissingInfoModal';
 import { supabase, uploadAdminReport } from '../services/supabaseClient';
 import Logo from '../components/Logo';
 
@@ -31,6 +32,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
     const [isGenerating, setIsGenerating] = useState<ReportType | 'library_dump' | 'recommendation_audit' | 'rec_gap_report' | 'cast_crew_audit' | null>(null);
     const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, matches: 0 });
     const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+    const [isMissingInfoModalOpen, setIsMissingInfoModalOpen] = useState(false);
     const [downloadedPdfs, setDownloadedPdfs] = useLocalStorage<DownloadedPdf[]>('cinemontauge_reports', []);
 
     const [reportOffsets, setReportOffsets] = useLocalStorage<Record<string, any>>('cinemontauge_report_offsets', {
@@ -71,99 +73,18 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
         setIsGenerating(null);
     };
 
-    /**
-     * DEDICATED AUDIT: Cast & Crew Missing Images
-     * Generates a report of any individual in the credits registry that is using a placeholder.
-     */
-    const runCastCrewAudit = async () => {
-        setIsGenerating('cast_crew_audit');
-        setScanProgress({ current: 0, total: 0, matches: 0 });
+    const handleSendMissingInfo = (type: string, data: any) => {
+        const subject = `Registry Update: ${type}`;
+        let body = `Audit Report Details:\n------------------\nReport Type: ${type}\nGenerated At: ${new Date().toLocaleString()}\n\n`;
         
-        const rows: { title: string; status: string; details: string }[] = [];
-        const processedPersonIds = new Set<number>();
-        
-        // Stage 1: Identify Media to Scan (Library + Trending)
-        const libraryItems = [...userData.watching, ...userData.completed].slice(0, 15);
-        const trendingItems = await getTrending('tv');
-        const scanPool = [...libraryItems, ...trendingItems.slice(0, 15)];
-        
-        const totalItems = scanPool.length;
-        let matchesCount = 0;
+        if (data.name) body += `Talent Name: ${data.name}\n`;
+        if (data.imdbLink) body += `IMDb Link: ${data.imdbLink}\n`;
+        if (data.description) body += `Description: ${data.description}\n`;
+        if (data.status) body += `Status: ${data.status}\n`;
 
-        try {
-            for (let i = 0; i < totalItems; i++) {
-                const media = scanPool[i];
-                setScanProgress(prev => ({ ...prev, current: i + 1, total: totalItems }));
-                
-                // Fetch Credits
-                const details = await getMediaDetails(media.id, media.media_type as 'tv' | 'movie').catch(() => null);
-                if (!details || !details.credits) continue;
-
-                const allPeople = [...(details.credits.cast || []), ...(details.credits.crew || [])];
-                const mediaTitle = details.title || details.name || 'Untitled';
-
-                for (const person of allPeople) {
-                    // Rule: Only scan new unique people
-                    if (processedPersonIds.has(person.id)) continue;
-                    processedPersonIds.add(person.id);
-
-                    // Check for missing image
-                    if (!person.profile_path) {
-                        const role = (person as any).character || (person as any).job || 'Talent';
-                        rows.push({
-                            title: person.name,
-                            status: `ID: ${person.id}`,
-                            details: `Media: ${mediaTitle} • Role: ${role}`
-                        });
-                        matchesCount++;
-                        setScanProgress(prev => ({ ...prev, matches: matchesCount }));
-                    }
-
-                    if (matchesCount >= 200) break; // Limit individual PDF size
-                }
-                if (matchesCount >= 200) break;
-                
-                // Rate Limit protection
-                await new Promise(r => setTimeout(r, 100));
-            }
-
-            if (rows.length > 0) {
-                const reportTitle = "CineMontauge Cast & Crew Placeholder Registry";
-                const { blob, fileName } = generateSummaryReportPDF(reportTitle, rows, {
-                    totalScanned: processedPersonIds.size,
-                    matchesFound: rows.length,
-                    criteria: "Missing or Placeholder profile images in credits sector.",
-                    partNumber: 1
-                });
-
-                // Download
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', fileName);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-
-                // Save record
-                setDownloadedPdfs(prev => [{
-                    id: `rep-cast-${Date.now()}`,
-                    title: reportTitle,
-                    timestamp: new Date().toISOString(),
-                    part: 1,
-                    rows: []
-                }, ...prev]);
-
-                confirmationService.show(`Cast & Crew audit complete. Found ${rows.length} placeholders.`);
-            } else {
-                confirmationService.show("Registry health check: All scanned talent have valid imagery.");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Talent Registry Scan failed.");
-        } finally {
-            setIsGenerating(null);
-        }
+        window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        setIsMissingInfoModalOpen(false);
+        confirmationService.show("Missing info report dispatched.");
     };
 
     const runRecommendationAudit = async () => {
@@ -228,13 +149,9 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
         confirmationService.show(`Audit complete. ${newlyFailed.length} dead-ends found.`);
     };
 
-    /**
-     * GENERATE THE SPECIFIC "movie and show detail pages without recommendations" PDF
-     */
     const generateRecGapReport = async () => {
         setIsGenerating('rec_gap_report');
         
-        // 1. Gather all unique items with 0 recommendations
         const deadEnds = userData.failedRecommendationReports;
         const currentPending = userData.pendingRecommendationChecks;
         
@@ -251,7 +168,7 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
 
         const rows = combinedGaps.map(item => ({
             title: item.title,
-            status: item.id.toString(), // ID column
+            status: item.id.toString(),
             details: `Registry Sector: ${item.media_type.toUpperCase()} • Status: ${item.note}`
         }));
 
@@ -267,7 +184,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
             }
         );
 
-        // Save locally in Owner Portal "Registry Reports"
         const reportId = `rep-rec-${Date.now()}`;
         setDownloadedPdfs(prev => [{
             id: reportId,
@@ -277,7 +193,6 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
             rows: [] 
         }, ...prev]);
 
-        // Trigger browser download
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -435,6 +350,11 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
 
     return (
         <div className="animate-fade-in space-y-12 px-6 pb-20 max-w-7xl mx-auto">
+             <MissingInfoModal 
+                isOpen={isMissingInfoModalOpen}
+                onClose={() => setIsMissingInfoModalOpen(false)}
+                onSend={handleSendMissingInfo}
+             />
              <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="flex items-center gap-6">
                     <button onClick={onBack} className="p-4 bg-bg-secondary/40 rounded-2xl text-text-primary hover:text-primary-accent border border-white/5 transition-all shadow-xl group">
@@ -466,13 +386,12 @@ const AirtimeManagement: React.FC<AirtimeManagementProps> = ({ onBack, userData,
                          </button>
 
                          <button 
-                            disabled={!!isGenerating}
-                            onClick={runCastCrewAudit}
+                            onClick={() => setIsMissingInfoModalOpen(true)}
                             className="flex flex-col p-6 bg-bg-secondary/40 rounded-3xl border border-white/5 hover:border-primary-accent/40 transition-all text-left group"
                          >
-                            <UsersIcon className="w-6 h-6 text-emerald-400 mb-4" />
-                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Cast & Crew Audit</span>
-                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Missing Profile Images</span>
+                            <QuestionMarkCircleIcon className="w-6 h-6 text-emerald-400 mb-4" />
+                            <span className="text-xs font-black text-text-primary uppercase tracking-widest group-hover:text-primary-accent">Missing Information</span>
+                            <span className="text-[9px] text-text-secondary opacity-40 uppercase mt-1">Manual Content Gaps</span>
                          </button>
 
                          <button 

@@ -341,18 +341,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   }, [mediaType, details, watchProgress, id]);
 
   const showStatus = useMemo(() => details ? getShowStatus(details) : null, [details]);
+  
+  // Specific upcoming content check for "Reminder" button visibility
   const hasUpcomingContent = useMemo(() => {
     if (!details) return false;
     const today = new Date().toISOString().split('T')[0];
     const statusText = showStatus?.text || '';
     
     if (mediaType === 'tv') {
+        // "Shows with upcoming episodes or an upcoming season"
         if (statusText === 'Upcoming' || statusText === 'In Season') return true;
         if (details.next_episode_to_air) return true;
         return !!details.seasons?.some(s => s.air_date && s.air_date > today);
     } else {
-        // For movies: Upcoming status and a future date
-        return statusText === 'Upcoming' && !!details.release_date && details.release_date > today;
+        // "Movies that have an upcoming release date"
+        return !!details.release_date && details.release_date > today;
     }
   }, [details, mediaType, showStatus]);
 
@@ -646,6 +649,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label={mediaType === 'tv' ? "Watch All" : "Watched"} isActive={mediaType === 'tv' ? isAllWatched : currentStatus === 'completed'} icon={<CheckCircleIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onMarkAllWatched(id, details as any) : onMarkMediaAsWatched(details)} />
                 <DetailedActionButton label={mediaType === 'tv' ? "Unmark All" : "Unmark"} icon={<XMarkIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onUnmarkAllWatched(id) : props.onUnmarkMovieWatched(id, false)} />
                 
+                {/* UPCOMING SPECIFIC ROW LOGIC */}
                 {hasUpcomingContent ? (
                     <>
                         <DetailedActionButton 
@@ -680,10 +684,9 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                 
-                {!hasUpcomingContent && (
-                  mediaType === 'tv' ? (
-                    <DetailedActionButton label="Reminder" icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} isActive={isReminderSet} onClick={() => setIsReminderOptionsOpen(true)} />
-                  ) : (
+                {/* Final Button Placement */}
+                {mediaType === 'movie' ? (
+                  !hasUpcomingContent && (
                     <DetailedActionButton 
                       label="Live Watch" 
                       className="!bg-black !border-none" 
@@ -691,32 +694,37 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                       onClick={() => onStartLiveWatch({ id: details.id, title: details.title || '', media_type: 'movie', poster_path: details.poster_path, runtime: details.runtime || 120 })} 
                     />
                   )
+                ) : (
+                  // TV always has a button in this slot
+                  !hasUpcomingContent ? (
+                    <DetailedActionButton 
+                      label="Live Watch" 
+                      className="!bg-black !border-none" 
+                      icon={<PlayCircleIcon className="w-6 h-6" />} 
+                      onClick={() => {
+                          const next = nextEpisodeToWatch;
+                          onStartLiveWatch({ 
+                            id: details.id, 
+                            title: details.name || '', 
+                            media_type: 'tv', 
+                            poster_path: details.poster_path, 
+                            runtime: details.episode_run_time?.[0] || 45,
+                            seasonNumber: next?.seasonNumber,
+                            episodeNumber: next?.episodeNumber
+                          })
+                      }} 
+                    />
+                  ) : null
                 )}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {isTV && !hasUpcomingContent && (
-                  <DetailedActionButton 
-                    label="Live Watch" 
-                    className="!bg-black !border-none" 
-                    icon={<PlayCircleIcon className="w-6 h-6" />} 
-                    onClick={() => {
-                        const next = nextEpisodeToWatch;
-                        onStartLiveWatch({ 
-                          id: details.id, 
-                          title: details.name || '', 
-                          media_type: 'tv', 
-                          poster_path: details.poster_path, 
-                          runtime: details.episode_run_time?.[0] || 45,
-                          seasonNumber: next?.seasonNumber,
-                          episodeNumber: next?.episodeNumber
-                        })
-                    }} 
-                  />
-                )}
                 <DetailedActionButton label="Share" icon={<ShareIcon className="w-6 h-6" />} onClick={handleShare} />
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
+                {mediaType === 'tv' && (
+                    <DetailedActionButton label="Request Air" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
+                )}
               </div>
             </div>
           </div>
