@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { QuestionMarkCircleIcon } from './Icons';
 import ReportIssueModal from './ReportIssueModal';
@@ -20,7 +19,17 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: (
 
 const PageChangeRequest: React.FC<PageChangeRequestProps> = ({ mediaTitle, mediaId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const options = ["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Other Error"];
+  // Note: Since this component is generic, we use the base options. 
+  // TV-specific options like "Wrong Air Time" are handled in the parent ShowDetail context.
+  const options = [
+    "Wrong Details", 
+    "Insufficient Info", 
+    "Incorrect Poster", 
+    "Missing Content", 
+    "Already been released",
+    "Wrong release date/airdate",
+    "Other Error"
+  ];
 
   const handleSelect = (option: string) => {
     const subject = `CineMontauge Page Change Request: ${mediaTitle} (ID: ${mediaId})`;

@@ -49,6 +49,7 @@ interface ShowDetailProps {
   customImagePaths: CustomImagePaths;
   onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
   onRemoveCustomImage: (mediaId: number, url: string) => void;
+  onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
   favorites: TrackedItem[];
   onToggleFavoriteShow: (item: TrackedItem) => void;
   weeklyFavorites: WeeklyPick[];
@@ -103,6 +104,7 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   pendingRecommendationChecks: PendingRecommendationCheck[];
   setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
+  setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 type TabType = 'seasons' | 'specials' | 'info' | 'cast' | 'discussion' | 'recs' | 'customize' | 'achievements';
@@ -132,15 +134,17 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     id, mediaType, onBack, watchProgress, history, trackedLists, onUpdateLists, customImagePaths, 
     onSetCustomImage,
     onRemoveCustomImage,
+    onResetCustomImage,
     favorites, onToggleFavoriteShow, onRateItem, ratings, showRatings, currentUser, customLists, 
     episodeRatings, favoriteEpisodes, comments, seasonRatings, genres, mediaNotes = {}, onSaveMediaNote, 
     weeklyFavorites, onToggleWeeklyFavorite, allUserData, episodeNotes, preferences, follows,
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
-    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onNoteDeleted, onDiscardRequest,
-    onSetCustomEpisodeImage, reminders, onToggleReminder,
-    pendingRecommendationChecks, setPendingRecommendationChecks
+    onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick,
+    reminders, onToggleReminder,
+    pendingRecommendationChecks, setPendingRecommendationChecks,
+    setFailedRecommendationReports
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -453,6 +457,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     setActiveCommentThread(key === `s${details?.last_episode_to_air?.season_number}` ? `tv-${details?.id}-s${details?.last_episode_to_air?.season_number}-e${details?.last_episode_to_air?.episode_number}` : key);
   }
 
+  const handleReportIssue = (option: string) => {
+    const subject = `CineMontauge Report: ${details?.title || details?.name} (${mediaType.toUpperCase()} ID: ${id})`;
+    const body = `Identity: ${currentUser?.username || 'Guest'} (${currentUser?.email || 'N/A'})\n\nIssue Selected: ${option}\n\nTechnical details:\n[Please enter description here]`;
+    window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setIsReportIssueModalOpen(false);
+  };
+
   if (loading) return <div className="p-20 text-center animate-pulse text-white">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -507,6 +518,21 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
   const isReminderSet = reminders.some(r => r.mediaId === id);
 
+  const reportOptions = useMemo(() => {
+    const base = [
+        "Wrong Details", 
+        "Insufficient Info", 
+        "Incorrect Poster", 
+        "Missing Content", 
+        ...(mediaType === 'tv' ? ["Wrong Air Time"] : []),
+        "Already been released",
+        "Wrong release date/airdate",
+        "Wrong Streaming / Where to Watch listed", 
+        "Other Error"
+    ];
+    return base;
+  }, [mediaType]);
+
   return (
     <div className="animate-fade-in relative pb-20">
       <RatingModal isOpen={isRatingModalOpen} onClose={() => { setIsRatingModalOpen(false); setSelectedRatingEpisode(null); }} onSave={handleRatingSave} currentRating={selectedRatingEpisode ? (episodeRatings[id]?.[selectedRatingEpisode.season_number]?.[selectedRatingEpisode.episode_number] || 0) : userRating} mediaTitle={selectedRatingEpisode ? `S${selectedRatingEpisode.season_number} E${selectedRatingEpisode.episode_number}: ${selectedRatingEpisode.name}` : (details.title || details.name || '')} />
@@ -515,7 +541,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <JournalModal isOpen={isJournalModalOpen} onClose={() => { setIsJournalModalOpen(false); setSelectedJournalEpisode(null); }} onSave={handleJournalSave} mediaDetails={details} initialSeason={selectedJournalEpisode?.season} initialEpisode={selectedJournalEpisode?.ep} watchProgress={watchProgress} />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={() => {}} onNoteDeleted={props.onNoteDeleted} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <WatchlistModal isOpen={isWatchlistModalOpen} onClose={() => setIsWatchlistModalOpen(false)} onUpdateList={(newList) => { onUpdateLists(details as any, currentStatus, newList as WatchStatus); }} currentList={currentStatus} customLists={customLists} mediaType={mediaType} />
-      <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={() => {}} options={["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Wrong Air Time", "Wrong Streaming / Where to Watch listed", "Other Error"]} />
+      <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={handleReportIssue} options={reportOptions} />
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={() => {}} onDiscard={() => {}} showDetails={details} />
       <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} onSave={handleCommentSave} />
       
@@ -691,7 +717,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               {activeTab === 'discussion' && (
                   <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
               )}
-              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} />}
+              {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} onResetCustomImage={onResetCustomImage} />}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}
             </div>
           </div>

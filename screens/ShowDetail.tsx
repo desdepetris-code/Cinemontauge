@@ -96,7 +96,6 @@ interface ShowDetailProps {
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onAuthClick: () => void;
   onNoteDeleted: (note: Note, mediaTitle: string, context: string) => void;
-  onDiscardRequest: (item: DeletedHistoryItem) => void;
   onSetCustomEpisodeImage: (showId: number, season: number, episode: number, imagePath: string) => void;
   onClearMediaHistory: (mediaId: number, mediaType: 'tv' | 'movie') => void;
   reminders: Reminder[];
@@ -104,7 +103,6 @@ interface ShowDetailProps {
   episodeRatings: EpisodeRatings;
   pendingRecommendationChecks: PendingRecommendationCheck[];
   setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
-  setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
 }
 
 type TabType = 'seasons' | 'specials' | 'info' | 'cast' | 'discussion' | 'recs' | 'customize' | 'achievements';
@@ -134,13 +132,14 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     id, mediaType, onBack, watchProgress, history, trackedLists, onUpdateLists, customImagePaths, 
     favorites, onToggleFavoriteShow, onRateItem, ratings, showRatings, currentUser, customLists, 
     episodeRatings, favoriteEpisodes, comments, seasonRatings, genres, mediaNotes = {}, onSaveMediaNote, 
-    weeklyFavorites, onToggleWeeklyFavorite, allUserData, episodeNotes, preferences, follows,
+    weeklyFavorites, onToggleFavoriteShow: handleFavoriteToggle, onToggleWeeklyFavorite, allUserData, episodeNotes, preferences, follows,
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
     onSelectShow, onSelectPerson, onDeleteHistoryItem, onClearMediaHistory, pausedLiveSessions, onAuthClick, onNoteDeleted,
     onSetCustomEpisodeImage, onSetCustomImage, onRemoveCustomImage, onResetCustomImage, reminders, onToggleReminder,
-    pendingRecommendationChecks, setPendingRecommendationChecks
+    pendingRecommendationChecks, setPendingRecommendationChecks,
+    onToggleEpisode, allUsers
   } = props;
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
@@ -172,6 +171,8 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [selectedJournalEpisode, setSelectedJournalEpisode] = useState<{ season: number; ep: Episode } | null>(null);
   const [selectedRatingEpisode, setSelectedRatingEpisode] = useState<Episode | null>(null);
   const [selectedCommentEpisode, setSelectedCommentEpisode] = useState<Episode | null>(null);
+
+  const isTV = mediaType === 'tv';
 
   const backdropUrl = useMemo(() => customImagePaths[id]?.backdrop_path 
     ? getImageUrl(customImagePaths[id].backdrop_path, 'w1280', 'backdrop')
@@ -545,6 +546,19 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       onToggleReminder(newReminder, reminderId);
   };
 
+  // derived props for EpisodeDetailModal
+  const isEpWatched = selectedEpisodeForDetail 
+    ? watchProgress[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number]?.status === 2
+    : false;
+  
+  const isEpFavorited = selectedEpisodeForDetail
+    ? !!favoriteEpisodes[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number]
+    : false;
+
+  const currentEpRating = selectedEpisodeForDetail
+    ? (episodeRatings[id]?.[selectedEpisodeForDetail.season_number]?.[selectedEpisodeForDetail.episode_number] || 0)
+    : 0;
+
   return (
     <div className="animate-fade-in relative pb-20">
       <RatingModal isOpen={isRatingModalOpen} onClose={() => { setIsRatingModalOpen(false); setSelectedRatingEpisode(null); }} onSave={handleRatingSave} currentRating={selectedRatingEpisode ? (episodeRatings[id]?.[selectedRatingEpisode.season_number]?.[selectedRatingEpisode.episode_number] || 0) : userRating} mediaTitle={selectedRatingEpisode ? `S${selectedRatingEpisode.season_number} E${selectedRatingEpisode.episode_number}: ${selectedRatingEpisode.name}` : (details.title || details.name || '')} />
@@ -564,6 +578,37 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           initialTypes={reminders.find(r => r.id === reminderId)?.selectedTypes}
           initialFrequency={reminders.find(r => r.id === reminderId)?.frequency}
       />
+
+      {selectedEpisodeForDetail && (
+          <EpisodeDetailModal 
+              isOpen={!!selectedEpisodeForDetail}
+              onClose={() => setSelectedEpisodeForDetail(null)}
+              episode={selectedEpisodeForDetail}
+              showDetails={details}
+              seasonDetails={seasonDetailsMap[selectedEpisodeForDetail.season_number] || { episodes: [selectedEpisodeForDetail] } as any}
+              isWatched={isEpWatched}
+              onToggleWatched={() => onToggleEpisode(id, selectedEpisodeForDetail.season_number, selectedEpisodeForDetail.episode_number, isEpWatched ? 2 : 0, details as any, selectedEpisodeForDetail.name)}
+              onOpenJournal={() => handleJournalOpen(selectedEpisodeForDetail.season_number, selectedEpisodeForDetail)}
+              isFavorited={isEpFavorited}
+              onToggleFavorite={() => onToggleFavoriteEpisode(id, selectedEpisodeForDetail.season_number, selectedEpisodeForDetail.episode_number)}
+              onStartLiveWatch={onStartLiveWatch}
+              onSaveJournal={props.onSaveJournal}
+              watchProgress={watchProgress}
+              history={history}
+              onAddWatchHistory={props.onAddWatchHistory}
+              onRate={() => handleRatingOpen(selectedEpisodeForDetail)}
+              episodeRating={currentEpRating}
+              onDiscuss={() => handleCommentOpen(selectedEpisodeForDetail)}
+              showRatings={showRatings}
+              preferences={preferences}
+              timezone={allUserData.timezone}
+              currentShowStatus={currentStatus}
+              onUpdateShowStatus={(newStatus) => onUpdateLists(details as any, currentStatus, newStatus)}
+              onViewFullShow={() => setSelectedEpisodeForDetail(null)}
+              weeklyFavorites={weeklyFavorites}
+              onToggleWeeklyFavorite={onToggleWeeklyFavorite}
+          />
+      )}
       
       <div className="relative w-full aspect-video md:aspect-[21/9] md:h-auto overflow-hidden">
         <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
@@ -601,7 +646,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label={mediaType === 'tv' ? "Watch All" : "Watched"} isActive={mediaType === 'tv' ? isAllWatched : currentStatus === 'completed'} icon={<CheckCircleIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onMarkAllWatched(id, details as any) : onMarkMediaAsWatched(details)} />
                 <DetailedActionButton label={mediaType === 'tv' ? "Unmark All" : "Unmark"} icon={<XMarkIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onUnmarkAllWatched(id) : props.onUnmarkMovieWatched(id, false)} />
                 
-                {/* UPCOMING SPECIFIC LOGIC: Reminder left of Weekly Pick if upcoming content exists */}
                 {hasUpcomingContent ? (
                     <>
                         <DetailedActionButton 
@@ -621,7 +665,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               </div>
               
               <div className="grid grid-cols-4 gap-2">
-                {/* Row 2 logic: If upcoming, Favorite starts here */}
                 {hasUpcomingContent && (
                     <DetailedActionButton label="Favorite" icon={<HeartIcon filled={isFavorited} className="w-6 h-6" />} isActive={isFavorited} onClick={() => onToggleFavoriteShow(details as any)} />
                 )}
@@ -637,23 +680,43 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                 
-                {/* Standard placement for Reminder/LiveWatch if not handled in top row */}
                 {!hasUpcomingContent && (
                   mediaType === 'tv' ? (
                     <DetailedActionButton label="Reminder" icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} isActive={isReminderSet} onClick={() => setIsReminderOptionsOpen(true)} />
                   ) : (
-                    <DetailedActionButton label="Live Watch" icon={<PlayCircleIcon className="w-6 h-6" />} onClick={() => onStartLiveWatch({ id: details.id, title: details.title || '', media_type: 'movie', poster_path: details.poster_path, runtime: details.runtime || 120 })} />
+                    <DetailedActionButton 
+                      label="Live Watch" 
+                      className="!bg-black !border-none" 
+                      icon={<PlayCircleIcon className="w-6 h-6" />} 
+                      onClick={() => onStartLiveWatch({ id: details.id, title: details.title || '', media_type: 'movie', poster_path: details.poster_path, runtime: details.runtime || 120 })} 
+                    />
                   )
                 )}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
+                {isTV && !hasUpcomingContent && (
+                  <DetailedActionButton 
+                    label="Live Watch" 
+                    className="!bg-black !border-none" 
+                    icon={<PlayCircleIcon className="w-6 h-6" />} 
+                    onClick={() => {
+                        const next = nextEpisodeToWatch;
+                        onStartLiveWatch({ 
+                          id: details.id, 
+                          title: details.name || '', 
+                          media_type: 'tv', 
+                          poster_path: details.poster_path, 
+                          runtime: details.episode_run_time?.[0] || 45,
+                          seasonNumber: next?.seasonNumber,
+                          episodeNumber: next?.episodeNumber
+                        })
+                    }} 
+                  />
+                )}
                 <DetailedActionButton label="Share" icon={<ShareIcon className="w-6 h-6" />} onClick={handleShare} />
                 <DetailedActionButton label="Refresh" icon={<ArrowPathIcon className="w-6 h-6" />} onClick={handleRefresh} />
                 <DetailedActionButton label="Report Issue" icon={<QuestionMarkCircleIcon className="w-6 h-6" />} onClick={() => setIsReportIssueModalOpen(true)} />
-                {mediaType === 'tv' && (
-                    <DetailedActionButton label="Request Air" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsAirtimeRequestModalOpen(true)} />
-                )}
               </div>
             </div>
           </div>
@@ -728,14 +791,14 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
               {activeTab === 'seasons' && mediaType === 'tv' && (
                 <div className="space-y-4">
                    {details.seasons?.filter(s => s.season_number > 0).map(season => (
-                      <SeasonAccordion key={season.id} season={season} showId={id} isExpanded={expandedSeason === season.season_number} onToggle={() => handleToggleSeason(season.season_number)} seasonDetails={seasonDetailsMap[season.season_number]} watchProgress={watchProgress} onToggleEpisode={props.onToggleEpisode} onMarkPreviousEpisodesWatched={onMarkPreviousEpisodesWatched} onOpenJournal={handleJournalOpen} onOpenEpisodeDetail={setSelectedEpisodeForDetail} showPosterPath={details.poster_path} onMarkSeasonWatched={onMarkSeasonWatched} onUnmarkSeasonWatched={onUnmarkSeasonWatched} showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} comments={comments} onImageClick={() => {}} onSaveEpisodeNote={onSaveEpisodeNote} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} timezone={allUserData.timezone} timeFormat={allUserData.timeFormat} />
+                      <SeasonAccordion key={season.id} season={season} showId={id} isExpanded={expandedSeason === season.season_number} onToggle={() => handleToggleSeason(season.season_number)} seasonDetails={seasonDetailsMap[season.season_number]} watchProgress={watchProgress} onToggleEpisode={onToggleEpisode} onMarkPreviousEpisodesWatched={onMarkPreviousEpisodesWatched} onOpenJournal={handleJournalOpen} onOpenEpisodeDetail={setSelectedEpisodeForDetail} showPosterPath={details.poster_path} onMarkSeasonWatched={onMarkSeasonWatched} onUnmarkSeasonWatched={onUnmarkSeasonWatched} showDetails={details} favoriteEpisodes={favoriteEpisodes} onToggleFavoriteEpisode={onToggleFavoriteEpisode} onStartLiveWatch={onStartLiveWatch} onSaveJournal={handleJournalSave} episodeRatings={episodeRatings} onOpenEpisodeRatingModal={handleRatingOpen} onAddWatchHistory={onAddWatchHistory} comments={comments} onImageClick={() => {}} onSaveEpisodeNote={onSaveEpisodeNote} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={onRateSeason} episodeNotes={episodeNotes} timezone={allUserData.timezone} timeFormat={allUserData.timeFormat} />
                    ))}
                 </div>
               )}
               {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
               {activeTab === 'recs' && <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} onRefresh={handleRefresh} />}
               {activeTab === 'discussion' && (
-                  <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
+                  <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
               )}
               {activeTab === 'customize' && <CustomizeTab posterUrl={posterUrl} backdropUrl={backdropUrl} onOpenPosterSelector={() => setIsPosterSelectorOpen(true)} onOpenBackdropSelector={() => setIsBackdropSelectorOpen(true)} showId={id} customImagePaths={customImagePaths} details={details} onSetCustomImage={onSetCustomImage} onRemoveCustomImage={onRemoveCustomImage} onResetCustomImage={onResetCustomImage} />}
               {activeTab === 'achievements' && <ShowAchievementsTab details={details} userData={allUserData} />}

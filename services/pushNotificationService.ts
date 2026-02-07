@@ -1,5 +1,3 @@
-
-
 export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
     if (!('Notification' in window)) {
         console.warn("This browser does not support desktop notification");
@@ -16,31 +14,36 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
 
 export const triggerLocalNotification = async (title: string, body: string, icon?: string, url?: string) => {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
-        // Fallback or silent return
+        // Fallback to alert if permission not granted
+        console.info(`CineMontauge Notification: ${title} - ${body}`);
         return;
     }
 
-    // FIX: Cast options to 'any' to bypass TypeScript's restrictive NotificationOptions type which may lack 'vibrate' or 'badge'
     const options: any = {
         body: body,
         icon: icon || '/icon.svg',
         badge: '/icon.svg',
         vibrate: [200, 100, 200],
-        tag: 'sceneit-broadcast',
+        tag: 'sceneit-reminder',
         renotify: true,
+        requireInteraction: true, // Keep it visible until the user interacts
         data: {
             url: url || '/'
         }
     };
 
-    const notification = new Notification(title, options);
+    try {
+        const notification = new Notification(title, options);
 
-    notification.onclick = (event) => {
-        event.preventDefault();
-        window.focus();
-        if (url) {
-            window.location.href = url;
-        }
-        notification.close();
-    };
+        notification.onclick = (event) => {
+            event.preventDefault();
+            window.focus();
+            if (url) {
+                window.location.href = url;
+            }
+            notification.close();
+        };
+    } catch (e) {
+        console.error("Local notification trigger failed", e);
+    }
 };

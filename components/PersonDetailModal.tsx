@@ -21,7 +21,7 @@ const PersonDetailModal: React.FC<PersonDetailModalProps> = (props) => {
     if (!props.isOpen || props.personId === null) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[150] flex items-center justify-center p-0 md:p-6 animate-fade-in" onClick={props.onClose}>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[150] flex items-center justify-center p-0 md:p-6 animate-fade-in pt-16 md:pt-20" onClick={props.onClose}>
             <div 
                 className="bg-bg-primary w-full h-full md:max-w-7xl md:h-[90vh] md:rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col relative"
                 onClick={e => e.stopPropagation()}

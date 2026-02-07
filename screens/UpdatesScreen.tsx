@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, MediaUpdate } from '../types';
 import { checkForUpdates } from '../services/updateService';
@@ -59,6 +58,7 @@ const UpdatesScreen: React.FC<UpdatesScreenProps> = ({ userData, onSelectShow, o
             stale: updates.filter(u => u.type === 'stale'),
             revivals: updates.filter(u => u.type === 'revival'),
             sequels: updates.filter(u => u.type === 'sequel'),
+            nostalgia: updates.filter(u => u.type === 'nostalgia_added' || u.type === 'nostalgia_released'),
         };
     }, [updates]);
 
@@ -84,6 +84,18 @@ const UpdatesScreen: React.FC<UpdatesScreenProps> = ({ userData, onSelectShow, o
 
     return (
         <div className="space-y-12 animate-fade-in">
+            {sections.nostalgia.length > 0 && (
+                <section>
+                    <h2 className="text-xl font-black text-text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+                        <SparklesIcon className="w-6 h-6 text-purple-400" />
+                        Registry Nostalgia
+                    </h2>
+                    <div className="space-y-4">
+                        {sections.nostalgia.map(u => <UpdateCard key={u.id} update={u} onClick={() => onSelectShow(u.mediaId, u.mediaType)} />)}
+                    </div>
+                </section>
+            )}
+
             {sections.revivals.length > 0 && (
                 <section>
                     <h2 className="text-xl font-black text-text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-3">

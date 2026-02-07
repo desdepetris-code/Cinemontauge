@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { EnvelopeIcon, XMarkIcon, SearchNavIcon } from './Icons';
+import { EnvelopeIcon, XMarkIcon, SearchNavIcon, CheckCircleIcon, SparklesIcon } from './Icons';
+import Logo from './Logo';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ const GoogleIcon = () => (
 );
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogleLogin, onSignup, onForgotPasswordRequest, onForgotPasswordReset }) => {
-  const [view, setView] = useState<'login' | 'signup' | 'forgot_email' | 'forgot_code' | 'find_account'>('login');
+  const [view, setView] = useState<'login' | 'signup' | 'forgot_email' | 'forgot_code' | 'find_account' | 'signup_success'>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -135,6 +136,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
         return;
       }
       authError = await onSignup({ username, email, password });
+      if (!authError) {
+          setView('signup_success');
+          setLoading(false);
+          return;
+      }
     } else if (view === 'forgot_email') {
         authError = await onForgotPasswordRequest(email);
         if (!authError) {
@@ -163,6 +169,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
 
   const renderContent = () => {
     switch (view) {
+        case 'signup_success':
+            return (
+                <div className="text-center py-6 space-y-6 animate-fade-in">
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto shadow-inner border border-green-500/30">
+                        <CheckCircleIcon className="w-10 h-10 text-green-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Verify Your Identity</h3>
+                        <p className="text-sm text-text-secondary mt-2 font-medium leading-relaxed">
+                            We've dispatched a secure verification link to:
+                            <br />
+                            <strong className="text-primary-accent block mt-1">{email}</strong>
+                        </p>
+                    </div>
+                    <div className="p-4 bg-primary-accent/5 rounded-xl border border-primary-accent/10">
+                        <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest leading-relaxed">
+                            Check your inbox (and spam) to finalize your entry into the CineMontauge registry.
+                        </p>
+                    </div>
+                    <button 
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-4 rounded-xl bg-bg-secondary text-text-primary font-black uppercase text-[10px] tracking-widest hover:brightness-125 transition-all shadow-md"
+                    >
+                        Got it, I'll check my email
+                    </button>
+                </div>
+            );
         case 'login':
             return (
                 <>
@@ -249,14 +283,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
     signup: 'Create Account', 
     forgot_email: 'Forgot Password', 
     forgot_code: 'Reset Password',
-    find_account: 'Find Account'
+    find_account: 'Find Account',
+    signup_success: 'Alert Sent'
   };
   const buttonTexts = { 
     login: 'Log In', 
     signup: 'Sign Up', 
     forgot_email: 'Send Reset Code', 
     forgot_code: 'Reset Password',
-    find_account: 'Locate Account'
+    find_account: 'Locate Account',
+    signup_success: 'Close'
   };
   
   return (
@@ -276,25 +312,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
             
             {renderContent()}
 
-            <button type="submit" disabled={loading} className="w-full py-3 mt-4 rounded-lg bg-accent-gradient text-on-accent font-black uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 shadow-xl">
-              {loading ? 'Processing...' : buttonTexts[view]}
-            </button>
+            {view !== 'signup_success' && (
+                <button type="submit" disabled={loading} className="w-full py-3 mt-4 rounded-lg bg-accent-gradient text-on-accent font-black uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 shadow-xl">
+                  {loading ? 'Processing...' : buttonTexts[view]}
+                </button>
+            )}
           </form>
         </div>
-        <p className="text-center text-sm text-text-secondary mt-6">
-          {view === 'login' && "Don't have an account?"}
-          {view === 'signup' && "Already have an account?"}
-          {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Ready to sign in?"}
-          <button onClick={() => {
-              if (view === 'login') handleSwitchView('signup');
-              else if (view === 'signup') handleSwitchView('login');
-              else handleSwitchView('login');
-          }} className="font-bold text-primary-accent hover:underline ml-2">
-            {view === 'login' && 'Sign Up'}
-            {view === 'signup' && 'Log In'}
-            {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Log In"}
-          </button>
-        </p>
+        {view !== 'signup_success' && (
+            <p className="text-center text-sm text-text-secondary mt-6">
+              {view === 'login' && "Don't have an account?"}
+              {view === 'signup' && "Already have an account?"}
+              {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Ready to sign in?"}
+              <button onClick={() => {
+                  if (view === 'login') handleSwitchView('signup');
+                  else if (view === 'signup') handleSwitchView('login');
+                  else handleSwitchView('login');
+              }} className="font-bold text-primary-accent hover:underline ml-2">
+                {view === 'login' && 'Sign Up'}
+                {view === 'signup' && 'Log In'}
+                {(view === 'forgot_email' || view === 'forgot_code' || view === 'find_account') && "Log In"}
+              </button>
+            </p>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences, JournalEntry, WeeklyPick } from '../types';
+import { UserData, TmdbMedia, WatchStatus, CustomList, LiveWatchMediaInfo, TrackedItem, Reminder, ShortcutSettings, AppPreferences, JournalEntry, WeeklyPick, Episode, TmdbMediaDetails, TmdbSeasonDetails } from '../types';
 import HeroBanner from '../components/HeroBanner';
 import ShortcutNavigation from '../components/ShortcutNavigation';
 import ContinueWatching from '../components/ContinueWatching';
 import NewSeasons from '../components/NewSeasons';
-import { discoverMedia, getNowPlayingMovies } from '../services/tmdbService';
+import { discoverMedia, getNowPlayingMovies, getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { TMDB_API_KEY } from '../constants';
 import MyListSuggestions from '../components/MyListSuggestions';
 import LiveWatchControls from '../components/LiveWatchControls';
@@ -21,6 +21,7 @@ import Top10Carousel from '../components/Top10Carousel';
 import { FilmIcon, TvIcon, TrophyIcon, SparklesIcon, MountainIcon } from '../components/Icons';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
 import UpcomingMoviesCarousel from '../components/UpcomingMoviesCarousel';
+import EpisodeDetailModal from '../components/EpisodeDetailModal';
 
 interface DashboardProps {
   userData: UserData;
@@ -44,6 +45,7 @@ interface DashboardProps {
   genres: Record<number, string>;
   timeFormat: '12h' | '24h';
   reminders: Reminder[];
+  // FIX: Removed duplicate onToggleReminder definition.
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   shortcutSettings: ShortcutSettings;
@@ -161,6 +163,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   const [backendShows, setBackendShows] = useState<TmdbMedia[]>([]);
   const [backendLoading, setBackendLoading] = useState(true);
 
+  // Episode Popup State
+  const [selectedEpisodeData, setSelectedEpisodeData] = useState<{ episode: Episode; show: TmdbMediaDetails; season?: TmdbSeasonDetails } | null>(null);
+
   useEffect(() => {
     const fetchBackendData = async () => {
         if (isApiKeyMissing) { setBackendLoading(false); return; }
@@ -193,6 +198,34 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
     return Array.from(allItems.values());
   }, [userData.watching, userData.onHold, userData.allCaughtUp, userData.customLists]);
 
+  const handleOpenEpisodeDetail = async (id: number, seasonNumber: number, episodeNumber: number) => {
+      try {
+          const [details, season] = await Promise.all([
+              getMediaDetails(id, 'tv'),
+              getSeasonDetails(id, seasonNumber)
+          ]);
+          const episode = season.episodes.find(e => e.episode_number === episodeNumber);
+          if (episode) {
+              setSelectedEpisodeData({ episode, show: details, season });
+          }
+      } catch (e) { console.error(e); }
+  };
+
+  const activeLiveSessions = useMemo(() => {
+    const result: { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; isPaused: boolean }[] = [];
+    if (liveWatchMedia) {
+        result.push({ mediaInfo: liveWatchMedia, elapsedSeconds: liveWatchElapsedSeconds, isPaused: liveWatchIsPaused });
+    }
+    // Spec: Paused sessions also appear in Live Watch section
+    // FIX: Cast Object.values(pausedLiveSessions) to the correct type to resolve 'Property mediaInfo/elapsedSeconds does not exist on type unknown' errors.
+    (Object.values(pausedLiveSessions) as { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }[]).forEach(session => {
+        if (!liveWatchMedia || session.mediaInfo.id !== liveWatchMedia.id) {
+            result.push({ mediaInfo: session.mediaInfo, elapsedSeconds: session.elapsedSeconds, isPaused: true });
+        }
+    });
+    return result;
+  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, pausedLiveSessions]);
+
   return (
     <div className="animate-fade-in space-y-12 pb-24">
       <HeroBanner history={userData.history} onSelectShow={onSelectShow} />
@@ -202,8 +235,25 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       
       {preferences.dashShowLiveWatch && (
           <section className="px-6">
-            {liveWatchMedia ? (
-                <LiveWatchControls mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={onLiveWatchTogglePause} onStop={onLiveWatchStop} isDashboardWidget={true} />
+            <h2 className="text-2xl font-bold text-text-primary mb-6">Live Watch</h2>
+            {activeLiveSessions.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activeLiveSessions.map(session => (
+                        <div key={session.mediaInfo.id} className="relative">
+                             <LiveWatchControls 
+                                mediaInfo={session.mediaInfo} 
+                                elapsedSeconds={session.elapsedSeconds} 
+                                isPaused={session.isPaused} 
+                                onTogglePause={() => {
+                                    if (liveWatchMedia && session.mediaInfo.id === liveWatchMedia.id) onLiveWatchTogglePause();
+                                    else onStartLiveWatch(session.mediaInfo);
+                                }} 
+                                onStop={() => {}} // Controlled by player tracker
+                                isDashboardWidget={true} 
+                            />
+                        </div>
+                    ))}
+                </div>
             ) : (
                 <div className="bg-bg-secondary/20 rounded-3xl p-10 text-center border border-dashed border-white/10">
                     <h3 className="text-xl font-black text-text-primary uppercase tracking-widest opacity-60">No Active Watch</h3>
@@ -213,7 +263,19 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           </section>
       )}
 
-      {preferences.dashShowContinueWatching && <ContinueWatching watching={userData.watching} onHold={userData.onHold} watchProgress={watchProgress} history={userData.history} onSelectShow={onSelectShow} onToggleEpisode={onToggleEpisode} pausedLiveSessions={pausedLiveSessions} globalPlaceholders={userData.globalPlaceholders} />}
+      {preferences.dashShowContinueWatching && (
+        <ContinueWatching 
+            watching={userData.watching} 
+            onHold={userData.onHold} 
+            watchProgress={watchProgress} 
+            history={userData.history} 
+            onSelectShow={onSelectShow} 
+            onToggleEpisode={onToggleEpisode} 
+            pausedLiveSessions={pausedLiveSessions} 
+            globalPlaceholders={userData.globalPlaceholders}
+            onOpenEpisodeDetail={handleOpenEpisodeDetail}
+        />
+      )}
       
       {preferences.dashShowNewSeasons && !isApiKeyMissing && (
         <NewSeasons title="New Seasons From Your Lists" onSelectShow={onSelectShow} trackedShows={trackedShowsForNewSeasons} watchProgress={userData.watchProgress} timezone={timezone} globalPlaceholders={userData.globalPlaceholders} />
@@ -236,7 +298,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           onShortcutNavigate={onShortcutNavigate} 
           genres={genres} 
           reminders={reminders} 
-          /* // FIX: Corrected handleToggleReminder to onToggleReminder destructured from props */
           onToggleReminder={onToggleReminder} 
           onUpdateLists={onUpdateLists} 
           preferences={preferences} 
@@ -262,6 +323,38 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         </section>
       )}
       {isApiKeyMissing && <ApiKeyWarning />}
+
+      {/* Episode Detail Pop-Up */}
+      {selectedEpisodeData && (
+          <EpisodeDetailModal 
+            isOpen={!!selectedEpisodeData}
+            onClose={() => setSelectedEpisodeData(null)}
+            episode={selectedEpisodeData.episode}
+            showDetails={selectedEpisodeData.show}
+            seasonDetails={selectedEpisodeData.season || { episodes: [selectedEpisodeData.episode] } as any}
+            isWatched={userData.watchProgress[selectedEpisodeData.show.id]?.[selectedEpisodeData.episode.season_number]?.[selectedEpisodeData.episode.episode_number]?.status === 2}
+            onToggleWatched={() => onToggleEpisode(selectedEpisodeData.show.id, selectedEpisodeData.episode.season_number, selectedEpisodeData.episode.episode_number, 0, selectedEpisodeData.show as any, selectedEpisodeData.episode.name)}
+            onOpenJournal={() => {}}
+            isFavorited={!!userData.favoriteEpisodes[selectedEpisodeData.show.id]?.[selectedEpisodeData.episode.season_number]?.[selectedEpisodeData.episode.episode_number]}
+            onToggleFavorite={() => onToggleFavoriteEpisode(selectedEpisodeData.show.id, selectedEpisodeData.episode.season_number, selectedEpisodeData.episode.episode_number)}
+            onStartLiveWatch={onStartLiveWatch}
+            onSaveJournal={onSaveJournal}
+            watchProgress={watchProgress}
+            history={userData.history}
+            onAddWatchHistory={onAddWatchHistory}
+            onRate={() => {}}
+            episodeRating={0}
+            onDiscuss={() => {}}
+            preferences={preferences}
+            timezone={userData.timezone}
+            showRatings={true}
+            currentShowStatus={null}
+            onUpdateShowStatus={() => {}}
+            onViewFullShow={() => { onSelectShow(selectedEpisodeData.show.id, 'tv'); setSelectedEpisodeData(null); }}
+            weeklyFavorites={userData.weeklyFavorites}
+            onToggleWeeklyFavorite={onToggleWeeklyFavorite}
+          />
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import { TmdbMediaDetails, WatchProgress, WatchStatus, EpisodeProgress, HistoryItem } from '../types';
 import { getAiredEpisodeCount } from './formatUtils';
 
@@ -60,26 +59,14 @@ export const calculateMovieAutoStatus = (
     pausedSessions: Record<number, any>,
     manualPreset?: WatchStatus
 ): WatchStatus | null => {
-    const movieHistory = history.filter(h => h.id === mediaId);
+    const hasHistory = history.some(h => h.id === mediaId && !h.logId.startsWith('live-'));
+    const isPaused = !!pausedSessions[mediaId];
+
+    if (hasHistory) return 'completed';
+    if (isPaused) return 'watching';
+    if (manualPreset) return manualPreset;
     
-    // 1. Completed check (Finished manual log or finished live log)
-    if (movieHistory.some(h => !h.logId.startsWith('live-'))) {
-        return 'completed';
-    }
-
-    // 2. In Progress check (Paused live session exists)
-    if (pausedSessions[mediaId]) {
-        return 'watching';
-    }
-
-    // 3. Fallback to manual preset if exists (Plan to Watch, On Hold, Dropped)
-    if (manualPreset) {
-        return manualPreset;
-    }
-
-    // 4. Default: Return generic 'watching' bucket if tracked but no state selected
-    // This allows the UI to label it "In Library"
-    return 'watching';
+    return null;
 };
 
 export const isManualStatus = (status: WatchStatus | null): boolean => {

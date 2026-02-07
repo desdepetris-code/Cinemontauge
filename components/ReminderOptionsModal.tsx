@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ReminderType } from '../types';
-import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon, ListBulletIcon } from './Icons';
+import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon, ListBulletIcon, TrashIcon } from './Icons';
 
 interface ReminderOptionsModalProps {
     isOpen: boolean;
@@ -9,6 +9,7 @@ interface ReminderOptionsModalProps {
     mediaType: 'tv' | 'movie';
     initialTypes?: ReminderType[];
     initialFrequency?: 'first' | 'all';
+    onRemove?: () => void;
 }
 
 const showTimingOptions: { id: ReminderType; label: string; group: 'before' | 'at' | 'after' }[] = [
@@ -31,16 +32,15 @@ const movieTimingOptions: { id: ReminderType; label: string; group: 'before' | '
     { id: 'week_before', label: 'One Week Before', group: 'before' },
     { id: '2days_before', label: 'Two Days Before', group: 'before' },
     { id: 'day_before', label: 'One Day Before', group: 'before' },
-    { id: 'daily_7_before', label: '7-Day Daily Countdown', group: 'before' },
-    { id: 'release', label: 'Day of Release', group: 'at' },
+    { id: 'daily_7_before', label: 'Every Day for 7 Days Before', group: 'before' },
+    { id: 'release', label: 'Day Of Release', group: 'at' },
     { id: 'day_after', label: 'One Day After', group: 'after' },
     { id: '2days_after', label: 'Two Days After', group: 'after' },
     { id: 'week_after', label: 'One Week After', group: 'after' },
     { id: '2weeks_after', label: 'Two Weeks After', group: 'after' },
 ];
 
-const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onClose, onSave, mediaType, initialTypes, initialFrequency }) => {
-    // If no initial types, default to "Select All"
+const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onClose, onSave, mediaType, initialTypes, initialFrequency, onRemove }) => {
     const defaultTypes = useMemo(() => {
         if (mediaType === 'tv') {
             return showTimingOptions.map(opt => opt.id);
@@ -91,19 +91,19 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
         return (
             <div className="space-y-6">
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">Before Release</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">User Choice: Time Before Release</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {groups.before.map(opt => renderOptionButton(opt))}
                     </div>
                 </div>
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">{mediaType === 'movie' ? 'Launch Day' : 'At Release'}</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">{mediaType === 'movie' ? 'User Choice: Release Day' : 'User Choice: Exact Airtime'}</h4>
                     <div className="grid grid-cols-1 gap-2">
                         {groups.at.map(opt => renderOptionButton(opt))}
                     </div>
                 </div>
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">After Release</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">User Choice: Time After Release</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {groups.after.map(opt => renderOptionButton(opt))}
                     </div>
@@ -205,7 +205,9 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
                             <strong className="text-text-primary uppercase block mb-1">
                                 {mediaType === 'movie' ? 'Theatrical Truth Sync' : 'Broadcast Sync'}
                             </strong>
-                            Alerts use exact release timestamps. Deep links in alerts will take you directly to this archive.
+                            {mediaType === 'tv' 
+                                ? "CineMontauge uses both airdate and airtime (e.g. 9:00 PM) for TV reminders. Reminders trigger precisely relative to these timestamps."
+                                : "Movies use the release date provided by the registry. Reminders trigger relative to the start of that day."}
                         </p>
                     </div>
                 </div>
@@ -218,6 +220,15 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
                     >
                         Save Alert Configuration
                     </button>
+                    {onRemove && (
+                         <button 
+                            onClick={onRemove}
+                            className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all"
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                            Remove Alert
+                        </button>
+                    )}
                     <button onClick={onClose} className="w-full py-2 text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary hover:text-text-primary transition-colors">
                         Discard Changes
                     </button>

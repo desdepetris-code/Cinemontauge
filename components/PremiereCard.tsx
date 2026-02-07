@@ -29,7 +29,7 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
     
     useEffect(() => {
         let isMounted = true;
-        getMediaDetails(item.id, item.media_type).then(data => {
+        getMediaDetails(item.id, item.media_type as 'tv' | 'movie').then(data => {
             if (isMounted) setDetails(data);
         }).catch(() => {});
         return () => { isMounted = false; };
@@ -78,18 +78,14 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
     
     const handleReminderClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isReminderSet) {
-            onToggleReminder(null, reminderId);
-        } else {
-            setIsReminderModalOpen(true);
-        }
+        setIsReminderModalOpen(true);
     };
 
     const handleSaveReminder = (selectedTypes: ReminderType[], frequency: 'first' | 'all') => {
         const newReminder: Reminder = {
             id: reminderId,
             mediaId: item.id,
-            mediaType: item.media_type,
+            mediaType: item.media_type as 'tv' | 'movie',
             releaseDate: releaseDate!,
             title: title,
             poster_path: item.poster_path,
@@ -98,6 +94,11 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
             frequency
         };
         onToggleReminder(newReminder, reminderId);
+    };
+
+    const handleRemoveReminder = () => {
+        onToggleReminder(null, reminderId);
+        setIsReminderModalOpen(false);
     };
 
     return (
@@ -109,11 +110,12 @@ const PremiereCard: React.FC<PremiereCardProps> = ({ item, onSelect, onAddToList
                 mediaType={item.media_type as 'tv' | 'movie'}
                 initialTypes={currentReminder?.selectedTypes}
                 initialFrequency={currentReminder?.frequency}
+                onRemove={isReminderSet ? handleRemoveReminder : undefined}
             />
             <div className="w-72 flex-shrink-0 h-full">
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
-                    onClick={() => onSelect(item.id, item.media_type)}
+                    onClick={() => onSelect(item.id, item.media_type as 'tv' | 'movie')}
                 >
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
                     {ageRating && (

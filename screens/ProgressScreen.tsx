@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo, EpisodeProgress, AppPreferences } from '../types';
+import { UserData, WatchStatus, TrackedItem, FavoriteEpisodes, TmdbMediaDetails, Episode, WatchProgress, HistoryItem, LiveWatchMediaInfo, EpisodeProgress, AppPreferences, TmdbSeasonDetails, JournalEntry, WeeklyPick, ReminderType, Reminder } from '../types';
 import { getMediaDetails, getSeasonDetails, clearMediaCache } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
 import { StarIcon, ChevronDownIcon, ArrowPathIcon, ClockIcon, TvIcon, ChartBarIcon, PlayIcon, SearchIcon, FilmIcon, ListBulletIcon, Squares2X2Icon, CheckCircleIcon, SparklesIcon, EyeSlashIcon } from '../components/Icons';
@@ -7,6 +7,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import ProgressCard, { EnrichedShowData } from '../components/ProgressCard';
 import ProgressMovieCard, { EnrichedMovieData } from '../components/ProgressMovieCard';
 import { getAiredEpisodeCount } from '../utils/formatUtils';
+import EpisodeDetailModal from '../components/EpisodeDetailModal';
 
 // --- TYPE DEFINITIONS ---
 type EnrichedMediaData = (EnrichedShowData | EnrichedMovieData);
@@ -46,7 +47,7 @@ const EpisodeProgressCard: React.FC<{
                 )}
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
             </div>
-            <div className="flex-grow min-w-0 flex-grow flex flex-col justify-center">
+            <div className="flex-grow min-w-0 flex flex-col justify-center">
                 <p className="text-[9px] font-black text-primary-accent uppercase tracking-[0.2em] mb-0.5 truncate">{show.title}</p>
                 <h3 className="text-sm font-black text-text-primary uppercase tracking-tight truncate">
                     S{ep.season_number} E{ep.episode_number}: {ep.name}
@@ -148,10 +149,12 @@ interface ProgressScreenProps {
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   preferences: AppPreferences;
+  onSaveJournal: (showId: number, seasonNumber: number, episodeNumber: number, entry: JournalEntry | null) => void;
+  onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
 }
 
 const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
-    const { userData, favoriteEpisodes, currentUser, onAuthClick, pausedLiveSessions, onStartLiveWatch, preferences } = props;
+    const { userData, favoriteEpisodes, currentUser, onAuthClick, pausedLiveSessions, onStartLiveWatch, preferences, onSaveJournal, onAddWatchHistory } = props;
     const { watching, onHold, watchProgress, history } = userData;
     
     const [sortOption, setSortOption] = useState<SortOption>('lastWatched');
@@ -162,6 +165,9 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefreshed, setLastRefreshed] = useLocalStorage<number>('progress_last_refreshed', 0);
     const [refreshKey, setRefreshKey] = useState(0);
+
+    // Episode Modal State
+    const [selectedEpisodeData, setSelectedEpisodeData] = useState<{ episode: Episode; show: EnrichedShowData; season?: TmdbSeasonDetails } | null>(null);
 
     const handleRefresh = useCallback(() => {
         if (isRefreshing) return;
@@ -305,10 +311,8 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         let results = enrichedMedia.filter(item => {
             if (item.media_type === 'tv') {
                 const show = item as EnrichedShowData;
-                // STICKY RULE: If 0 episodes are marked as watched, it's not a "Progress" item
                 return show.watchedCount > 0;
             }
-            // Movies in enrichedMedia are only there if they have a paused session
             return true;
         });
 
@@ -317,7 +321,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         } else if (typeFilter === 'movie') {
             results = results.filter(i => i.media_type === 'movie');
         } else if (typeFilter === 'episode') {
-            results = results.filter(i => i.media_type === 'tv');
+            results = results.filter(i => i.media_type === 'tv' && (i as EnrichedShowData).nextEpisodeInfo);
         } else if (typeFilter === 'season') {
             results = results.filter(i => i.media_type === 'tv');
         }
@@ -372,7 +376,6 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
         enrichedMedia.forEach(item => {
             if (item.media_type === 'tv') {
                 const show = item as EnrichedShowData;
-                // Only count stats for items with at least 1 watched episode
                 if (show.watchedCount > 0) {
                     const remaining = Math.max(0, show.totalEpisodes - show.watchedCount);
                     episodesLeft += remaining;
@@ -392,7 +395,18 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
             hoursToWatch: Math.round(hoursLeft / 60),
         };
     }, [enrichedMedia]);
-    
+
+    const handleOpenEpisodeDetail = async (show: EnrichedShowData) => {
+        const ep = show.nextEpisodeInfo;
+        if (!ep) return;
+        
+        setSelectedEpisodeData({ episode: ep, show });
+        try {
+            const sd = await getSeasonDetails(show.id, ep.season_number);
+            setSelectedEpisodeData(prev => prev ? { ...prev, season: sd } : null);
+        } catch (e) { console.error(e); }
+    };
+
     return (
         <div className="animate-fade-in space-y-8 max-w-7xl mx-auto px-4 pb-20">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -469,7 +483,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                                     <div key={show.id} className="animate-slide-in-up">
                                         <EpisodeProgressCard 
                                             show={show} 
-                                            onSelect={() => props.onSelectShow(show.id, 'tv')}
+                                            onSelect={() => handleOpenEpisodeDetail(show)}
                                             onToggleWatched={(e) => {
                                                 e.stopPropagation();
                                                 if (show.nextEpisodeInfo) {
@@ -527,6 +541,38 @@ const ProgressScreen: React.FC<ProgressScreenProps> = (props) => {
                     </div>
                 )}
             </section>
+
+            {/* Episode Popup for Episode and TV views */}
+            {selectedEpisodeData && (
+                <EpisodeDetailModal 
+                    isOpen={!!selectedEpisodeData}
+                    onClose={() => setSelectedEpisodeData(null)}
+                    episode={selectedEpisodeData.episode}
+                    showDetails={selectedEpisodeData.show.details}
+                    seasonDetails={selectedEpisodeData.season || { episodes: [selectedEpisodeData.episode] } as any}
+                    isWatched={watchProgress[selectedEpisodeData.show.id]?.[selectedEpisodeData.episode.season_number]?.[selectedEpisodeData.episode.episode_number]?.status === 2}
+                    onToggleWatched={() => props.onToggleEpisode(selectedEpisodeData.show.id, selectedEpisodeData.episode.season_number, selectedEpisodeData.episode.episode_number, 0, selectedEpisodeData.show, selectedEpisodeData.episode.name)}
+                    onOpenJournal={() => {}}
+                    isFavorited={!!favoriteEpisodes[selectedEpisodeData.show.id]?.[selectedEpisodeData.episode.season_number]?.[selectedEpisodeData.episode.episode_number]}
+                    onToggleFavorite={() => props.onToggleFavoriteEpisode(selectedEpisodeData.show.id, selectedEpisodeData.episode.season_number, selectedEpisodeData.episode.episode_number)}
+                    onStartLiveWatch={onStartLiveWatch}
+                    onSaveJournal={onSaveJournal}
+                    watchProgress={watchProgress}
+                    history={history}
+                    onAddWatchHistory={onAddWatchHistory}
+                    onRate={() => {}}
+                    episodeRating={0}
+                    onDiscuss={() => {}}
+                    preferences={preferences}
+                    timezone={userData.timezone}
+                    showRatings={true}
+                    currentShowStatus={selectedEpisodeData.show.status}
+                    onUpdateShowStatus={(newStatus) => props.onUpdateLists(selectedEpisodeData.show, selectedEpisodeData.show.status, newStatus)}
+                    onViewFullShow={() => props.onSelectShow(selectedEpisodeData.show.id, 'tv')}
+                    weeklyFavorites={userData.weeklyFavorites}
+                    onToggleWeeklyFavorite={() => {}} // Not needed in this context
+                />
+            )}
         </div>
     );
 };

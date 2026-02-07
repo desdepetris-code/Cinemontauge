@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import SearchBar from './SearchBar';
 import { TmdbMedia } from '../types';
@@ -35,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser, profilePictureUrl, onAuthC
   return (
     <>
       <LogoModal isOpen={isLogoModalOpen} onClose={() => setIsLogoModalOpen(false)} />
-      <header className={`sticky top-0 z-30 py-2 px-2 md:px-4 bg-backdrop backdrop-blur-md shadow-lg border-b border-primary-accent/10 ${hoverClasses}`}>
+      <header className={`fixed top-0 left-0 right-0 z-[500] py-2 px-2 md:px-4 bg-backdrop backdrop-blur-md shadow-lg border-b border-primary-accent/10 transition-all ${hoverClasses}`}>
         <div className="container mx-auto flex items-center justify-between gap-1.5 md:gap-4">
           {/* Logo Section - Fixed width, no shrinking */}
           <div 

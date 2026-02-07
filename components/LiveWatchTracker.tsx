@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LiveWatchMediaInfo, TrackedItem, TmdbMedia } from '../types';
 import LiveWatchControls from './LiveWatchControls';
-import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon, TrashIcon } from './Icons';
+import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon, TrashIcon, InformationCircleIcon, ChevronDownIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatTime } from '../utils/formatUtils';
 
 interface DraggableState {
   isDragging: boolean;
   offset: { x: number; y: number };
-}
-
-interface ResizableState {
-    isResizing: boolean;
-    initialPos: { x: number; y: number };
-    initialSize: { width: number; height: number };
 }
 
 interface LiveWatchTrackerProps {
@@ -33,71 +27,35 @@ interface LiveWatchTrackerProps {
 const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
   const { isOpen, onClose, onDiscard, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
 
-  const [position, setPosition] = useState({ x: window.innerWidth - 450 - 20, y: 100 });
-  const [size, setSize] = useState({ width: 450, height: 320 });
-  const [minimizedPosition, setMinimizedPosition] = useState({ x: window.innerWidth - 300 - 20, y: window.innerHeight - 100 - 20 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 340 });
+  const [showInfo, setShowInfo] = useState(false);
   
   const draggableRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<DraggableState>({ isDragging: false, offset: { x: 0, y: 0 } });
-  const resizeState = useRef<ResizableState | null>(null);
-
 
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!draggableRef.current) return;
-    const isMinimizedTarget = e.currentTarget.id === 'minimized-handle';
-    const currentPos = isMinimizedTarget ? minimizedPosition : position;
     dragState.current = {
       isDragging: true,
       offset: {
-        x: e.clientX - currentPos.x,
-        y: e.clientY - currentPos.y,
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
       },
     };
     document.body.style.userSelect = 'none';
   };
 
-  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    resizeState.current = {
-        isResizing: true,
-        initialPos: { x: e.clientX, y: e.clientY },
-        initialSize: { width: size.width, height: size.height },
-    };
-    document.body.style.userSelect = 'none';
-  };
-
   const handleMouseMove = (e: MouseEvent) => {
-    if (dragState.current.isDragging && draggableRef.current) {
-      const isMinimizedTarget = draggableRef.current.id.includes('minimized');
+    if (dragState.current.isDragging) {
       const newPos = {
         x: e.clientX - dragState.current.offset.x,
         y: e.clientY - dragState.current.offset.y,
       };
-      
-      const boundaryX = window.innerWidth - (isMinimizedTarget ? 288 : size.width);
-      const boundaryY = window.innerHeight - (isMinimizedTarget ? 88 : size.height);
-
-      newPos.x = Math.max(0, Math.min(newPos.x, boundaryX));
-      newPos.y = Math.max(0, Math.min(newPos.y, boundaryY));
-
-      if (isMinimizedTarget) {
-        setMinimizedPosition(newPos);
-      } else {
-        setPosition(newPos);
-      }
-    } else if (resizeState.current?.isResizing) {
-        const dx = e.clientX - resizeState.current.initialPos.x;
-        const dy = e.clientY - resizeState.current.initialPos.y;
-        setSize({
-            width: Math.max(350, resizeState.current.initialSize.width + dx),
-            height: Math.max(250, resizeState.current.initialSize.height + dy),
-        });
+      setPosition(newPos);
     }
   };
 
   const handleMouseUp = () => {
     dragState.current.isDragging = false;
-    if(resizeState.current) resizeState.current.isResizing = false;
     document.body.style.userSelect = '';
   };
 
@@ -108,83 +66,141 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!isOpen || !mediaInfo) return null;
 
-  if (isMinimized) {
-    return (
-      <div
-        ref={draggableRef}
-        id="minimized-handle"
-        className="fixed z-50 bg-card-gradient rounded-lg shadow-2xl w-72 p-2 transition-transform hover:scale-105 animate-slide-in-up group backdrop-blur-sm"
-        style={{ left: minimizedPosition.x, top: minimizedPosition.y, cursor: 'grab' }}
-        onMouseDown={handleDragStart}
-      >
-        <div className="flex items-center space-x-3" onClick={onToggleMinimize} style={{ cursor: 'pointer' }}>
-          <img src={getImageUrl(mediaInfo.poster_path, 'w92')} alt={mediaInfo.title} className="w-10 h-15 object-cover rounded-md flex-shrink-0" />
-          <div className="min-w-0 flex-grow">
-            <p className="text-sm font-semibold text-text-primary truncate">{mediaInfo.title}</p>
-            <p className="text-xs text-text-secondary">{formatTime(elapsedSeconds)} / {formatTime(mediaInfo.runtime * 60)}</p>
-          </div>
-          <div className="flex items-center">
-            <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-2 rounded-full hover:bg-white/10">
-              {isPaused ? <PlayIcon className="w-5 h-5"/> : <PauseIcon className="w-5 h-5"/>}
-            </button>
-             <button onClick={(e) => { e.stopPropagation(); onDiscard(); }} className="p-2 rounded-full text-red-400 hover:bg-red-500/20" title="Discard session">
-              <TrashIcon className="w-5 h-5"/>
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-2 rounded-full hover:bg-white/10" title="Stop & Save">
-              <XMarkIcon className="w-5 h-5"/>
-            </button>
-          </div>
-        </div>
-        <div className="absolute -bottom-2.5 left-0 right-0 px-2">
-            <div className="flex justify-around items-center h-5 bg-black/30 rounded-full text-xs">
-                <button onClick={(e) => {e.stopPropagation(); onMarkWatched(mediaInfo)}} className="p-1 rounded-full hover:bg-bg-secondary text-text-secondary hover:text-green-400" title="Mark as Watched"><CheckCircleIcon className="w-4 h-4"/></button>
-                <button onClick={(e) => {e.stopPropagation(); onAddToList(mediaInfo)}} className="p-1 rounded-full hover:bg-bg-secondary text-text-secondary hover:text-blue-400" title="Add to List"><PlusIcon className="w-4 h-4"/></button>
-            </div>
-        </div>
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20">
-            <div className="h-full bg-accent-gradient" style={{ width: `${(elapsedSeconds / (mediaInfo.runtime * 60)) * 100}%` }}></div>
-        </div>
-      </div>
-    );
-  }
+  const runtimeInSeconds = mediaInfo.runtime * 60;
+  const progress = runtimeInSeconds > 0 ? Math.min((elapsedSeconds / runtimeInSeconds) * 100, 100) : 0;
 
   return (
     <div
       ref={draggableRef}
-      id="full-window"
-      className="fixed z-50 flex flex-col"
-      style={{ left: position.x, top: position.y, width: size.width, height: size.height }}
+      className={`fixed z-[300] transition-all duration-500 ease-out ${
+          isMinimized 
+            ? 'w-72 h-24 bg-card-gradient rounded-2xl shadow-2xl p-3 border border-white/10 backdrop-blur-xl' 
+            : 'w-[400px] bg-bg-primary rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] border border-white/10 overflow-hidden'
+      }`}
+      style={{ left: position.x, top: position.y, cursor: dragState.current.isDragging ? 'grabbing' : 'auto' }}
     >
-      <div 
-        onMouseDown={handleDragStart} 
-        className="h-8 bg-bg-secondary rounded-t-lg cursor-grab"
-      ></div>
-      <div className="flex-grow">
-          <LiveWatchControls
-              mediaInfo={mediaInfo}
-              elapsedSeconds={elapsedSeconds}
-              isPaused={isPaused}
-              onTogglePause={onTogglePause}
-              onStop={onClose}
-              onDiscard={onDiscard}
-              isDashboardWidget={false}
-              onMinimize={onToggleMinimize}
-              onMarkWatched={() => onMarkWatched(mediaInfo)}
-              onAddToList={() => onAddToList(mediaInfo)}
-          />
-      </div>
-       <div
-        onMouseDown={handleResizeStart}
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        style={{ zIndex: 1 }}
-      >
-        <div className="w-2 h-2 border-r-2 border-b-2 border-text-secondary/50 absolute bottom-1 right-1"></div>
-      </div>
+        {/* INFO MODAL OVERLAY */}
+        {showInfo && !isMinimized && (
+            <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-md p-8 animate-fade-in flex flex-col justify-center text-center">
+                <button onClick={() => setShowInfo(false)} className="absolute top-6 right-6 p-2 text-text-secondary hover:text-white transition-colors">
+                    <XMarkIcon className="w-6 h-6" />
+                </button>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-6">Live Watch Logic</h3>
+                <div className="space-y-6 text-left">
+                    <div className="flex gap-4">
+                        <ChevronDownIcon className="w-5 h-5 text-primary-accent flex-shrink-0" />
+                        <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Minimize</strong> Closes the view and moves the player to a floating hub. Session stays active.</p>
+                    </div>
+                    <div className="flex gap-4">
+                        <XMarkIcon className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                        <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Close (X)</strong> Removes the player from screen but DOES NOT terminate the session. Access it via the dashboard.</p>
+                    </div>
+                    <div className="flex gap-4">
+                        <TrashIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Delete</strong> Permanently purges this specific watch session and all data associated with it.</p>
+                    </div>
+                </div>
+                <button onClick={() => setShowInfo(false)} className="mt-10 py-3 rounded-full bg-accent-gradient text-on-accent font-black uppercase text-[10px] tracking-widest">Return to Player</button>
+            </div>
+        )}
+
+        {/* DRAG HANDLE */}
+        <div 
+            onMouseDown={handleDragStart}
+            className="w-full h-8 flex items-center justify-center cursor-grab active:cursor-grabbing border-b border-white/5 bg-white/5"
+        >
+            <div className="w-10 h-1 bg-white/20 rounded-full"></div>
+        </div>
+
+        {isMinimized ? (
+            <div className="flex items-center gap-4 h-full" onClick={() => onToggleMinimize()}>
+                <img src={getImageUrl(mediaInfo.poster_path, 'w92')} className="w-10 h-14 rounded-lg object-cover shadow-lg" alt="" />
+                <div className="flex-grow min-w-0">
+                    <p className="text-xs font-black text-text-primary uppercase tracking-tight truncate">{mediaInfo.title}</p>
+                    <p className="text-[10px] font-bold text-primary-accent uppercase tracking-widest mt-1">{formatTime(elapsedSeconds)}</p>
+                    <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden mt-2">
+                        <div className="h-full bg-accent-gradient" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-1.5 hover:bg-white/10 rounded-lg">
+                        {isPaused ? <PlayIcon className="w-4 h-4 text-white" /> : <PauseIcon className="w-4 h-4 text-white" />}
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-1.5 hover:bg-white/10 rounded-lg">
+                        <XMarkIcon className="w-4 h-4 text-text-secondary" />
+                    </button>
+                </div>
+            </div>
+        ) : (
+            <div className="p-8 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-6">
+                    <button onClick={() => setShowInfo(true)} className="p-2 bg-bg-secondary/40 rounded-xl text-text-secondary hover:text-white transition-all border border-white/5 shadow-inner">
+                        <InformationCircleIcon className="w-6 h-6" />
+                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={onToggleMinimize} className="p-2 bg-bg-secondary/40 rounded-xl text-text-secondary hover:text-primary-accent transition-all border border-white/5 shadow-inner">
+                            <ChevronDownIcon className="w-6 h-6" />
+                        </button>
+                        <button onClick={onClose} className="p-2 bg-bg-secondary/40 rounded-xl text-text-secondary hover:text-amber-400 transition-all border border-white/5 shadow-inner">
+                            <XMarkIcon className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center text-center mb-8">
+                    <div className="relative group mb-6">
+                        <img src={getImageUrl(mediaInfo.poster_path, 'w185')} alt="" className="w-32 h-48 rounded-2xl shadow-2xl border border-white/10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded-2xl"></div>
+                    </div>
+                    <h4 className="text-2xl font-black text-text-primary uppercase tracking-tighter truncate w-full">{mediaInfo.title}</h4>
+                    {mediaInfo.media_type === 'tv' && (
+                        <p className="text-[10px] font-black text-primary-accent uppercase tracking-[0.3em] mt-1">S{mediaInfo.seasonNumber} E{mediaInfo.episodeNumber}</p>
+                    )}
+                </div>
+
+                <div className="space-y-3 mb-10">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-text-secondary/60">
+                        <span>{formatTime(elapsedSeconds)}</span>
+                        <span>{formatTime(runtimeInSeconds)}</span>
+                    </div>
+                    <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner relative">
+                        <div 
+                            className="h-full bg-accent-gradient transition-all duration-300 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 mt-auto">
+                    <button 
+                        onClick={onDiscard}
+                        className="p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-lg flex-shrink-0"
+                        title="Delete Session"
+                    >
+                        <TrashIcon className="w-6 h-6" />
+                    </button>
+
+                    <button 
+                        onClick={onTogglePause}
+                        className={`flex-grow py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
+                            isPaused ? 'bg-accent-gradient text-on-accent' : 'bg-white text-black'
+                        }`}
+                    >
+                        {isPaused ? (
+                            <><PlayIcon className="w-6 h-6" /> Resume Session</>
+                        ) : (
+                            <><PauseIcon className="w-6 h-6" /> Pause Tracking</>
+                        )}
+                    </button>
+                </div>
+                
+                <p className="text-[8px] font-black text-text-secondary/20 uppercase tracking-[0.4em] text-center mt-8">Secure Live Relay Active</p>
+            </div>
+        )}
     </div>
   );
 };

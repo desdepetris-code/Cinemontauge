@@ -118,11 +118,13 @@ const App: React.FC = () => {
             });
             if (profileError) console.error("Error creating profile:", profileError);
             confirmationService.show(`Welcome to CineMontauge, ${username}!`);
+            setIsAuthModalOpen(false);
         } else {
-            confirmationService.show(`Registration successful! Please confirm your email to activate.`);
+            // This is handled via the success state in AuthModal for better UX
+            // but we also show a confirmation just in case.
+            confirmationService.show(`A verification link was dispatched to ${email}.`);
         }
         
-        setIsAuthModalOpen(false);
         return null;
     }, []);
 

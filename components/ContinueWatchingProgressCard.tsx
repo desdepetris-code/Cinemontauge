@@ -19,6 +19,7 @@ interface ContinueWatchingProgressCardProps {
     onSelectShow: (id: number, media_type: 'tv' | 'movie') => void;
     onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null) => void;
     globalPlaceholders?: UserData['globalPlaceholders'];
+    onOpenDetail?: (id: number, seasonNumber: number, episodeNumber: number) => void;
 }
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
@@ -28,7 +29,7 @@ const getFullImageUrl = (path: string | null | undefined, size: string) => {
 };
 
 
-const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> = ({ item, watchProgress, onSelectShow, onToggleEpisode, globalPlaceholders }) => {
+const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> = ({ item, watchProgress, onSelectShow, onToggleEpisode, globalPlaceholders, onOpenDetail }) => {
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
     const [seasonDetails, setSeasonDetails] = useState<TmdbSeasonDetails | null>(null);
     const [nextEpisodeInfo, setNextEpisodeInfo] = useState<Episode | null>(null);
@@ -257,6 +258,16 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
             onToggleEpisode(item.id, nextEpisodeInfo.season_number, nextEpisodeInfo.episode_number, 0, item, nextEpisodeInfo.name, nextEpisodeInfo.still_path, tmdbSeason?.poster_path);
         }
     };
+
+    const handleCardClick = () => {
+        if (onOpenDetail && (isPausedSession || nextEpisodeInfo)) {
+            const seasonNum = isPausedSession ? item.seasonNumber! : nextEpisodeInfo!.season_number;
+            const episodeNum = isPausedSession ? item.episodeNumber! : nextEpisodeInfo!.episode_number;
+            onOpenDetail(item.id, seasonNum, episodeNum);
+        } else {
+            onSelectShow(item.id, 'tv');
+        }
+    };
     
     const episodeProgressPercent = isPausedSession ? (item.elapsedSeconds! / (item.runtime! * 60)) * 100 : 0;
     const remainingSeconds = isPausedSession ? (item.runtime! * 60) - item.elapsedSeconds! : 0;
@@ -264,7 +275,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     return (
         <div 
             className="w-full bg-card-gradient rounded-2xl shadow-2xl flex flex-col relative overflow-hidden group cursor-pointer transition-transform duration-300 hover:-translate-y-2 border border-white/10"
-            onClick={() => onSelectShow(item.id, 'tv')}
+            onClick={handleCardClick}
         >
             <BrandedImage title={item.title} status={showStatusText}>
                 <div className="aspect-[10/16] relative">

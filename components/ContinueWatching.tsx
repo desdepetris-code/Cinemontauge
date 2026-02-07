@@ -13,9 +13,10 @@ interface ContinueWatchingProps {
   onToggleEpisode: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
   globalPlaceholders?: UserData['globalPlaceholders'];
+  onOpenEpisodeDetail: (id: number, seasonNumber: number, episodeNumber: number) => void;
 }
 
-const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, watchProgress, history, onSelectShow, onToggleEpisode, pausedLiveSessions, globalPlaceholders }) => {
+const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, watchProgress, history, onSelectShow, onToggleEpisode, pausedLiveSessions, globalPlaceholders, onOpenEpisodeDetail }) => {
     const continueWatchingItems = useMemo(() => {
         const processList = (list: TrackedItem[]) => {
             return list.filter(item => {
@@ -90,6 +91,7 @@ const ContinueWatching: React.FC<ContinueWatchingProps> = ({ watching, onHold, w
                                     onSelectShow={onSelectShow}
                                     onToggleEpisode={onToggleEpisode}
                                     globalPlaceholders={globalPlaceholders}
+                                    onOpenDetail={onOpenEpisodeDetail}
                                 />
                             ) : (
                                 <ContinueWatchingMovieCard
