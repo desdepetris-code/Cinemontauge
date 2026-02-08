@@ -173,6 +173,25 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   useEffect(() => { getGenres().then(setGenres).catch(console.error); }, []);
 
+  // Ensure mandatory 'watchlist' exists in customLists
+  useEffect(() => {
+    setCustomLists(prev => {
+      const hasWatchlist = prev.some(l => l.id === 'watchlist');
+      if (hasWatchlist) return prev;
+      
+      const defaultWatchlist: CustomList = {
+        id: 'watchlist',
+        name: 'Watchlist',
+        description: 'Your primary catch-all list for movies and shows.',
+        items: [],
+        createdAt: new Date().toISOString(),
+        visibility: 'private',
+        likes: []
+      };
+      return [defaultWatchlist, ...prev];
+    });
+  }, [userId, setCustomLists]);
+
   // --- REMINDER ENGINE ---
   useEffect(() => {
     const checkReminders = () => {
@@ -186,10 +205,6 @@ export const MainApp: React.FC<MainAppProps> = ({
             let targetDate: Date;
 
             if (reminder.mediaType === 'tv' && override?.time) {
-                // TV logic: Use airdate + airtime from overrides
-                // Format of override.time usually includes "9:00 pm ET"
-                // We'll approximate for notification logic. 
-                // For a robust system we'd parse the string, but here we'll assume release day start if complex
                 const timeMatch = override.time.match(/(\d+):(\d+)\s*(am|pm)/i);
                 if (timeMatch) {
                     let hours = parseInt(timeMatch[1]);
@@ -202,7 +217,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                     targetDate = new Date(`${reminder.releaseDate}T00:00:00`);
                 }
             } else {
-                // Movie logic: Date only
                 targetDate = new Date(`${reminder.releaseDate}T00:00:00`);
             }
 
@@ -225,7 +239,6 @@ export const MainApp: React.FC<MainAppProps> = ({
                     case 'release': default: break; 
                 }
 
-                // If now is past notifyAt but not by more than 10 mins (prevent historical spam)
                 const diffMs = now.getTime() - notifyAt.getTime();
                 if (diffMs > 0 && diffMs < 10 * 60 * 1000) {
                     const typeLabel = type.replace(/_/g, ' ');
@@ -240,8 +253,8 @@ export const MainApp: React.FC<MainAppProps> = ({
         });
     };
 
-    const interval = setInterval(checkReminders, 60000); // Check every minute
-    checkReminders(); // Initial check
+    const interval = setInterval(checkReminders, 60000); 
+    checkReminders(); 
     return () => clearInterval(interval);
   }, [reminders, sentReminders, notificationSettings.masterEnabled]);
 
@@ -255,7 +268,6 @@ export const MainApp: React.FC<MainAppProps> = ({
           const runtimeSeconds = liveWatchMedia.runtime * 60;
           
           if (next >= runtimeSeconds) {
-            // COMPLETION LOGIC
             handleLiveWatchComplete(liveWatchMedia);
             return next;
           }
@@ -286,12 +298,10 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, []);
 
   const handleLiveWatchStop = useCallback(() => {
-    // Spec: "X" closes the player but DOES NOT delete the Live Watch session
     setIsLiveWatchOpen(false);
   }, []);
 
   const handleLiveWatchDelete = useCallback(() => {
-    // Spec: "Delete" permanently removes the Live Watch session and all associated progress/history
     const id = liveWatchMedia?.id;
     if (id) {
         setPausedLiveSessions(prev => {
@@ -310,7 +320,6 @@ export const MainApp: React.FC<MainAppProps> = ({
     setLiveWatchIsPaused(prev => {
       const next = !prev;
       if (liveWatchMedia && next) {
-        // When pausing, ensure it is added to the "paused registry"
         setPausedLiveSessions(prevPaused => ({
           ...prevPaused,
           [liveWatchMedia.id]: {
@@ -461,7 +470,8 @@ export const MainApp: React.FC<MainAppProps> = ({
 
               if (totalWatched === 0) {
                   // If unmarked back to 0, return to the manual state (Plan to Watch, On Hold, etc.)
-                  finalStatus = currentManualPreset || null;
+                  // If it was in 'watching' and unmarked, we default it to 'planToWatch' to keep it in registry but out of 'Progress'
+                  finalStatus = currentManualPreset || 'planToWatch';
               } else {
                   // If watching episodes, respect "On Hold" or "Dropped" manual overrides if they exist.
                   // Otherwise, move to the automated status (Watching, All Caught Up, or Completed).
@@ -506,6 +516,60 @@ export const MainApp: React.FC<MainAppProps> = ({
     
     setTimeout(() => syncLibraryItem(showId, 'tv', nextProgress, true), 10);
   }, [setWatchProgress, setHistory, setUserXp, syncLibraryItem, liveWatchStartTime, liveWatchPauseCount]);
+
+  const handleMarkAllWatched = useCallback(async (showId: number, showInfo: TrackedItem) => {
+      try {
+          const details = await getMediaDetails(showId, 'tv');
+          if (!details.seasons) return;
+
+          const newProgress: WatchProgress = { ...watchProgress };
+          if (!newProgress[showId]) newProgress[showId] = {};
+
+          const historyEntries: HistoryItem[] = [];
+          const now = new Date().toISOString();
+
+          for (const season of details.seasons) {
+              if (season.season_number === 0) continue;
+              const sd = await getSeasonDetails(showId, season.season_number);
+              if (!newProgress[showId][season.season_number]) newProgress[showId][season.season_number] = {};
+              
+              sd.episodes.forEach(ep => {
+                  if (newProgress[showId][season.season_number][ep.episode_number]?.status !== 2) {
+                      newProgress[showId][season.season_number][ep.episode_number] = { ...newProgress[showId][season.season_number][ep.episode_number], status: 2 };
+                      historyEntries.push({
+                          ...showInfo,
+                          logId: `tv-${showId}-${season.season_number}-${ep.episode_number}-${Date.now()}`,
+                          timestamp: now,
+                          seasonNumber: season.season_number,
+                          episodeNumber: ep.episode_number,
+                          episodeTitle: ep.name
+                      });
+                  }
+              });
+          }
+
+          setWatchProgress(newProgress);
+          setHistory(prev => [...historyEntries, ...prev]);
+          setUserXp(prev => prev + (historyEntries.length * XP_CONFIG.episode));
+          syncLibraryItem(showId, 'tv', newProgress, true);
+          confirmationService.show(`Full registry sequence complete for ${showInfo.title}`);
+      } catch (e) {
+          console.error(e);
+          confirmationService.show("Registry alignment failed.");
+      }
+  }, [watchProgress, setWatchProgress, setHistory, setUserXp, syncLibraryItem]);
+
+  const handleUnmarkAllWatched = useCallback(async (showId: number) => {
+      const newProgress = { ...watchProgress };
+      delete newProgress[showId];
+      setWatchProgress(newProgress);
+      
+      setHistory(prev => prev.filter(h => h.id !== showId));
+      
+      // Moving to PTW by default when unmarking all so it stays in registry but out of Progress
+      syncLibraryItem(showId, 'tv', newProgress, true);
+      confirmationService.show("Registry logs cleared for this title.");
+  }, [watchProgress, setWatchProgress, setHistory, syncLibraryItem]);
 
   const handleToggleFavoriteShow = useCallback(async (item: TrackedItem) => {
     setFavorites(prev => {
@@ -753,13 +817,13 @@ export const MainApp: React.FC<MainAppProps> = ({
 
   const allUserDataFull: UserData = { ...allUserData };
 
-  const profileTabs = ['overview', 'history', 'library', 'lists', 'activity', 'stats', 'seasonLog', 'journal', 'achievements', 'imports', 'settings', 'updates', 'weeklyPicks', 'ongoing'];
+  // Registry of profile-specific tab screens for navigation logic
+  const profileTabs = ['overview', 'history', 'library', 'lists', 'activity', 'stats', 'seasonLog', 'journal', 'achievements', 'imports', 'settings', 'updates', 'weeklyPicks', 'ongoing', 'airtime_management'];
 
   return (
     <div className={`min-h-screen ${activeTheme.base} transition-colors duration-500 pb-20`}>
         <BackgroundParticleEffects effect={activeTheme.colors.particleEffect} enabled={true} />
         
-        {/* Global Fixed Header */}
         <Header 
             currentUser={currentUser} profilePictureUrl={profilePictureUrl} onAuthClick={onAuthClick} 
             onGoToProfile={() => setActiveScreen('profile')} onGoHome={() => setActiveScreen('home')} 
@@ -768,7 +832,6 @@ export const MainApp: React.FC<MainAppProps> = ({
             isOnSearchScreen={activeScreen === 'search'}
         />
 
-        {/* Shifted Main Content */}
         <main className="container mx-auto pt-16 md:pt-20 relative z-10">
             {activeScreen === 'home' && (
                 <Dashboard 
@@ -951,8 +1014,8 @@ export const MainApp: React.FC<MainAppProps> = ({
                     favoriteEpisodes={favoriteEpisodes} onSelectPerson={setSelectedPerson} onSelectShowInModal={handleSelectShow} 
                     onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={() => {}} onAddWatchHistory={handleAddWatchHistory} 
                     onDeleteSearchHistoryItem={() => {}} onClearSearchHistory={() => {}} onAddWatchHistoryBulk={() => {}} 
-                    onSaveComment={() => {}} comments={comments} genres={genres} onMarkAllWatched={() => {}} 
-                    onUnmarkAllWatched={() => {}} onSaveEpisodeNote={() => {}} showRatings={showRatings} 
+                    onSaveComment={() => {}} comments={comments} genres={genres} onMarkAllWatched={handleMarkAllWatched} 
+                    onUnmarkAllWatched={handleUnmarkAllWatched} onSaveEpisodeNote={() => {}} showRatings={showRatings} 
                     seasonRatings={seasonRatings} onRateSeason={() => {}} onRateEpisode={handleRateEpisode} 
                     customLists={customLists} currentUser={currentUser} allUsers={allUsers} mediaNotes={mediaNotes} 
                     onSaveMediaNote={() => {}} allUserData={allUserDataFull} episodeNotes={episodeNotes} 

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { QuestionMarkCircleIcon } from './Icons';
 import ReportIssueModal from './ReportIssueModal';
 
 interface PageChangeRequestProps {
   mediaTitle: string;
   mediaId: number;
+  mediaType: 'tv' | 'movie';
 }
 
 const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void; }> = ({ icon, label, onClick }) => (
@@ -17,19 +19,19 @@ const ActionButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: (
     </button>
 );
 
-const PageChangeRequest: React.FC<PageChangeRequestProps> = ({ mediaTitle, mediaId }) => {
+const PageChangeRequest: React.FC<PageChangeRequestProps> = ({ mediaTitle, mediaId, mediaType }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Note: Since this component is generic, we use the base options. 
-  // TV-specific options like "Wrong Air Time" are handled in the parent ShowDetail context.
-  const options = [
+  
+  const options = useMemo(() => [
     "Wrong Details", 
     "Insufficient Info", 
     "Incorrect Poster", 
     "Missing Content", 
-    "Already been released",
-    "Wrong release date/airdate",
+    "already released/ wrong release date",
+    ...(mediaType === 'tv' ? ["Wrong Air Time"] : []),
+    "Wrong Streaming / Where to Watch listed",
     "Other Error"
-  ];
+  ], [mediaType]);
 
   const handleSelect = (option: string) => {
     const subject = `CineMontauge Page Change Request: ${mediaTitle} (ID: ${mediaId})`;

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { PhotoIcon, PlusIcon, InformationCircleIcon, CheckCircleIcon, XMarkIcon, TrashIcon, ArrowPathIcon } from './Icons';
 import { CustomImagePaths, TmdbImage } from '../types';
@@ -46,7 +47,7 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
       userGallery.forEach(url => items.push({ url, type: 'custom', category: 'poster' })); 
       details?.images?.backdrops?.forEach(img => items.push({ url: img.file_path, type: 'official', category: 'backdrop' }));
       details?.images?.posters?.forEach(img => items.push({ url: img.file_path, type: 'official', category: 'poster' }));
-      return Array.from(new Map(items.map(item => [item.url, item])).values());
+      return Array.from(new Set(items.map(item => [item.url, item])).values());
   }, [userGallery, details?.images]);
 
   const handleApplyAsset = (type: 'poster' | 'backdrop') => {
@@ -118,9 +119,9 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
                 {hasCustomPoster && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); onResetCustomImage(showId, 'poster'); }}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-lg active:scale-95"
+                        className="mt-3 w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/10 transition-all shadow-xl active:scale-95 group"
                     >
-                        <ArrowPathIcon className="w-3.5 h-3.5 text-primary-accent" />
+                        <ArrowPathIcon className="w-4 h-4 text-primary-accent group-hover:rotate-180 transition-transform duration-500" />
                         Return to Original Poster
                     </button>
                 )}
@@ -135,9 +136,9 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
                 {hasCustomBackdrop && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); onResetCustomImage(showId, 'backdrop'); }}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-lg active:scale-95"
+                        className="mt-3 w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/10 transition-all shadow-xl active:scale-95 group"
                     >
-                        <ArrowPathIcon className="w-3.5 h-3.5 text-primary-accent" />
+                        <ArrowPathIcon className="w-4 h-4 text-primary-accent group-hover:rotate-180 transition-transform duration-500" />
                         Return to Original Backdrop
                     </button>
                 )}

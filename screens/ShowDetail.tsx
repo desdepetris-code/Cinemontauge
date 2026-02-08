@@ -118,10 +118,10 @@ const DetailedActionButton: React.FC<{
     onClick={onClick}
     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all group relative h-20 ${className} ${isActive ? 'bg-white/20 border-white active-glow shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'border-white/10 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-white/30'}`}
   >
-    <div className={`transition-all ${isActive ? 'text-white' : 'text-white'}`}>
+    <div className={`transition-all ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
         {icon}
     </div>
-    <div className="mt-2 min-h-[24px] flex items-center justify-center">
+    <div className="mt-2 min-h-[14px] flex items-center justify-center">
         <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight text-white">{label}</span>
     </div>
   </button>
@@ -153,7 +153,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [isPosterSelectorOpen, setIsPosterSelectorOpen] = useState(false);
   const [isBackdropSelectorOpen, setIsBackdropSelectorOpen] = useState(false);
-  const [isEpisodeSelectorOpen, setIsEpisodeSelectorOpen] = useState<{ isOpen: boolean; ep: Episode | null }>({ isOpen: false, ep: null });
   const [isLogWatchModalOpen, setIsLogWatchModalOpen] = useState(false);
   const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -161,9 +160,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   const [isReportIssueModalOpen, setIsReportIssueModalOpen] = useState(false);
   const [isAirtimeRequestModalOpen, setIsAirtimeRequestModalOpen] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isReminderOptionsOpen, setIsReminderOptionsOpen] = useState(false);
-  const [isStatusExplanationOpen, setIsStatusExplanationOpen] = useState(false);
   const [selectedEpisodeForDetail, setSelectedEpisodeForDetail] = useState<Episode | null>(null);
   const [activeCommentThread, setActiveCommentThread] = useState('general');
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
@@ -437,14 +434,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     setActiveCommentThread(selectedCommentEpisode ? key! : 'general');
   };
 
-  const handleCommentsAction = () => {
-    if (!currentUser) {
-        onAuthClick();
-        return;
-    }
-    handleCommentOpen(null);
-  };
-
   const handleShare = async () => {
       const shareData = {
           title: details?.title || details?.name || 'CineMontauge',
@@ -478,6 +467,27 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     setActiveCommentThread(key === `s${details?.last_episode_to_air?.season_number}` ? `tv-${details?.id}-s${details?.last_episode_to_air?.season_number}-e${details?.last_episode_to_air?.episode_number}` : key);
   }
 
+  const handleReportIssue = (option: string) => {
+    const subject = `CineMontauge Report: ${details?.title || details?.name} (${mediaType.toUpperCase()} ID: ${id})`;
+    const body = `Identity: ${currentUser?.username || 'Guest'} (${currentUser?.email || 'N/A'})\n\nIssue Selected: ${option}\n\nTechnical details:\n[Please enter description here]`;
+    window.location.href = `mailto:sceneit623@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setIsReportIssueModalOpen(false);
+  };
+
+  const reportOptions = useMemo(() => {
+    const base = [
+        "Wrong Details", 
+        "Insufficient Info", 
+        "Incorrect Poster", 
+        "Missing Content", 
+        "already released/ wrong release date",
+        ...(mediaType === 'tv' ? ["Wrong Air Time"] : []),
+        "Wrong Streaming / Where to Watch listed", 
+        "Other Error"
+    ];
+    return base;
+  }, [mediaType]);
+
   if (loading) return <div className="p-20 text-center animate-pulse text-white">Loading Cinematic Experience...</div>;
   if (!details) return <div className="p-20 text-center text-red-500">Failed to load content.</div>;
 
@@ -505,35 +515,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     return 'bg-white/10 text-white border-white/20 shadow-[0_0_8px_rgba(255,255,255,0.2)]';
   };
 
-  const specialsSeason = details.seasons?.find(s => s.season_number === 0);
-
-  const SpecialsProgress: React.FC = () => {
-    if (!specialsSeason) return null;
-    const progress = watchProgress[id]?.[0] || {};
-    const watchedCount = Object.values(progress).filter(ep => (ep as EpisodeProgress).status === 2).length;
-    const total = specialsSeason.episode_count;
-    const percent = total > 0 ? (watchedCount / total) * 100 : 0;
-
-    return (
-        <div className="mb-8">
-            <div className="flex justify-between items-end mb-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Special Episodes</h3>
-                <span className="text-xs font-black text-white/60 tracking-widest">{watchedCount} / {total} Watched</span>
-            </div>
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5">
-                <div 
-                    className="bg-accent-gradient h-full transition-all duration-1000 shadow-[0_0_15px_white]" 
-                    style={{ width: `${Math.min(100, percent)}%` }}
-                ></div>
-            </div>
-        </div>
-    );
-  };
-
-  const releaseDateForReminder = details.first_air_date || details.release_date;
-  const reminderId = releaseDateForReminder ? `rem-${mediaType}-${id}-${releaseDateForReminder}` : '';
-  const isReminderSet = reminders.some(r => r.id === reminderId);
-
   const handleReminderSave = (selectedTypes: ReminderType[], frequency: 'first' | 'all') => {
       const newReminder: Reminder = {
           id: reminderId,
@@ -548,6 +529,10 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       };
       onToggleReminder(newReminder, reminderId);
   };
+
+  const releaseDateForReminder = details.first_air_date || details.release_date;
+  const reminderId = releaseDateForReminder ? `rem-${mediaType}-${id}-${releaseDateForReminder}` : '';
+  const isReminderSet = reminders.some(r => r.id === reminderId);
 
   // derived props for EpisodeDetailModal
   const isEpWatched = selectedEpisodeForDetail 
@@ -570,7 +555,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <JournalModal isOpen={isJournalModalOpen} onClose={() => { setIsJournalModalOpen(false); setSelectedJournalEpisode(null); }} onSave={handleJournalSave} mediaDetails={details} initialSeason={selectedJournalEpisode?.season} initialEpisode={selectedJournalEpisode?.ep} watchProgress={watchProgress} />
       <NotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} onSave={() => {}} onNoteDeleted={props.onNoteDeleted} mediaTitle={details.title || details.name || ''} initialNotes={mediaNotes[id] || []} />
       <WatchlistModal isOpen={isWatchlistModalOpen} onClose={() => setIsWatchlistModalOpen(false)} onUpdateList={(newList) => { onUpdateLists(details as any, currentStatus, newList as WatchStatus); }} currentList={currentStatus} customLists={customLists} mediaType={mediaType} />
-      <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={() => {}} options={["Wrong Details", "Insufficient Info", "Incorrect Poster", "Missing Content", "Wrong Air Time", "Wrong Streaming / Where to Watch listed", "Other Error"]} />
+      <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={handleReportIssue} options={reportOptions} />
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={() => {}} onDiscard={() => {}} showDetails={details} />
       <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} onSave={handleCommentSave} />
       <ReminderOptionsModal 
@@ -654,7 +639,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     <>
                         <DetailedActionButton 
                             label="Reminder" 
-                            icon={<BellIcon filled={isReminderSet} className="w-6 h-6" />} 
+                            icon={<BellIcon className="w-6 h-6" />} 
                             isActive={isReminderSet} 
                             onClick={() => setIsReminderOptionsOpen(true)} 
                         />
@@ -675,11 +660,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                {!hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
+                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
+                {!hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={handleCommentsAction} />}
+                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
+                {hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
                 <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />

@@ -28,6 +28,7 @@ export const calculateAutoStatus = (
         });
     });
 
+    // CRITICAL: If no episodes are watched, the show cannot be in an automated 'Watching' or 'Completed' state.
     if (totalWatched === 0) return null;
 
     const totalAired = getAiredEpisodeCount(details);

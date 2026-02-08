@@ -105,7 +105,7 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
                         <input type="text" placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary border border-white/10 focus:border-primary-accent outline-none" />
                     </div>
                     <label className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 cursor-pointer hover:border-primary-accent transition-all shadow-inner">
-                        <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" /> <span className="text-xs font-black uppercase tracking-widest">Upload or Take Photo</span>
+                        <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" /> <span className="text-xs font-black uppercase tracking-widest">Upload Photo</span>
                         <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                     </label>
                 </div>
