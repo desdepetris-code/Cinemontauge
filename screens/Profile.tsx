@@ -47,44 +47,34 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
         
         setIsUploading(true);
         try {
-            // 1. Get the currently authenticated user from Supabase auth
             const { data: authData, error: authError } = await supabase.auth.getUser();
             if (authError || !authData?.user) {
-              console.error("Missing user session:", authError);
               throw new Error("User not authenticated");
             }
 
             const user = authData.user;
-            
-            // 3. The file MUST be stored inside a folder named after the user's auth ID
             const filePath = `${user.id}/avatar.png`;
 
-            // 2. Upload the selected image file to the "avatars" storage bucket
-            // 6. Ensure upload uses upsert so users can replace their avatar
             const { error: uploadError } = await supabase.storage
               .from("avatars")
               .upload(filePath, file, { upsert: true });
 
             if (uploadError) {
-              console.error("Upload failure:", uploadError);
               throw uploadError;
             }
             
-            // 4. After upload, retrieve the public URL of the uploaded avatar file
             const { data: publicUrlData } = supabase.storage
               .from("avatars")
               .getPublicUrl(filePath);
             
             const publicUrl = publicUrlData.publicUrl;
 
-            // 5. Update the profiles table avatar_url column with that public URL
             const { error: profileUpdateError } = await supabase
-              .from("profiles")
+              .from('profiles')
               .update({ avatar_url: publicUrl })
-              .eq("id", user.id);
+              .eq('id', user.id);
 
             if (profileUpdateError) {
-              console.error("Profile update failure:", profileUpdateError);
               throw profileUpdateError;
             }
             
@@ -225,7 +215,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
-  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, onAuthClick, profilePictureUrl, setProfilePictureUrl } = props;
+  const { userData, genres, onSelectShow, initialTab = 'overview', currentUser, profilePictureUrl, setProfilePictureUrl } = props;
   const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
@@ -247,7 +237,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
     { id: 'journal', label: 'Journal', icon: QuillIcon },
     { id: 'achievements', label: 'Awards', icon: BadgeIcon },
     { id: 'updates', label: 'Updates', icon: CurlyLoopIcon },
-    { id: 'ongoing', label: 'Ongoing', icon: HourglassIcon },
+    { id: 'ongoing', label: 'Catch Up', icon: HourglassIcon },
     { id: 'weeklyPicks', label: 'Weekly Picks', icon: TargetIcon },
     { id: 'imports', label: 'Imports', icon: CloudArrowUpIcon },
     { id: 'settings', label: 'Settings', icon: CogIcon },
@@ -288,11 +278,9 @@ const Profile: React.FC<ProfileProps> = (props) => {
     }
   };
 
-  const userId = currentUser ? currentUser.id : 'guest';
-
   return (
     <div className="animate-fade-in pb-24 max-w-7xl mx-auto px-4" style={{ fontFamily: props.profileTheme?.fontFamily || 'inherit' }}>
-        <ProfilePictureModal isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} currentUrl={profilePictureUrl} userId={userId} onSave={async (url) => setProfilePictureUrl(url)} />
+        <ProfilePictureModal isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} currentUrl={profilePictureUrl} userId={currentUser?.id || 'guest'} onSave={async (url) => setProfilePictureUrl(url)} />
         <NotificationsModal isOpen={isNotificationsModalOpen} onClose={() => setIsNotificationsModalOpen(false)} notifications={props.notifications} onMarkAllRead={props.onMarkAllRead} onMarkOneRead={props.onMarkOneRead} onDeleteNotification={props.onDeleteNotification} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />
 
         <div className="relative mb-12">
@@ -305,17 +293,17 @@ const Profile: React.FC<ProfileProps> = (props) => {
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent"></div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-8 -mt-24 md:-mt-32 relative z-10">
-                <div className="flex flex-col md:flex-row items-end justify-between gap-8">
-                    <div className="flex flex-col md:flex-row items-end gap-6 group/avatar">
+            <div className="max-w-6xl mx-auto px-6 -mt-20 md:-mt-32 relative z-10">
+                <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8">
+                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 group/avatar">
                         <div className="relative cursor-pointer" onClick={() => setIsAvatarModalOpen(true)}>
                             <img src={profilePictureUrl || PLACEHOLDER_PROFILE} alt="Profile" className="w-32 h-32 md:w-48 md:h-48 rounded-full object-cover border-4 border-bg-primary shadow-2xl transition-all group-hover/avatar:scale-105 group-hover/avatar:border-primary-accent" />
                             <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-all">
                                 <PhotoIcon className="w-8 h-8 text-white" />
                             </div>
                         </div>
-                        <div className="text-center md:text-left mb-2">
-                            <h1 className="text-4xl md:text-6xl font-black text-text-primary uppercase tracking-tighter leading-none mb-4">
+                        <div className="text-center md:text-left">
+                            <h1 className="text-4xl md:text-6xl font-black text-text-primary uppercase tracking-tighter leading-none mb-4 drop-shadow-xl">
                                 {currentUser?.username || 'GUEST_USER'}
                             </h1>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
@@ -323,14 +311,14 @@ const Profile: React.FC<ProfileProps> = (props) => {
                                     <BadgeIcon className="w-4 h-4" />
                                     LVL {props.levelInfo.level}
                                 </div>
-                                <div className="px-4 py-1.5 bg-bg-secondary/60 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-text-primary border border-white/10 shadow-lg">
+                                <div className="px-4 py-1.5 bg-bg-secondary/80 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-text-primary border border-white/10 shadow-lg">
                                     {stats.totalEpisodesWatched + stats.moviesCompleted} Registry Entries
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div className="flex gap-3 mb-4">
+                    <div className="flex gap-3 pb-2">
                         <button onClick={() => setIsNotificationsModalOpen(true)} className="relative p-4 bg-bg-secondary/60 backdrop-blur-xl rounded-2xl border border-white/10 text-text-primary hover:text-primary-accent transition-all shadow-xl group">
                             <BellIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
                             {unreadCount > 0 && <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-bg-primary flex items-center justify-center text-[8px] font-black">{unreadCount}</span>}
