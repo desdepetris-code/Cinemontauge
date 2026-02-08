@@ -48,7 +48,8 @@ interface ShowDetailProps {
   trackedLists: { watching: TrackedItem[], planToWatch: TrackedItem[], completed: TrackedItem[], onHold: TrackedItem[], dropped: TrackedItem[], allCaughtUp: TrackedItem[] };
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   customImagePaths: CustomImagePaths;
-  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
+  /* // FIX: Updated onSetCustomImage type to support File objects for cloud uploads. */
+  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string | File) => void;
   onRemoveCustomImage: (mediaId: number, url: string) => void;
   onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
   favorites: TrackedItem[];

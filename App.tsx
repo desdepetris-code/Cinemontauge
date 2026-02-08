@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
@@ -18,6 +17,8 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [missingUsername, setMissingUsername] = useState(false);
     const [missingPassword, setMissingPassword] = useState(false);
+    const [missingEmail, setMissingEmail] = useState(false);
+    const [hasSession, setHasSession] = useState(false);
     
     const userId = currentUser ? currentUser.id : 'guest';
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -32,10 +33,13 @@ const App: React.FC = () => {
             .single();
 
         const hasUsername = !!(profile?.username);
+        // Check if user has an email-based identity (password auth)
         const hasPassword = supabaseUser.identities?.some((identity: any) => identity.provider === 'email') || false;
+        const hasEmail = !!supabaseUser.email;
 
         setMissingUsername(!hasUsername);
         setMissingPassword(!hasPassword);
+        setMissingEmail(!hasEmail);
 
         if (hasUsername) {
             setCurrentUser({
@@ -58,6 +62,7 @@ const App: React.FC = () => {
                 console.error("Supabase Session Error:", error.message);
             }
             if (session) {
+                setHasSession(true);
                 checkProfileStatus(session.user);
             }
             setLoading(false);
@@ -65,13 +70,16 @@ const App: React.FC = () => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session) {
+                setHasSession(true);
                 if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
                     checkProfileStatus(session.user);
                 }
             } else {
+                setHasSession(false);
                 setCurrentUser(null);
                 setMissingUsername(false);
                 setMissingPassword(false);
+                setMissingEmail(false);
             }
         });
 
@@ -133,13 +141,18 @@ const App: React.FC = () => {
         return null;
     }, []);
 
-    const handleCompleteProfile = useCallback(async (data: { username?: string; password?: string }): Promise<string | null> => {
+    const handleCompleteProfile = useCallback(async (data: { username?: string; password?: string; email?: string }): Promise<string | null> => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return "User session not found.";
 
         if (data.password) {
             const { error: authError } = await supabase.auth.updateUser({ password: data.password });
             if (authError) return authError.message;
+        }
+
+        if (data.email) {
+            const { error: emailError } = await supabase.auth.updateUser({ email: data.email });
+            if (emailError) return emailError.message;
         }
 
         if (data.username) {
@@ -219,7 +232,8 @@ const App: React.FC = () => {
       </div>
     );
 
-    const showProfileCompletion = missingUsername || missingPassword;
+    // Only show if logged in but missing critical registry details
+    const showProfileCompletion = hasSession && (missingUsername || missingPassword || missingEmail);
     
     return (
         <>
@@ -247,6 +261,7 @@ const App: React.FC = () => {
                 isOpen={showProfileCompletion}
                 missingUsername={missingUsername}
                 missingPassword={missingPassword}
+                missingEmail={missingEmail}
                 onComplete={handleCompleteProfile}
             />
         </>

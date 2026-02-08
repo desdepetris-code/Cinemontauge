@@ -85,7 +85,7 @@ const BottomTabNavigator: React.FC<BottomTabNavigatorProps> = ({ activeTab, acti
   const hoverClasses = navSettings.hoverRevealNav ? "opacity-0 hover:opacity-100 transition-opacity duration-300" : "opacity-100";
 
   return (
-    <nav className={`fixed z-40 overflow-hidden nav-spectral-bg animate-spectral-flow shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex ${positionClasses} ${hoverClasses}`}>
+    <nav className={`fixed z-[2000] overflow-hidden nav-spectral-bg animate-spectral-flow shadow-[0_-10px_30px_rgba(0,0,0,0.5)] flex ${positionClasses} ${hoverClasses}`}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-xl"></div>
       <div className={`container mx-auto flex h-full relative z-10 px-1 ${isVertical ? 'flex-col py-4' : 'flex-row justify-around items-center'}`}>
         {navSettings.tabs.map(tabId => {

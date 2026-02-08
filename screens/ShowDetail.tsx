@@ -70,7 +70,7 @@ interface ShowDetailProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
-  onDeleteSearchHistoryItem: () => void;
+  onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onAddNotifications: (notifs: AppNotification[]) => void;
@@ -739,7 +739,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
             {mediaType === 'tv' && <OverallProgress details={details} watchProgress={watchProgress} />}
 
-            <div className="border-b border-white/10 sticky top-16 bg-bg-primary/90 backdrop-blur-xl z-20 -mx-4 px-4 py-4 overflow-x-auto hide-scrollbar">
+            <div className="border-b border-white/10 sticky top-16 bg-bg-primary/90 backdrop-blur-xl z-20 -mx-4 px-4 py-4">
                 <Carousel>
                     <div className="flex space-x-4">
                         {tabs.map(tab => (

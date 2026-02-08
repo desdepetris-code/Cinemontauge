@@ -333,7 +333,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
         <div className="sticky top-16 bg-bg-primary/95 backdrop-blur-xl z-40 -mx-4 px-4 py-6 border-b border-white/5">
             <Carousel>
-                <div className="flex space-x-3 overflow-x-auto hide-scrollbar">
+                <div className="flex space-x-3">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}

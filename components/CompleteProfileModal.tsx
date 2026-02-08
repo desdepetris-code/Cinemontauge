@@ -1,28 +1,29 @@
-
 import React, { useState, useEffect } from 'react';
-import { SparklesIcon, XMarkIcon, LockClosedIcon, UserIcon, CheckCircleIcon } from './Icons';
+import { SparklesIcon, LockClosedIcon, UserIcon, CheckCircleIcon, EnvelopeIcon } from './Icons';
 import Logo from './Logo';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
   missingUsername: boolean;
   missingPassword: boolean;
-  onComplete: (data: { username?: string; password?: string }) => Promise<string | null>;
+  missingEmail: boolean;
+  onComplete: (data: { username?: string; password?: string; email?: string }) => Promise<string | null>;
 }
 
-const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, missingUsername, missingPassword, onComplete }) => {
+const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, missingUsername, missingPassword, missingEmail, onComplete }) => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Reset internal state when modal opens
   useEffect(() => {
     if (isOpen) {
       setError(null);
       setLoading(false);
       setUsername('');
+      setEmail('');
       setPassword('');
       setConfirmPassword('');
     }
@@ -31,8 +32,6 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
   if (!isOpen) return null;
 
   const validateUsername = (val: string) => {
-    // Allows A-Z, a-z, 0-9 and symbols: !@#$%^&*()_+-=[]{};':",.<>/?
-    // Specifically excludes whitespace
     const regex = /^[a-zA-Z0-9!@#$%^&*()_+\-=[\]{};':",.<>/?]+$/;
     return regex.test(val);
   };
@@ -41,7 +40,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
     e.preventDefault();
     setError(null);
 
-    const payload: { username?: string; password?: string } = {};
+    const payload: { username?: string; password?: string; email?: string } = {};
 
     if (missingUsername) {
       if (username.length < 3) {
@@ -49,10 +48,18 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
         return;
       }
       if (!validateUsername(username)) {
-        setError("Username contains invalid characters. Use alphanumeric or !@#$%^&*()_+-=[]{};':\",.<>/?");
+        setError("Username contains invalid characters.");
         return;
       }
       payload.username = username;
+    }
+
+    if (missingEmail) {
+      if (!email.includes('@')) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+      payload.email = email;
     }
 
     if (missingPassword) {
@@ -84,15 +91,13 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
         
         <div className="text-center mb-8">
             <Logo className="w-16 h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.5)]" />
-            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none mb-2">Finalize Registry</h2>
-            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60">Complete your Identity Setup</p>
+            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none mb-2">Finish sign up</h2>
+            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-60">Finish setting up your account</p>
         </div>
 
         <div className="bg-primary-accent/5 rounded-2xl p-4 mb-8 border border-primary-accent/10">
             <p className="text-[10px] text-text-secondary leading-relaxed font-medium text-center italic">
-                {missingUsername && missingPassword ? "Establish a unique handle and secure your account with a master password." :
-                 missingUsername ? "Choose a unique handle to identify yourself in the registry." :
-                 "Secure your account with a master password for future direct access."}
+                Choose a unique handle to identify yourself as on CineMontauge.
             </p>
         </div>
 
@@ -105,13 +110,13 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
 
           {missingUsername && (
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Unique Username</label>
+              <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Enter a username</label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="CineMaster_99!"
+                  placeholder="CinemaFanatic123"
                   value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  onChange={e => setUsername(e.target.value.replace(/\s/g, ''))}
                   className={inputClass}
                   required
                 />
@@ -120,10 +125,27 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
             </div>
           )}
 
+          {missingEmail && (
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">add an email below:</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className={inputClass}
+                  required
+                />
+                <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 -mt-2 w-5 h-5 text-text-secondary/50" />
+              </div>
+            </div>
+          )}
+
           {missingPassword && (
             <>
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Master Password</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Create password:</label>
                 <div className="relative">
                     <input
                       type="password"
@@ -138,7 +160,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Confirm Password</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-2 mb-1 block">Confirm password:</label>
                 <div className="relative">
                     <input
                       type="password"
@@ -164,14 +186,14 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
             ) : (
               <>
                 <SparklesIcon className="w-4 h-4" />
-                Finalize Identity
+                Finish sign up
               </>
             )}
           </button>
         </form>
 
         <p className="mt-8 text-[8px] font-black text-text-secondary/30 uppercase tracking-[0.3em] text-center">
-            Secured by Supabase Auth Registry v3.2
+            Registry Verification v3.2
         </p>
       </div>
     </div>

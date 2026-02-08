@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { PhotoIcon, PlusIcon, InformationCircleIcon, CheckCircleIcon, XMarkIcon, TrashIcon, ArrowPathIcon } from './Icons';
 import { CustomImagePaths, TmdbImage } from '../types';
@@ -18,8 +17,8 @@ interface CustomizeTabProps {
         posters: TmdbImage[];
         backdrops: TmdbImage[];
     }
-  };
-  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
+  } | null;
+  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string | File) => void;
   onRemoveCustomImage?: (showId: number, imagePath: string) => void;
   onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
 }
@@ -44,11 +43,29 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
 
   const assetLibrary = useMemo(() => {
       const items: { url: string; type: 'official' | 'custom'; category: 'poster' | 'backdrop' }[] = [];
-      userGallery.forEach(url => items.push({ url, type: 'custom', category: 'poster' })); 
-      details?.images?.backdrops?.forEach(img => items.push({ url: img.file_path, type: 'official', category: 'backdrop' }));
-      details?.images?.posters?.forEach(img => items.push({ url: img.file_path, type: 'official', category: 'poster' }));
-      return Array.from(new Set(items.map(item => [item.url, item])).values());
-  }, [userGallery, details?.images]);
+      
+      // 1. Add User Custom Gallery Items
+      if (Array.isArray(userGallery)) {
+        userGallery.forEach(url => items.push({ url, type: 'custom', category: 'poster' })); 
+      }
+      
+      // 2. Add Official Backdrops
+      if (details?.images?.backdrops) {
+          details.images.backdrops.forEach(img => {
+              if (img.file_path) items.push({ url: img.file_path, type: 'official', category: 'backdrop' });
+          });
+      }
+      
+      // 3. Add Official Posters
+      if (details?.images?.posters) {
+          details.images.posters.forEach(img => {
+              if (img.file_path) items.push({ url: img.file_path, type: 'official', category: 'poster' });
+          });
+      }
+      
+      // Deduplicate by URL using a Map (Standard Pattern) to ensure flat objects are returned
+      return Array.from(new Map(items.map(item => [item.url, item])).values());
+  }, [userGallery, details]);
 
   const handleApplyAsset = (type: 'poster' | 'backdrop') => {
       if (selectedAsset) {
@@ -58,6 +75,7 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
   };
 
   const getFullUrl = (path: string) => {
+      if (!path) return '';
       if (path.startsWith('http') || path.startsWith('data:')) return path;
       return `${TMDB_IMAGE_BASE_URL}original${path}`;
   };
@@ -71,10 +89,10 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
   };
 
   return (
-    <div className="animate-fade-in space-y-12">
+    <div className="animate-fade-in space-y-12 pb-10">
         {selectedAsset && (
             <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-fade-in" onClick={() => setSelectedAsset(null)}>
-                <div className="bg-bg-primary max-w-md w-full rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
                     <div className="aspect-video relative">
                         <img src={getFullUrl(selectedAsset)} alt="" className="w-full h-full object-cover" />
                         <button onClick={() => setSelectedAsset(null)} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white hover:bg-black/60 transition-all"><XMarkIcon className="w-5 h-5" /></button>
@@ -122,10 +140,11 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
                         className="mt-3 w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/10 transition-all shadow-xl active:scale-95 group"
                     >
                         <ArrowPathIcon className="w-4 h-4 text-primary-accent group-hover:rotate-180 transition-transform duration-500" />
-                        Return to Original Poster
+                        <span>Reset Poster</span>
                     </button>
                 )}
             </div>
+
             <div className="space-y-6">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary px-2 text-center md:text-left">Primary Backdrop</h3>
                 <div onClick={onOpenBackdropSelector} className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 aspect-video bg-bg-secondary/40 cursor-pointer group">
@@ -139,35 +158,58 @@ const CustomizeTab: React.FC<CustomizeTabProps> = ({
                         className="mt-3 w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white border border-white/10 transition-all shadow-xl active:scale-95 group"
                     >
                         <ArrowPathIcon className="w-4 h-4 text-primary-accent group-hover:rotate-180 transition-transform duration-500" />
-                        Return to Original Backdrop
+                        <span>Reset Backdrop</span>
                     </button>
                 )}
             </div>
         </div>
 
-        <section className="pt-8 border-t border-white/5">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary mb-8 px-2">Cinematic Asset Library</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                <button onClick={onOpenPosterSelector} className="aspect-[2/3] rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-text-secondary/20 hover:border-primary-accent/40 hover:bg-primary-accent/5 transition-all group shadow-inner">
-                    <PlusIcon className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Add New Image</span>
-                </button>
-                {assetLibrary.map((item, i) => (
-                    <div key={`${item.url}-${i}`} onClick={() => setSelectedAsset(item.url)} className={`relative rounded-2xl overflow-hidden shadow-xl border border-white/5 group/asset cursor-pointer bg-bg-secondary/40 transition-all hover:scale-105 ${item.category === 'backdrop' ? 'aspect-video col-span-2' : 'aspect-[2/3]'}`}>
-                        <img src={getFullUrl(item.url)} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover/asset:scale-110" loading="lazy" />
-                        {item.type === 'custom' && (
-                            <button onClick={(e) => handleRemove(e, item.url)} className="absolute top-2 right-2 p-1.5 bg-red-600/80 backdrop-blur-md rounded-lg text-white shadow-lg hover:bg-red-500 transition-all z-20"><TrashIcon className="w-4 h-4" /></button>
-                        )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/asset:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                            <div className="p-3 bg-white/10 rounded-full backdrop-blur-md"><PlusIcon className="w-5 h-5 text-white" /></div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-white/80">Reassign</span>
-                        </div>
-                    </div>
-                ))}
+        <div className="space-y-8 pt-8 border-t border-white/5">
+            <div>
+                <h3 className="text-xl font-black text-text-primary uppercase tracking-widest">Asset Registry</h3>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-1 opacity-60">Manage all available visual identifiers for this title</p>
             </div>
-        </section>
+
+            {assetLibrary.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {assetLibrary.map((asset) => (
+                        <div 
+                            key={asset.url} 
+                            onClick={() => setSelectedAsset(asset.url)}
+                            className="group relative aspect-[2/3] rounded-2xl overflow-hidden border border-white/5 bg-bg-secondary/40 cursor-pointer shadow-lg hover:border-primary-accent/40 transition-all"
+                        >
+                            <img src={getFullUrl(asset.url)} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <PlusIcon className="w-8 h-8 text-white" />
+                            </div>
+                            
+                            <div className="absolute top-3 left-3">
+                                <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded-md backdrop-blur-md border border-white/10 text-white ${asset.type === 'custom' ? 'bg-primary-accent/40' : 'bg-black/40'}`}>
+                                    {asset.type}
+                                </span>
+                            </div>
+
+                            {asset.type === 'custom' && (
+                                <button 
+                                    onClick={(e) => handleRemove(e, asset.url)}
+                                    className="absolute top-3 right-3 p-1.5 bg-red-600/80 text-white rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+                                >
+                                    <TrashIcon className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="py-20 text-center bg-bg-secondary/10 rounded-[3rem] border border-dashed border-white/10 opacity-30">
+                    <PhotoIcon className="w-12 h-12 mx-auto mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">No additional assets in registry</p>
+                </div>
+            )}
+        </div>
     </div>
   );
 };
 
+/* // FIX: Added missing default export to resolve "no default export" errors in ShowDetail components. */
 export default CustomizeTab;
