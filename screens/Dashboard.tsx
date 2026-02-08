@@ -18,10 +18,12 @@ import GenericCarousel from '../components/GenericCarousel';
 import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import { getEnrichedMediaFromBackend } from '../services/backendService';
 import Top10Carousel from '../components/Top10Carousel';
-import { FilmIcon, TvIcon, TrophyIcon, SparklesIcon, MountainIcon } from '../components/Icons';
+// FIX: Added missing PlayCircleIcon to the imported icons list
+import { FilmIcon, TvIcon, TrophyIcon, SparklesIcon, MountainIcon, PlayCircleIcon } from '../components/Icons';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
 import UpcomingMoviesCarousel from '../components/UpcomingMoviesCarousel';
 import EpisodeDetailModal from '../components/EpisodeDetailModal';
+import { confirmationService } from '../services/confirmationService';
 
 interface DashboardProps {
   userData: UserData;
@@ -41,11 +43,11 @@ interface DashboardProps {
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
+  setPausedLiveSessions: React.Dispatch<React.SetStateAction<Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>>>;
   timezone: string;
   genres: Record<number, string>;
   timeFormat: '12h' | '24h';
   reminders: Reminder[];
-  // FIX: Removed duplicate onToggleReminder definition.
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   shortcutSettings: ShortcutSettings;
@@ -157,7 +159,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
 };
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
-  const { userData, onSelectShow, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, timezone, genres, timeFormat, reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, showRatings, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, onToggleWeeklyFavorite } = props;
+  const { userData, onSelectShow, watchProgress, onToggleEpisode, onShortcutNavigate, onOpenAddToListModal, liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, onLiveWatchTogglePause, onLiveWatchStop, onMarkShowAsWatched, onToggleFavoriteShow, favorites, pausedLiveSessions, setPausedLiveSessions, timezone, genres, timeFormat, reminders, onToggleReminder, onUpdateLists, shortcutSettings, preferences, showRatings, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, onToggleWeeklyFavorite } = props;
   const isApiKeyMissing = (TMDB_API_KEY as string) === 'YOUR_TMDB_API_KEY_HERE';
   const [backendMovies, setBackendMovies] = useState<TmdbMedia[]>([]);
   const [backendShows, setBackendShows] = useState<TmdbMedia[]>([]);
@@ -216,8 +218,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
     if (liveWatchMedia) {
         result.push({ mediaInfo: liveWatchMedia, elapsedSeconds: liveWatchElapsedSeconds, isPaused: liveWatchIsPaused });
     }
-    // Spec: Paused sessions also appear in Live Watch section
-    // FIX: Cast Object.values(pausedLiveSessions) to the correct type to resolve 'Property mediaInfo/elapsedSeconds does not exist on type unknown' errors.
     (Object.values(pausedLiveSessions) as { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }[]).forEach(session => {
         if (!liveWatchMedia || session.mediaInfo.id !== liveWatchMedia.id) {
             result.push({ mediaInfo: session.mediaInfo, elapsedSeconds: session.elapsedSeconds, isPaused: true });
@@ -225,6 +225,20 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
     });
     return result;
   }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, pausedLiveSessions]);
+
+  const handleDiscardSession = (id: number) => {
+      if (window.confirm("Permanently discard this live session? All current progress will be lost.")) {
+          setPausedLiveSessions(prev => {
+              const next = { ...prev };
+              delete next[id];
+              return next;
+          });
+          if (liveWatchMedia?.id === id) {
+              onLiveWatchStop();
+          }
+          confirmationService.show("Registry session purged.");
+      }
+  };
 
   return (
     <div className="animate-fade-in space-y-12 pb-24">
@@ -235,7 +249,10 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       
       {preferences.dashShowLiveWatch && (
           <section className="px-6">
-            <h2 className="text-2xl font-bold text-text-primary mb-6">Live Watch</h2>
+            <div className="flex items-center gap-3 mb-6">
+                <PlayCircleIcon className="w-8 h-8 text-primary-accent" />
+                <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter leading-none">Live Watch Hub</h2>
+            </div>
             {activeLiveSessions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {activeLiveSessions.map(session => (
@@ -248,16 +265,17 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                                     if (liveWatchMedia && session.mediaInfo.id === liveWatchMedia.id) onLiveWatchTogglePause();
                                     else onStartLiveWatch(session.mediaInfo);
                                 }} 
-                                onStop={() => {}} // Controlled by player tracker
+                                onStop={() => {}} 
+                                onDiscard={() => handleDiscardSession(session.mediaInfo.id)}
                                 isDashboardWidget={true} 
                             />
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="bg-bg-secondary/20 rounded-3xl p-10 text-center border border-dashed border-white/10">
-                    <h3 className="text-xl font-black text-text-primary uppercase tracking-widest opacity-60">No Active Watch</h3>
-                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-50">Start a live session from any show or movie page.</p>
+                <div className="bg-bg-secondary/20 rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-inner">
+                    <h3 className="text-xl font-black text-text-primary uppercase tracking-widest opacity-20">No Active Registry Streams</h3>
+                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-30">Initiate a live session from any title detail page.</p>
                 </div>
             )}
           </section>

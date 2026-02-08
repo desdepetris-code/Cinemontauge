@@ -12,22 +12,23 @@ const ConfirmationBanner: React.FC<{ message: string; onDismiss: () => void }> =
 
     useEffect(() => {
         setIsVisible(true);
+        // User requested 5 seconds max for the banner
         const timer = setTimeout(() => {
             setIsVisible(false);
             setTimeout(onDismiss, 300); // Animation duration
-        }, 3000);
+        }, 5000);
 
         return () => clearTimeout(timer);
     }, [onDismiss]);
 
     return (
         <div
-            className={`flex items-center space-x-3 bg-card-gradient rounded-lg shadow-xl p-3 px-4 transition-all duration-300 ease-in-out w-full max-w-md ${
+            className={`flex items-center space-x-3 bg-card-gradient rounded-lg shadow-xl p-3 px-4 transition-all duration-300 ease-in-out w-full max-w-md border border-white/10 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full'
             }`}
         >
             <CheckCircleIcon className="w-5 h-5 text-green-400 flex-shrink-0" />
-            <p className="text-sm text-text-primary">{message}</p>
+            <p className="text-sm text-text-primary font-bold">{message}</p>
         </div>
     );
 };
@@ -74,7 +75,7 @@ const ConfirmationContainer: React.FC = () => {
     };
 
     return (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center space-y-2 w-full max-w-lg px-4 pointer-events-none">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[500] flex flex-col items-center space-y-2 w-full max-w-lg px-4 pointer-events-none">
             {activeConfirmations.map((conf) => (
                 <ConfirmationBanner
                     key={conf.id}

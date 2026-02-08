@@ -22,7 +22,7 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
   const progress = runtimeInSeconds > 0 ? Math.min((elapsedSeconds / runtimeInSeconds) * 100, 100) : 0;
 
   return (
-    <div className="bg-card-gradient rounded-lg shadow-xl w-full p-6 relative h-full flex flex-col justify-between">
+    <div className="bg-card-gradient rounded-lg shadow-xl w-full p-6 relative h-full flex flex-col justify-between border border-white/5">
         {!isDashboardWidget && (
             <div className="absolute top-3 right-3 flex space-x-2">
                 {onMinimize && (
@@ -46,44 +46,59 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
             </div>
         )}
 
-        {isDashboardWidget && <h2 className="text-2xl font-bold text-text-primary mb-4">▶️ Live Watch</h2>}
-        <div className="text-center">
-            {!isDashboardWidget && <p className="text-sm text-text-secondary">Now Watching</p>}
-            <h3 className="text-lg font-bold text-text-primary truncate">{mediaInfo.title}</h3>
+        {isDashboardWidget && (
+            <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-black text-text-primary uppercase tracking-tighter">Live Session</h2>
+                {onDiscard && (
+                    <button 
+                        onClick={onDiscard} 
+                        className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                        title="Discard Session"
+                    >
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+        )}
+        
+        <div className="text-center mb-4">
+            {!isDashboardWidget && <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 mb-1">Now Streaming</p>}
+            <h3 className="text-lg font-black text-text-primary uppercase tracking-tight truncate">{mediaInfo.title}</h3>
             {mediaInfo.media_type === 'tv' && (
-                <p className="text-sm text-text-secondary truncate">
-                    S{mediaInfo.seasonNumber} E{mediaInfo.episodeNumber}: {mediaInfo.episodeTitle}
+                <p className="text-[10px] font-bold text-primary-accent uppercase tracking-[0.2em] mt-1">
+                    S{mediaInfo.seasonNumber} E{mediaInfo.episodeNumber} &bull; {mediaInfo.episodeTitle}
                 </p>
             )}
         </div>
         
-        <div className="my-4">
-            <div className="flex justify-between text-sm text-text-secondary">
+        <div className="mb-6">
+            <div className="flex justify-between text-[10px] font-black text-text-secondary uppercase tracking-widest mb-2">
                 <span>{formatTime(elapsedSeconds)}</span>
                 <span>{formatTime(runtimeInSeconds)}</span>
             </div>
-             <div className="w-full bg-bg-secondary rounded-full h-2 mt-1 relative">
-                <div className="bg-accent-gradient h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-                <div className="absolute -right-1 -top-4 text-xs font-bold text-text-primary bg-bg-secondary px-1.5 py-0.5 rounded-md">{Math.round(progress)}%</div>
+             <div className="w-full bg-bg-secondary rounded-full h-2 relative border border-white/5 shadow-inner">
+                <div className="bg-accent-gradient h-full rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                {/* Repositioned to bottom right */}
+                <div className="absolute right-0 -bottom-5 text-[9px] font-black text-primary-accent uppercase tracking-widest">{Math.round(progress)}%</div>
             </div>
         </div>
 
         <div className="flex justify-center items-center space-x-4">
-            {onDiscard && (
+            {!isDashboardWidget && onDiscard && (
                 <button onClick={onDiscard} className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-all" title="Discard Session">
                     <TrashIcon className="w-6 h-6" />
                 </button>
             )}
             {onMarkWatched && 
-                <button onClick={onMarkWatched} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all" title="Mark as Watched">
+                <button onClick={onMarkWatched} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all border border-white/5 shadow-md" title="Mark as Watched">
                     <CheckCircleIcon className="w-6 h-6"/>
                 </button>
             }
-             <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-white rounded-full transition-transform active:scale-95 shadow-lg">
+             <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-on-accent rounded-full transition-all active:scale-90 shadow-2xl hover:scale-105">
                 {isPaused ? <PlayIcon className="w-8 h-8"/> : <PauseIcon className="w-8 h-8"/>}
             </button>
             {onAddToList &&
-                 <button onClick={onAddToList} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all" title="Add to List">
+                 <button onClick={onAddToList} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all border border-white/5 shadow-md" title="Add to List">
                     <PlusIcon className="w-6 h-6"/>
                 </button>
             }

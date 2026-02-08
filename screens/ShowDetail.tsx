@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, WritingBookIcon, Squares2X2Icon, ShareIcon } from '../components/Icons';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, WritingBookIcon, Squares2X2Icon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
 import SeasonAccordion from '../components/SeasonAccordion';
@@ -19,6 +18,7 @@ import MoreInfo from '../components/MoreInfo';
 import WhereToWatch from '../components/WhereToWatch';
 import RecommendedMedia from '../components/RecommendedMedia';
 import CustomizeTab from '../components/CustomizeTab';
+import ImageSelectorModal from '../components/ImageSelectorModal';
 import ShowAchievementsTab from '../components/ShowAchievementsTab';
 import CommentsTab from '../components/CommentsTab';
 import MarkAsWatchedModal, { LogWatchScope } from '../components/MarkAsWatchedModal';
@@ -46,7 +46,7 @@ interface ShowDetailProps {
   trackedLists: { watching: TrackedItem[], planToWatch: TrackedItem[], completed: TrackedItem[], onHold: TrackedItem[], dropped: TrackedItem[], allCaughtUp: TrackedItem[] };
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   customImagePaths: CustomImagePaths;
-  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string) => void;
+  onSetCustomImage: (mediaId: number, type: 'poster' | 'backdrop', path: string | File) => void;
   onRemoveCustomImage: (mediaId: number, url: string) => void;
   onResetCustomImage: (mediaId: number, type: 'poster' | 'backdrop') => void;
   favorites: TrackedItem[];
@@ -70,6 +70,8 @@ interface ShowDetailProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onDeleteHistoryItem: (item: HistoryItem) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
+  onDeleteSearchHistoryItem: () => void;
+  onClearSearchHistory: () => void;
   onAddWatchHistoryBulk: (item: TrackedItem, episodeIds: number[], timestamp: string, note: string) => void;
   onAddNotifications: (notifs: AppNotification[]) => void;
   onSaveComment: (commentData: any) => void;
@@ -565,6 +567,16 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
           initialTypes={reminders.find(r => r.id === reminderId)?.selectedTypes}
           initialFrequency={reminders.find(r => r.id === reminderId)?.frequency}
       />
+      
+      {/* Missing Image Selector Modals */}
+      <ImageSelectorModal 
+        isOpen={isPosterSelectorOpen || isBackdropSelectorOpen}
+        onClose={() => { setIsPosterSelectorOpen(false); setIsBackdropSelectorOpen(false); }}
+        posters={details?.images?.posters || []}
+        backdrops={details?.images?.backdrops || []}
+        onSelect={(type, path) => onSetCustomImage(id, type, path)}
+        initialTab={isPosterSelectorOpen ? 'posters' : 'backdrops'}
+      />
 
       {selectedEpisodeForDetail && (
           <EpisodeDetailModal 
@@ -667,35 +679,13 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                 
-                {mediaType === 'movie' ? (
-                  !hasUpcomingContent && (
-                    <DetailedActionButton 
-                      label="Live Watch" 
-                      className="!bg-black !border-none" 
-                      icon={<PlayCircleIcon className="w-6 h-6" />} 
-                      onClick={() => onStartLiveWatch({ id: details.id, title: details.title || '', media_type: 'movie', poster_path: details.poster_path, runtime: details.runtime || 120 })} 
-                    />
-                  )
-                ) : (
-                  !hasUpcomingContent ? (
-                    <DetailedActionButton 
-                      label="Live Watch" 
-                      className="!bg-black !border-none" 
-                      icon={<PlayCircleIcon className="w-6 h-6" />} 
-                      onClick={() => {
-                          const next = nextEpisodeToWatch;
-                          onStartLiveWatch({ 
-                            id: details.id, 
-                            title: details.name || '', 
-                            media_type: 'tv', 
-                            poster_path: details.poster_path, 
-                            runtime: details.episode_run_time?.[0] || 45,
-                            seasonNumber: next?.seasonNumber,
-                            episodeNumber: next?.episodeNumber
-                          })
-                      }} 
-                    />
-                  ) : null
+                {mediaType === 'movie' && !hasUpcomingContent && (
+                  <DetailedActionButton 
+                    label="Live Watch" 
+                    className="!bg-black !border-none" 
+                    icon={<PlayCircleIcon className="w-6 h-6" />} 
+                    onClick={() => onStartLiveWatch({ id: details.id, title: details.title || '', media_type: 'movie', poster_path: details.poster_path, runtime: details.runtime || 120 })} 
+                  />
                 )}
               </div>
 

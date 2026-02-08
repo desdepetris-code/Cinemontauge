@@ -27,13 +27,18 @@ interface LiveWatchTrackerProps {
 const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
   const { isOpen, onClose, onDiscard, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
 
-  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 340 });
+  // Initialize position more safely for mobile
+  const [position, setPosition] = useState({ 
+    x: window.innerWidth > 500 ? window.innerWidth - 420 : 16, 
+    y: window.innerHeight - 340 
+  });
   const [showInfo, setShowInfo] = useState(false);
   
   const draggableRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<DraggableState>({ isDragging: false, offset: { x: 0, y: 0 } });
 
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (window.innerWidth < 768) return; // Disable drag on small mobile to avoid frustration
     dragState.current = {
       isDragging: true,
       offset: {
@@ -76,12 +81,17 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
   return (
     <div
       ref={draggableRef}
-      className={`fixed z-[300] transition-all duration-500 ease-out ${
+      className={`fixed z-[400] transition-all duration-500 ease-out ${
           isMinimized 
-            ? 'w-72 h-24 bg-card-gradient rounded-2xl shadow-2xl p-3 border border-white/10 backdrop-blur-xl' 
-            : 'w-[400px] bg-bg-primary rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] border border-white/10 overflow-hidden'
+            ? 'w-[calc(100vw-2rem)] sm:w-72 h-24 bg-card-gradient rounded-2xl shadow-2xl p-3 border border-white/10 backdrop-blur-xl' 
+            : 'w-[calc(100vw-2rem)] sm:w-[400px] bg-bg-primary rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] border border-white/10 overflow-hidden max-h-[85vh]'
       }`}
-      style={{ left: position.x, top: position.y, cursor: dragState.current.isDragging ? 'grabbing' : 'auto' }}
+      style={{ 
+        left: window.innerWidth > 768 ? position.x : '1rem', 
+        top: window.innerWidth > 768 ? position.y : 'auto',
+        bottom: window.innerWidth > 768 ? 'auto' : '6rem',
+        cursor: dragState.current.isDragging ? 'grabbing' : 'auto' 
+      }}
     >
         {/* INFO MODAL OVERLAY */}
         {showInfo && !isMinimized && (
@@ -136,7 +146,7 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                 </div>
             </div>
         ) : (
-            <div className="p-8 flex flex-col h-full">
+            <div className="p-6 sm:p-8 flex flex-col h-full overflow-y-auto">
                 <div className="flex justify-between items-start mb-6">
                     <button onClick={() => setShowInfo(true)} className="p-2 bg-bg-secondary/40 rounded-xl text-text-secondary hover:text-white transition-all border border-white/5 shadow-inner">
                         <InformationCircleIcon className="w-6 h-6" />
@@ -152,11 +162,11 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                 </div>
 
                 <div className="flex flex-col items-center text-center mb-8">
-                    <div className="relative group mb-6">
-                        <img src={getImageUrl(mediaInfo.poster_path, 'w185')} alt="" className="w-32 h-48 rounded-2xl shadow-2xl border border-white/10" />
+                    <div className="relative group mb-6 flex-shrink-0">
+                        <img src={getImageUrl(mediaInfo.poster_path, 'w185')} alt="" className="w-32 h-48 rounded-2xl shadow-2xl border border-white/10 object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded-2xl"></div>
                     </div>
-                    <h4 className="text-2xl font-black text-text-primary uppercase tracking-tighter truncate w-full">{mediaInfo.title}</h4>
+                    <h4 className="text-xl sm:text-2xl font-black text-text-primary uppercase tracking-tighter truncate w-full">{mediaInfo.title}</h4>
                     {mediaInfo.media_type === 'tv' && (
                         <p className="text-[10px] font-black text-primary-accent uppercase tracking-[0.3em] mt-1">S{mediaInfo.seasonNumber} E{mediaInfo.episodeNumber}</p>
                     )}
@@ -172,13 +182,15 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                             className="h-full bg-accent-gradient transition-all duration-300 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                             style={{ width: `${progress}%` }}
                         ></div>
+                        {/* Mobile bottom-right percentage */}
+                        <div className="absolute right-0 -bottom-5 text-[8px] font-black text-primary-accent uppercase">{Math.round(progress)}%</div>
                     </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 mt-auto">
                     <button 
                         onClick={onDiscard}
-                        className="p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-lg flex-shrink-0"
+                        className="p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white transition-all border border-red-500/20 shadow-lg flex-shrink-0"
                         title="Delete Session"
                     >
                         <TrashIcon className="w-6 h-6" />
@@ -186,14 +198,14 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
 
                     <button 
                         onClick={onTogglePause}
-                        className={`flex-grow py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
+                        className={`flex-grow py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
                             isPaused ? 'bg-accent-gradient text-on-accent' : 'bg-white text-black'
                         }`}
                     >
                         {isPaused ? (
-                            <><PlayIcon className="w-6 h-6" /> Resume Session</>
+                            <><PlayIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Resume</>
                         ) : (
-                            <><PauseIcon className="w-6 h-6" /> Pause Tracking</>
+                            <><PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Pause</>
                         )}
                     </button>
                 </div>

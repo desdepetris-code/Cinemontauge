@@ -3,7 +3,7 @@ import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEnt
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, PlayCircleIcon, XMarkIcon, HeartIcon, ChatBubbleLeftRightIcon, EyeIcon, ClockIcon, CalendarIcon, ChevronDownIcon, ChevronRightIcon, TrophyIcon, ShareIcon, ArrowPathIcon, ListBulletIcon, LogWatchIcon, GlobeAltIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, PlayCircleIcon, XMarkIcon, HeartIcon, ChatBubbleLeftRightIcon, EyeIcon, ClockIcon, CalendarIcon, ChevronDownIcon, ChevronLeftIcon, TrophyIcon, ShareIcon, ArrowPathIcon, ListBulletIcon, LogWatchIcon, GlobeAltIcon, ChevronRightIcon } from './Icons';
 import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
 import NominationModal from './NominationModal';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
@@ -228,18 +228,24 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                   className="w-full h-full object-cover transition-all duration-1000" 
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent"></div>
               
-              <button onClick={onClose} className="absolute top-2 left-6 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary transition-all z-30 border border-white/10 shadow-2xl">
-                <XMarkIcon className="w-6 h-6" />
+              {/* BACK ARROW (TOP LEFT) -> Go to Show page */}
+              <button 
+                onClick={onViewFullShow} 
+                className="absolute top-2 left-6 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary transition-all z-30 border border-white/10 shadow-2xl flex items-center justify-center group"
+                title="View Full Show Page"
+              >
+                <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
               </button>
 
+              {/* X EXIT (TOP RIGHT) -> Go back to page before modal */}
               <button 
-                onClick={onViewFullShow}
-                className="absolute top-2 right-6 px-5 py-2 bg-primary-accent text-on-accent font-black uppercase text-[10px] tracking-widest rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all z-30 flex items-center gap-2 border border-white/10"
+                onClick={onClose}
+                className="absolute top-2 right-6 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary transition-all z-30 border border-white/10 shadow-2xl flex items-center justify-center"
+                title="Close"
               >
-                  Full Archive
-                  <ChevronRightIcon className="w-4 h-4" />
+                <XMarkIcon className="w-6 h-6" />
               </button>
           </div>
 
@@ -314,9 +320,36 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                         )}
                     </div>
 
-                    {/* NEW TIMEZONES SECTION */}
-                    <div className="pt-2">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1 mb-2">Timezones</p>
+                    <div className="relative">
+                        <div className={showSpoilerOverlay ? 'blur-xl select-none opacity-40 grayscale' : ''}>
+                            <div className="p-8 rounded-[2rem] border border-white/5 bg-bg-secondary/20 shadow-inner">
+                                <p className="text-text-primary text-lg leading-relaxed font-medium">
+                                    {displayOverview}
+                                </p>
+                                {isLongOverview && (
+                                    <button 
+                                      onClick={() => setIsOverviewExpanded(!isOverviewExpanded)}
+                                      className="mt-4 text-xs font-black uppercase text-primary-accent tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                    >
+                                        {isOverviewExpanded ? 'Read Less' : 'Read Full Synopsis'}
+                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOverviewExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        {showSpoilerOverlay && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
+                                <button onClick={() => setRevealSpoiler(true)} className="px-10 py-5 bg-bg-primary/80 border border-primary-accent/60 rounded-[2rem] flex items-center gap-4 text-xs font-black uppercase tracking-[0.3em] text-text-primary hover:bg-primary-accent hover:text-black transition-all shadow-2xl backdrop-blur-md">
+                                    <EyeIcon className="w-6 h-6 text-primary-accent" />
+                                    Reveal Plot Details
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* NEW TIMEZONES SECTION - Under Description */}
+                    <div className="pt-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1 mb-3">Broadcast Timezones</p>
                         {airtimeOverride ? (
                             <div className="flex flex-col gap-2">
                                 {airtimeOverride.time!.split(' / ').map(tz => (
@@ -331,20 +364,19 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                                             </div>
                                         </div>
                                         <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-[8px] font-black uppercase text-text-secondary tracking-widest">
-                                            Sync Verified
+                                            Registry Synced
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="p-4 bg-bg-secondary/20 rounded-2xl border border-dashed border-white/10 flex items-center justify-center text-center">
-                                 <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-40">airtimes are unavailable, be sure to check back soon</p>
+                            <div className="p-6 bg-bg-secondary/20 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center text-center">
+                                 <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em] opacity-40">unavailable at this time, please check back shortly!</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* UPDATED ACTION GRID */}
                 <div className="grid grid-cols-3 gap-4">
                     <DetailedActionButton 
                         label="Watched" 
@@ -419,33 +451,6 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                         className="w-full !h-16"
                         onClick={() => setIsNominationModalOpen(true)} 
                     />
-                </div>
-
-                <div className="relative">
-                    <div className={showSpoilerOverlay ? 'blur-xl select-none opacity-40 grayscale' : ''}>
-                        <div className="p-8 rounded-[2rem] border border-white/5 bg-bg-secondary/20 shadow-inner">
-                            <p className="text-text-primary text-lg leading-relaxed font-medium">
-                                {displayOverview}
-                            </p>
-                            {isLongOverview && (
-                                <button 
-                                  onClick={() => setIsOverviewExpanded(!isOverviewExpanded)}
-                                  className="mt-4 text-xs font-black uppercase text-primary-accent tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity"
-                                >
-                                    {isOverviewExpanded ? 'Read Less' : 'Read Full Synopsis'}
-                                    <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOverviewExpanded ? 'rotate-180' : ''}`} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                    {showSpoilerOverlay && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
-                            <button onClick={() => setRevealSpoiler(true)} className="px-10 py-5 bg-bg-primary/80 border border-primary-accent/60 rounded-[2rem] flex items-center gap-4 text-xs font-black uppercase tracking-[0.3em] text-text-primary hover:bg-primary-accent hover:text-black transition-all shadow-2xl backdrop-blur-md">
-                                <EyeIcon className="w-6 h-6 text-primary-accent" />
-                                Reveal Plot Details
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 <button 
