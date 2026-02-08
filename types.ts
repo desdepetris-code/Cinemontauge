@@ -204,7 +204,7 @@ export interface HistoryItem extends TrackedItem {
   timestamp: string;
   seasonNumber?: number;
   episodeNumber?: number;
-  episodeTitle?: string;
+  // FIX: Removed duplicate 'episodeTitle' property declaration.
   episodeTitle?: string;
   episodeStillPath?: string | null;
   seasonPosterPath?: string | null;

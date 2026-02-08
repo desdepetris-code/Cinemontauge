@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings } from '../types';
+import { TmdbMediaDetails, TmdbSeasonDetails, Episode, WatchProgress, LiveWatchMediaInfo, JournalEntry, FavoriteEpisodes, TrackedItem, EpisodeRatings, EpisodeProgress, Comment, SeasonRatings, Note } from '../types';
 /* Added ChatBubbleLeftRightIcon to imports to fix "Cannot find name" error */
 import { ChevronDownIcon, CheckCircleIcon, PlayCircleIcon, BookOpenIcon, StarIcon, ClockIcon, LogWatchIcon, HeartIcon, ChatBubbleOvalLeftEllipsisIcon, ChatBubbleLeftRightIcon, XMarkIcon, PencilSquareIcon, InformationCircleIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
@@ -40,7 +40,7 @@ interface SeasonAccordionProps {
   onDiscussEpisode: (seasonNumber: number, episodeNumber: number) => void;
   comments: Comment[];
   onImageClick: (src: string) => void;
-  episodeNotes?: Record<number, Record<number, Record<number, string>>>;
+  episodeNotes?: Record<number, Record<number, Record<number, Note[]>>>;
   onSaveEpisodeNote: (showId: number, seasonNumber: number, episodeNumber: number, note: string) => void;
   showRatings: boolean;
   seasonRatings: SeasonRatings;
@@ -103,7 +103,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
   const [notesModalState, setNotesModalState] = useState<{ isOpen: boolean; episode: Episode | null }>({ isOpen: false, episode: null });
   const [seasonRatingModalOpen, setSeasonRatingModalOpen] = useState(false);
   
-  // FIX: Ensure 'today' is accessible in the functional component scope.
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const { seasonProgressPercent, unwatchedCount, totalAiredEpisodesInSeason } = useMemo(() => {
@@ -114,7 +113,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
       if (totalInSeason === 0) return { seasonProgressPercent: 0, unwatchedCount: 0, totalAiredEpisodesInSeason: 0 };
       const watchedCount = Object.values(progressForSeason).filter(ep => (ep as EpisodeProgress).status === 2).length;
       const percent = totalInSeason > 0 ? (watchedCount / totalInSeason) * 100 : 0;
-      // FIX: Corrected typo 'unwwatchedCount' to 'unwatchedCount'.
       return { seasonProgressPercent: percent, unwatchedCount: Math.max(0, totalInSeason - watchedCount), totalAiredEpisodesInSeason: 0 };
     }
 
@@ -183,11 +181,15 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
 
   const isSeasonWatched = unwatchedCount === 0 && totalAiredEpisodesInSeason > 0;
   
-  const isUpcoming = season.air_date && season.air_date > today;
-  
-  const episodeNote = notesModalState.episode ? (episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number] || '') : '';
-  
   const userSeasonRating = seasonRatings[showId]?.[season.season_number] || 0;
+
+  // FIX: Added 'isUpcoming' and 'episodeNote' definitions before the return statement.
+  const isUpcoming = season.air_date && season.air_date > today;
+  const episodeNote = useMemo(() => {
+    if (!notesModalState.episode) return '';
+    const notes = episodeNotes[showId]?.[notesModalState.episode.season_number]?.[notesModalState.episode.episode_number];
+    return (Array.isArray(notes) && notes.length > 0) ? notes[0].text : '';
+  }, [notesModalState.episode, episodeNotes, showId]);
 
   const handleLogSeasonWatch = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -256,7 +258,6 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
         onSave={handleBulkLogSave}
         initialScope={logDateModalState.scope}
         mediaType="tv"
-        // FIX: Changed undefined 'details' to correct 'showDetails' prop.
         showDetails={showDetails}
         seasonDetails={seasonDetails}
       />
@@ -388,7 +389,7 @@ const SeasonAccordion: React.FC<SeasonAccordionProps> = ({
                     };
 
                     return (
-                        <li key={ep.id} className={`relative group p-3 transition-colors hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => onOpenEpisodeDetail(ep)}>
+                        <li key={ep.id} className={`relative group p-3 transition-colors hover:bg-bg-secondary/50 cursor-pointer ${isWatched ? 'opacity-70 hover:opacity-100' : ''}`} onClick={() => !isFuture && onOpenEpisodeDetail(ep)}>
                             <div className="flex items-start md:items-center space-x-4">
                                 <div className={`w-32 flex-shrink-0 relative ${isFuture ? 'opacity-60' : ''}`}>
                                     <img 

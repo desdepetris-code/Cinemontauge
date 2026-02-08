@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote, PendingRecommendationCheck } from '../types';
-import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, BadgeIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon } from '../components/Icons';
+import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, BadgeIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon, PhotoIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -35,7 +36,7 @@ interface User {
   email: string;
 }
 
-const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; currentUrl: string | null; userId: string; onSave: (url: string | null) => void; }> = ({ isOpen, onClose, currentUrl, userId, onSave }) => {
+const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; currentUrl: string | null; userId: string; onSave: (url: string | null) => Promise<void>; }> = ({ isOpen, onClose, currentUrl, userId, onSave }) => {
     const [url, setUrl] = useState(currentUrl || '');
     const [isUploading, setIsUploading] = useState(false);
 
@@ -49,19 +50,38 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
         try {
             const fileExt = file.name.split('.').pop();
             const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
+            
+            // Upload to storage
             const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
             if (uploadError) throw uploadError;
+            
+            // Get public URL
             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            
+            // Save to DB via parent
+            await onSave(publicUrl);
+            
             setUrl(publicUrl);
-            // Auto-save on successful upload
-            onSave(publicUrl);
-            confirmationService.show("Avatar uploaded to registry.");
+            confirmationService.show("Avatar updated successfully.");
             onClose();
         } catch (error: any) { 
             console.error("Upload failed:", error);
             alert('Upload failed: ' + error.message); 
         } finally { 
             setIsUploading(false); 
+        }
+    };
+
+    const handleManualSave = async () => {
+        setIsUploading(true);
+        try {
+            await onSave(url || null);
+            confirmationService.show("Avatar URL updated.");
+            onClose();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -85,12 +105,12 @@ const ProfilePictureModal: React.FC<{ isOpen: boolean; onClose: () => void; curr
                         <input type="text" placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} className="w-full p-4 bg-bg-secondary rounded-2xl text-text-primary border border-white/10 focus:border-primary-accent outline-none" />
                     </div>
                     <label className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-bg-secondary border border-white/10 cursor-pointer hover:border-primary-accent transition-all shadow-inner">
-                        <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" /> <span className="text-xs font-black uppercase tracking-widest">Upload Local File</span>
+                        <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" /> <span className="text-xs font-black uppercase tracking-widest">Upload or Take Photo</span>
                         <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                     </label>
                 </div>
                 <div className="mt-8 flex flex-col gap-2">
-                    <button onClick={() => { onSave(url || null); onClose(); }} className="w-full py-5 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-transform">Save Avatar</button>
+                    <button onClick={handleManualSave} className="w-full py-5 rounded-2xl bg-accent-gradient text-on-accent font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-transform">Save Avatar</button>
                     <button onClick={onClose} className="w-full py-2 text-[9px] font-black text-text-secondary uppercase tracking-widest hover:text-text-primary transition-colors">Cancel</button>
                 </div>
             </div>
@@ -114,9 +134,6 @@ interface ProfileProps {
   notificationSettings: NotificationSettings;
   setNotificationSettings: React.Dispatch<React.SetStateAction<NotificationSettings>>;
   onDeleteHistoryItem: (item: HistoryItem) => void;
-  onRestoreHistoryItem: (item: DeletedHistoryItem) => void;
-  onPermanentDeleteHistoryItem: (logId: string) => void;
-  onClearAllDeletedHistory: () => void;
   onDeleteSearchHistoryItem: (timestamp: string) => void;
   onClearSearchHistory: () => void;
   setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>;
@@ -171,14 +188,14 @@ interface ProfileProps {
   preferences: AppPreferences;
   setPreferences: React.Dispatch<React.SetStateAction<AppPreferences>>;
   onPermanentDeleteNote: (noteId: string) => void;
-  onRestoreNote: (note: DeletedNote) => void;
-  onTabNavigate?: (tabId: string) => void;
-  viewerId?: string; 
-  isFollowerOfProfile?: boolean;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
   favoriteEpisodes: FavoriteEpisodes;
   setPendingRecommendationChecks: React.Dispatch<React.SetStateAction<PendingRecommendationCheck[]>>;
   setFailedRecommendationReports: React.Dispatch<React.SetStateAction<TrackedItem[]>>;
+  onRestoreHistoryItem: (item: DeletedHistoryItem) => void;
+  onPermanentDeleteHistoryItem: (logId: string) => void;
+  onClearAllDeletedHistory: () => void;
+  onRestoreNote: (note: DeletedNote) => void;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
@@ -196,6 +213,25 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const handleTabNavigate = (tabId: string) => {
       setActiveTab(tabId as ProfileTab);
       window.scrollTo(0, 0);
+  };
+
+  const handleSaveAvatar = async (url: string | null) => {
+    if (currentUser) {
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ avatar_url: url })
+                .eq('id', currentUser.id);
+            if (error) throw error;
+            setProfilePictureUrl(url);
+        } catch (e) {
+            console.error("Failed to sync avatar with database", e);
+            alert("Local avatar updated, but database sync failed.");
+            setProfilePictureUrl(url);
+        }
+    } else {
+        setProfilePictureUrl(url);
+    }
   };
 
   const auraStyle = useMemo(() => {
@@ -275,7 +311,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
       case 'library': return <LibraryScreen userData={userData} genres={genres} onSelectShow={onSelectShow} preferences={props.preferences} initialStatus={initialLibraryStatus} onUpdateLists={props.onUpdateLists} />;
       case 'achievements': return <AchievementsScreen userData={userData} />;
       case 'lists': return <MyListsScreen userData={userData} onSelectShow={onSelectShow} setCustomLists={props.setCustomLists} genres={genres} preferences={props.preferences} />;
-      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} onRestoreHistoryItem={props.onRestoreHistoryItem} onPermanentDeleteHistoryItem={props.onPermanentDeleteHistoryItem} onClearAllDeletedHistory={props.onClearAllDeletedHistory} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={props.timezone} onPermanentDeleteNote={props.onPermanentDeleteNote} onRestoreNote={props.onRestoreNote} />;
+      case 'history': return <HistoryScreen userData={userData} onSelectShow={onSelectShow} onDeleteHistoryItem={props.onDeleteHistoryItem} onRestoreHistoryItem={props.onRestoreHistoryItem} onPermanentDeleteHistoryItem={props.onPermanentDeleteHistoryItem} onClearAllDeletedHistory={props.onClearAllDeletedHistory} onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem} onClearSearchHistory={props.onClearSearchHistory} genres={genres} timezone={props.timezone} onPermanentDeleteNote={() => {}} onRestoreNote={props.onRestoreNote} />;
       case 'stats': return <StatsScreen userData={userData} genres={genres} />;
       case 'seasonLog': return <SeasonLogScreen userData={userData} onSelectShow={onSelectShow} />;
       case 'journal': return <JournalWidget userData={userData} onSelectShow={onSelectShow} isFullScreen />;
@@ -289,7 +325,7 @@ const Profile: React.FC<ProfileProps> = (props) => {
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto px-4 pb-32">
-        <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} userId={currentUser?.id || 'guest'} onSave={setProfilePictureUrl} />
+        <ProfilePictureModal isOpen={isPicModalOpen} onClose={() => setIsPicModalOpen(false)} currentUrl={profilePictureUrl} userId={currentUser?.id || 'guest'} onSave={handleSaveAvatar} />
         
         <NotificationsModal 
             isOpen={isNotificationsModalOpen} 
@@ -316,14 +352,26 @@ const Profile: React.FC<ProfileProps> = (props) => {
                 </div>
             </div>
             
-            <div className="flex-grow text-center md:text-left space-y-2">
-                <div className="flex items-center justify-center md:justify-start gap-4">
-                    <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">{currentUser?.username || 'Guest Identity'}</h1>
-                    <div className="px-4 py-1.5 bg-bg-secondary/40 border border-white/10 rounded-2xl shadow-inner backdrop-blur-md">
-                        <span className="text-xs font-black text-primary-accent uppercase tracking-widest">Level {levelInfo.level}</span>
+            <div className="flex-grow text-center md:text-left space-y-4">
+                <div className="space-y-1">
+                    <div className="flex items-center justify-center md:justify-start gap-4">
+                        <h1 className="text-5xl font-black text-text-primary uppercase tracking-tighter">{currentUser?.username || 'Guest Identity'}</h1>
+                        <div className="px-4 py-1.5 bg-bg-secondary/40 border border-white/10 rounded-2xl shadow-inner backdrop-blur-md">
+                            <span className="text-xs font-black text-primary-accent uppercase tracking-widest">Level {levelInfo.level}</span>
+                        </div>
                     </div>
+                    <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60">{currentUser?.email || 'Archive access limited'}</p>
                 </div>
-                <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60">{currentUser?.email || 'Archive access limited'}</p>
+                
+                <div className="flex justify-center md:justify-start">
+                    <button 
+                        onClick={() => setIsPicModalOpen(true)}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary-accent/10 border border-primary-accent/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary-accent hover:bg-primary-accent hover:text-on-accent transition-all shadow-lg active:scale-95"
+                    >
+                        <PhotoIcon className="w-4 h-4" />
+                        Update Photo
+                    </button>
+                </div>
             </div>
 
             <div className="flex-shrink-0 flex items-center gap-3">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ReminderType } from '../types';
 import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon, ListBulletIcon, TrashIcon } from './Icons';
@@ -22,6 +23,7 @@ const showTimingOptions: { id: ReminderType; label: string; group: 'before' | 'a
     { id: 'release', label: 'At Time of Release', group: 'at' },
     { id: '5min_after', label: 'Five Minutes After', group: 'after' },
     { id: 'hour_after', label: 'One Hour After', group: 'after' },
+    { id: 'day_after', label: 'One Day After', group: 'after' },
     { id: '2days_after', label: 'Two Days After', group: 'after' },
     { id: 'week_after', label: 'One Week After', group: 'after' },
     { id: '2weeks_after', label: 'Two Weeks After', group: 'after' },
@@ -62,6 +64,7 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
 
     const toggleType = (type: ReminderType) => {
         setSelectedTypes(prev => 
+            // FIX: Replaced 't' with 'type' to fix 'Cannot find name t' error.
             prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
         );
     };

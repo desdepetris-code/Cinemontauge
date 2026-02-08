@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MainApp } from './MainApp';
@@ -26,7 +27,7 @@ const App: React.FC = () => {
 
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('username')
+            .select('username, avatar_url')
             .eq('id', supabaseUser.id)
             .single();
 
@@ -42,6 +43,12 @@ const App: React.FC = () => {
                 email: supabaseUser.email || '',
                 username: profile.username
             });
+            
+            // Sync avatar to LocalStorage if it exists in DB
+            if (profile.avatar_url) {
+                const key = `profilePictureUrl_${supabaseUser.id}`;
+                localStorage.setItem(key, JSON.stringify(profile.avatar_url));
+            }
         }
     }, []);
 
@@ -120,8 +127,6 @@ const App: React.FC = () => {
             confirmationService.show(`Welcome to CineMontauge, ${username}!`);
             setIsAuthModalOpen(false);
         } else {
-            // This is handled via the success state in AuthModal for better UX
-            // but we also show a confirmation just in case.
             confirmationService.show(`A verification link was dispatched to ${email}.`);
         }
         

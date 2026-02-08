@@ -3,10 +3,12 @@ import { Episode, TmdbMediaDetails, TmdbSeasonDetails, WatchProgress, JournalEnt
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
-import { CheckCircleIcon, BookOpenIcon, StarIcon, PlayCircleIcon, XMarkIcon, HeartIcon, ChatBubbleLeftRightIcon, EyeIcon, ClockIcon, CalendarIcon, ChevronDownIcon, ChevronRightIcon, TrophyIcon, ShareIcon, ArrowPathIcon, ListBulletIcon } from './Icons';
+import { CheckCircleIcon, BookOpenIcon, StarIcon, PlayCircleIcon, XMarkIcon, HeartIcon, ChatBubbleLeftRightIcon, EyeIcon, ClockIcon, CalendarIcon, ChevronDownIcon, ChevronRightIcon, TrophyIcon, ShareIcon, ArrowPathIcon, ListBulletIcon, LogWatchIcon, GlobeAltIcon } from './Icons';
 import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
 import NominationModal from './NominationModal';
+import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { confirmationService } from '../services/confirmationService';
+import { AIRTIME_OVERRIDES } from '../data/airtimeOverrides';
 
 interface EpisodeDetailModalProps {
   isOpen: boolean;
@@ -35,8 +37,34 @@ interface EpisodeDetailModalProps {
   onViewFullShow: () => void;
   pausedSession?: { elapsedSeconds: number };
   weeklyFavorites: WeeklyPick[];
-  onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
+  onToggleWeeklyFavorite: (pick: WeeklyPick, replacementId?: number) => void;
 }
+
+const DetailedActionButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  className?: string;
+  isActive?: boolean;
+  disabled?: boolean;
+}> = ({ icon, label, onClick, className = "", isActive, disabled }) => (
+  <button
+    disabled={disabled}
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all group relative h-20 ${className} ${
+      isActive 
+        ? 'bg-white/20 border-white active-glow shadow-[0_0_15px_rgba(255,255,255,0.4)]' 
+        : 'border-white/10 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-white/30'
+    } ${disabled ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+  >
+    <div className={`transition-all ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
+        {icon}
+    </div>
+    <div className="mt-2 min-h-[14px] flex items-center justify-center">
+        <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight text-white">{label}</span>
+    </div>
+  </button>
+);
 
 const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   isOpen, onClose, episode, showDetails, seasonDetails, isWatched, onToggleWatched, onOpenJournal, isFavorited, onToggleFavorite, onStartLiveWatch, watchProgress, history, onRate, episodeRating, onDiscuss, preferences, timezone, currentShowStatus, onUpdateShowStatus, onViewFullShow, pausedSession, weeklyFavorites, onToggleWeeklyFavorite, onAddWatchHistory
@@ -44,6 +72,7 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [revealSpoiler, setRevealSpoiler] = useState(false);
   const [isNominationModalOpen, setIsNominationModalOpen] = useState(false);
+  const [isLogWatchModalOpen, setIsLogWatchModalOpen] = useState(false);
   
   // Swipe logic
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -88,6 +117,17 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
     };
   }, [episode, showDetails, seasonDetails, watchProgress, history]);
 
+  const airtimeOverride = useMemo(() => {
+    if (!episode || !showDetails) return null;
+    const override = AIRTIME_OVERRIDES[showDetails.id];
+    if (!override) return null;
+    const key = `S${episode.season_number}E${episode.episode_number}`;
+    return {
+        time: override.episodes?.[key] || override.time,
+        provider: override.provider
+    };
+  }, [episode, showDetails]);
+
   const isWeeklyPick = useMemo(() => {
     const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
     return weeklyFavorites.some(p => 
@@ -126,9 +166,16 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
     }
   };
 
-  const handleRewatch = () => {
-    onAddWatchHistory(showDetails as TrackedItem, episode.season_number, episode.episode_number, new Date().toISOString(), "Rewatch session captured", episode.name);
-    confirmationService.show("Rewatch logged to your registry!");
+  const handleLogWatchSave = (data: { date: string; note: string }) => {
+    const showInfo: TrackedItem = { 
+        id: showDetails.id, 
+        title: showDetails.name || 'Untitled', 
+        media_type: 'tv', 
+        poster_path: showDetails.poster_path 
+    };
+    onAddWatchHistory(showInfo, episode.season_number, episode.episode_number, data.date, data.note, episode.name);
+    setIsLogWatchModalOpen(false);
+    confirmationService.show("Watch event logged to registry.");
   };
 
   const statusOptions: { id: WatchStatus; label: string }[] = [
@@ -149,6 +196,15 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
         onNominate={onToggleWeeklyFavorite} 
         currentPicks={weeklyFavorites} 
     />
+    <MarkAsWatchedModal 
+        isOpen={isLogWatchModalOpen} 
+        onClose={() => setIsLogWatchModalOpen(false)} 
+        mediaTitle={`S${episode.season_number} E${episode.episode_number}: ${episode.name}`}
+        onSave={handleLogWatchSave}
+        initialScope="single"
+        mediaType="tv"
+    />
+
     <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-end md:items-center justify-center z-[200] p-0 md:p-4 animate-fade-in" onClick={onClose}>
         <div 
           ref={modalRef}
@@ -257,29 +313,56 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                             </span>
                         )}
                     </div>
+
+                    {/* NEW TIMEZONES SECTION */}
+                    <div className="pt-2">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1 mb-2">Timezones</p>
+                        {airtimeOverride ? (
+                            <div className="flex flex-col gap-2">
+                                {airtimeOverride.time!.split(' / ').map(tz => (
+                                    <div key={tz} className="bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:border-primary-accent/30 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-primary-accent/10 rounded-xl text-primary-accent">
+                                                <GlobeAltIcon className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-text-primary uppercase tracking-tighter">{tz}</p>
+                                                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50">Provider: {airtimeOverride.provider}</p>
+                                            </div>
+                                        </div>
+                                        <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-[8px] font-black uppercase text-text-secondary tracking-widest">
+                                            Sync Verified
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-bg-secondary/20 rounded-2xl border border-dashed border-white/10 flex items-center justify-center text-center">
+                                 <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-40">airtimes are unavailable, be sure to check back soon</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* ACTION GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <button 
-                        onClick={onToggleWatched}
+                {/* UPDATED ACTION GRID */}
+                <div className="grid grid-cols-3 gap-4">
+                    <DetailedActionButton 
+                        label="Watched" 
+                        icon={<CheckCircleIcon className={`w-6 h-6 ${isWatched ? 'text-green-400' : ''}`} />} 
+                        isActive={isWatched} 
                         disabled={isFuture}
-                        className={`flex items-center justify-center gap-4 py-6 rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] transition-all shadow-2xl active:scale-95 disabled:opacity-30 ${isWatched ? 'bg-bg-secondary text-green-400 border-2 border-green-400/50' : 'bg-accent-gradient text-on-accent border-none'}`}
-                    >
-                        <CheckCircleIcon className="w-6 h-6" />
-                        {isWatched ? 'Not Watched' : 'Mark Watched'}
-                    </button>
-                    
-                    <button 
-                        onClick={handleRewatch}
+                        onClick={onToggleWatched} 
+                    />
+                    <DetailedActionButton 
+                        label="Unmark" 
+                        icon={<XMarkIcon className="w-6 h-6 text-red-400" />} 
                         disabled={!isWatched}
-                        className={`flex items-center justify-center gap-4 py-6 rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] transition-all shadow-2xl active:scale-95 disabled:opacity-30 bg-bg-secondary/40 border border-white/5 text-text-primary hover:bg-bg-secondary`}
-                    >
-                        <ArrowPathIcon className="w-6 h-6" />
-                        Rewatch
-                    </button>
-
-                    <button 
+                        onClick={onToggleWatched} 
+                    />
+                    <DetailedActionButton 
+                        label="Live Watch" 
+                        icon={<PlayCircleIcon className="w-6 h-6" />} 
+                        disabled={isFuture}
                         onClick={() => onStartLiveWatch({ 
                             id: showDetails.id, 
                             media_type: 'tv', 
@@ -290,38 +373,52 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                             episodeNumber: episode.episode_number,
                             episodeTitle: episode.name
                         })} 
-                        disabled={isFuture}
-                        className="flex flex-col items-center justify-center gap-1 py-4 md:py-6 rounded-[2rem] bg-white text-black font-black uppercase transition-all shadow-2xl active:scale-95 disabled:opacity-30"
-                    >
-                        <div className="flex items-center gap-3">
-                            <PlayCircleIcon className="w-6 h-6" />
-                            <span className="text-sm tracking-[0.2em]">Playback</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        onClick={() => setIsNominationModalOpen(true)}
-                        className={`flex items-center justify-center gap-4 py-6 rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] transition-all shadow-2xl active:scale-95 border ${isWeeklyPick ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : 'bg-bg-secondary/40 border-white/5 text-text-primary hover:text-yellow-500'}`}
-                    >
-                        <TrophyIcon className={`w-6 h-6 ${isWeeklyPick ? 'animate-pulse' : ''}`} />
-                        Pick
-                    </button>
-
-                    <button 
-                        onClick={handleShare}
-                        className="flex items-center justify-center gap-4 py-6 rounded-[2rem] bg-bg-secondary/40 border border-white/5 text-text-primary font-black uppercase text-sm tracking-[0.2em] hover:bg-bg-secondary transition-all"
-                    >
-                        <ShareIcon className="w-6 h-6" />
-                        Share
-                    </button>
+                    />
                     
-                    <button 
-                        onClick={onOpenJournal}
-                        className="flex items-center justify-center gap-4 py-6 rounded-[2rem] bg-bg-secondary/40 border border-white/5 text-text-primary font-black uppercase text-sm tracking-[0.2em] hover:bg-sky-400/10 hover:text-sky-400 transition-all"
-                    >
-                        <BookOpenIcon className="w-6 h-6" />
-                        Journal
-                    </button>
+                    <DetailedActionButton 
+                        label="Log Watch" 
+                        icon={<LogWatchIcon className="w-6 h-6 text-primary-accent" />} 
+                        disabled={isFuture}
+                        onClick={() => setIsLogWatchModalOpen(true)} 
+                    />
+                    <DetailedActionButton 
+                        label="Rate" 
+                        icon={<StarIcon className={`w-6 h-6 ${episodeRating > 0 ? 'text-yellow-400' : ''}`} filled={episodeRating > 0} />} 
+                        isActive={episodeRating > 0}
+                        onClick={onRate} 
+                    />
+                    <DetailedActionButton 
+                        label="Favorite" 
+                        icon={<HeartIcon className={`w-6 h-6 ${isFavorited ? 'text-rose-400' : ''}`} filled={isFavorited} />} 
+                        isActive={isFavorited}
+                        onClick={onToggleFavorite} 
+                    />
+
+                    <DetailedActionButton 
+                        label="Comment" 
+                        icon={<ChatBubbleLeftRightIcon className="w-6 h-6 text-sky-400" />} 
+                        onClick={onDiscuss} 
+                    />
+                    <DetailedActionButton 
+                        label="Journal" 
+                        icon={<BookOpenIcon className="w-6 h-6" />} 
+                        onClick={onOpenJournal} 
+                    />
+                    <DetailedActionButton 
+                        label="Share" 
+                        icon={<ShareIcon className="w-6 h-6" />} 
+                        onClick={handleShare} 
+                    />
+                </div>
+
+                <div className="pt-2">
+                    <DetailedActionButton 
+                        label="Nominate Pick" 
+                        icon={<TrophyIcon className={`w-6 h-6 ${isWeeklyPick ? 'text-yellow-500' : ''}`} />} 
+                        isActive={isWeeklyPick}
+                        className="w-full !h-16"
+                        onClick={() => setIsNominationModalOpen(true)} 
+                    />
                 </div>
 
                 <div className="relative">
