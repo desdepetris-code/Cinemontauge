@@ -38,7 +38,7 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
                 ) : (
                     <div className="flex flex-col items-center opacity-20">
                         <ListBulletIcon className="w-12 h-12 text-text-secondary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest mt-2">Empty List</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest mt-2">Zero Items</span>
                     </div>
                 )}
                 
@@ -63,7 +63,7 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
 
                 {/* Count Badge */}
                 <div className="absolute bottom-4 right-4 z-10 px-3 py-1 bg-primary-accent text-on-accent rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
-                    {list.items.length} {list.items.length === 1 ? 'Item' : 'Items'}
+                    {list.items.length === 0 ? 'Zero Items' : `${list.items.length} ${list.items.length === 1 ? 'Item' : 'Items'}`}
                 </div>
             </div>
 

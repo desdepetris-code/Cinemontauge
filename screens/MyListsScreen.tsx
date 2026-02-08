@@ -37,7 +37,7 @@ const ListModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (name:
     const isSystemList = listToEdit && ['watchlist', 'upcoming-tv-watchlist', 'upcoming-movie-watchlist'].includes(listToEdit.id);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[200] p-4 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[1000] p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-8 border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-6">{listToEdit ? 'Edit Custom List' : 'New Custom List'}</h2>
                 

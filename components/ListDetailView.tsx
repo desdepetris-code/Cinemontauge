@@ -81,7 +81,9 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                         <div className="flex-grow min-w-0">
                             <div className="flex items-center gap-3">
                                 <h1 className="text-2xl md:text-5xl font-black text-text-primary uppercase tracking-tighter leading-none truncate">{list.name}</h1>
-                                <span className="px-3 py-1 bg-primary-accent text-on-accent text-[10px] font-black rounded-lg uppercase tracking-widest flex-shrink-0 shadow-lg">{list.items.length} Items</span>
+                                <span className="px-3 py-1 bg-primary-accent text-on-accent text-[10px] font-black rounded-lg uppercase tracking-widest flex-shrink-0 shadow-lg">
+                                    {list.items.length === 0 ? 'Zero Items' : `${list.items.length} ${list.items.length === 1 ? 'Item' : 'Items'}`}
+                                </span>
                             </div>
                             
                             <div className="mt-4 max-w-2xl hidden md:block">
@@ -208,7 +210,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                                 <select 
                                     value={genreFilter}
                                     onChange={e => setGenreFilter(e.target.value)}
-                                    className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black uppercase text-text-primary focus:outline-none shadow-md"
+                                    className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
                                 >
                                     <option value="">All Tags</option>
                                     {Object.entries(genres).sort((a,b) => (a[1] as string).localeCompare(b[1] as string)).map(([id, name]) => <option key={id} value={id}>{name as string}</option>)}
