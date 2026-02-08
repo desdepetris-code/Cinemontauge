@@ -1,8 +1,8 @@
+
 import React, { useMemo } from 'react';
 import { TmdbMediaDetails, TmdbSeasonDetails } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
-import RelatedShows from './RelatedShows';
 import ScoreStar from './ScoreStar';
 import { ClockIcon } from './Icons';
 
@@ -30,11 +30,8 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone, se
     
     const runtimeValue = useMemo(() => {
         if (details.media_type === 'tv') {
-            // Logic: "The time is how long the most number of episodes ran for" (The Mode)
             const frequencyMap: Record<number, number> = {};
             
-            // 1. Check already loaded season details for precise per-episode runtimes
-            // Fixed: Explicitly cast Object.values to TmdbSeasonDetails[] to resolve 'Property episodes does not exist on type unknown' error.
             (Object.values(seasonDetailsMap) as TmdbSeasonDetails[]).forEach(season => {
                 season.episodes?.forEach(ep => {
                     if (ep.runtime && ep.runtime > 0) {
@@ -43,20 +40,15 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone, se
                 });
             });
 
-            // 2. If we have counts from loaded episodes, find the mode
             const counts = Object.entries(frequencyMap);
             if (counts.length > 0) {
                 const mode = counts.reduce((a, b) => b[1] > a[1] ? b : a);
                 return formatRuntime(Number(mode[0]));
             }
 
-            // 3. Fallback to TMDB summary array if no episodes are loaded/available
-            // TMDB lists typical runtimes; the first is usually the most common.
             const runtimes = (details.episode_run_time || []).filter(t => t > 0);
             if (runtimes.length === 0) return 'N/A';
             
-            // If the user hasn't loaded seasons yet, we assume the first value in 
-            // TMDB's episode_run_time is the "typical" (most frequent) duration.
             return formatRuntime(runtimes[0]);
         } else {
             return formatRuntime(details.runtime);
@@ -156,9 +148,6 @@ const MoreInfo: React.FC<MoreInfoProps> = ({ details, onSelectShow, timezone, se
                     } />
                 </dl>
             </div>
-            {details?.media_type === 'tv' && details.external_ids?.tvdb_id && (
-                <RelatedShows tvdbId={details.external_ids.tvdb_id} onSelectShow={onSelectShow} />
-            )}
         </div>
     );
 };

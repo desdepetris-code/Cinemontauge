@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { TrackedItem, TmdbMedia, TmdbMediaDetails, TvdbShow, UserData } from '../types';
+import { TrackedItem, TmdbMedia, TmdbMediaDetails, UserData } from '../types';
 import { getMediaDetails } from '../services/tmdbService';
-import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { TMDB_IMAGE_BASE_URL, PLACEHOLDER_POSTER } from '../constants';
 import BrandedImage from './BrandedImage';
@@ -17,7 +17,6 @@ interface ShowCardProps {
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
-    if (path.startsWith('http')) return path; // for TVDB images
     return `${TMDB_IMAGE_BASE_URL}${size}${path}`;
 };
 
@@ -61,7 +60,6 @@ const useInView = () => {
 
 const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders }) => {
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
-    const [tvdbDetails, setTvdbDetails] = useState<TvdbShow | null>(null);
     const [loading, setLoading] = useState(false);
     const [recentEpisodeCount, setRecentEpisodeCount] = useState(0);
     const [ref, inView] = useInView();
@@ -81,15 +79,9 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
 
                 setDetails(tmdbData);
 
-                if (item.media_type === 'tv') {
-                    if (!isNew) {
-                        const count = getRecentEpisodeCount(tmdbData);
-                        if (isMounted) setRecentEpisodeCount(count);
-                    }
-                    if (tmdbData.external_ids?.tvdb_id) {
-                        const tvdbData = await getTvdbShowExtended(tmdbData.external_ids.tvdb_id);
-                        if (isMounted) setTvdbDetails(tvdbData);
-                    }
+                if (item.media_type === 'tv' && !isNew) {
+                    const count = getRecentEpisodeCount(tmdbData);
+                    if (isMounted) setRecentEpisodeCount(count);
                 }
             } catch (error) {
                 console.error(`Failed to fetch details for ${item.id}`, error);
@@ -111,20 +103,12 @@ const ShowCard: React.FC<ShowCardProps> = ({ item, onSelect, globalPlaceholders 
     }, [details]);
 
     const posterSrcs = useMemo(() => {
-        const tvdbPoster = tvdbDetails?.artworks?.find(art => art.type === 2)?.image;
-        const paths = item.media_type === 'tv'
-            ? [
-                tvdbPoster,
-                details?.poster_path,
-                item.poster_path
-              ]
-            : [
-                details?.poster_path,
-                item.poster_path
-              ];
-        
+        const paths = [
+            details?.poster_path,
+            item.poster_path
+        ];
         return paths.map(p => getFullImageUrl(p, 'w342'));
-    }, [details, item.media_type, item.poster_path, tvdbDetails]);
+    }, [details, item.poster_path]);
 
     const title = details?.title || details?.name || (item as TmdbMedia).title || (item as TmdbMedia).name || 'Untitled';
 

@@ -1,16 +1,15 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, TvdbShow, EpisodeTag, LiveWatchMediaInfo, EpisodeProgress, UserData } from '../types';
+import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, EpisodeTag, EpisodeProgress, UserData } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
 import { getImageUrl } from '../utils/imageUtils';
 import { PlayIcon, CheckCircleIcon } from './Icons';
-import { getTvdbShowExtended } from '../services/tvdbService';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_POSTER, PLACEHOLDER_STILL, TMDB_IMAGE_BASE_URL } from '../constants';
 import { getEpisodeTag } from '../utils/episodeTagUtils';
 import { isNewRelease, formatTime, getAiredEpisodeCount } from '../utils/formatUtils';
 import BrandedImage from './BrandedImage';
 import { getShowStatus } from '../utils/statusUtils';
-import UserRatingStamp from './UserRatingStamp';
 import { NewReleaseOverlay } from './NewReleaseOverlay';
 
 interface ContinueWatchingProgressCardProps {
@@ -24,7 +23,6 @@ interface ContinueWatchingProgressCardProps {
 
 const getFullImageUrl = (path: string | null | undefined, size: string) => {
     if (!path) return null;
-    if (path.startsWith('http')) return path; // for TVDB images
     return `${TMDB_IMAGE_BASE_URL}${size}${path}`;
 };
 
@@ -33,7 +31,6 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
     const [seasonDetails, setSeasonDetails] = useState<TmdbSeasonDetails | null>(null);
     const [nextEpisodeInfo, setNextEpisodeInfo] = useState<Episode | null>(null);
-    const [tvdbDetails, setTvdbDetails] = useState<TvdbShow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const isPausedSession = item.isPaused && item.elapsedSeconds !== undefined && item.runtime !== undefined;
@@ -45,14 +42,10 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         seasonProgressPercent,
         episodesLeftInSeason,
         currentSeasonNumber,
-        totalEpisodesInSeason,
-        watchedEpisodesInSeason,
-        episodesLeftInShow
     } = useMemo(() => {
         if (!details) return { 
             overallProgressPercent: 0, totalEpisodes: 0, watchedEpisodes: 0, 
             seasonProgressPercent: 0, episodesLeftInSeason: 0, currentSeasonNumber: 0,
-            totalEpisodesInSeason: 0, watchedEpisodesInSeason: 0, episodesLeftInShow: 0,
         };
         
         const isPaused = item.isPaused && item.seasonNumber !== undefined;
@@ -68,7 +61,6 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         });
         
         const overallPercent = airedTotal > 0 ? (watchedTotal / airedTotal) * 100 : 0;
-        const leftInShow = Math.max(0, airedTotal - watchedTotal);
 
         let currentSNum = 0;
         if (isPaused) {
@@ -82,9 +74,8 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
         
         if (!currentSeason) {
              return { 
-                overallProgressPercent: overallPercent, totalEpisodes: airedTotal, watchedEpisodes: watchedTotal, episodesLeftInShow: leftInShow,
+                overallProgressPercent: overallPercent, totalEpisodes: airedTotal, watchedEpisodes: watchedTotal,
                 seasonProgressPercent: 0, episodesLeftInSeason: 0, currentSeasonNumber: 0,
-                totalEpisodesInSeason: 0, watchedEpisodesInSeason: 0,
             };
         }
 
@@ -103,12 +94,9 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
             overallProgressPercent: overallPercent, 
             totalEpisodes: airedTotal, 
             watchedEpisodes: watchedTotal,
-            episodesLeftInShow: leftInShow,
             seasonProgressPercent: sProgress,
             episodesLeftInSeason: sLeft,
             currentSeasonNumber: currentSNum,
-            totalEpisodesInSeason: airedInSeason,
-            watchedEpisodesInSeason: watchedInSeason
         };
     }, [details, watchProgress, item, nextEpisodeInfo]);
 
@@ -123,14 +111,6 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                 if (!isMounted) return;
                 setDetails(mediaDetails);
                 
-                if (mediaDetails.external_ids?.tvdb_id) {
-                    getTvdbShowExtended(mediaDetails.external_ids.tvdb_id)
-                        .then(tvdbData => {
-                           if (isMounted) setTvdbDetails(tvdbData);
-                        })
-                        .catch(e => console.error("Failed to get TVDB details", e));
-                }
-
                 if (isPausedSession) {
                     setIsLoading(false);
                     return;
@@ -184,20 +164,18 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
     }, [details]);
     
     const mainPosterSrcs = useMemo(() => {
-        const tvdbPoster = tvdbDetails?.artworks?.find(art => art.type === 2)?.image;
         const nextSeasonNumber = isPausedSession ? item.seasonNumber : nextEpisodeInfo?.season_number;
         const tmdbSeason = details?.seasons?.find(s => s.season_number === nextSeasonNumber);
 
         const paths = [
             tmdbSeason?.poster_path, 
-            tvdbPoster,
             details?.poster_path,
             item.poster_path,
             nextEpisodeInfo?.still_path,
         ];
 
         return paths.map((p) => getFullImageUrl(p, 'w500'));
-    }, [details, item.poster_path, nextEpisodeInfo, isPausedSession, item.seasonNumber, tvdbDetails]);
+    }, [details, item.poster_path, nextEpisodeInfo, isPausedSession, item.seasonNumber]);
     
     const episodeStillSrcs = useMemo(() => {
         if (isPausedSession) {

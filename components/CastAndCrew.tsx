@@ -4,7 +4,6 @@ import { TmdbMediaDetails, CrewMember, CastMember } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 
 interface CastAndCrewProps {
-  aggregateCredits: { mainCast: CastMember[]; guestStars: CastMember[]; crew: CrewMember[] } | null;
   tmdbCredits: TmdbMediaDetails['credits'] | null | undefined;
   onSelectPerson: (personId: number) => void;
 }
@@ -16,27 +15,17 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
     </div>
 );
 
-const CastAndCrew: React.FC<CastAndCrewProps> = ({ aggregateCredits, tmdbCredits, onSelectPerson }) => {
+const CastAndCrew: React.FC<CastAndCrewProps> = ({ tmdbCredits, onSelectPerson }) => {
   const [showFullMainCast, setShowFullMainCast] = useState(false);
-  const [showFullGuestCast, setShowFullGuestCast] = useState(false);
   
-  const { mainCast, guestStars, crew } = useMemo(() => {
-    if (aggregateCredits) {
-      return { 
-        mainCast: aggregateCredits.mainCast, 
-        guestStars: aggregateCredits.guestStars, 
-        crew: aggregateCredits.crew 
-      };
-    }
-    // Fallback logic
-    const tmdbCast = tmdbCredits?.cast || [];
-    const main = tmdbCast.filter(c => (c as any).order < 15); // Simple heuristic
-    const guests = tmdbCast.filter(c => (c as any).order >= 15);
-    return { mainCast: main, guestStars: guests, crew: tmdbCredits?.crew || [] };
-  }, [aggregateCredits, tmdbCredits]);
+  const { cast, crew } = useMemo(() => {
+    return { 
+        cast: tmdbCredits?.cast || [], 
+        crew: tmdbCredits?.crew || [] 
+    };
+  }, [tmdbCredits]);
   
-  const mainCastToShow = showFullMainCast ? mainCast : mainCast.slice(0, 10);
-  const guestStarsToShow = showFullGuestCast ? guestStars : guestStars.slice(0, 10);
+  const castToShow = showFullMainCast ? cast : cast.slice(0, 15);
 
   const crewByDepartment = useMemo(() => {
     const grouped: Record<string, CrewMember[]> = {};
@@ -68,7 +57,7 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ aggregateCredits, tmdbCredits
     });
   }, [crewByDepartment]);
 
-  if (mainCast.length === 0 && guestStars.length === 0 && sortedDepartments.length === 0) {
+  if (cast.length === 0 && sortedDepartments.length === 0) {
       return (
         <div className="text-center py-20 bg-bg-secondary/20 rounded-2xl border-2 border-dashed border-white/5">
             <p className="text-text-secondary font-black uppercase tracking-widest opacity-40">Cast and crew information is not available.</p>
@@ -97,34 +86,17 @@ const CastAndCrew: React.FC<CastAndCrewProps> = ({ aggregateCredits, tmdbCredits
 
   return (
     <div className="animate-fade-in space-y-12">
-      {mainCast.length > 0 && (
+      {cast.length > 0 && (
         <section>
-            <SectionHeader title="Main Cast" />
-            <CastGrid cast={mainCastToShow} />
-            {mainCast.length > 10 && (
+            <SectionHeader title="Cast" />
+            <CastGrid cast={castToShow} />
+            {cast.length > 15 && (
               <div className="text-center mt-8">
                 <button 
                   onClick={() => setShowFullMainCast(!showFullMainCast)}
                   className="px-6 py-2 rounded-full bg-bg-secondary text-text-primary font-black uppercase text-[10px] tracking-widest hover:brightness-125 transition-all border border-white/5"
                 >
-                  {showFullMainCast ? 'Show Less' : `Show All ${mainCast.length} Main Cast`}
-                </button>
-              </div>
-            )}
-        </section>
-      )}
-      
-      {guestStars.length > 0 && (
-        <section>
-            <SectionHeader title="Guest Stars" />
-            <CastGrid cast={guestStarsToShow} />
-            {guestStars.length > 10 && (
-              <div className="text-center mt-8">
-                <button 
-                  onClick={() => setShowFullGuestCast(!showFullGuestCast)}
-                  className="px-6 py-2 rounded-full bg-bg-secondary text-text-primary font-black uppercase text-[10px] tracking-widest hover:brightness-125 transition-all border border-white/5"
-                >
-                  {showFullGuestCast ? 'Show Less' : `Show All ${guestStars.length} Guest Stars`}
+                  {showFullMainCast ? 'Show Less' : `Show All ${cast.length} Cast Members`}
                 </button>
               </div>
             )}

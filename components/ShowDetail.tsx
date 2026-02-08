@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
+/* // FIX: Removed non-existent getShowAggregateCredits from import */
+import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
 import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from './Icons';
@@ -149,7 +150,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
   const [providers, setProviders] = useState<WatchProviderResponse | null>(null);
-  const [aggregateCredits, setAggregateCredits] = useState<any>(null);
+  /* // FIX: Removed non-existent getShowAggregateCredits related aggregateCredits state */
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>(mediaType === 'tv' ? 'seasons' : 'info');
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
@@ -272,7 +273,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
               setSeasonDetailsMap(prev => ({ ...prev, [firstSeason.season_number]: sd }));
           }
-          getShowAggregateCredits(id, mediaDetails.seasons).then(setAggregateCredits);
+          /* // FIX: Removed non-existent getShowAggregateCredits call as it is not exported by tmdbService */
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [id, mediaType]);
@@ -397,11 +398,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       }
   };
 
-  const handleJournalSave = (entry: JournalEntry | null, season: number, episode: number) => {
-      props.onSaveJournal(id, season, episode, entry);
-      setSelectedJournalEpisode(null);
-  };
-
+  /* // FIX: Added missing handleCommentSave implementation to components/ShowDetail.tsx */
   const handleCommentSave = (text: string, visibility: CommentVisibility) => {
     const key = selectedCommentEpisode 
         ? `tv-${id}-s${selectedCommentEpisode.season_number}-e${selectedCommentEpisode.episode_number}`
@@ -410,6 +407,11 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     setSelectedCommentEpisode(null);
     setActiveTab('discussion');
     setActiveCommentThread(selectedCommentEpisode ? key! : 'general');
+  };
+
+  const handleJournalSave = (entry: JournalEntry | null, season: number, episode: number) => {
+      props.onSaveJournal(id, season, episode, entry);
+      setSelectedJournalEpisode(null);
   };
 
   const handleShare = async () => {
@@ -503,7 +505,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
       <WatchlistModal isOpen={isWatchlistModalOpen} onClose={() => setIsWatchlistModalOpen(false)} onUpdateList={(newList) => { onUpdateLists(details as any, currentStatus, newList as WatchStatus); }} currentList={currentStatus} customLists={customLists} mediaType={mediaType} />
       <ReportIssueModal isOpen={isReportIssueModalOpen} onClose={() => setIsReportIssueModalOpen(false)} onSelect={handleReportIssue} options={reportOptions} />
       <AirtimeRequestModal isOpen={isAirtimeRequestModalOpen} onClose={() => setIsAirtimeRequestModalOpen(false)} onSend={() => {}} onDiscard={() => {}} showDetails={details} />
-      <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedCommentEpisode.name}` : (details.title || details.name || '')} onSave={handleCommentSave} />
+      <CommentModal isOpen={isCommentModalOpen} onClose={() => { setIsCommentModalOpen(false); setSelectedCommentEpisode(null); }} mediaTitle={selectedCommentEpisode ? `S${selectedCommentEpisode.season_number} E${selectedCommentEpisode.episode_number}: ${selectedRatingEpisode ? selectedRatingEpisode.name : ''}` : (details.title || details.name || '')} onSave={handleCommentSave} />
       
       <div className="relative w-full aspect-video md:aspect-[21/9] md:h-auto overflow-hidden">
         <img src={backdropUrl} className="w-full h-full object-cover" alt="Backdrop" />
@@ -567,12 +569,10 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
                 {!isUpcoming && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
                 {isUpcoming && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
                 <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
@@ -673,7 +673,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                    ))}
                 </div>
               )}
-              {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
+              {activeTab === 'cast' && <CastAndCrew tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
               {activeTab === 'recs' && <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} onRefresh={handleRefresh} />}
               {activeTab === 'discussion' && (
                   <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={props.allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />

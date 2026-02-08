@@ -117,16 +117,6 @@ export const findByImdbId = async (imdbId: string): Promise<TmdbFindResponse | n
     return data;
 };
 
-export const findByTvdbId = async (tvdbId: number): Promise<TmdbFindResponse | null> => {
-    if (!tvdbId) throw new Error("TVDB ID required");
-    const cacheKey = `tmdb_find_tvdb_${tvdbId}`;
-    const cached = getFromCache<TmdbFindResponse>(cacheKey);
-    if (cached) return cached;
-    const data = await fetchFromTmdb<TmdbFindResponse>(`find/${tvdbId}?external_source=tvdb_id`);
-    if (data) setToCache(cacheKey, data, CACHE_TTL);
-    return data;
-};
-
 export const getMediaDetails = async (id: number, mediaType: 'tv' | 'movie'): Promise<TmdbMediaDetails> => {
   if (!id || isNaN(id)) throw new Error("Valid ID required");
   if (mediaType !== 'tv' && mediaType !== 'movie') {
@@ -170,84 +160,6 @@ export const getSeasonDetails = async (tvId: number, seasonNumber: number): Prom
   data.episodes = (data.episodes || []).map(e => ({ ...e, season_number: seasonNumber }));
   setToCache(cacheKey, data, CACHE_TTL);
   return data;
-};
-
-export const getEpisodeCredits = async (tvId: number, seasonNumber: number, episodeNumber: number): Promise<any> => {
-    return await fetchFromTmdb<any>(`tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/credits`);
-}
-
-/**
- * Aggregates show credits from multiple seasons.
- */
-export const getShowAggregateCredits = async (tvId: number, seasons: TmdbMediaDetails['seasons']): Promise<{ mainCast: CastMember[], guestStars: CastMember[], crew: CrewMember[] }> => {
-    const cacheKey = `tmdb_agg_credits_v3_${tvId}`;
-    const cached = getFromCache<any>(cacheKey);
-    if (cached) return cached;
-    if (!seasons) return { mainCast: [], guestStars: [], crew: [] };
-
-    const episodeCreditPromises: (() => Promise<any | null>)[] = [];
-    const seasonsToFetch = seasons.filter(s => s.season_number > 0).sort((a, b) => b.season_number - a.season_number);
-    
-    const SEASON_LIMIT = 10;
-    const seasonsSlice = seasonsToFetch.slice(0, SEASON_LIMIT);
-
-    for (const season of seasonsSlice) {
-        const epIndices = season.episode_count <= 3 
-            ? Array.from({length: season.episode_count}, (_, i) => i + 1)
-            : [1, Math.floor(season.episode_count / 2), season.episode_count];
-
-        epIndices.forEach(epNum => {
-            episodeCreditPromises.push(() => getEpisodeCredits(tvId, season.season_number, epNum).catch(() => null));
-        });
-    }
-
-    const allEpisodeCredits: (any | null)[] = [];
-    const batchSize = 10;
-    for (let i = 0; i < episodeCreditPromises.length; i += batchSize) {
-        const batch = episodeCreditPromises.slice(i, i + batchSize).map(p => p());
-        const results = await Promise.all(batch);
-        allEpisodeCredits.push(...results);
-        if (episodeCreditPromises.length > batchSize) await new Promise(r => setTimeout(r, 200));
-    }
-
-    const mainCastMap = new Map<number, { person: CastMember, appearances: number }>();
-    const crewMap = new Map<number, { person: CrewMember, appearances: number }>();
-
-    for (const credits of allEpisodeCredits) {
-        if (!credits) continue;
-        credits.cast?.forEach((person: any) => {
-            if (!mainCastMap.has(person.id)) {
-                mainCastMap.set(person.id, { 
-                    person: { id: person.id, name: person.name, profile_path: person.profile_path, character: person.character, order: person.order }, 
-                    appearances: 0 
-                });
-            }
-            mainCastMap.get(person.id)!.appearances++;
-        });
-        credits.crew?.forEach((person: any) => {
-            if (!crewMap.has(person.id)) {
-                crewMap.set(person.id, { 
-                    person: { id: person.id, name: person.name, profile_path: person.profile_path, job: person.job, department: person.department }, 
-                    appearances: 0 
-                });
-            }
-            crewMap.get(person.id)!.appearances++;
-        });
-    }
-
-    const mainCast = Array.from(mainCastMap.values())
-        .sort((a,b) => b.appearances - a.appearances)
-        .slice(0, 25)
-        .map(entry => entry.person);
-
-    const crew = Array.from(crewMap.values())
-        .sort((a, b) => b.appearances - a.appearances)
-        .slice(0, 15)
-        .map(entry => entry.person);
-
-    const result = { mainCast, guestStars: [], crew };
-    setToCache(cacheKey, result, CACHE_TTL * 12);
-    return result;
 };
 
 export const getGenres = async (): Promise<Record<number, string>> => {
@@ -328,10 +240,6 @@ export const getTrending = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[
     return results;
 };
 
-/**
- * Fetches the top 10 most popular movies or TV shows.
- * Caches results for 1 hour.
- */
 export const getPopularMedia = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
     const cacheKey = `tmdb_popular_top10_${mediaType}_v1`;
     const cached = getFromCache<TmdbMedia[]>(cacheKey);
@@ -371,10 +279,6 @@ export const getTopPicksMixed = async (): Promise<TmdbMedia[]> => {
     }
 };
 
-/**
- * Optimized fetch for "Newly Popular Episodes".
- * Queries TMDb for popular shows that have aired an episode within the last week.
- */
 export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> => {
   const cacheKey = 'tmdb_newly_popular_episodes_v5';
   const cached = getFromCache<NewlyPopularEpisode[]>(cacheKey);
@@ -387,7 +291,6 @@ export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> 
   const todayStr = today.toISOString().split('T')[0];
   const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
-  // Strategy: Discover popular shows with air_date in last week
   const popularShows = await discoverMedia('tv', { 
     sortBy: 'popularity.desc',
     'air_date.gte': sevenDaysAgoStr,
@@ -397,7 +300,6 @@ export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> 
   const showsToFetch = popularShows.slice(0, 30);
   const showDetailsList: (TmdbMediaDetails | null)[] = [];
   
-  // Batch processing
   for (let i = 0; i < showsToFetch.length; i += 10) {
       const batch = showsToFetch.slice(i, i + 10);
       showDetailsList.push(...await Promise.all(batch.map(s => getMediaDetails(s.id, 'tv').catch(() => null))));
@@ -423,9 +325,7 @@ export const getNewlyPopularEpisodes = async (): Promise<NewlyPopularEpisode[]> 
     }
   }
 
-  // Sort by air date (newest first)
   episodes.sort((a,b) => new Date(b.episode.air_date).getTime() - new Date(a.episode.air_date).getTime());
-  // User requested to change number of episodes to 15
   const finalResults = episodes.slice(0, 15);
   
   setToCache(cacheKey, finalResults, 60 * 60 * 1000); // 1 hour cache
@@ -451,9 +351,6 @@ export const getNowPlayingMovies = async (): Promise<TmdbMedia[]> => {
     return results;
 };
 
-/**
- * Fetches upcoming movie releases with pagination.
- */
 export const getUpcomingMovieReleases = async (page: number = 1): Promise<{ results: TmdbMedia[], total_pages: number }> => {
     const today = new Date().toISOString().split('T')[0];
     const twoMonthsLater = new Date();
@@ -471,9 +368,6 @@ export const getUpcomingMovieReleases = async (page: number = 1): Promise<{ resu
     };
 };
 
-/**
- * Fetches recent popular releases for both movies and TV.
- */
 export const getNewReleases = async (mediaType: 'tv' | 'movie'): Promise<TmdbMedia[]> => {
     const today = new Date();
     const oneMonthAgo = new Date();
@@ -497,9 +391,6 @@ export const getNewReleases = async (mediaType: 'tv' | 'movie'): Promise<TmdbMed
     }
 };
 
-/**
- * Fetches popular new releases with pagination.
- */
 export const getAllNewReleasesPaginated = async (page: number = 1): Promise<{ results: TmdbMedia[], total_pages: number }> => {
     const today = new Date();
     const oneMonthAgo = new Date();
@@ -517,16 +408,6 @@ export const getAllNewReleasesPaginated = async (page: number = 1): Promise<{ re
         results: data.results.map(i => ({ ...i, media_type: 'movie' })),
         total_pages: data.total_pages
     };
-};
-
-/**
- * Fetches shows that have aired new seasons/premieres recently.
- */
-export const getNewSeasons = async (forceRefresh: boolean = false, timezone: string = 'UTC'): Promise<TmdbMediaDetails[]> => {
-    const trendingShows = await getTrending('tv');
-    const showDetailsPromises = trendingShows.slice(0, 20).map(s => getMediaDetails(s.id, 'tv').catch(() => null));
-    const results = await Promise.all(showDetailsPromises);
-    return results.filter((d): d is TmdbMediaDetails => d !== null);
 };
 
 export const getPersonDetails = async (personId: number): Promise<PersonDetails> => {
@@ -554,10 +435,6 @@ export const getWatchProviders = async (id: number, mediaType: 'tv' | 'movie'): 
     return data;
 };
 
-export const getWatchProvidersForShow = async (id: number): Promise<WatchProviderResponse | null> => {
-    return getWatchProviders(id, 'tv');
-};
-
 export const getCollectionDetails = async (collectionId: number): Promise<TmdbCollection> => {
     if (!collectionId || isNaN(collectionId)) throw new Error("Valid ID required");
     const cacheKey = `tmdb_collection_${collectionId}`;
@@ -568,9 +445,4 @@ export const getCollectionDetails = async (collectionId: number): Promise<TmdbCo
     data.parts = (data.parts || []).map(p => ({...p, media_type: 'movie'}));
     setToCache(cacheKey, data, CACHE_TTL);
     return data;
-};
-
-export const getCalendarMedia = async (startDate: string, days: number): Promise<CalendarItem[]> => {
-  const movies = await getUpcomingMovies();
-  return movies.map(m => ({ id: m.id, media_type: 'movie', poster_path: m.poster_path, title: m.title || '', date: m.release_date || '', episodeInfo: 'Movie Release' }));
 };

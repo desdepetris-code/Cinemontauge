@@ -1,6 +1,4 @@
 
-// FIX: Removed self-referential import of types from './types' which conflicted with local declarations.
-
 export interface Theme {
   id: string;
   name: string;
@@ -204,7 +202,6 @@ export interface HistoryItem extends TrackedItem {
   timestamp: string;
   seasonNumber?: number;
   episodeNumber?: number;
-  // FIX: Removed duplicate 'episodeTitle' property declaration.
   episodeTitle?: string;
   episodeStillPath?: string | null;
   seasonPosterPath?: string | null;
@@ -565,22 +562,6 @@ export interface NewlyPopularEpisode {
     genre_ids: number[];
   };
   episode: Episode;
-}
-
-export interface TvdbToken {
-  token: string;
-  expiry: number;
-}
-
-export interface TvdbShow {
-  id: number;
-  name: string;
-  artworks?: { type: number; image: string }[];
-}
-
-export interface TvdbRelatedShow {
-  id: number;
-  typeName: string;
 }
 
 export interface WatchProviderResponse {

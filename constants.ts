@@ -5,10 +5,6 @@ export const TMDB_API_KEY = (import.meta as any).env?.VITE_TMDB_KEY || 'b7922161
 export const TMDB_API_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 
-// IMPORTANT: Credentials for The TVDB API.
-export const TVDB_API_KEY = "3f17fc0f-2f0b-48b2-9dec-f7074608790f";
-export const TVDB_API_BASE_URL = 'https://api4.thetvdb.com/v4';
-
 /**
  * TRAKT CONFIGURATION
  * Link: https://trakt.tv/oauth/applications

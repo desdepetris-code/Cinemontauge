@@ -61,7 +61,11 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, onNote
                 <div key={note.id} className="bg-yellow-100 dark:bg-yellow-900/20 p-4 rounded-2xl -rotate-1 transform border border-yellow-300/30 dark:border-yellow-500/20 group relative transition-all hover:rotate-0">
                     <div className="flex justify-between items-start">
                         <p className="text-yellow-900 dark:text-yellow-100 whitespace-pre-wrap text-sm leading-relaxed font-medium flex-grow pr-6">{note.text}</p>
-                        <button onClick={() => handleDeleteNote(note)} className="absolute top-4 right-4 p-1.5 bg-red-600/10 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:text-white" title="Delete Note">
+                        <button 
+                            onClick={() => handleDeleteNote(note)} 
+                            className="absolute top-4 right-4 p-1.5 bg-red-600/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm border border-red-500/20" 
+                            title="Delete Note"
+                        >
                             <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                     </div>

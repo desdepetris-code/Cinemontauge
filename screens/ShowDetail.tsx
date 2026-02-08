@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getMediaDetails, getSeasonDetails, getWatchProviders, getShowAggregateCredits, clearMediaCache } from '../services/tmdbService';
+import { getMediaDetails, getSeasonDetails, getWatchProviders, clearMediaCache } from '../services/tmdbService';
 import { getSeasonEpisodesPrecision, getMoviePrecision } from '../services/traktService';
 import { TmdbMediaDetails, WatchProgress, JournalEntry, TrackedItem, WatchStatus, CustomImagePaths, TmdbSeasonDetails, Episode, WatchProviderResponse, CustomList, HistoryItem, UserRatings, FavoriteEpisodes, LiveWatchMediaInfo, EpisodeRatings, Comment, SeasonRatings, PublicUser, Note, EpisodeProgress, UserData, AppPreferences, Follows, CommentVisibility, WeeklyPick, DeletedHistoryItem, Reminder, ReminderType, AppNotification, PendingRecommendationCheck } from '../types';
-import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, VideoCameraIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, ChartBarIcon, TableCellsIcon, WritingBookIcon, Squares2X2Icon, PlayPauseIcon, ShareIcon } from '../components/Icons';
+import { ChevronLeftIcon, BookOpenIcon, StarIcon, ArrowPathIcon, CheckCircleIcon, PlayCircleIcon, HeartIcon, ClockIcon, ListBulletIcon, ChevronDownIcon, XMarkIcon, ChatBubbleLeftRightIcon, CalendarIcon, LogWatchIcon, PencilSquareIcon, PhotoIcon, BadgeIcon, SparklesIcon, QuestionMarkCircleIcon, TrophyIcon, InformationCircleIcon, UsersIcon, BellIcon, RectangleStackIcon, WritingBookIcon, Squares2X2Icon, ShareIcon } from '../components/Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from '../components/FallbackImage';
 import SeasonAccordion from '../components/SeasonAccordion';
@@ -18,11 +19,9 @@ import MoreInfo from '../components/MoreInfo';
 import WhereToWatch from '../components/WhereToWatch';
 import RecommendedMedia from '../components/RecommendedMedia';
 import CustomizeTab from '../components/CustomizeTab';
-import ImageSelectorModal from '../components/ImageSelectorModal';
 import ShowAchievementsTab from '../components/ShowAchievementsTab';
 import CommentsTab from '../components/CommentsTab';
 import MarkAsWatchedModal, { LogWatchScope } from '../components/MarkAsWatchedModal';
-import MovieCollection from '../components/MovieCollection';
 import NotesModal from '../components/NotesModal';
 import JournalModal from '../components/JournalModal';
 import WatchlistModal from '../components/WatchlistModal';
@@ -113,10 +112,16 @@ const DetailedActionButton: React.FC<{
   onClick: () => void;
   className?: string;
   isActive?: boolean;
-}> = ({ icon, label, onClick, className = "", isActive }) => (
+  disabled?: boolean;
+}> = ({ icon, label, onClick, className = "", isActive, disabled }) => (
   <button
+    disabled={disabled}
     onClick={onClick}
-    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all group relative h-20 ${className} ${isActive ? 'bg-white/20 border-white active-glow shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'border-white/10 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-white/30'}`}
+    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all group relative h-20 ${className} ${
+      isActive 
+        ? 'bg-white/20 border-white active-glow shadow-[0_0_15px_rgba(255,255,255,0.4)]' 
+        : 'border-white/10 bg-bg-secondary/40 hover:bg-bg-secondary/60 hover:border-white/30'
+    } ${disabled ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
   >
     <div className={`transition-all ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
         {icon}
@@ -132,7 +137,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
     id, mediaType, onBack, watchProgress, history, trackedLists, onUpdateLists, customImagePaths, 
     favorites, onToggleFavoriteShow, onRateItem, ratings, showRatings, currentUser, customLists, 
     episodeRatings, favoriteEpisodes, comments, seasonRatings, genres, mediaNotes = {}, onSaveMediaNote, 
-    weeklyFavorites, onToggleFavoriteShow: handleFavoriteToggle, onToggleWeeklyFavorite, allUserData, episodeNotes, preferences, follows,
+    weeklyFavorites, onToggleWeeklyFavorite, allUserData, episodeNotes, preferences, follows,
     onMarkMediaAsWatched, onAddWatchHistory, onStartLiveWatch, onUnmarkAllWatched, onMarkAllWatched,
     onRateEpisode, onToggleFavoriteEpisode, onSaveComment, onMarkPreviousEpisodesWatched,
     onMarkSeasonWatched, onUnmarkSeasonWatched, onSaveEpisodeNote, onRateSeason, onOpenAddToListModal,
@@ -144,7 +149,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
   
   const [details, setDetails] = useState<TmdbMediaDetails | null>(null);
   const [providers, setProviders] = useState<WatchProviderResponse | null>(null);
-  const [aggregateCredits, setAggregateCredits] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>(mediaType === 'tv' ? 'seasons' : 'info');
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
@@ -269,7 +273,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
               setSeasonDetailsMap(prev => ({ ...prev, [firstSeason.season_number]: sd }));
           }
-          getShowAggregateCredits(id, mediaDetails.seasons).then(setAggregateCredits);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [id, mediaType]);
@@ -339,26 +342,22 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
 
   const showStatus = useMemo(() => details ? getShowStatus(details) : null, [details]);
   
-  // Specific upcoming content check for "Reminder" button visibility
   const hasUpcomingContent = useMemo(() => {
     if (!details) return false;
     const today = new Date().toISOString().split('T')[0];
     const statusText = showStatus?.text || '';
     
     if (mediaType === 'tv') {
-        // "Shows with upcoming episodes or an upcoming season"
         if (statusText === 'Upcoming' || statusText === 'In Season') return true;
         if (details.next_episode_to_air) return true;
         return !!details.seasons?.some(s => s.air_date && s.air_date > today);
     } else {
-        // "Movies that have an upcoming release date"
         return !!details.release_date && details.release_date > today;
     }
   }, [details, mediaType, showStatus]);
 
   const isUpcoming = showStatus?.text === 'Upcoming';
   
-  // PREMIERE MESSAGE LOGIC
   const premiereMessage = useMemo(() => {
     if (!details) return null;
     const today = new Date().toISOString().split('T')[0];
@@ -634,7 +633,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label={mediaType === 'tv' ? "Watch All" : "Watched"} isActive={mediaType === 'tv' ? isAllWatched : currentStatus === 'completed'} icon={<CheckCircleIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onMarkAllWatched(id, details as any) : onMarkMediaAsWatched(details)} />
                 <DetailedActionButton label={mediaType === 'tv' ? "Unmark All" : "Unmark"} icon={<XMarkIcon className="w-6 h-6" />} onClick={() => mediaType === 'tv' ? onUnmarkAllWatched(id) : props.onUnmarkMovieWatched(id, false)} />
                 
-                {/* UPCOMING SPECIFIC ROW LOGIC */}
                 {hasUpcomingContent ? (
                     <>
                         <DetailedActionButton 
@@ -660,18 +658,15 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                 <DetailedActionButton label="Rate" icon={<StarIcon filled={userRating > 0} className="w-6 h-6" />} onClick={() => setIsRatingModalOpen(true)} />
                 <DetailedActionButton label="History" icon={<ClockIcon className="w-6 h-6" />} onClick={() => setIsHistoryModalOpen(true)} />
                 <DetailedActionButton label="Add to List" icon={<ListBulletIcon className="w-6 h-6" />} onClick={() => onOpenAddToListModal(details)} />
-                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
                 {!hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {/* // FIX: Replaced handleCommentsAction with () => handleCommentOpen(null) */}
                 {hasUpcomingContent && <DetailedActionButton label="Comment" icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />} onClick={() => handleCommentOpen(null)} />}
                 <DetailedActionButton label="Journal" icon={<WritingBookIcon className="w-6 h-6" />} onClick={() => setIsJournalModalOpen(true)} />
                 <DetailedActionButton label="Notes" icon={<PencilSquareIcon className="w-6 h-6" />} onClick={() => setIsNotesModalOpen(true)} />
                 <DetailedActionButton label="Log Watch" icon={<LogWatchIcon className="w-6 h-6" />} onClick={() => setIsLogWatchModalOpen(true)} />
                 
-                {/* Final Button Placement */}
                 {mediaType === 'movie' ? (
                   !hasUpcomingContent && (
                     <DetailedActionButton 
@@ -682,7 +677,6 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                     />
                   )
                 ) : (
-                  // TV always has a button in this slot
                   !hasUpcomingContent ? (
                     <DetailedActionButton 
                       label="Live Watch" 
@@ -790,7 +784,7 @@ const ShowDetail: React.FC<ShowDetailProps> = (props) => {
                    ))}
                 </div>
               )}
-              {activeTab === 'cast' && <CastAndCrew aggregateCredits={aggregateCredits} tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
+              {activeTab === 'cast' && <CastAndCrew tmdbCredits={details.credits} onSelectPerson={onSelectPerson} />}
               {activeTab === 'recs' && <RecommendedMedia recommendations={details.recommendations?.results || []} onSelectShow={onSelectShow} onRefresh={handleRefresh} />}
               {activeTab === 'discussion' && (
                   <CommentsTab details={details} comments={comments} currentUser={currentUser} allUsers={allUsers} seasonDetailsMap={seasonDetailsMap} onFetchSeasonDetails={handleToggleSeason as any} onSaveComment={onSaveComment} onToggleLikeComment={() => {}} onDeleteComment={() => {}} activeThread={activeCommentThread} setActiveThread={handleThreadChange} follows={follows} />
