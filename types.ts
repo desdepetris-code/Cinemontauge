@@ -1,3 +1,6 @@
+
+// FIX: Removed self-referential import of types from './types' which conflicted with local declarations.
+
 export interface Theme {
   id: string;
   name: string;
@@ -37,7 +40,6 @@ export interface Theme {
   };
 }
 
-/* // FIX: Expanded ParticleEffectName to include all effects supported by BackgroundParticleEffects.tsx and ThemeTransitionAnimation.tsx */
 export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'cherry_blossoms' | 'bats' | 'flowers' | 'pumpkins' | 'ghosts' | 'eggs';
 
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'allCaughtUp' | 'favorites';
@@ -202,6 +204,7 @@ export interface HistoryItem extends TrackedItem {
   timestamp: string;
   seasonNumber?: number;
   episodeNumber?: number;
+  episodeTitle?: string;
   episodeTitle?: string;
   episodeStillPath?: string | null;
   seasonPosterPath?: string | null;
@@ -620,7 +623,7 @@ export interface MediaUpdate {
     details?: any;
 }
 
-export type ReportType = 'ongoing' | 'hiatus' | 'placeholder_tv' | 'placeholder_movies' | 'placeholder_people' | 'no_recommendations' | 'missing_airtime' | 'missing_status';
+export type ReportType = 'missing_airtime_tv' | 'missing_runtime_ep' | 'missing_runtime_movie' | 'missing_airdate_movie' | 'missing_airdate_ep' | 'no_recs_movie' | 'no_recs_tv' | 'missing_cast_images' | 'missing_poster_tv' | 'missing_poster_movie' | 'missing_backdrop_tv' | 'missing_backdrop_movie';
 
 export interface DownloadedPdf {
     id: string;
