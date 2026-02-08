@@ -41,7 +41,7 @@ const NominationModal: React.FC<NominationModalProps> = ({ isOpen, onClose, item
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 border border-white/10 relative" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors">
           <XMarkIcon className="w-5 h-5" />

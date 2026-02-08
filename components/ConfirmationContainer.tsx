@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { confirmationService } from '../services/confirmationService';
-import { CheckCircleIcon } from './Icons';
+import { CheckCircleIcon, XMarkIcon } from './Icons';
 
 interface Confirmation {
     id: number;
@@ -12,23 +12,42 @@ const ConfirmationBanner: React.FC<{ message: string; onDismiss: () => void }> =
 
     useEffect(() => {
         setIsVisible(true);
-        // User requested 5 seconds max for the banner
+        
+        /**
+         * Calculate duration based on message length.
+         * Human reading speed is roughly 80-100ms per character.
+         * User requirements: Min 3 seconds, Max 5 seconds.
+         */
+        const displayDuration = Math.max(3000, Math.min(5000, message.length * 85));
+
         const timer = setTimeout(() => {
             setIsVisible(false);
-            setTimeout(onDismiss, 300); // Animation duration
-        }, 5000);
+            setTimeout(onDismiss, 300); // Wait for fade-out animation
+        }, displayDuration);
 
         return () => clearTimeout(timer);
-    }, [onDismiss]);
+    }, [onDismiss, message]);
 
     return (
         <div
-            className={`flex items-center space-x-3 bg-card-gradient rounded-lg shadow-xl p-3 px-4 transition-all duration-300 ease-in-out w-full max-w-md border border-white/10 ${
+            className={`flex items-center space-x-3 bg-card-gradient rounded-lg shadow-xl p-3 px-4 pr-10 transition-all duration-300 ease-in-out w-full max-w-md border border-white/10 pointer-events-auto relative ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full'
             }`}
         >
             <CheckCircleIcon className="w-5 h-5 text-green-400 flex-shrink-0" />
             <p className="text-sm text-text-primary font-bold">{message}</p>
+            
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsVisible(false);
+                    setTimeout(onDismiss, 300);
+                }}
+                className="absolute top-2 right-2 p-1 text-text-secondary hover:text-white transition-colors rounded-full hover:bg-white/10"
+                aria-label="Dismiss notification"
+            >
+                <XMarkIcon className="w-4 h-4" />
+            </button>
         </div>
     );
 };
@@ -54,7 +73,7 @@ const ConfirmationContainer: React.FC = () => {
             setTimeout(() => {
                 isProcessingRef.current = false;
                 processQueue();
-            }, 500); // 0.5s stagger
+            }, 500); // Stagger appearing banners
         };
 
         const unsubscribe = confirmationService.subscribe((message: string) => {

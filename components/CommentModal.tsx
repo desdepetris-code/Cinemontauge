@@ -44,7 +44,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[200] p-4"
+      className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-[1000] p-4"
       onClick={onClose}
     >
       <div

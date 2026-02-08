@@ -48,7 +48,7 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose, onSave, onNote
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[1000] p-4" onClick={onClose}>
       <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg h-[80vh] flex flex-col p-8 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
             <XMarkIcon className="w-5 h-5" />

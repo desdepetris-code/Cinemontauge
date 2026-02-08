@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { TmdbMedia, CustomList, CustomListItem, TrackedItem, WatchStatus } from '../types';
 import { ChevronRightIcon, XMarkIcon, CheckCircleIcon, PlusIcon, ListBulletIcon, BookmarkIcon } from './Icons';
@@ -67,7 +66,7 @@ const AddToListModal: React.FC<AddToListModalProps> = ({ isOpen, onClose, itemTo
     const isInPlanToWatch = activeStandardStatus === 'planToWatch';
 
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[110] p-4" onClick={resetAndClose}>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[1000] p-4" onClick={resetAndClose}>
             <div className="bg-bg-primary rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in relative border border-white/10 flex flex-col" onClick={e => e.stopPropagation()}>
                 <button onClick={resetAndClose} className="absolute top-4 right-4 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
                     <XMarkIcon className="w-5 h-5" />

@@ -27,7 +27,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, timezone, 
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-xl z-[1000] flex items-center justify-center p-4 animate-fade-in">
       <div 
         className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 animate-scale-in relative text-center border border-white/10"
         onClick={e => e.stopPropagation()}

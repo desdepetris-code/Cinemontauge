@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { UserData, CalculatedStats, TrackedItem, EpisodeProgress, HistoryItem } from '../types';
 
@@ -79,12 +78,11 @@ export function useCalculatedStats(data: UserData): CalculatedStats {
     const showsWatchingCount = data.watching.filter(i => i.media_type === 'tv').length;
     const moviesToWatchCount = data.planToWatch.filter(i => i.media_type === 'movie').length;
 
-    // --- Custom List Logic: Filter for user-created and strictly non-empty lists ---
+    // --- Custom List Logic: Count all user-created lists including empty ones ---
     const userCreatedLists = data.customLists.filter(l => !SYSTEM_LIST_IDS.includes(l.id));
-    const nonEmptyUserLists = userCreatedLists.filter(l => l.items && l.items.length > 0);
-    const customListsCount = nonEmptyUserLists.length;
-    const maxItemsInCustomList = nonEmptyUserLists.length > 0 
-        ? Math.max(...nonEmptyUserLists.map(l => l.items?.length || 0)) 
+    const customListsCount = userCreatedLists.length;
+    const maxItemsInCustomList = userCreatedLists.length > 0 
+        ? Math.max(...userCreatedLists.map(l => l.items?.length || 0)) 
         : 0;
 
     // --- Streak calculation (Current & Longest) ---

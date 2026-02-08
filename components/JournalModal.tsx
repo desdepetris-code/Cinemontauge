@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { JournalEntry, TmdbMediaDetails, Episode, WatchProgress } from '../types';
 import { getSeasonDetails } from '../services/tmdbService';
@@ -78,7 +77,7 @@ const JournalModal: React.FC<JournalModalProps> = ({ isOpen, onClose, onSave, me
   const currentEpisode = episodesForSeason.find(e => e.episode_number === selectedEpisode);
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[200] p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[1000] p-4" onClick={onClose}>
       <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-lg p-10 animate-fade-in relative border border-white/10" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded-full text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors z-10">
             <XMarkIcon className="w-5 h-5" />

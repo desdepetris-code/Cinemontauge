@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ReminderType } from '../types';
 import { XMarkIcon, SparklesIcon, CheckCircleIcon, InformationCircleIcon, ListBulletIcon, TrashIcon } from './Icons';
@@ -35,7 +34,7 @@ const movieTimingOptions: { id: ReminderType; label: string; group: 'before' | '
     { id: '2days_before', label: 'Two Days Before', group: 'before' },
     { id: 'day_before', label: 'One Day Before', group: 'before' },
     { id: 'daily_7_before', label: 'Every Day for 7 Days Before', group: 'before' },
-    { id: 'release', label: 'Day Of Release', group: 'at' },
+    { id: 'release', label: 'At Time of Release', group: 'at' },
     { id: 'day_after', label: 'One Day After', group: 'after' },
     { id: '2days_after', label: 'Two Days After', group: 'after' },
     { id: 'week_after', label: 'One Week After', group: 'after' },
@@ -43,28 +42,20 @@ const movieTimingOptions: { id: ReminderType; label: string; group: 'before' | '
 ];
 
 const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onClose, onSave, mediaType, initialTypes, initialFrequency, onRemove }) => {
-    const defaultTypes = useMemo(() => {
-        if (mediaType === 'tv') {
-            return showTimingOptions.map(opt => opt.id);
-        }
-        return movieTimingOptions.map(opt => opt.id);
-    }, [mediaType]);
-
-    const [selectedTypes, setSelectedTypes] = useState<ReminderType[]>(initialTypes || defaultTypes);
+    const [selectedTypes, setSelectedTypes] = useState<ReminderType[]>(initialTypes || []);
     const [frequency, setFrequency] = useState<'first' | 'all'>(initialFrequency || 'all');
 
     useEffect(() => {
         if (isOpen) {
-            setSelectedTypes(initialTypes || defaultTypes);
+            setSelectedTypes(initialTypes || []);
             setFrequency(initialFrequency || 'all');
         }
-    }, [isOpen, initialTypes, initialFrequency, defaultTypes]);
+    }, [isOpen, initialTypes, initialFrequency]);
 
     if (!isOpen) return null;
 
     const toggleType = (type: ReminderType) => {
         setSelectedTypes(prev => 
-            // FIX: Replaced 't' with 'type' to fix 'Cannot find name t' error.
             prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
         );
     };
@@ -78,7 +69,10 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
     };
 
     const handleSave = () => {
-        if (selectedTypes.length === 0) return;
+        if (selectedTypes.length === 0) {
+            alert("Please select at least one reminder option or click cancel.");
+            return;
+        }
         onSave(selectedTypes, frequency);
         onClose();
     };
@@ -94,19 +88,19 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
         return (
             <div className="space-y-6">
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">User Choice: Time Before Release</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">Time Before Release</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {groups.before.map(opt => renderOptionButton(opt))}
                     </div>
                 </div>
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">{mediaType === 'movie' ? 'User Choice: Release Day' : 'User Choice: Exact Airtime'}</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">{mediaType === 'movie' ? 'Release Day' : 'Exact Airtime'}</h4>
                     <div className="grid grid-cols-1 gap-2">
                         {groups.at.map(opt => renderOptionButton(opt))}
                     </div>
                 </div>
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">User Choice: Time After Release</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-accent mb-3 px-2">Time After Release</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {groups.after.map(opt => renderOptionButton(opt))}
                     </div>
@@ -138,7 +132,7 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[1000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-3xl shadow-2xl p-8 w-full max-w-lg border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <header className="flex justify-between items-start mb-6 flex-shrink-0">
                     <div className="text-left">
@@ -209,7 +203,7 @@ const ReminderOptionsModal: React.FC<ReminderOptionsModalProps> = ({ isOpen, onC
                                 {mediaType === 'movie' ? 'Theatrical Truth Sync' : 'Broadcast Sync'}
                             </strong>
                             {mediaType === 'tv' 
-                                ? "CineMontauge uses both airdate and airtime (e.g. 9:00 PM) for TV reminders. Reminders trigger precisely relative to these timestamps."
+                                ? "SceneIt uses both airdate and airtime (e.g. 9:00 PM) for TV reminders. Reminders trigger precisely relative to these timestamps."
                                 : "Movies use the release date provided by the registry. Reminders trigger relative to the start of that day."}
                         </p>
                     </div>

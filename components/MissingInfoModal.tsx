@@ -46,7 +46,7 @@ const MissingInfoModal: React.FC<MissingInfoModalProps> = ({ isOpen, onClose, on
     const inputClass = "w-full p-4 bg-bg-secondary rounded-2xl text-text-primary font-bold focus:outline-none border border-white/10 focus:border-primary-accent transition-all shadow-inner";
 
     return (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[1000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-bg-primary rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/10 flex flex-col relative" onClick={e => e.stopPropagation()}>
                 <header className="p-8 bg-card-gradient border-b border-white/5 flex justify-between items-center">
                     <div className="flex items-center gap-4">

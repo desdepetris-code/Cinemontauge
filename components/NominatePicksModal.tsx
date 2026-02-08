@@ -27,7 +27,7 @@ const NominatePicksModal: React.FC<NominatePicksModalProps> = ({ isOpen, onClose
   const todayIndex = today === 0 ? 6 : today - 1;
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[1000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div className="bg-bg-primary rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col border border-white/10 relative overflow-hidden" onClick={e => e.stopPropagation()}>
         <header className="p-8 border-b border-white/5 bg-card-gradient flex justify-between items-center">
             <div className="flex items-center space-x-4">
