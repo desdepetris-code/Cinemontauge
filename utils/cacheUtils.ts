@@ -19,7 +19,7 @@ const PROTECTED_PREFIXES = [
     'privacy_settings_', 'holidayAnimationsEnabled_', 
     'profileTheme_', 'timezone_', 'userXp_', 'showRatings_',
     'weekly_favorites_', 'weekly_favorites_week_', 'weekly_favorites_history_',
-    'currentUser', 'themeId', 'autoHolidayThemesEnabled_', 'sceneit_users',
+    'currentUser', 'themeId', 'autoHolidayThemesEnabled_', 'cinemontauge_users', 'cinemontauge_join_date_',
     // ADDED: Core Show/Movie Metadata is now strictly protected. 
     // It will not be deleted by the automatic cleanup.
     'tmdb_details_v4_'

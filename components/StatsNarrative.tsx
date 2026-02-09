@@ -15,7 +15,7 @@ interface StatsNarrativeProps {
 
 const StatsNarrative: React.FC<StatsNarrativeProps> = ({ stats, genres, userData, currentUser }) => {
   const userId = currentUser ? currentUser.id : 'guest';
-  const [joinDate] = useLocalStorage<string | null>(`sceneit_join_date_${userId}`, null);
+  const [joinDate] = useLocalStorage<string | null>(`cinemontauge_join_date_${userId}`, null);
 
   const peakDays = useMemo(() => {
     const activity = new Map<string, { movies: number, episodes: number }>();
@@ -79,7 +79,7 @@ const StatsNarrative: React.FC<StatsNarrativeProps> = ({ stats, genres, userData
     <div className="bg-bg-secondary/50 p-4 rounded-lg mb-8 text-text-secondary text-sm space-y-2">
       <p>
         Welcome back! 
-        {joinDate && ` You've been a SceneIt user since ${new Date(joinDate).toLocaleDateString()}. `}
+        {joinDate && ` You've been a CineMontauge user since ${new Date(joinDate).toLocaleDateString()}. `}
         In that time, you've watched <strong className="text-text-primary">{totalEpisodesWatched} episodes</strong> and <strong className="text-text-primary">{moviesCompleted} movies</strong>, 
         totaling approximately <strong className="text-text-primary">{totalHoursWatched} hours</strong> of content.
       </p>

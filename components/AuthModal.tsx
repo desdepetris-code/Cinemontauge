@@ -92,7 +92,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
     setInfo(null);
     setLoading(true);
 
-    const usersJson = localStorage.getItem('sceneit_users');
+    const usersJson = localStorage.getItem('cinemontauge_users');
     const users = usersJson ? JSON.parse(usersJson) : [];
     const lowerLookup = lookupValue.toLowerCase().trim();
 

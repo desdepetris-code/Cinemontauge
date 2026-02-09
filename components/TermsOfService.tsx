@@ -1,77 +1,64 @@
-
 import React from 'react';
 
 const TermsOfService: React.FC = () => {
   return (
-    <div className="prose-styles">
-      <h1 className="text-3xl font-bold text-text-primary mb-4">Terms of Service</h1>
-      <p className="text-text-secondary mb-4">Last updated: {new Date().toLocaleDateString()}</p>
+    <div className="space-y-8 text-text-primary/90 leading-relaxed overflow-y-auto max-h-full pr-4 custom-scrollbar">
+      <header className="mb-6">
+        <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">Terms of Service</h1>
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Last updated: {new Date().toLocaleDateString()}</p>
+      </header>
 
-      <p className="text-text-secondary mb-4">Welcome to SceneIt ("the Service"). By using our application, you agree to these terms. Please read them carefully.</p>
+      <p className="text-sm font-medium">Welcome to CineMontauge ("the Service"). By accessing our registry, you agree to these terms. Please read them carefully to understand your rights and responsibilities.</p>
       
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">1. Age Requirement</h2>
-      <p className="text-text-secondary mb-4">You must be at least 13 years of age to create an account and use the Service. By using SceneIt, you represent and warrant that you meet this requirement.</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">1. Identity & Eligibility</h2>
+        <p className="text-sm">You must be at least 13 years of age to initialize a personal registry account. By using CineMontauge, you represent and warrant that you meet this requirement and possess the legal authority to enter into this agreement.</p>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">2. Accounts</h2>
-      <p className="text-text-secondary mb-4">When you create an account with us, you must provide us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.</p>
-      <p className="text-text-secondary mb-4">You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password. You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">2. Registry Accounts</h2>
+        <p className="text-sm">When you create a CineMontauge account, your data is synchronized to our secure cloud registry. You are responsible for maintaining the confidentiality of your credentials and for all activities that occur under your account.</p>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">3. User Conduct</h2>
-      <p className="text-text-secondary mb-4">You agree not to use SceneIt to:</p>
-      <ul>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Upload, post, or link to any content that is unlawful, harmful, threatening, abusive, defamatory, or otherwise objectionable.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Infringe on any third party's intellectual property rights, including copyright, trademark, or patent.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">Strictly prohibit hosting, streaming, or providing download/magnet links to copyrighted material for which you do not own the rights.</strong> Our service is for personal tracking and journaling, not for distributing content.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Attempt to disrupt or interfere with our servers or networks.</li>
-      </ul>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">3. Prohibited Conduct</h2>
+        <p className="text-sm mb-3">You agree NOT to use CineMontauge to:</p>
+        <ul className="list-disc ml-6 space-y-2 text-sm opacity-80">
+          <li>Upload, link to, or distribute unlawful, harmful, or objectionable content.</li>
+          <li>Infringe on third-party intellectual property or privacy rights.</li>
+          <li><strong className="text-white">Strictly prohibited: Hosting, streaming, or providing magnet/download links to copyrighted material.</strong> Our service is a tracking ledger and personal journaling tool, not a media distribution hub.</li>
+        </ul>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">4. Third-Party Services & Data Attribution</h2>
-      <p className="text-text-secondary mb-4">SceneIt is a personal tracking tool and does not host, stream, or provide links to any copyrighted media files. To provide rich media information, we utilize several third-party APIs. The distinction in their usage is as follows:</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">4. Data Attribution & APIs</h2>
+        <p className="text-sm mb-4">CineMontauge interfaces with premium third-party metadata providers to enhance your experience:</p>
+        <div className="space-y-4">
+            <div className="p-5 bg-bg-secondary/40 rounded-[2rem] border border-white/5 shadow-inner">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white mb-2">The Movie Database (TMDb)</h3>
+                <p className="text-xs opacity-70 leading-relaxed">CineMontauge serves as a client for TMDb, providing access to titles, synopses, posters, and cast data. This product uses the TMDb API but is not endorsed or certified by TMDb.</p>
+            </div>
+            <div className="p-5 bg-bg-secondary/40 rounded-[2rem] border border-white/5 shadow-inner">
+                <h3 className="text-xs font-black uppercase tracking-widest text-white mb-2">Trakt.tv Integration</h3>
+                <p className="text-xs opacity-70 leading-relaxed">Optional one-way history imports are facilitated via Trakt.tv. We respect your external privacy and do not export your CineMontauge logs back to Trakt without explicit user action.</p>
+            </div>
+        </div>
+      </section>
 
-      <ul className="list-disc ml-6 space-y-4 text-text-secondary">
-        <li>
-          <strong className="font-semibold text-text-primary">The Movie Database (TMDB):</strong> This is our primary source for metadata. The vast majority of movie, TV show, and person data—including titles, synopses, posters, cast/crew information, and ratings—is supplied by the TMDB API.
-          <br />
-          <em className="text-text-secondary/80 mt-2 block">This product uses the TMDB API but is not endorsed or certified by TMDB. We are grateful for their incredible service. All users must comply with TMDB's API Terms of Use, available at <a href="https://www.themoviedb.org/documentation/api/terms-of-use" target="_blank" rel="noopener noreferrer" className="text-primary-accent underline">themoviedb.org</a>.</em>
-        </li>
-        <li>
-          <strong className="font-semibold text-text-primary">The TV Database (TVDB):</strong> This is a supplementary data source for TV shows. We use the TVDB API to enrich our data, providing alternative poster images and a more comprehensive list of characters to enhance the user experience.
-        </li>
-        <li>
-          <strong className="font-semibold text-text-primary">Trakt.tv:</strong> This service is used for user data import functionality. By connecting your Trakt.tv account, you can import your existing watch history, watchlist, and ratings into SceneIt, helping you get started quickly. We do not send your SceneIt data back to Trakt.
-        </li>
-      </ul>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">5. Intellectual Property & DMCA</h2>
+        <p className="text-sm">We respect the intellectual property of creators. If you believe your work has been utilized in a way that constitutes copyright infringement, please contact our designated DMCA agent at <span className="text-primary-accent font-bold">sceneit623@gmail.com</span>.</p>
+      </section>
 
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">6. The Cloud Registry</h2>
+        <p className="text-sm">Authenticated users benefit from the **CineMontauge Cloud Registry**, powered by Supabase. This system handles secure backups of your watch history, custom image uploads, social interactions, and cross-device synchronization.</p>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">5. Intellectual Property & DMCA Policy</h2>
-      <p className="text-text-secondary mb-4">SceneIt respects the intellectual property rights of others and expects its users to do the same. We comply with the Digital Millennium Copyright Act (DMCA).</p>
-      
-      <h3 className="text-xl font-bold text-text-primary mt-4 mb-2">DMCA & Copyright Policy</h3>
-      <p className="text-text-secondary mb-4">SceneIt respects copyright and intellectual property rights. If you believe your work has been used without permission, please contact our DMCA agent.</p>
-      
-      <div className="p-4 bg-bg-secondary rounded-lg space-y-2 mb-4">
-        <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Preferred Contact (Email only):</strong> <a href="mailto:sceneit623@gmail.com" className="text-primary-accent underline">sceneit623@gmail.com</a>
-        </p>
-        <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Mailing Address:</strong> Available upon request via email.
-        </p>
-        <p className="text-text-secondary">
-          <strong className="font-semibold text-text-primary">Phone:</strong> (229) 392-9884
-        </p>
-      </div>
-
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">6. User-Generated Content</h2>
-      <p className="text-text-secondary mb-4">If you post content (such as journal entries or custom images), you grant SceneIt a license to use it in connection with operating the service. You are solely responsible for the content you post.</p>
-      
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">7. Data Storage & Loss</h2>
-      <p className="text-text-secondary mb-4">SceneIt primarily stores your data (watch history, progress, lists, journal entries) locally in your web browser's storage. Clearing your browser's cache or site data will permanently delete your information.</p>
-      
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">8. Termination</h2>
-      <p className="text-text-secondary mb-4">We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever. Upon termination, your right to use the Service will immediately cease.</p>
-
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">9. Service Availability and Disclaimers</h2>
-      <p className="text-text-secondary mb-4">The Service is provided on an "AS IS" and "AS AVAILABLE" basis. We do not warrant that the service will be uninterrupted, secure, or error-free.</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">7. Disclaimers & Liability</h2>
+        <p className="text-sm italic opacity-60 font-medium">CineMontauge is provided "AS IS" and "AS AVAILABLE". We do not warrant that the service will be uninterrupted, secure, or error-free. Data loss for guest users (due to browser cache clearing) is not the responsibility of CineMontauge.</p>
+      </section>
     </div>
   );
 };

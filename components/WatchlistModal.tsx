@@ -74,7 +74,7 @@ const WatchlistModal: React.FC<WatchlistModalProps> = ({ isOpen, onClose, onUpda
                 <div>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-3 flex items-center gap-2">
                         <ClockIcon className="w-3.5 h-3.5" />
-                        Managed by SceneIt
+                        Managed by CineMontauge
                     </h3>
                     <div className="grid grid-cols-1 gap-2">
                         {autoLists.map(list => {

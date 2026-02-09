@@ -41,239 +41,110 @@ export const fetchUserProfile = async (userId: string) => {
     return data;
 };
 
-export const updateProfileSettings = async (userId: string, settings: any) => {
-    const { error } = await supabase.from('user_settings').upsert({
-        user_id: userId,
-        settings: settings
-    }, { onConflict: 'user_id' });
-    if (error) throw error;
-};
-
-export const updateProfileTheme = async (userId: string, theme: any) => {
-    const { error } = await supabase.from('user_themes').upsert({
-        user_id: userId,
-        theme_config: theme
-    }, { onConflict: 'user_id' });
-    if (error) throw error;
-};
-
-/**
- * SOCIAL & CONNECTIVITY
- */
-
-export const syncFollow = async (followerId: string, followingId: string) => {
-    const { error } = await supabase.from('follows').insert({
-        follower_id: followerId,
-        following_id: followingId
-    });
-    if (error) throw error;
-};
-
-export const syncUnfollow = async (followerId: string, followingId: string) => {
-    const { error } = await supabase.from('follows').delete().match({
-        follower_id: followerId,
-        following_id: followingId
-    });
-    if (error) throw error;
-};
-
-export const fetchFollowers = async (userId: string) => {
-    const { data, error } = await supabase.from('follows').select('follower_id').eq('following_id', userId);
-    if (error) throw error;
-    return data.map(f => f.follower_id);
-};
-
-export const fetchFollowing = async (userId: string) => {
-    const { data, error } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
-    if (error) throw error;
-    return data.map(f => f.following_id);
-};
-
-/**
- * SEARCH & TRENDS
- */
-
-export const syncSearchEntry = async (userId: string, query: string, tmdbId?: number, mediaType?: string) => {
-    const { error } = await supabase.from('search_history').insert({
-        user_id: userId,
-        query: query,
-        tmdb_id: tmdbId,
-        media_type: mediaType
-    });
-    if (error) console.error("Search sync failed:", error);
-};
-
-export const fetchSearchHistory = async (userId: string) => {
+/* // FIX: Added missing getUserAnalytics export to services/supabaseClient.ts to resolve import error in screens/StatsScreen.tsx */
+export const getUserAnalytics = async (userId: string) => {
     const { data, error } = await supabase
-        .from('search_history')
+        .from('user_analytics')
         .select('*')
+        .eq('user_id', userId)
+        .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+};
+
+/**
+ * SOCIAL & COMMUNITY REGISTRY
+ */
+
+export const fetchUserBadges = async (userId: string) => {
+    const { data, error } = await supabase.from('user_badges').select('*').eq('user_id', userId);
+    if (error) throw error;
+    return data;
+};
+
+export const fetchSocialFeed = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('social_feed_cache')
+        .select('*, actor:profiles!actor_id(username, avatar_url)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
     if (error) throw error;
     return data;
 };
 
-/**
- * TRASH BIN (DELETION RECOVERY)
- */
-
-export const moveItemToTrash = async (userId: string, tmdbId: number, mediaType: string, payload: any, reason?: string) => {
-    const { error } = await supabase.from('trash_bin').insert({
-        user_id: userId,
-        tmdb_id: tmdbId,
-        media_type: mediaType,
-        item_payload: payload,
-        reason: reason || 'Manual Deletion'
+export const submitUserReport = async (report: { target_id: string, target_type: string, reason: string, comments?: string }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('user_reports').insert({
+        ...report,
+        reporter_id: user?.id
     });
     if (error) throw error;
 };
 
-export const fetchTrashBin = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('trash_bin')
-        .select('*')
-        .eq('user_id', userId)
-        .order('deleted_at', { ascending: false });
+/**
+ * PERSONALIZATION & AFFINITY
+ */
+
+export const fetchUserAffinities = async (userId: string) => {
+    const { data, error } = await supabase.from('user_affinities').select('*').eq('user_id', userId).order('score', { ascending: false });
+    if (error) throw error;
+    return data;
+};
+
+export const fetchUserTags = async (userId: string) => {
+    const { data, error } = await supabase.from('global_tags').select('*, media_tags(*)').eq('user_id', userId);
     if (error) throw error;
     return data;
 };
 
 /**
- * WEEKLY GEMS (NOMINATIONS)
+ * DATA INTEGRITY & CACHING
  */
 
-export const syncWeeklyPick = async (userId: string, pick: any) => {
-    const { error } = await supabase.from('weekly_picks').upsert({
-        user_id: userId,
-        tmdb_id: pick.id,
-        category: pick.category,
-        day_index: pick.dayIndex,
-        week_key: pick.weekKey || new Date().toISOString().split('T')[0], // Defaults to current date if missing
-        metadata: {
-            title: pick.title,
-            poster_path: pick.poster_path,
-            episode_info: pick.episodeTitle
-        }
-    }, { onConflict: 'user_id,category,day_index,week_key' });
-    if (error) throw error;
-};
-
-export const fetchWeeklyPicks = async (userId: string) => {
-    const { data, error } = await supabase.from('weekly_picks').select('*').eq('user_id', userId);
-    if (error) throw error;
+export const getCachedProviders = async (tmdbId: number) => {
+    const { data, error } = await supabase.from('provider_registry_cache').select('*').eq('tmdb_id', tmdbId).single();
+    if (error && error.code !== 'PGRST116') throw error;
     return data;
 };
 
-/**
- * REMINDERS & ALERTS
- */
-
-export const syncReminder = async (userId: string, reminder: any) => {
-    const { error } = await supabase.from('reminders').upsert({
-        user_id: userId,
-        tmdb_id: reminder.mediaId,
-        media_type: reminder.mediaType,
-        title: reminder.title,
-        poster_path: reminder.poster_path,
-        release_date: reminder.releaseDate,
-        selected_types: reminder.selectedTypes,
-        frequency: reminder.frequency
-    }, { onConflict: 'user_id,tmdb_id,release_date' });
-    if (error) throw error;
-};
-
-export const fetchReminders = async (userId: string) => {
-    const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('release_date', { ascending: true });
-    if (error) throw error;
-    return data;
-};
-
-/**
- * ACTIVITY & ENGAGEMENT
- */
-
-export const syncActivityLog = async (userId: string, activity: any) => {
-    const { error } = await supabase.from('activity_logs').insert({
-        user_id: userId,
-        activity_type: activity.type,
-        tmdb_id: activity.mediaId,
-        metadata: activity.metadata
+export const logSyncEvent = async (syncData: { source: string, status: string, items_added: number, error_message?: string }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('sync_logs').insert({
+        user_id: user.id,
+        ...syncData
     });
-    if (error) console.error("Activity log failed:", error);
 };
 
-export const fetchNotifications = async (userId: string) => {
+/**
+ * ADMIN & ANNOUNCEMENTS
+ */
+
+export const fetchActiveAnnouncements = async () => {
+    const now = new Date().toISOString();
     const { data, error } = await supabase
-        .from('notifications')
+        .from('system_announcements')
         .select('*')
-        .eq('user_id', userId)
+        .eq('is_active', true)
+        .lte('starts_at', now)
+        .or(`ends_at.is.null,ends_at.gt.${now}`)
         .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
 };
 
-export const markNotificationRead = async (notificationId: string) => {
-    const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
-    if (error) throw error;
-};
-
-/**
- * AUTHORITY & MODERATION
- */
-
-export const syncBlockedUser = async (userId: string, blockedId: string) => {
-    const { error } = await supabase.from('blocked_users').insert({
-        user_id: userId,
-        blocked_user_id: blockedId
-    });
-    if (error) throw error;
-};
-
-export const fetchBlockedUsers = async (userId: string) => {
-    const { data, error } = await supabase.from('blocked_users').select('blocked_user_id').eq('user_id', userId);
-    if (error) throw error;
-    return data.map(b => b.blocked_user_id);
-};
-
-export const uploadAdminReport = async (fileName: string, pdfBlob: Blob) => {
-    const { data, error } = await supabase.storage
+/* // FIX: Added missing uploadAdminReport export to services/supabaseClient.ts to resolve import error in screens/AirtimeManagement.tsx */
+export const uploadAdminReport = async (fileName: string, blob: Blob) => {
+    const { error } = await supabase.storage
         .from('admin-reports')
-        .upload(`reports/${fileName}`, pdfBlob, {
-            contentType: 'application/pdf',
-            upsert: true
-        });
+        .upload(fileName, blob);
     if (error) throw error;
-    return data;
 };
 
 /**
- * RPC ATOMIC HELPERS (STUBS FOR REUSABILITY)
+ * LEGACY SYNC METHODS (RETAINED FOR COMPATIBILITY)
  */
-
-export const syncWatchStatusRpc = async (mediaId: number, mediaType: string, status: string | null) => {
-    const { data, error } = await supabase.rpc('toggle_watch_status', {
-        p_media_id: mediaId,
-        p_media_type: mediaType,
-        p_status: status
-    });
-    if (error) throw error;
-    return data;
-};
-
-export const syncRatingRpc = async (mediaId: number, mediaType: string, rating: number) => {
-    const { data, error } = await supabase.rpc('set_media_rating', {
-        p_media_id: mediaId,
-        p_media_type: mediaType,
-        p_rating: rating
-    });
-    if (error) throw error;
-    return data;
-};
 
 export const syncJournalEntry = async (userId: string, tmdbId: number, season: number, episode: number, entry: any) => {
     if (!entry) {
@@ -295,10 +166,19 @@ export const syncJournalEntry = async (userId: string, tmdbId: number, season: n
         }, { onConflict: 'user_id,tmdb_id,season_number,episode_number' });
 };
 
-// FIX: Added missing Trakt registry sync functions
-/**
- * TRAKT REGISTRY SYNC
- */
+/* // FIX: Added missing syncRatingRpc export to services/supabaseClient.ts to resolve import error in MainApp.tsx */
+export const syncRatingRpc = async (tmdbId: number, mediaType: string, rating: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.rpc('sync_rating', {
+        p_user_id: user.id,
+        p_tmdb_id: tmdbId,
+        p_media_type: mediaType,
+        p_rating: rating
+    });
+    if (error) throw error;
+};
+
 export const saveTraktToken = async (userId: string, token: any) => {
     const { error } = await supabase.from('trakt_tokens').upsert({
         user_id: userId,
@@ -313,7 +193,7 @@ export const saveTraktToken = async (userId: string, token: any) => {
 export const getTraktToken = async (userId: string) => {
     const { data, error } = await supabase.from('trakt_tokens').select('*').eq('user_id', userId).single();
     if (error) {
-        if (error.code === 'PGRST116') return null; // No rows
+        if (error.code === 'PGRST116') return null;
         throw error;
     }
     return {
@@ -329,10 +209,6 @@ export const deleteTraktToken = async (userId: string) => {
     if (error) throw error;
 };
 
-// FIX: Added missing custom media upload and deletion functions for registry enrichment
-/**
- * MEDIA ASSET MANAGEMENT (CLOUD)
- */
 export const uploadCustomMedia = async (userId: string, tmdbId: number, assetType: 'poster' | 'backdrop', file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${tmdbId}_${Date.now()}.${fileExt}`;
@@ -348,7 +224,6 @@ export const uploadCustomMedia = async (userId: string, tmdbId: number, assetTyp
         .from('custom-media')
         .getPublicUrl(filePath);
 
-    // Record in DB
     const { error: dbError } = await supabase.from('custom_media').insert({
         user_id: userId,
         tmdb_id: tmdbId,
@@ -357,7 +232,6 @@ export const uploadCustomMedia = async (userId: string, tmdbId: number, assetTyp
     });
 
     if (dbError) throw dbError;
-
     return publicUrl;
 };
 
@@ -374,17 +248,4 @@ export const deleteCustomMedia = async (userId: string, tmdbId: number, url: str
         url: url
     });
     if (error) throw error;
-};
-
-// FIX: Added missing analytics retrieval for user statistics screen
-/**
- * ANALYTICS ENGINE
- */
-export const getUserAnalytics = async (userId: string) => {
-    const { data, error } = await supabase.from('user_analytics').select('*').eq('user_id', userId).single();
-    if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-    }
-    return data;
 };

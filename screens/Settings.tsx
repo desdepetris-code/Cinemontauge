@@ -12,7 +12,7 @@ import { confirmationService } from '../services/confirmationService';
 
 const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.ReactNode; isDestructive?: boolean; onClick?: () => void, disabled?: boolean }> = ({ title, subtitle, children, isDestructive, onClick, disabled }) => (
     <div 
-        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-not-allowed hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
+        className={`flex justify-between items-center p-4 border-b border-bg-secondary/50 last:border-b-0 ${isDestructive ? 'text-red-500' : ''} ${onClick && !disabled ? 'cursor-pointer hover:bg-bg-secondary/50 transition-colors' : ''} ${disabled ? 'opacity-50' : ''}`}
         onClick={disabled ? undefined : onClick}
     >
         <div>
@@ -26,9 +26,9 @@ const SettingsRow: React.FC<{ title: string; subtitle: string; children: React.R
 );
 
 const SettingsCard: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
-    <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8">
-      <div className="p-4 border-b border-bg-secondary/50">
-        <h2 className="text-xl font-bold text-transparent bg-clip-text bg-accent-gradient">{title}</h2>
+    <div className="bg-card-gradient rounded-lg shadow-md overflow-hidden mb-8 border border-white/5">
+      <div className="p-4 border-b border-bg-secondary/50 bg-black/10">
+        <h2 className="text-xl font-bold bg-clip-text text-transparent bg-accent-gradient">{title}</h2>
       </div>
       <div className="animate-fade-in">
         {children}
@@ -432,7 +432,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
         
         <SettingsCard title="About & Feedback">
             <FeedbackForm onFeedbackSubmit={onFeedbackSubmit}/>
-            <SettingsRow title="Legal" subtitle="Terms of Service & Privacy Policy" onClick={() => setActiveView('settings')}>
+            <SettingsRow title="Legal" subtitle="Terms of Service & Privacy Policy" onClick={() => setActiveView('legal')}>
                 <ChevronRightIcon className="w-6 h-6"/>
             </SettingsRow>
         </SettingsCard>

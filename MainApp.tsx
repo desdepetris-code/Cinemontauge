@@ -350,19 +350,19 @@ export const MainApp: React.FC<MainAppProps> = ({
 
 
   const handlePopState = useCallback((event: PopStateEvent) => {
-    if (allMediaConfig) { setAllMediaConfig(null); window.history.pushState({ app: 'sceneit' }, ''); return; }
+    if (allMediaConfig) { setAllMediaConfig(null); window.history.pushState({ app: 'cinemontauge' }, ''); return; }
     if (selectedShow || selectedPerson || selectedUserId) {
       setSelectedShow(null); setSelectedPerson(null); setSelectedUserId(null);
-      window.history.pushState({ app: 'sceneit' }, ''); return;
+      window.history.pushState({ app: 'cinemontauge' }, ''); return;
     }
     if (activeScreen !== 'home') {
-      setActiveScreen('home'); window.history.pushState({ app: 'sceneit' }, ''); return;
+      setActiveScreen('home'); window.history.pushState({ app: 'cinemontauge' }, ''); return;
     }
     window.history.back();
   }, [selectedShow, selectedPerson, selectedUserId, activeScreen, allMediaConfig]);
 
   useEffect(() => {
-    window.history.pushState({ app: 'sceneit' }, '');
+    window.history.pushState({ app: 'cinemontauge' }, '');
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [handlePopState]);
@@ -803,9 +803,9 @@ export const MainApp: React.FC<MainAppProps> = ({
                     onStartLiveWatch={handleStartLiveWatch}
                     onToggleFavoriteEpisode={handleToggleFavoriteEpisode}
                     onRateEpisode={handleRateEpisode}
+                    onToggleWeeklyFavorite={handleToggleWeeklyFavorite}
                     onSaveJournal={handleSaveJournal}
                     onAddWatchHistory={handleAddWatchHistory}
-                    onToggleWeeklyFavorite={handleToggleWeeklyFavorite}
                 />
             )}
             {activeScreen === 'search' && <SearchScreen {...allUserData} onSelectShow={handleSelectShow} onSelectPerson={setSelectedPerson} onSelectUser={setSelectedUserId} searchHistory={searchHistory} onUpdateSearchHistory={onUpdateSearchHistory} onDeleteSearchHistoryItem={(t) => setSearchHistory(prev => prev.filter(h => h.timestamp !== t))} onClearSearchHistory={() => setSearchHistory([])} query={''} onQueryChange={() => {}} onMarkShowAsWatched={handleMarkMovieAsWatched} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} onMarkPreviousEpisodesWatched={() => {}} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} genres={genres} userData={allUserData} currentUser={currentUser} onToggleLikeList={() => {}} timezone={timezone} showRatings={showRatings} preferences={preferences} />}

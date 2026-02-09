@@ -9,7 +9,7 @@ interface StoredUser {
 
 export const getAllUsers = (): StoredUser[] => {
     try {
-        const usersJson = localStorage.getItem('sceneit_users');
+        const usersJson = localStorage.getItem('cinemontauge_users');
         return usersJson ? JSON.parse(usersJson) : [];
     } catch (error) {
         console.error("Failed to parse users from localStorage", error);
@@ -32,7 +32,6 @@ export const searchUsers = (query: string, currentUserId: string | null): Public
                     parsedUrl = JSON.parse(profilePictureUrl);
                 } catch (e) {
                     console.warn(`Could not parse profile picture URL for user ${user.id}. Value:`, profilePictureUrl, e);
-                    // Fallback for potentially raw string values from older app versions or corruption
                     if (typeof profilePictureUrl === 'string' && (profilePictureUrl.startsWith('http') || profilePictureUrl.startsWith('data:'))) {
                         parsedUrl = profilePictureUrl;
                     }
@@ -60,7 +59,6 @@ export const searchPublicLists = (query: string, currentUserId: string | null): 
             if (listsJson) {
                 const lists: CustomList[] = JSON.parse(listsJson);
                 const matchingLists = lists
-                    // FIX: Changed 'list.isPublic' to 'list.visibility === 'public'' to align with CustomList type
                     .filter(list => list.visibility === 'public' && list.name.toLowerCase().includes(lowerCaseQuery))
                     .map(list => ({
                         ...list,

@@ -1,42 +1,51 @@
-
 import React from 'react';
 
 const PrivacyPolicy: React.FC = () => {
   return (
-    <div className="prose-styles">
-      <h1 className="text-3xl font-bold text-text-primary mb-4">Privacy Policy</h1>
-      <p className="text-text-secondary mb-4">Last updated: {new Date().toLocaleDateString()}</p>
+    <div className="space-y-8 text-text-primary/90 leading-relaxed overflow-y-auto max-h-full pr-4 custom-scrollbar">
+      <header className="mb-6">
+        <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">Privacy Policy</h1>
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Last updated: {new Date().toLocaleDateString()}</p>
+      </header>
 
-      <p className="text-text-secondary mb-4">Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use the SceneIt application ("the Service").</p>
+      <p className="text-sm font-medium">Your privacy is paramount. This policy details how CineMontauge manages your cinematic data and personal identifiers.</p>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">1. Information We Collect</h2>
-      <p className="text-text-secondary mb-4">We collect information to provide and improve our service. This includes:</p>
-      <ul>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">Account Information:</strong> If you create an account, we store the username, email, and password you provide. This information is stored locally within your browser's storage.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">Data You Provide:</strong> This includes journal entries, mood selections, custom list details, and any information submitted through feedback forms.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">Usage Data:</strong> We automatically collect data on your interactions with the app, such as which shows you track and your watch progress. This data is also stored locally on your device.</li>
-      </ul>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">1. Data Collection</h2>
+        <ul className="list-disc ml-6 space-y-3 text-sm opacity-80">
+          <li><strong className="text-white">Identity Log:</strong> We store your username, email address, and encrypted authentication tokens for Registry accounts.</li>
+          <li><strong className="text-white">Archive Metadata:</strong> Your watch history, progress, ratings, and custom list configurations are tracked to provide the core experience.</li>
+          <li><strong className="text-white">Personalized Assets:</strong> Any custom images, avatars, or backdrops you upload are stored securely in our Cloud Storage.</li>
+        </ul>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">2. How We Use Your Information</h2>
-      <p className="text-text-secondary mb-4">We use the information we collect to:</p>
-      <ul>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Provide, maintain, and improve the SceneIt app.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Personalize your experience, such as showing your watch progress and generating stats.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc">Allow you to back up and sync your data using third-party services you authorize.</li>
-      </ul>
-      
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">3. Data Storage and Security</h2>
-      <p className="text-text-secondary mb-4">All of your personal tracking data is stored <strong className="font-semibold text-text-primary">locally on your device's browser storage</strong>. It is not transmitted to our servers unless you explicitly choose to use a cloud sync feature.</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">2. Utilization of Data</h2>
+        <p className="text-sm">Data is used strictly to power the CineMontauge experience: visualizing your progress, calculating personalized stats, facilitating social interactions, and ensuring your library follows you across devices.</p>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">4. Data Sharing and Third-Party Services</h2>
-      <p className="text-text-secondary mb-4">We do not sell, trade, or rent your personal data to third parties. Data is only shared with third-party services when you explicitly authorize it for features like backup and import.</p>
-      <ul>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">Trakt.tv:</strong> We use this for optional data import. We do not share your SceneIt data with Trakt.</li>
-        <li className="text-text-secondary ml-6 mb-2 list-disc"><strong className="font-semibold text-text-primary">The Movie Database (TMDB):</strong> We use the TMDB API to fetch metadata. We do not send any of your personal data to TMDB.</li>
-      </ul>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">3. Storage & Infrastructure</h2>
+        <p className="text-sm mb-3">We utilize a multi-layered storage approach:</p>
+        <ul className="list-disc ml-6 space-y-3 text-sm opacity-80">
+          <li><strong className="text-white">Local Cache:</strong> Immediate storage for rapid UI performance.</li>
+          <li><strong className="text-white">Cloud Registry:</strong> For authenticated users, data is synced to our secure Supabase-powered infrastructure. This ensures data persistence even if local storage is cleared.</li>
+        </ul>
+      </section>
 
-      <h2 className="text-2xl font-bold text-text-primary mt-6 mb-3">5. Contact Us</h2>
-      <p className="text-text-secondary mb-4">If you have any questions about this Privacy Policy, please contact us at <a href="mailto:sceneit623@gmail.com" className="text-primary-accent underline">sceneit623@gmail.com</a>.</p>
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">4. Third-Party Data Exchange</h2>
+        <p className="text-sm">CineMontauge does not sell user data. We interface with the following strictly for metadata purposes:</p>
+        <ul className="list-disc ml-6 space-y-2 text-sm opacity-80">
+          <li><span className="text-white font-bold">TMDb:</span> For title metadata (No personal user data is ever shared).</li>
+          <li><span className="text-white font-bold">Trakt:</span> For optional, user-initiated history synchronization.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">5. Contact & Inquiries</h2>
+        <p className="text-sm">Privacy-related inquiries or data deletion requests can be submitted directly to our engineering team at <span className="text-primary-accent font-bold">sceneit623@gmail.com</span>.</p>
+      </section>
     </div>
   );
 };
