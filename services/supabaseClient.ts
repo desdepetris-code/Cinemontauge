@@ -41,7 +41,6 @@ export const fetchUserProfile = async (userId: string) => {
     return data;
 };
 
-/* // FIX: Added missing getUserAnalytics export to services/supabaseClient.ts to resolve import error in screens/StatsScreen.tsx */
 export const getUserAnalytics = async (userId: string) => {
     const { data, error } = await supabase
         .from('user_analytics')
@@ -50,6 +49,33 @@ export const getUserAnalytics = async (userId: string) => {
         .single();
     if (error && error.code !== 'PGRST116') throw error;
     return data;
+};
+
+/**
+ * LIBRARY & CLOUD SYNC
+ */
+
+export const syncLibraryItemToDb = async (userId: string, tmdbId: number, mediaType: string, status: string | null) => {
+    if (userId === 'guest') return;
+    
+    if (status === null) {
+        const { error } = await supabase
+            .from('library')
+            .delete()
+            .match({ user_id: userId, tmdb_id: tmdbId });
+        if (error) console.error("Cloud Registry Delete Error:", error);
+    } else {
+        const { error } = await supabase
+            .from('library')
+            .upsert({
+                user_id: userId,
+                tmdb_id: tmdbId,
+                media_type: mediaType,
+                status: status,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,tmdb_id' });
+        if (error) console.error("Cloud Registry Sync Error:", error);
+    }
 };
 
 /**
@@ -80,22 +106,6 @@ export const submitUserReport = async (report: { target_id: string, target_type:
         reporter_id: user?.id
     });
     if (error) throw error;
-};
-
-/**
- * PERSONALIZATION & AFFINITY
- */
-
-export const fetchUserAffinities = async (userId: string) => {
-    const { data, error } = await supabase.from('user_affinities').select('*').eq('user_id', userId).order('score', { ascending: false });
-    if (error) throw error;
-    return data;
-};
-
-export const fetchUserTags = async (userId: string) => {
-    const { data, error } = await supabase.from('global_tags').select('*, media_tags(*)').eq('user_id', userId);
-    if (error) throw error;
-    return data;
 };
 
 /**
@@ -134,7 +144,6 @@ export const fetchActiveAnnouncements = async () => {
     return data;
 };
 
-/* // FIX: Added missing uploadAdminReport export to services/supabaseClient.ts to resolve import error in screens/AirtimeManagement.tsx */
 export const uploadAdminReport = async (fileName: string, blob: Blob) => {
     const { error } = await supabase.storage
         .from('admin-reports')
@@ -143,7 +152,7 @@ export const uploadAdminReport = async (fileName: string, blob: Blob) => {
 };
 
 /**
- * LEGACY SYNC METHODS (RETAINED FOR COMPATIBILITY)
+ * ACTION SYNC METHODS
  */
 
 export const syncJournalEntry = async (userId: string, tmdbId: number, season: number, episode: number, entry: any) => {
@@ -166,7 +175,6 @@ export const syncJournalEntry = async (userId: string, tmdbId: number, season: n
         }, { onConflict: 'user_id,tmdb_id,season_number,episode_number' });
 };
 
-/* // FIX: Added missing syncRatingRpc export to services/supabaseClient.ts to resolve import error in MainApp.tsx */
 export const syncRatingRpc = async (tmdbId: number, mediaType: string, rating: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;

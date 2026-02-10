@@ -18,7 +18,6 @@ import GenericCarousel from '../components/GenericCarousel';
 import NewlyPopularEpisodes from '../components/NewlyPopularEpisodes';
 import { getEnrichedMediaFromBackend } from '../services/backendService';
 import Top10Carousel from '../components/Top10Carousel';
-// FIX: Added missing PlayCircleIcon to the imported icons list
 import { FilmIcon, TvIcon, TrophyIcon, SparklesIcon, MountainIcon, PlayCircleIcon } from '../components/Icons';
 import UpcomingPremieresCarousel from '../components/UpcomingPremieresCarousel';
 import UpcomingMoviesCarousel from '../components/UpcomingMoviesCarousel';
@@ -39,7 +38,7 @@ interface DashboardProps {
   liveWatchIsPaused: boolean;
   onLiveWatchTogglePause: () => void;
   onLiveWatchStop: () => void;
-  onMarkShowAsWatched: (item: TmdbMedia, date?: string) => void;
+  onMarkShowAsWatched: (mediaInfo: LiveWatchMediaInfo) => void;
   onToggleFavoriteShow: (item: TrackedItem) => void;
   favorites: TrackedItem[];
   pausedLiveSessions: Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>;
@@ -83,7 +82,7 @@ interface DiscoverContentProps extends Pick<DashboardProps, 'onSelectShow' | 'on
 
 const DiscoverContent: React.FC<DiscoverContentProps> = 
 ({ onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timezone, onShortcutNavigate, genres, reminders, onToggleReminder, onUpdateLists, preferences, timeFormat, showRatings, onToggleEpisode, onStartLiveWatch, onToggleFavoriteEpisode, onRateEpisode, onSaveJournal, onAddWatchHistory, pausedLiveSessions, onToggleWeeklyFavorite }) => {
-    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, completed: userData.completed, userData, timeFormat, showRatings };
+    const carouselProps = { onSelectShow, onOpenAddToListModal, onMarkShowAsWatched: (item: TmdbMedia) => onMarkShowAsWatched(item as any), onToggleFavoriteShow, favorites, completed: userData.completed, userData, timeFormat, showRatings };
 
     return (
         <div className="space-y-16">
@@ -99,6 +98,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onSelectShow={onSelectShow}
                 completed={userData.completed}
                 reminders={reminders}
+                /* // FIX: Changed handleToggleReminder to onToggleReminder to match destructured props */
                 onToggleReminder={onToggleReminder}
                 onUpdateLists={onUpdateLists}
                 onOpenAddToListModal={onOpenAddToListModal}
@@ -108,6 +108,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onSelectShow={onSelectShow}
                 completed={userData.completed}
                 reminders={reminders}
+                /* // FIX: Changed handleToggleReminder to onToggleReminder to match destructured props */
                 onToggleReminder={onToggleReminder}
                 onUpdateLists={onUpdateLists}
                 onOpenAddToListModal={onOpenAddToListModal}
@@ -133,6 +134,7 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onToggleEpisode={onToggleEpisode} 
                 onStartLiveWatch={onStartLiveWatch} 
                 preferences={preferences}
+                /* // FIX: Corrected handler names to match destructured props (handleToggleFavoriteEpisode -> onToggleFavoriteEpisode etc.) */
                 onToggleFavoriteEpisode={onToggleFavoriteEpisode}
                 onRateEpisode={onRateEpisode}
                 onSaveJournal={onSaveJournal}
@@ -181,7 +183,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   }, [isApiKeyMissing]);
   
   const carouselProps = useMemo(() => ({ 
-    onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, 
+    onSelectShow, onOpenAddToListModal, onMarkShowAsWatched: (item: TmdbMedia) => onMarkShowAsWatched(item as any), onToggleFavoriteShow, 
     favorites, completed: userData.completed, userData, timeFormat,
     showRatings
   }), [onSelectShow, onOpenAddToListModal, onMarkShowAsWatched, onToggleFavoriteShow, favorites, userData, timeFormat, showRatings]);
@@ -267,6 +269,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                                 }} 
                                 onStop={() => {}} 
                                 onDiscard={() => handleDiscardSession(session.mediaInfo.id)}
+                                onMarkWatched={() => onMarkShowAsWatched(session.mediaInfo)}
                                 isDashboardWidget={true} 
                             />
                         </div>

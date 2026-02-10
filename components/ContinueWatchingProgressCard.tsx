@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrackedItem, WatchProgress, TmdbMediaDetails, TmdbSeasonDetails, Episode, EpisodeTag, EpisodeProgress, UserData } from '../types';
 import { getMediaDetails, getSeasonDetails } from '../services/tmdbService';
@@ -346,7 +345,7 @@ const ContinueWatchingProgressCard: React.FC<ContinueWatchingProgressCardProps> 
                     {totalEpisodes > 0 && (
                         <div>
                             <div className="flex justify-between items-end mb-1.5">
-                                <span className="font-black text-text-primary uppercase tracking-widest text-[10px]">Registry Total</span>
+                                <span className="font-black text-text-primary uppercase tracking-widest text-[10px]">Total Episodes</span>
                                 <span className="text-[10px] font-black text-text-primary uppercase">{watchedEpisodes} / {totalEpisodes}</span>
                             </div>
                             <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden border border-white/5">

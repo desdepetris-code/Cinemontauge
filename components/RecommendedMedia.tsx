@@ -24,7 +24,7 @@ const RecommendedMedia: React.FC<RecommendedMediaProps> = ({ recommendations, on
                 className="flex items-center gap-2 px-6 py-2.5 bg-bg-secondary/40 hover:bg-bg-secondary/60 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-text-primary border border-white/5 transition-all shadow-lg active:scale-95"
             >
                 <ArrowPathIcon className="w-3.5 h-3.5 text-primary-accent" />
-                Refresh Registry Data
+                Refresh Recommendations
             </button>
         )}
       </div>
