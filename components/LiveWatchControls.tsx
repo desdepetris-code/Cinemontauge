@@ -41,7 +41,7 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
                     aria-label="Stop player and save progress"
                     title="Stop & Save"
                 >
-                    <XMarkIcon className="w-5 h-5" />
+                    <StopIcon className="w-4 h-4" />
                 </button>
             </div>
         )}
@@ -84,19 +84,26 @@ const LiveWatchControls: React.FC<LiveWatchControlsProps> = (props) => {
         </div>
 
         <div className="flex justify-center items-center space-x-4">
-            {!isDashboardWidget && onDiscard && (
-                <button onClick={onDiscard} className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-all" title="Discard Session">
+            {onDiscard && (
+                <button onClick={onDiscard} className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-all shadow-md border border-red-500/10" title="Discard Session">
                     <TrashIcon className="w-6 h-6" />
                 </button>
             )}
+            
+            <button onClick={onStop} className="p-3 bg-amber-500/10 text-amber-500 rounded-full hover:bg-amber-500/20 transition-all shadow-md border border-amber-500/10" title="Stop & Save">
+                <StopIcon className="w-6 h-6"/>
+            </button>
+            
+            <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-on-accent rounded-full transition-all active:scale-90 shadow-2xl hover:scale-105">
+                {isPaused ? <PlayIcon className="w-8 h-8"/> : <PauseIcon className="w-8 h-8"/>}
+            </button>
+            
             {onMarkWatched && 
-                <button onClick={onMarkWatched} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all border border-white/5 shadow-md" title="Mark as Watched">
+                <button onClick={onMarkWatched} className="p-3 bg-green-500/10 text-green-500 rounded-full hover:bg-green-500/20 transition-all shadow-md border border-green-500/10" title="Mark as Watched">
                     <CheckCircleIcon className="w-6 h-6"/>
                 </button>
             }
-             <button onClick={onTogglePause} className="p-5 bg-accent-gradient text-on-accent rounded-full transition-all active:scale-90 shadow-2xl hover:scale-105">
-                {isPaused ? <PlayIcon className="w-8 h-8"/> : <PauseIcon className="w-8 h-8"/>}
-            </button>
+            
             {onAddToList &&
                  <button onClick={onAddToList} className="p-3 bg-bg-secondary text-text-primary rounded-full hover:brightness-125 transition-all border border-white/5 shadow-md" title="Add to List">
                     <PlusIcon className="w-6 h-6"/>

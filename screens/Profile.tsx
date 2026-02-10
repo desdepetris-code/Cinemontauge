@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserData, HistoryItem, TrackedItem, WatchStatus, FavoriteEpisodes, ProfileTab, NotificationSettings, CustomList, WatchProgress, EpisodeRatings, UserRatings, Follows, PrivacySettings, AppNotification, ProfileTheme, SeasonRatings, LiveWatchMediaInfo, ShortcutSettings, NavSettings, AppPreferences, DeletedHistoryItem, DeletedNote, PendingRecommendationCheck, WeeklyPick } from '../types';
-import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon, PhotoIcon, BadgeIcon } from '../components/Icons';
+import { XMarkIcon, CogIcon, CloudArrowUpIcon, BellIcon, ChevronDownIcon, PushPinIcon, WavesIcon, ArrowTrendingUpIcon, CurlyLoopIcon, HourglassIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, UserGroupIcon, MagnifyingGlassIcon, PencilSquareIcon, ArrowPathIcon, PhotoIcon, BadgeIcon, PlayCircleIcon } from '../components/Icons';
 import ImportsScreen from './ImportsScreen';
 import AchievementsScreen from './AchievementsScreen';
 import { Settings } from './Settings';
@@ -23,6 +23,7 @@ import ProgressScreen from './ProgressScreen';
 import UpdatesScreen from './UpdatesScreen';
 import OngoingShowsScreen from './OngoingShowsScreen';
 import AirtimeManagement from './AirtimeManagement';
+import LiveWatchTab from './LiveWatchTab';
 import { PLACEHOLDER_PROFILE } from '../constants';
 import Carousel from '../components/Carousel';
 import { supabase } from '../services/supabaseClient';
@@ -166,6 +167,7 @@ interface ProfileProps {
   onUpdateProfile: (details: { username: string; email: string; }) => Promise<string | null>;
   currentUser: User | null;
   onAuthClick: () => void;
+  onSelectUser: (userId: string) => void;
   onForgotPasswordRequest: (email: string) => Promise<string | null>;
   onForgotPasswordReset: (data: { code: string; newPassword: string; }) => Promise<string | null>;
   profilePictureUrl: string | null;
@@ -174,7 +176,6 @@ interface ProfileProps {
   follows: Follows;
   privacySettings: PrivacySettings;
   setPrivacySettings: React.Dispatch<React.SetStateAction<PrivacySettings>>;
-  onSelectUser: (userId: string) => void;
   timezone: string;
   setTimezone: (timezone: string) => void;
   onRemoveDuplicateHistory: () => void;
@@ -212,6 +213,13 @@ interface ProfileProps {
   onPermanentDeleteNote: (noteId: string) => void;
   onRestoreNote: (note: DeletedNote) => void;
   onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
+  onLiveWatchStop: () => void;
+  onMarkShowAsWatched: (mediaInfo: LiveWatchMediaInfo) => void;
+  setPausedLiveSessions: React.Dispatch<React.SetStateAction<Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }>>>;
+  liveWatchMedia: LiveWatchMediaInfo | null;
+  liveWatchElapsedSeconds: number;
+  liveWatchIsPaused: boolean;
+  onLiveWatchTogglePause: () => void;
 }
 
 const Profile: React.FC<ProfileProps> = (props) => {
@@ -228,7 +236,8 @@ const Profile: React.FC<ProfileProps> = (props) => {
   const tabs: { id: ProfileTab; label: string; icon: any }[] = [
     { id: 'overview', label: 'Overview', icon: PushPinIcon },
     { id: 'progress', label: 'Progress', icon: ArrowTrendingUpIcon },
-    { id: 'history', label: 'History', icon: WavesIcon },
+    { id: 'history', label: 'Overall History', icon: WavesIcon },
+    { id: 'liveWatch', label: 'Live Hub', icon: PlayCircleIcon },
     { id: 'library', label: 'Library', icon: CabinetIcon },
     { id: 'lists', label: 'Lists', icon: TagIcon },
     { id: 'activity', label: 'Activity', icon: UserGroupIcon },
@@ -262,6 +271,17 @@ const Profile: React.FC<ProfileProps> = (props) => {
         case 'progress': return <ProgressScreen {...props} />;
         case 'history': return <HistoryScreen {...props} />;
         case 'library': return <LibraryScreen {...props} initialStatus={props.initialLibraryStatus} />;
+        case 'liveWatch': return <LiveWatchTab 
+            liveWatchMedia={props.liveWatchMedia} 
+            liveWatchElapsedSeconds={props.liveWatchElapsedSeconds}
+            liveWatchIsPaused={props.liveWatchIsPaused}
+            onLiveWatchTogglePause={props.onLiveWatchTogglePause}
+            onLiveWatchStop={props.onLiveWatchStop}
+            onMarkShowAsWatched={props.onMarkShowAsWatched}
+            pausedLiveSessions={props.pausedLiveSessions}
+            setPausedLiveSessions={props.setPausedLiveSessions}
+            onStartLiveWatch={props.onStartLiveWatch}
+        />;
         case 'lists': return <MyListsScreen {...props} />;
         case 'activity': return <FriendsActivity currentUser={currentUser} follows={props.follows} onSelectShow={onSelectShow} onSelectUser={props.onSelectUser} />;
         case 'stats': return <StatsScreen {...props} />;

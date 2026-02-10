@@ -188,7 +188,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                 </div>
 
                 {showFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-8 bg-bg-secondary/20 rounded-[2.5rem] border border-white/5 animate-fade-in shadow-inner">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-8 bg-bg-secondary/20 rounded-[2.5rem] border border-white/5 animate-fade-in shadow-inner space-y-8">
                         <div className="space-y-2">
                             <label className="text-[9px] font-black uppercase tracking-widest text-primary-accent ml-1">Media Archive</label>
                             <div className="relative">
@@ -235,7 +235,7 @@ const ListDetailView: React.FC<ListDetailViewProps> = ({ list, onBack, onSelectS
                     <ListGrid items={filteredItems} onSelect={onSelectShow} listId={list.id} onRemoveItem={onRemoveItem} />
                 ) : (
                     <div className="py-40 text-center bg-bg-secondary/10 rounded-[3rem] border-4 border-dashed border-white/5">
-                        <p className="text-xl font-black text-text-secondary/30 uppercase tracking-[0.2em]">No registry matches found in this sector</p>
+                        <p className="text-xl font-black text-text-secondary/30 uppercase tracking-[0.2em]">No items in this list</p>
                     </div>
                 )}
             </div>

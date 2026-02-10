@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LiveWatchMediaInfo, TrackedItem, TmdbMedia } from '../types';
 import LiveWatchControls from './LiveWatchControls';
-import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon, TrashIcon, InformationCircleIcon, ChevronDownIcon } from './Icons';
+import { PlayIcon, PauseIcon, XMarkIcon, PlusIcon, CheckCircleIcon, TrashIcon, InformationCircleIcon, ChevronDownIcon, StopIcon } from './Icons';
 import { getImageUrl } from '../utils/imageUtils';
 import { formatTime } from '../utils/formatUtils';
 
@@ -13,6 +13,7 @@ interface DraggableState {
 interface LiveWatchTrackerProps {
   isOpen: boolean;
   onClose: () => void;
+  onStop: () => void;
   onDiscard: () => void;
   mediaInfo: LiveWatchMediaInfo | null;
   elapsedSeconds: number;
@@ -25,7 +26,7 @@ interface LiveWatchTrackerProps {
 }
 
 const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
-  const { isOpen, onClose, onDiscard, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
+  const { isOpen, onClose, onStop, onDiscard, mediaInfo, elapsedSeconds, isPaused, onTogglePause, isMinimized, onToggleMinimize, onMarkWatched, onAddToList } = props;
 
   // Initialize position more safely for mobile
   const [position, setPosition] = useState({ 
@@ -106,8 +107,8 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                         <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Minimize</strong> Closes the view and moves the player to a floating hub. Session stays active.</p>
                     </div>
                     <div className="flex gap-4">
-                        <XMarkIcon className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                        <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Close (X)</strong> Removes the player from screen but DOES NOT terminate the session. Access it via the dashboard.</p>
+                        <StopIcon className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                        <p className="text-xs text-text-secondary font-medium"><strong className="text-white uppercase block mb-1">Stop</strong> Terminate the active viewing state and archive progress to your hub.</p>
                     </div>
                     <div className="flex gap-4">
                         <TrashIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -140,8 +141,8 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                     <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-1.5 hover:bg-white/10 rounded-lg">
                         {isPaused ? <PlayIcon className="w-4 h-4 text-white" /> : <PauseIcon className="w-4 h-4 text-white" />}
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onMarkWatched(mediaInfo); }} className="p-1.5 hover:bg-white/10 rounded-lg text-green-400">
-                        <CheckCircleIcon className="w-4 h-4" />
+                    <button onClick={(e) => { e.stopPropagation(); onStop(); }} className="p-1.5 hover:bg-white/10 rounded-lg text-amber-400">
+                        <StopIcon className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -196,18 +197,28 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                         <TrashIcon className="w-6 h-6" />
                     </button>
 
-                    <button 
-                        onClick={onTogglePause}
-                        className={`flex-grow py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
-                            isPaused ? 'bg-accent-gradient text-on-accent' : 'bg-white text-black'
-                        }`}
-                    >
-                        {isPaused ? (
-                            <><PlayIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Resume</>
-                        ) : (
-                            <><PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Pause</>
-                        )}
-                    </button>
+                    <div className="flex-grow flex gap-2">
+                        <button 
+                            onClick={onTogglePause}
+                            className={`flex-grow py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all ${
+                                isPaused ? 'bg-accent-gradient text-on-accent' : 'bg-white text-black'
+                            }`}
+                        >
+                            {isPaused ? (
+                                <><PlayIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Resume</>
+                            ) : (
+                                <><PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Pause</>
+                            )}
+                        </button>
+
+                        <button 
+                            onClick={onStop}
+                            className="p-4 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-600 hover:text-white transition-all border border-amber-500/20 shadow-lg flex-shrink-0"
+                            title="Stop & Save"
+                        >
+                            <StopIcon className="w-6 h-6" />
+                        </button>
+                    </div>
 
                     <button 
                         onClick={() => onMarkWatched(mediaInfo)}

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TmdbImage } from '../types';
 import { TMDB_IMAGE_BASE_URL } from '../constants';
 import { SparklesIcon, PlusIcon, CloudArrowUpIcon, XMarkIcon, ArrowPathIcon } from './Icons';
-import { uploadCustomMedia } from '../services/supabaseClient';
 
 interface ImageSelectorModalProps {
   isOpen: boolean;
@@ -12,6 +11,62 @@ interface ImageSelectorModalProps {
   onSelect: (type: 'poster' | 'backdrop', path: string | File) => void;
   initialTab?: 'posters' | 'backdrops';
 }
+
+/**
+ * Reshapes an image to a target aspect ratio using a canvas.
+ * Center-crops the image to fit.
+ */
+const reshapeImage = (file: File, targetRatio: number): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('Canvas context not available'));
+
+            let sourceWidth = img.width;
+            let sourceHeight = img.height;
+            const currentRatio = sourceWidth / sourceHeight;
+
+            let drawWidth = sourceWidth;
+            let drawHeight = sourceHeight;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (currentRatio > targetRatio) {
+                // Image is wider than target
+                drawWidth = sourceHeight * targetRatio;
+                offsetX = (sourceWidth - drawWidth) / 2;
+            } else {
+                // Image is taller than target
+                drawHeight = sourceWidth / targetRatio;
+                offsetY = (sourceHeight - drawHeight) / 2;
+            }
+
+            // Set high-res output dimensions
+            const outputWidth = targetRatio > 1 ? 1920 : 1000;
+            const outputHeight = outputWidth / targetRatio;
+            
+            canvas.width = outputWidth;
+            canvas.height = outputHeight;
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight, 0, 0, outputWidth, outputHeight);
+
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    const reshapedFile = new File([blob], file.name, { type: 'image/jpeg' });
+                    resolve(reshapedFile);
+                } else {
+                    reject(new Error('Failed to create blob'));
+                }
+            }, 'image/jpeg', 0.9);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = URL.createObjectURL(file);
+    });
+};
 
 const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose, posters, backdrops, onSelect, initialTab }) => {
   const [activeTab, setActiveTab] = useState<'posters' | 'backdrops'>(initialTab || 'posters');
@@ -49,9 +104,17 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
       }
 
       setIsUploading(true);
-      // Pass the file directly to the parent handler which now supports File objects via Supabase upload
-      handleSelect(activeTab === 'posters' ? 'poster' : 'backdrop', file);
-      setIsUploading(false);
+      try {
+          // Target Ratio: Poster (2:3 = 0.66), Backdrop (16:9 = 1.77)
+          const ratio = activeTab === 'posters' ? 2/3 : 16/9;
+          const reshapedFile = await reshapeImage(file, ratio);
+          handleSelect(activeTab === 'posters' ? 'poster' : 'backdrop', reshapedFile);
+      } catch (err) {
+          console.error("Image reshaping failed:", err);
+          alert("Could not process image dimensions.");
+      } finally {
+          setIsUploading(false);
+      }
   };
 
   const imagesToShow = activeTab === 'posters' ? posters : backdrops;
@@ -116,7 +179,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
                     ) : (
                         <CloudArrowUpIcon className="w-5 h-5 text-primary-accent" />
                     )}
-                    <span>{isUploading ? 'Syncing...' : 'Upload Asset to Cloud'}</span>
+                    <span>{isUploading ? 'Reshaping & Syncing...' : 'Upload & Reshape Image'}</span>
                 </button>
                 <input 
                     ref={fileInputRef}
@@ -156,7 +219,7 @@ const ImageSelectorModal: React.FC<ImageSelectorModalProps> = ({ isOpen, onClose
         </div>
         
         <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5 flex-shrink-0">
-            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40 max-w-sm">Assets are now stored securely in the SceneIt Cloud Registry. LocalStorage is only used for temporary caching.</p>
+            <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest opacity-40 max-w-sm">Images are automatically center-cropped to the correct aspect ratio ({activeTab === 'posters' ? '2:3' : '16:9'}) and stored securely in the Cloud Registry.</p>
             <button
                 onClick={onClose}
                 className="px-10 py-3 rounded-full text-text-secondary font-black uppercase tracking-widest text-xs bg-bg-secondary hover:text-text-primary hover:bg-bg-secondary/80 transition-all border border-white/5"

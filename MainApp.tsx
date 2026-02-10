@@ -6,7 +6,7 @@ import { confirmationService } from './services/confirmationService';
 import { supabase, uploadCustomMedia, syncJournalEntry, syncRatingRpc, deleteCustomMedia, syncLibraryItemToDb } from './services/supabaseClient';
 import { UserData, WatchProgress, HistoryItem, TrackedItem, UserRatings, 
   EpisodeRatings, SeasonRatings, CustomList, AppNotification, FavoriteEpisodes, 
-  LiveWatchMediaInfo, SearchHistoryItem, Comment, Note, ProfileTab, 
+  LiveWatchMediaInfo, LiveWatchSession, SearchHistoryItem, Comment, Note, ProfileTab, 
   WatchStatus, WeeklyPick, DeletedHistoryItem, CustomImagePaths, Reminder, 
   NotificationSettings, ShortcutSettings, NavSettings, AppPreferences, 
   PrivacySettings, ProfileTheme, TmdbMedia, Follows, CustomListItem, DeletedNote, EpisodeProgress, CommentVisibility,
@@ -29,6 +29,7 @@ import ConfirmationContainer from './components/ConfirmationContainer';
 import AnimationContainer from './components/AnimationContainer';
 import LiveWatchTracker from './components/LiveWatchTracker';
 import NominatePicksModal from './components/NominatePicksModal';
+import LiveWatchChoiceModal from './components/LiveWatchChoiceModal';
 import { calculateAutoStatus, calculateMovieAutoStatus } from './utils/libraryLogic';
 import BackgroundParticleEffects from './components/BackgroundParticleEffects';
 import { getAllUsers } from './utils/userUtils';
@@ -135,7 +136,7 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [timeFormat, setTimeFormat] = useLocalStorage<'12h' | '24h'>(`timeFormat_${userId}`, '12h');
   const [pin, setPin] = useLocalStorage<string | null>(`pin_${userId}`, null);
 
-  const [pausedLiveSessions, setPausedLiveSessions] = useLocalStorage<Record<number, { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string; startTime?: string; pauseCount?: number }>>(`paused_live_sessions_${userId}`, {});
+  const [pausedLiveSessions, setPausedLiveSessions] = useLocalStorage<Record<string, LiveWatchSession>>(`paused_live_sessions_${userId}`, {});
   const [timezone, setTimezone] = useLocalStorage<string>(`timezone_${userId}`, 'America/New_York');
   const [userXp, setUserXp] = useLocalStorage<number>(`userXp_${userId}`, 0);
   const [showRatings, setShowRatings] = useLocalStorage<boolean>(`showRatings_${userId}`, true);
@@ -169,6 +170,17 @@ export const MainApp: React.FC<MainAppProps> = ({
   const [isWelcomeDismissed, setIsWelcomeDismissed] = useState(!!localStorage.getItem('welcome_dismissed'));
 
   const [allMediaConfig, setAllMediaConfig] = useState<any>(null);
+
+  // New State for Live Watch Multi-Session Choice
+  const [liveWatchChoiceState, setLiveWatchChoiceState] = useState<{ 
+      isOpen: boolean; 
+      sessions: LiveWatchSession[]; 
+      mediaInfo: LiveWatchMediaInfo | null 
+  }>({
+      isOpen: false,
+      sessions: [],
+      mediaInfo: null
+  });
 
   const levelInfo = useMemo(() => calculateLevelInfo(userXp), [userXp]);
   const allUsers = useMemo(() => getAllUsers(), []);
@@ -280,13 +292,16 @@ export const MainApp: React.FC<MainAppProps> = ({
       const prefix = isLive ? 'live-watch-movie-' : 'movie-';
       const logItem: HistoryItem = { 
         ...showInfo, logId: `${prefix}${item.id}-${Date.now()}`, 
-        timestamp, addedAt: timestamp 
+        timestamp, addedAt: timestamp,
+        startTime: isLive ? (liveWatchStartTime || undefined) : undefined,
+        endTime: isLive ? timestamp : undefined,
+        pauseCount: isLive ? (liveWatchPauseCount || undefined) : undefined
       };
       setHistory(prev => [logItem, ...prev]);
       setUserXp(prev => prev + XP_CONFIG.movie);
       // Fixed stale closure by using local copy if needed, but here we trigger a sync
       setTimeout(() => syncLibraryItem(item.id, 'movie'), 50);
-  }, [setHistory, setUserXp, syncLibraryItem]);
+  }, [setHistory, setUserXp, syncLibraryItem, liveWatchStartTime, liveWatchPauseCount]);
 
   const handleToggleEpisode = useCallback(async (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string, episodeStillPath?: string | null, seasonPosterPath?: string | null, isLive: boolean = false) => {
     const newStatus = currentStatus === 2 ? 0 : 2;
@@ -306,14 +321,14 @@ export const MainApp: React.FC<MainAppProps> = ({
         const historyTitle = showInfo.title || (showInfo as any).name || 'Untitled';
         const prefix = isLive ? 'live-watch-tv-' : 'tv-';
         const logIdSuffix = Date.now();
-        const logItem = {
+        const logItem: HistoryItem = {
             ...showInfo, 
             title: historyTitle,
             logId: `${prefix}${showId}-${season}-${episode}-${logIdSuffix}`, 
             timestamp: endTime,
             seasonNumber: season, episodeNumber: episode, episodeTitle: episodeName,
-            episodeStillPath, seasonPosterPath, startTime: liveWatchStartTime || undefined,
-            endTime: endTime, pauseCount: liveWatchPauseCount || undefined
+            episodeStillPath, seasonPosterPath, startTime: isLive ? (liveWatchStartTime || undefined) : undefined,
+            endTime: isLive ? endTime : undefined, pauseCount: isLive ? (liveWatchPauseCount || undefined) : undefined
         };
         setHistory(prev => [logItem, ...prev]);
         setUserXp(prev => prev + XP_CONFIG.episode);
@@ -346,37 +361,82 @@ export const MainApp: React.FC<MainAppProps> = ({
     setLiveWatchElapsedSeconds(0);
     setIsLiveWatchOpen(false);
     
-    setPausedLiveSessions(prev => {
-        const next = { ...prev };
-        delete next[mediaInfo.id];
-        return next;
-    });
+    if (mediaInfo.sessionId) {
+        setPausedLiveSessions(prev => {
+            const next = { ...prev };
+            delete next[mediaInfo.sessionId!];
+            return next;
+        });
+    }
 
     confirmationService.show(`"${mediaInfo.title}" archived as Live Watch!`);
   }, [handleMarkMovieAsWatched, handleToggleEpisode, setPausedLiveSessions]);
 
-  const handleStartLiveWatch = useCallback((mediaInfo: LiveWatchMediaInfo) => {
-      const paused = pausedLiveSessions[mediaInfo.id];
-      if (paused) {
-          setLiveWatchMedia(paused.mediaInfo);
-          setLiveWatchElapsedSeconds(paused.elapsedSeconds);
-          setLiveWatchStartTime(paused.startTime || new Date().toISOString());
-          setLiveWatchPauseCount(paused.pauseCount || 0);
+  const initiateLiveSession = useCallback((mediaInfo: LiveWatchMediaInfo, existingSession?: LiveWatchSession) => {
+      // 1. If there's an active session running, move it to paused registry first
+      if (liveWatchMedia) {
+          const currentSid = liveWatchMedia.sessionId || `${liveWatchMedia.id}-${Date.now()}`;
+          setPausedLiveSessions(prev => ({
+              ...prev,
+              [currentSid]: {
+                  sessionId: currentSid,
+                  mediaInfo: liveWatchMedia,
+                  elapsedSeconds: liveWatchElapsedSeconds,
+                  pausedAt: new Date().toISOString(),
+                  startTime: liveWatchStartTime || new Date().toISOString(),
+                  pauseCount: liveWatchPauseCount
+              }
+          }));
+      }
+
+      // 2. Setup the new/resumed session
+      if (existingSession) {
+          setLiveWatchMedia(existingSession.mediaInfo);
+          setLiveWatchElapsedSeconds(existingSession.elapsedSeconds);
+          setLiveWatchStartTime(existingSession.startTime);
+          setLiveWatchPauseCount(existingSession.pauseCount);
           setPausedLiveSessions(prev => {
               const next = { ...prev };
-              delete next[mediaInfo.id];
+              delete next[existingSession.sessionId];
               return next;
           });
       } else {
-          setLiveWatchMedia(mediaInfo);
+          const newSid = `${mediaInfo.id}-${Date.now()}`;
+          setLiveWatchMedia({ ...mediaInfo, sessionId: newSid });
           setLiveWatchElapsedSeconds(0);
           setLiveWatchStartTime(new Date().toISOString());
           setLiveWatchPauseCount(0);
       }
+
       setLiveWatchIsPaused(false);
       setIsLiveWatchOpen(true);
       setIsLiveWatchMinimized(false);
-  }, [pausedLiveSessions, setPausedLiveSessions]);
+      setLiveWatchChoiceState({ isOpen: false, sessions: [], mediaInfo: null });
+  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchStartTime, liveWatchPauseCount, setPausedLiveSessions]);
+
+  const handleStartLiveWatch = useCallback((mediaInfo: LiveWatchMediaInfo) => {
+      // Rule: Find all existing sessions for this TMDB ID
+      const sessions = Object.values(pausedLiveSessions).filter(s => s.mediaInfo.id === mediaInfo.id);
+      
+      // If we are currently watching this specific session, just open it
+      if (liveWatchMedia && liveWatchMedia.id === mediaInfo.id && (!mediaInfo.sessionId || liveWatchMedia.sessionId === mediaInfo.sessionId)) {
+          setIsLiveWatchOpen(true);
+          setIsLiveWatchMinimized(false);
+          return;
+      }
+
+      // Choice logic
+      if (sessions.length > 0 && !mediaInfo.sessionId) {
+          setLiveWatchChoiceState({ isOpen: true, sessions, mediaInfo });
+      } else if (mediaInfo.sessionId) {
+          // Resume specific session (called from Profile or Choice modal)
+          const target = pausedLiveSessions[mediaInfo.sessionId];
+          initiateLiveSession(mediaInfo, target);
+      } else {
+          // Start Fresh
+          initiateLiveSession(mediaInfo);
+      }
+  }, [pausedLiveSessions, liveWatchMedia, initiateLiveSession]);
 
   const handleLiveWatchTogglePause = useCallback(() => {
       setLiveWatchIsPaused(prev => {
@@ -385,6 +445,27 @@ export const MainApp: React.FC<MainAppProps> = ({
       });
   }, []);
 
+  const handleLiveWatchStop = useCallback(() => {
+    if (liveWatchMedia) {
+        const sid = liveWatchMedia.sessionId || `${liveWatchMedia.id}-${Date.now()}`;
+        setPausedLiveSessions(prev => ({
+            ...prev,
+            [sid]: {
+                sessionId: sid,
+                mediaInfo: liveWatchMedia,
+                elapsedSeconds: liveWatchElapsedSeconds,
+                pausedAt: new Date().toISOString(),
+                startTime: liveWatchStartTime || new Date().toISOString(),
+                pauseCount: liveWatchPauseCount
+            }
+        }));
+        setLiveWatchMedia(null);
+        setLiveWatchElapsedSeconds(0);
+        setIsLiveWatchOpen(false);
+        confirmationService.show(`"${liveWatchMedia.title}" registry session paused.`);
+    }
+  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchStartTime, liveWatchPauseCount, setPausedLiveSessions]);
+
   const handleLiveWatchDelete = useCallback(() => {
       if (liveWatchMedia && window.confirm("Discard this active live session?")) {
           setLiveWatchMedia(null);
@@ -392,7 +473,6 @@ export const MainApp: React.FC<MainAppProps> = ({
       }
   }, [liveWatchMedia]);
 
-  /* // FIX: Implemented missing handler functions to resolve numerous "Cannot find name" errors. */
   const handleSelectShow = useCallback((id: number, media_type: 'tv' | 'movie') => {
     setSelectedShow({ id, media_type });
   }, []);
@@ -484,10 +564,85 @@ export const MainApp: React.FC<MainAppProps> = ({
   }, [setSearchHistory]);
 
   const handleDeleteHistoryItem = useCallback((item: HistoryItem) => {
-    setHistory(prev => prev.filter(h => h.logId !== item.logId));
+    // 1. Remove from history
+    const nextHistory = history.filter(h => h.logId !== item.logId);
+    setHistory(nextHistory);
     setDeletedHistory(prev => [{ ...item, deletedAt: new Date().toISOString() }, ...prev]);
+
+    // 2. Clear Registry
+    if (item.logId.startsWith('live-')) {
+        // Find session in registry if possible
+        const sid = Object.keys(pausedLiveSessions).find(k => k.startsWith(`${item.id}-`));
+        if (sid) {
+            setPausedLiveSessions(prev => {
+                const next = { ...prev };
+                delete next[sid];
+                return next;
+            });
+        }
+        if (liveWatchMedia?.id === item.id) {
+            setLiveWatchMedia(null);
+            setIsLiveWatchOpen(false);
+        }
+    }
+
+    // 3. Re-verify progress status
+    let nextProgress: WatchProgress | undefined;
+    setWatchProgress(prev => {
+        const next = { ...prev };
+        if (item.media_type === 'tv' && item.seasonNumber !== undefined && item.episodeNumber !== undefined) {
+            // Check if any OTHER logs exist for this specific episode
+            const othersExist = nextHistory.some(h => 
+                h.id === item.id && 
+                h.seasonNumber === item.seasonNumber && 
+                h.episodeNumber === item.episodeNumber
+            );
+            if (!othersExist) {
+                if (next[item.id]?.[item.seasonNumber]?.[item.episodeNumber]) {
+                    next[item.id][item.seasonNumber][item.episodeNumber].status = 0;
+                }
+            }
+        }
+        nextProgress = next;
+        return next;
+    });
+
+    // 4. Trigger Library Sync to correct status (reverting if totalWatched reaches zero)
+    setTimeout(() => syncLibraryItem(item.id, item.media_type as 'tv' | 'movie', nextProgress), 50);
+    
     confirmationService.show("Log moved to trash.");
-  }, [setHistory, setDeletedHistory]);
+  }, [history, setHistory, setDeletedHistory, setWatchProgress, syncLibraryItem, pausedLiveSessions, setPausedLiveSessions, liveWatchMedia, setIsLiveWatchOpen, setLiveWatchMedia]);
+
+  const handleClearMediaHistory = useCallback((mediaId: number, mediaType: 'tv' | 'movie') => {
+      // Clear all logs for this ID
+      const itemsToMove = history.filter(h => h.id === mediaId);
+      setHistory(prev => prev.filter(h => h.id !== mediaId));
+      setDeletedHistory(prev => [...itemsToMove.map(i => ({ ...i, deletedAt: new Date().toISOString() })), ...prev]);
+
+      // Reset progress
+      setWatchProgress(prev => {
+          const next = { ...prev };
+          delete next[mediaId];
+          return next;
+      });
+
+      // Clear Live Session(s)
+      setPausedLiveSessions(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(k => {
+              if (next[k].mediaInfo.id === mediaId) delete next[k];
+          });
+          return next;
+      });
+      if (liveWatchMedia?.id === mediaId) {
+          setLiveWatchMedia(null);
+          setIsLiveWatchOpen(false);
+      }
+
+      // Sync status
+      setTimeout(() => syncLibraryItem(mediaId, mediaType), 50);
+      confirmationService.show("Registry history purged for this title.");
+  }, [history, setHistory, setDeletedHistory, setWatchProgress, syncLibraryItem, setPausedLiveSessions, liveWatchMedia, setIsLiveWatchOpen, setLiveWatchMedia]);
 
   const handleSetCustomImage = useCallback(async (mediaId: number, type: 'poster' | 'backdrop', path: string | File) => {
     let finalPath = '';
@@ -563,9 +718,65 @@ export const MainApp: React.FC<MainAppProps> = ({
     confirmationService.show(rating > 0 ? `Rated ${rating}/10` : "Rating removed");
   }, [currentUser, setRatings]);
 
+  const handleMarkAllWatched = useCallback(async (showId: number, showInfo: TrackedItem) => {
+      try {
+          const details = await getMediaDetails(showId, 'tv');
+          if (!details.seasons) return;
+
+          const newProgress: WatchProgress = { ...watchProgress };
+          if (!newProgress[showId]) newProgress[showId] = {};
+
+          const historyEntries: HistoryItem[] = [];
+          const now = new Date().toISOString();
+
+          for (const season of details.seasons) {
+              if (season.season_number === 0) continue;
+              const sd = await getSeasonDetails(showId, season.season_number);
+              if (!newProgress[showId][season.season_number]) newProgress[showId][season.season_number] = {};
+              
+              sd.episodes.forEach(ep => {
+                  if (newProgress[showId][season.season_number][ep.episode_number]?.status !== 2) {
+                      newProgress[showId][season.season_number][ep.episode_number] = { ...newProgress[showId][season.season_number][ep.episode_number], status: 2 };
+                      historyEntries.push({
+                          ...showInfo,
+                          logId: `tv-${showId}-${season.season_number}-${ep.episode_number}-${Date.now()}`,
+                          timestamp: now,
+                          seasonNumber: season.season_number,
+                          episodeNumber: ep.episode_number,
+                          episodeTitle: ep.name
+                      });
+                  }
+              });
+          }
+
+          setWatchProgress(newProgress);
+          setHistory(prev => [...historyEntries, ...prev]);
+          setUserXp(prev => prev + (historyEntries.length * XP_CONFIG.episode));
+          syncLibraryItem(showId, 'tv', newProgress, true);
+          confirmationService.show(`Full registry sequence complete for ${showInfo.title}`);
+      } catch (e) {
+          console.error(e);
+          confirmationService.show("Registry alignment failed.");
+      }
+  }, [watchProgress, setWatchProgress, setHistory, setUserXp, syncLibraryItem]);
+
+  const handleUnmarkAllWatched = useCallback(async (showId: number) => {
+      const newProgress = { ...watchProgress };
+      delete newProgress[showId];
+      setWatchProgress(newProgress);
+      // Deep Purge: Erase all overall and detail page history logs for this show
+      setHistory(prev => prev.filter(h => h.id !== showId));
+      // Revert: Trigger sync to return the show to its original library status (zero watched episodes)
+      setTimeout(() => syncLibraryItem(showId, 'tv', newProgress, true), 10);
+      confirmationService.show("Registry logs cleared for this title.");
+  }, [watchProgress, setWatchProgress, setHistory, syncLibraryItem]);
+
   const handleUnmarkMovieWatched = useCallback((mediaId: number) => {
-    setHistory(prev => prev.filter(h => h.id !== mediaId || h.logId.startsWith('live-')));
+    // Deep Purge: Erase all history logs for this movie
+    setHistory(prev => prev.filter(h => h.id !== mediaId));
+    // Revert: Trigger sync to return the movie to its original library status
     setTimeout(() => syncLibraryItem(mediaId, 'movie'), 50);
+    confirmationService.show("Movie history cleared.");
   }, [setHistory, syncLibraryItem]);
 
   const handleAddToList = useCallback((listId: string, item: CustomListItem) => {
@@ -681,7 +892,7 @@ export const MainApp: React.FC<MainAppProps> = ({
                     }} 
                     onOpenAddToListModal={(item) => setAddToListModalState({ isOpen: true, item })} setCustomLists={setCustomLists} 
                     liveWatchMedia={liveWatchMedia} liveWatchElapsedSeconds={liveWatchElapsedSeconds} liveWatchIsPaused={liveWatchIsPaused} 
-                    onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={() => setIsLiveWatchOpen(false)} 
+                    onLiveWatchTogglePause={handleLiveWatchTogglePause} onLiveWatchStop={handleLiveWatchStop} 
                     onMarkShowAsWatched={handleLiveWatchComplete} onToggleFavoriteShow={handleToggleFavoriteShow} favorites={favorites} 
                     pausedLiveSessions={pausedLiveSessions} setPausedLiveSessions={setPausedLiveSessions} timezone={timezone} genres={genres} timeFormat={timeFormat} reminders={reminders} 
                     onToggleReminder={handleToggleReminder} 
@@ -814,6 +1025,13 @@ export const MainApp: React.FC<MainAppProps> = ({
                 favoriteEpisodes={favoriteEpisodes}
                 setPendingRecommendationChecks={setPendingRecommendationChecks}
                 setFailedRecommendationReports={setFailedRecommendationReports}
+                liveWatchMedia={liveWatchMedia}
+                liveWatchElapsedSeconds={liveWatchElapsedSeconds}
+                liveWatchIsPaused={liveWatchIsPaused}
+                onLiveWatchTogglePause={handleLiveWatchTogglePause}
+                onLiveWatchStop={handleLiveWatchStop}
+                onMarkShowAsWatched={handleLiveWatchComplete}
+                setPausedLiveSessions={setPausedLiveSessions}
               />
             )}
         </main>
@@ -835,16 +1053,25 @@ export const MainApp: React.FC<MainAppProps> = ({
                         return next;
                     });
                     if (currentUser) syncJournalEntry(currentUser.id, id, s, e, entry);
-                }} trackedLists={trackedLists} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={handleSetCustomImage} onRemoveCustomImage={handleRemoveCustomImage} onResetCustomImage={handleResetCustomImage} favorites={favorites} onToggleFavoriteShow={handleToggleFavoriteShow} weeklyFavorites={weeklyFavorites} onToggleWeeklyFavorite={handleToggleWeeklyFavorite} onSelectShow={handleSelectShow} onOpenCustomListModal={() => {}} ratings={ratings} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onRateItem={handleRateItem} onMarkMediaAsWatched={handleMarkMovieAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={() => {}} onUnmarkSeasonWatched={() => {}} onMarkPreviousEpisodesWatched={() => {}} favoriteEpisodes={favoriteEpisodes} onSelectPerson={setSelectedPerson} onSelectShowInModal={handleSelectShow} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onAddWatchHistory={handleAddWatchHistory} onDeleteSearchHistoryItem={() => {}} onClearSearchHistory={() => {}} onAddWatchHistoryBulk={() => {}} onSaveComment={() => {}} comments={comments} genres={genres} onMarkAllWatched={() => {}} onUnmarkAllWatched={() => {}} onSaveEpisodeNote={() => {}} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={() => {}} onRateEpisode={handleRateEpisode} customLists={customLists} currentUser={currentUser} allUsers={allUsers} mediaNotes={mediaNotes} onSaveMediaNote={() => {}} allUserData={allUserData} episodeNotes={episodeNotes} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} preferences={preferences} follows={follows} pausedLiveSessions={pausedLiveSessions} onAuthClick={onAuthClick} onNoteDeleted={() => {}} onSetCustomEpisodeImage={() => {}} onClearMediaHistory={() => {}} reminders={reminders} onToggleReminder={handleToggleReminder} episodeRatings={episodeRatings} pendingRecommendationChecks={pendingRecommendationChecks} setPendingRecommendationChecks={setPendingRecommendationChecks} />
+                }} trackedLists={trackedLists} onUpdateLists={updateLists} customImagePaths={customImagePaths} onSetCustomImage={handleSetCustomImage} onRemoveCustomImage={handleRemoveCustomImage} onResetCustomImage={handleResetCustomImage} favorites={favorites} onToggleFavoriteShow={handleToggleFavoriteShow} weeklyFavorites={weeklyFavorites} onToggleWeeklyFavorite={handleToggleWeeklyFavorite} onSelectShow={handleSelectShow} onOpenCustomListModal={() => {}} ratings={ratings} onToggleFavoriteEpisode={handleToggleFavoriteEpisode} onRateItem={handleRateItem} onMarkMediaAsWatched={handleMarkMovieAsWatched} onUnmarkMovieWatched={handleUnmarkMovieWatched} onMarkSeasonWatched={() => {}} onUnmarkSeasonWatched={() => {}} onMarkPreviousEpisodesWatched={() => {}} favoriteEpisodes={favoriteEpisodes} onSelectPerson={setSelectedPerson} onSelectShowInModal={handleSelectShow} onStartLiveWatch={handleStartLiveWatch} onDeleteHistoryItem={handleDeleteHistoryItem} onAddWatchHistory={handleAddWatchHistory} onDeleteSearchHistoryItem={() => {}} onClearSearchHistory={() => {}} onAddWatchHistoryBulk={() => {}} onSaveComment={() => {}} comments={comments} genres={genres} onMarkAllWatched={handleMarkAllWatched} onUnmarkAllWatched={handleUnmarkAllWatched} onSaveEpisodeNote={() => {}} showRatings={showRatings} seasonRatings={seasonRatings} onRateSeason={() => {}} onRateEpisode={handleRateEpisode} customLists={customLists} currentUser={currentUser} allUsers={allUsers} mediaNotes={mediaNotes} onSaveMediaNote={() => {}} allUserData={allUserData} episodeNotes={episodeNotes} onOpenAddToListModal={(i) => setAddToListModalState({ isOpen: true, item: i })} preferences={preferences} follows={follows} pausedLiveSessions={pausedLiveSessions} onAuthClick={onAuthClick} onNoteDeleted={() => {}} onSetCustomEpisodeImage={() => {}} onClearMediaHistory={handleClearMediaHistory} reminders={reminders} onToggleReminder={handleToggleReminder} episodeRatings={episodeRatings} pendingRecommendationChecks={pendingRecommendationChecks} setPendingRecommendationChecks={setPendingRecommendationChecks} />
             </div>
         )}
         
+        <LiveWatchChoiceModal 
+            isOpen={liveWatchChoiceState.isOpen}
+            onClose={() => setLiveWatchChoiceState({ isOpen: false, sessions: [], mediaInfo: null })}
+            sessions={liveWatchChoiceState.sessions}
+            mediaInfo={liveWatchChoiceState.mediaInfo!}
+            onContinue={(session) => initiateLiveSession(session.mediaInfo, session)}
+            onStartFresh={() => initiateLiveSession(liveWatchChoiceState.mediaInfo!)}
+        />
+
         <PersonDetailModal isOpen={!!selectedPerson} onClose={() => setSelectedPerson(null)} personId={selectedPerson} userData={allUserData} onSelectShow={handleSelectShow} onToggleFavoriteShow={handleToggleFavoriteShow} onRateItem={handleRateItem} ratings={ratings} favorites={favorites} onToggleWeeklyFavorite={handleToggleWeeklyFavorite} weeklyFavorites={weeklyFavorites} />
         <AddToListModal isOpen={addToListModalState.isOpen} onClose={() => setAddToListModalState({ isOpen: false, item: null })} itemToAdd={addToListModalState.item} customLists={customLists} onAddToList={handleAddToList} onCreateAndAddToList={handleCreateAndAddToList} onGoToDetails={handleSelectShow} onUpdateLists={updateLists} activeStandardStatus={activeStandardStatus} />
         <NominatePicksModal isOpen={isNominateModalOpen} onClose={() => setIsNominateModalOpen(false)} userData={allUserData} currentPicks={weeklyFavorites} onNominate={handleToggleWeeklyFavorite} onRemovePick={handleToggleWeeklyFavorite} />
-        <WelcomeModal isOpen={!isWelcomeDismissed} onClose={() => { setIsWelcomeDismissed(true); localStorage.setItem('welcome_dismissed', 'true'); }} timezone={timezone} setTimezone={setTimezone} timeFormat={timeFormat} setTimeFormat={setTimeFormat} />
+        <welcomeModal isOpen={!isWelcomeDismissed} onClose={() => { setIsWelcomeDismissed(true); localStorage.setItem('welcome_dismissed', 'true'); }} timezone={timezone} setTimezone={setTimezone} timeFormat={timeFormat} setTimeFormat={setTimeFormat} />
         
-        <LiveWatchTracker isOpen={isLiveWatchOpen} onClose={() => setIsLiveWatchOpen(false)} onDiscard={handleLiveWatchDelete} mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={handleLiveWatchTogglePause} isMinimized={isLiveWatchMinimized} onToggleMinimize={() => setIsLiveWatchMinimized(!isLiveWatchMinimized)} onMarkWatched={() => { if (liveWatchMedia) handleLiveWatchComplete(liveWatchMedia); }} onAddToList={() => { if (liveWatchMedia) setAddToListModalState({ isOpen: true, item: liveWatchMedia as any }); }} />
+        <LiveWatchTracker isOpen={isLiveWatchOpen} onClose={() => setIsLiveWatchOpen(false)} onStop={handleLiveWatchStop} onDiscard={handleLiveWatchDelete} mediaInfo={liveWatchMedia} elapsedSeconds={liveWatchElapsedSeconds} isPaused={liveWatchIsPaused} onTogglePause={handleLiveWatchTogglePause} isMinimized={isLiveWatchMinimized} onToggleMinimize={() => setIsLiveWatchMinimized(!isLiveWatchMinimized)} onMarkWatched={() => { if (liveWatchMedia) handleLiveWatchComplete(liveWatchMedia); }} onAddToList={() => { if (liveWatchMedia) setAddToListModalState({ isOpen: true, item: liveWatchMedia as any }); }} />
         <BottomTabNavigator activeTab={activeScreen} onTabPress={(tab) => { if (tab !== 'progress' && [].includes(tab)) { setActiveScreen('profile'); setProfileInitialTab(tab as ProfileTab); } else { setActiveScreen(tab); setProfileInitialTab(undefined); } setSelectedShow(null); setSelectedPerson(null); setSelectedUserId(null); setAllMediaConfig(null); }} profilePictureUrl={profilePictureUrl} navSettings={navSettings} />
         <ConfirmationContainer />
         <AnimationContainer />

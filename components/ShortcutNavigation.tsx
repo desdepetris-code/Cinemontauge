@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ProfileTab } from '../types';
-import { HomeIcon, ArrowTrendingUpIcon, UserGroupIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, BadgeIcon, CloudArrowUpIcon, CogIcon, ClockIcon } from './Icons';
+import { HomeIcon, ArrowTrendingUpIcon, UserGroupIcon, PushPinIcon, HourglassIcon, CurlyLoopIcon, TargetIcon, CabinetIcon, TagIcon, ScrollIcon, QuillIcon, WavesIcon, MagnifyingGlassIcon, BadgeIcon, CloudArrowUpIcon, CogIcon, ClockIcon, PlayCircleIcon } from './Icons';
 import Carousel from './Carousel';
 
 interface ShortcutNavigationProps {
@@ -28,6 +28,8 @@ const tabMetadata: Record<ProfileTab | 'home', { label: string; icon: React.Reac
     ongoing: { label: 'Catch Up', icon: <HourglassIcon className="w-4 h-4" /> },
     // Add missing airtime_management metadata
     airtime_management: { label: 'Management', icon: <ClockIcon className="w-4 h-4" /> },
+    // FIX: Added missing 'liveWatch' metadata to resolve Record exhaustiveness check error.
+    liveWatch: { label: 'Live Hub', icon: <PlayCircleIcon className="w-4 h-4" /> },
 };
 
 const ShortcutButton: React.FC<{

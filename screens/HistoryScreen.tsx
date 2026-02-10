@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserData, SearchHistoryItem, TmdbMedia, TrackedItem, Comment, UserRatings, DeletedHistoryItem, DeletedNote } from '../types';
-import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon, PlayPauseIcon } from '../components/Icons';
+import { TrashIcon, ChevronDownIcon, StarIcon, SearchIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, HeartIcon, CalendarIcon, TvIcon, FilmIcon, XMarkIcon, ListBulletIcon, SparklesIcon, TrophyIcon, ArrowPathIcon, InformationCircleIcon, PencilSquareIcon, PlayPauseIcon, VideoCameraIcon } from '../components/Icons';
 import { formatDate, formatDateTime, formatTimeFromDate } from '../utils/formatUtils';
 import Carousel from '../components/Carousel';
 import CompactShowCard from '../components/CompactShowCard';
@@ -92,11 +91,21 @@ const WatchHistory: React.FC<{
                 const month = watchDate.toLocaleString('default', { month: 'short' });
                 const day = watchDate.getDate();
                 const displayTitle = item.title || (item as any).name || 'Untitled';
+                const isLive = item.logId.startsWith('live-watch-') || item.logId.startsWith('trakt-') === false && (item as any).startTime !== undefined;
 
                 return (
                     <div key={item.logId} className="bg-bg-secondary/20 rounded-[2rem] border border-white/5 overflow-hidden flex flex-col shadow-2xl animate-fade-in group">
                         <div className="w-full aspect-video relative cursor-pointer overflow-hidden" onClick={() => onSelectShow(item.id, item.media_type)}>
                             <FallbackImage srcs={[getImageUrl(item.episodeStillPath || item.seasonPosterPath || item.poster_path, 'w780')]} placeholder={PLACEHOLDER_POSTER} alt={displayTitle} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            
+                            {/* Live Badge Overlay */}
+                            {isLive && (
+                                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-primary-accent text-on-accent px-3 py-1 rounded-full shadow-[0_0_15px_rgba(var(--color-accent-primary-rgb),0.5)] border border-white/20 animate-fade-in">
+                                    <VideoCameraIcon className="w-3.5 h-3.5" />
+                                    <span className="text-[8px] font-black uppercase tracking-[0.2em]">Live Watch</span>
+                                </div>
+                            )}
+
                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                             <div className="absolute top-4 right-4 flex flex-col items-center bg-bg-primary px-3 py-1.5 rounded-2xl border border-white/10 shadow-lg min-w-[50px]">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-primary-accent leading-none mb-0.5">{month}</span>
@@ -113,7 +122,33 @@ const WatchHistory: React.FC<{
                                 </div>
                                 <button onClick={(e) => { e.stopPropagation(); onDeleteHistoryItem(item); }} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg border border-red-500/20 flex-shrink-0" title="Move to Trash"><TrashIcon className="w-6 h-6" /></button>
                             </div>
-                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-4 opacity-50">{formatDateTime(item.timestamp, timezone)}</p>
+
+                            {/* Session Detail Logic */}
+                            <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                                {isLive && item.startTime && (
+                                    <div className="flex flex-wrap gap-y-2 gap-x-6">
+                                        <div className="space-y-1">
+                                            <span className="text-[8px] font-black uppercase text-text-secondary opacity-40 block tracking-widest">Started</span>
+                                            <span className="text-[10px] font-bold text-text-primary">{formatTimeFromDate(item.startTime, timezone)}</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[8px] font-black uppercase text-text-secondary opacity-40 block tracking-widest">Finished</span>
+                                            <span className="text-[10px] font-bold text-text-primary">{formatTimeFromDate(item.endTime || item.timestamp, timezone)}</span>
+                                        </div>
+                                        {item.pauseCount !== undefined && item.pauseCount > 0 && (
+                                            <div className="space-y-1">
+                                                <span className="text-[8px] font-black uppercase text-red-400 opacity-60 block tracking-widest">Interruptions</span>
+                                                <span className="text-[10px] font-bold text-red-400">{item.pauseCount} Pauses</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <ClockIcon className="w-3.5 h-3.5 text-text-secondary opacity-20" />
+                                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-50">{formatDateTime(item.timestamp, timezone)}</p>
+                                </div>
+                            </div>
+
                             {item.note && <p className="text-xs text-text-secondary italic mt-4 p-3 bg-bg-secondary/30 rounded-xl border border-white/5">"{item.note}"</p>}
                         </div>
                     </div>

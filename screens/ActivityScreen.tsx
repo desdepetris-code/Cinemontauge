@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Follows, FriendActivity, PublicUser, UserData, PrivacySettings, HistoryItem, CustomList, UserRatings, Activity, ActivityType, TrackedItem } from '../types';
 import { getAllUsers } from '../utils/userUtils';
@@ -150,8 +151,10 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ currentUser, follows, o
                     const media = userMediaMap.get(Number(mediaId));
                     if(media) {
                         userActivities.push({
-                            user, timestamp: ratingInfo.date, type: 'RATED_ITEM',
-                            media, rating: ratingInfo.rating
+                            user, 
+                            // FIX: Added explicit type cast (ratingInfo as any) to resolve "Property does not exist on type unknown" errors.
+                            timestamp: (ratingInfo as any).date, type: 'RATED_ITEM',
+                            media, rating: (ratingInfo as any).rating
                         });
                     }
                 });

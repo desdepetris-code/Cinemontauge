@@ -1,3 +1,4 @@
+
 import { Achievement, Badge, AchievementCategory, UserData, CalculatedStats } from './types';
 
 /**
@@ -32,8 +33,9 @@ const generateTieredMerits = (
               case 'list_v': val = d.customLists.reduce((acc, l) => acc + l.items.length, 0); break;
               case 'streak': val = s.longestStreak; break;
               case 'mood': val = s.distinctMoodsCount; break;
-              case 'cust_p': val = Object.values(d.customImagePaths).filter(v => !!v.poster_path).length; break;
-              case 'cust_b': val = Object.values(d.customImagePaths).filter(v => !!v.backdrop_path).length; break;
+              // FIX: Added explicit type cast (v as any) to resolve "Property does not exist on type unknown" errors.
+              case 'cust_p': val = Object.values(d.customImagePaths).filter((v: any) => !!v.poster_path).length; break;
+              case 'cust_b': val = Object.values(d.customImagePaths).filter((v: any) => !!v.backdrop_path).length; break;
               case 'disc': val = s.watchedGenreCount; break;
               case 'ser': val = s.completedSeasonsCount || 0; break;
               case 'rew': val = d.history.filter(h => d.history.filter(h2 => h2.id === h.id).length > 1).length; break;

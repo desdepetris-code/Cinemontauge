@@ -4,7 +4,7 @@ import { getImageUrl } from '../utils/imageUtils';
 import FallbackImage from './FallbackImage';
 import { PLACEHOLDER_STILL } from '../constants';
 import { CheckCircleIcon, BookOpenIcon, StarIcon, PlayCircleIcon, XMarkIcon, HeartIcon, ChatBubbleLeftRightIcon, EyeIcon, ClockIcon, CalendarIcon, ChevronDownIcon, ChevronLeftIcon, TrophyIcon, ShareIcon, ArrowPathIcon, ListBulletIcon, LogWatchIcon, GlobeAltIcon, ChevronRightIcon } from './Icons';
-import { formatRuntime, formatTimeFromDate } from '../utils/formatUtils';
+import { formatRuntime, formatTimeFromDate, getAiredEpisodeCount } from '../utils/formatUtils';
 import NominationModal from './NominationModal';
 import MarkAsWatchedModal from './MarkAsWatchedModal';
 import { confirmationService } from '../services/confirmationService';
@@ -61,7 +61,7 @@ const DetailedActionButton: React.FC<{
         {icon}
     </div>
     <div className="mt-2 min-h-[14px] flex items-center justify-center">
-        <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight text-white">{label}</span>
+        <span className="text-xs font-black uppercase tracking-widest text-center leading-tight text-white">{label}</span>
     </div>
   </button>
 );
@@ -99,21 +99,35 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
   const stats = useMemo(() => {
     if (!episode || !showDetails || !seasonDetails || !seasonDetails.episodes) return null;
     
-    const progress = watchProgress[showDetails.id]?.[episode.season_number] || {};
-    const airedEpisodes = seasonDetails.episodes.filter(e => e.air_date && e.air_date <= new Date().toISOString().split('T')[0]);
-    const watchedInSeason = Object.values(progress).filter(ep => (ep as EpisodeProgress).status === 2).length;
+    const showId = showDetails.id;
+    const progress = watchProgress[showId] || {};
     
+    // Season Specific
+    const seasonProgress = progress[episode.season_number] || {};
+    const airedInSeason = seasonDetails.episodes.filter(e => e.air_date && e.air_date <= new Date().toISOString().split('T')[0]);
+    const watchedInSeason = Object.values(seasonProgress).filter(ep => (ep as EpisodeProgress).status === 2).length;
+    
+    // Overall Show
+    const totalAiredOverall = getAiredEpisodeCount(showDetails);
+    let watchedOverall = 0;
+    Object.values(progress).forEach(s => {
+        Object.values(s).forEach(e => { if ((e as EpisodeProgress).status === 2) watchedOverall++; });
+    });
+
     const rewatchCount = history.filter(h => 
-      h.id === showDetails.id && 
+      h.id === showId && 
       h.seasonNumber === episode.season_number && 
       h.episodeNumber === episode.episode_number
     ).length;
 
     return {
       watchedInSeason,
-      totalAired: airedEpisodes.length,
-      rewatchCount,
-      percent: airedEpisodes.length > 0 ? (watchedInSeason / airedEpisodes.length) * 100 : 0
+      totalAiredInSeason: airedInSeason.length,
+      percentInSeason: airedInSeason.length > 0 ? (watchedInSeason / airedInSeason.length) * 100 : 0,
+      watchedOverall,
+      totalAiredOverall,
+      percentOverall: totalAiredOverall > 0 ? (watchedOverall / totalAiredOverall) * 100 : 0,
+      rewatchCount
     };
   }, [episode, showDetails, seasonDetails, watchProgress, history]);
 
@@ -234,9 +248,12 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
               <button 
                 onClick={onViewFullShow} 
                 className="absolute top-2 left-6 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-bg-secondary transition-all z-30 border border-white/10 shadow-2xl flex items-center justify-center group"
-                title="View Full Show Page"
+                title="Show Page"
               >
-                <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
+                <div className="flex items-center gap-2">
+                    <ChevronLeftIcon className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
+                    <span className="text-xs font-black uppercase tracking-widest hidden sm:block">Show Page</span>
+                </div>
               </button>
 
               {/* X EXIT (TOP RIGHT) -> Go back to page before modal */}
@@ -253,22 +270,22 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
             <div className="overflow-y-auto p-10 pt-4 space-y-8 custom-scrollbar">
                 <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-primary-accent">{showDetails.name || 'Syncing...'}</span>
+                        <span className="text-base font-black uppercase tracking-[0.3em] text-primary-accent">{showDetails.name || 'Syncing...'}</span>
                         <span className="w-1 h-1 bg-white/20 rounded-full"></span>
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-text-secondary">S{episode.season_number} E{episode.episode_number}</span>
+                        <span className="text-base font-black uppercase tracking-[0.3em] text-text-secondary">S{episode.season_number} E{episode.episode_number}</span>
                     </div>
                     
                     <h2 className="text-3xl md:text-5xl font-black text-text-primary uppercase tracking-tighter leading-none">{episode.name}</h2>
                     
-                    {/* SHOW STATUS SELECTOR */}
+                    {/* LIBRARY STATUS SELECTOR */}
                     <div className="py-4 border-y border-white/5 space-y-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1">Series Registry Status</p>
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1">Library Statuses</p>
                         <div className="flex flex-wrap gap-2">
                             {statusOptions.map(opt => (
                                 <button
                                     key={opt.id}
                                     onClick={() => onUpdateShowStatus(currentShowStatus === opt.id ? null : opt.id)}
-                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
                                         currentShowStatus === opt.id 
                                             ? 'bg-primary-accent text-on-accent border-transparent shadow-lg scale-105' 
                                             : 'bg-bg-secondary/40 text-text-secondary border-white/5 hover:border-white/20'
@@ -281,40 +298,57 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                     </div>
 
                     {stats && (
-                        <div className="flex flex-col gap-2 pt-2">
-                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary">
-                                <span>Season {episode.season_number} Progress</span>
-                                <span>{stats.watchedInSeason} / {stats.totalAired} Archived</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                            {/* Season Progress */}
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.2em] text-text-secondary">
+                                    <span>Season {episode.season_number} Progress</span>
+                                    <span>{stats.watchedInSeason} / {stats.totalAiredInSeason} Watched</span>
+                                </div>
+                                <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                                    <div 
+                                        className="h-full bg-accent-gradient transition-all duration-1000 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                                        style={{ width: `${stats.percentInSeason}%` }}
+                                    ></div>
+                                </div>
                             </div>
-                            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                                <div 
-                                    className="h-full bg-accent-gradient transition-all duration-1000 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                                    style={{ width: `${stats.percent}%` }}
-                                ></div>
+                            
+                            {/* Overall Progress */}
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.2em] text-text-secondary">
+                                    <span>Overall Show Progress</span>
+                                    <span>{stats.watchedOverall} / {stats.totalAiredOverall} Watched</span>
+                                </div>
+                                <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                                    <div 
+                                        className="h-full bg-primary-accent/40 transition-all duration-1000"
+                                        style={{ width: `${stats.percentOverall}%` }}
+                                    ></div>
+                                </div>
                             </div>
                         </div>
                     )}
 
                     <div className="flex items-center flex-wrap gap-4 pt-2">
                         <div className="flex items-center gap-2">
-                            <CalendarIcon className="w-4 h-4 text-primary-accent opacity-60" />
-                            <span className="text-[11px] font-black uppercase text-text-primary tracking-widest">
+                            <CalendarIcon className="w-5 h-5 text-primary-accent opacity-60" />
+                            <span className="text-base font-black uppercase text-text-primary tracking-widest">
                                 {episode.air_date ? new Date(episode.air_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unscheduled'}
                             </span>
                         </div>
                         {airstampText && (
-                            <div className="px-4 py-1.5 bg-black text-white border border-white/10 rounded-md flex items-center gap-2 shadow-lg">
-                                <ClockIcon className="w-4 h-4 text-white" />
-                                <span className="text-[11px] font-black uppercase tracking-widest">{airstampText}</span>
+                            <div className="px-5 py-2 bg-black text-white border border-white/10 rounded-md flex items-center gap-2 shadow-lg">
+                                <ClockIcon className="w-5 h-5 text-white" />
+                                <span className="text-base font-black uppercase tracking-widest">{airstampText}</span>
                             </div>
                         )}
                         {episode.runtime && (
-                            <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                            <span className="text-sm font-black text-text-secondary uppercase tracking-widest bg-white/5 px-3 py-1 rounded border border-white/5">
                                 {formatRuntime(episode.runtime)}
                             </span>
                         )}
                         {stats && stats.rewatchCount > 0 && (
-                            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            <span className="text-sm font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/20">
                                 Watched {stats.rewatchCount}x
                             </span>
                         )}
@@ -323,23 +357,23 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                     <div className="relative">
                         <div className={showSpoilerOverlay ? 'blur-xl select-none opacity-40 grayscale' : ''}>
                             <div className="p-8 rounded-[2rem] border border-white/5 bg-bg-secondary/20 shadow-inner">
-                                <p className="text-text-primary text-lg leading-relaxed font-medium">
+                                <p className="text-text-primary text-xl leading-relaxed font-medium">
                                     {displayOverview}
                                 </p>
                                 {isLongOverview && (
                                     <button 
                                       onClick={() => setIsOverviewExpanded(!isOverviewExpanded)}
-                                      className="mt-4 text-xs font-black uppercase text-primary-accent tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                      className="mt-4 text-base font-black uppercase text-primary-accent tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity"
                                     >
                                         {isOverviewExpanded ? 'Read Less' : 'Read Full Synopsis'}
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOverviewExpanded ? 'rotate-180' : ''}`} />
+                                        <ChevronDownIcon className={`w-5 h-5 transition-transform ${isOverviewExpanded ? 'rotate-180' : ''}`} />
                                     </button>
                                 )}
                             </div>
                         </div>
                         {showSpoilerOverlay && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
-                                <button onClick={() => setRevealSpoiler(true)} className="px-10 py-5 bg-bg-primary/80 border border-primary-accent/60 rounded-[2rem] flex items-center gap-4 text-xs font-black uppercase tracking-[0.3em] text-text-primary hover:bg-primary-accent hover:text-black transition-all shadow-2xl backdrop-blur-md">
+                                <button onClick={() => setRevealSpoiler(true)} className="px-10 py-5 bg-bg-primary/80 border border-primary-accent/60 rounded-[2rem] flex items-center gap-4 text-sm font-black uppercase tracking-[0.3em] text-text-primary hover:bg-primary-accent hover:text-black transition-all shadow-2xl backdrop-blur-md">
                                     <EyeIcon className="w-6 h-6 text-primary-accent" />
                                     Reveal Plot Details
                                 </button>
@@ -347,31 +381,28 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                         )}
                     </div>
 
-                    {/* NEW TIMEZONES SECTION - Under Description */}
+                    {/* Broadcast Timezones */}
                     <div className="pt-4">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1 mb-3">Broadcast Timezones</p>
+                        <p className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-40 ml-1 mb-3">Broadcast Timezones</p>
                         {airtimeOverride ? (
                             <div className="flex flex-col gap-2">
                                 {airtimeOverride.time!.split(' / ').map(tz => (
                                     <div key={tz} className="bg-bg-secondary/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:border-primary-accent/30 transition-all">
                                         <div className="flex items-center gap-4">
                                             <div className="p-3 bg-primary-accent/10 rounded-xl text-primary-accent">
-                                                <GlobeAltIcon className="w-5 h-5" />
+                                                <GlobeAltIcon className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black text-text-primary uppercase tracking-tighter">{tz}</p>
-                                                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50">Provider: {airtimeOverride.provider}</p>
+                                                <p className="text-lg font-black text-text-primary uppercase tracking-tighter">{tz}</p>
+                                                <p className="text-sm font-bold text-text-secondary uppercase tracking-widest opacity-50">Provider: {airtimeOverride.provider}</p>
                                             </div>
-                                        </div>
-                                        <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-[8px] font-black uppercase text-text-secondary tracking-widest">
-                                            Registry Synced
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
                             <div className="p-6 bg-bg-secondary/20 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center text-center">
-                                 <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em] opacity-40">unavailable at this time, please check back shortly!</p>
+                                 <p className="text-sm text-text-secondary font-black uppercase tracking-[0.2em] opacity-40">unavailable at this time, please check back shortly!</p>
                             </div>
                         )}
                     </div>
@@ -380,20 +411,20 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                 <div className="grid grid-cols-3 gap-4">
                     <DetailedActionButton 
                         label="Watched" 
-                        icon={<CheckCircleIcon className={`w-6 h-6 ${isWatched ? 'text-green-400' : ''}`} />} 
+                        icon={<CheckCircleIcon className={`w-7 h-7 ${isWatched ? 'text-green-400' : ''}`} />} 
                         isActive={isWatched} 
                         disabled={isFuture}
                         onClick={onToggleWatched} 
                     />
                     <DetailedActionButton 
                         label="Unmark" 
-                        icon={<XMarkIcon className="w-6 h-6 text-red-400" />} 
+                        icon={<XMarkIcon className="w-7 h-7 text-red-400" />} 
                         disabled={!isWatched}
                         onClick={onToggleWatched} 
                     />
                     <DetailedActionButton 
                         label="Live Watch" 
-                        icon={<PlayCircleIcon className="w-6 h-6" />} 
+                        icon={<PlayCircleIcon className="w-7 h-7" />} 
                         disabled={isFuture}
                         onClick={() => onStartLiveWatch({ 
                             id: showDetails.id, 
@@ -409,44 +440,44 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                     
                     <DetailedActionButton 
                         label="Log Watch" 
-                        icon={<LogWatchIcon className="w-6 h-6 text-primary-accent" />} 
+                        icon={<LogWatchIcon className="w-7 h-7 text-primary-accent" />} 
                         disabled={isFuture}
                         onClick={() => setIsLogWatchModalOpen(true)} 
                     />
                     <DetailedActionButton 
                         label="Rate" 
-                        icon={<StarIcon className={`w-6 h-6 ${episodeRating > 0 ? 'text-yellow-400' : ''}`} filled={episodeRating > 0} />} 
+                        icon={<StarIcon className={`w-7 h-7 ${episodeRating > 0 ? 'text-yellow-400' : ''}`} filled={episodeRating > 0} />} 
                         isActive={episodeRating > 0}
                         onClick={onRate} 
                     />
                     <DetailedActionButton 
                         label="Favorite" 
-                        icon={<HeartIcon className={`w-6 h-6 ${isFavorited ? 'text-rose-400' : ''}`} filled={isFavorited} />} 
+                        icon={<HeartIcon className={`w-7 h-7 ${isFavorited ? 'text-rose-400' : ''}`} filled={isFavorited} />} 
                         isActive={isFavorited}
                         onClick={onToggleFavorite} 
                     />
 
                     <DetailedActionButton 
                         label="Comment" 
-                        icon={<ChatBubbleLeftRightIcon className="w-6 h-6 text-sky-400" />} 
+                        icon={<ChatBubbleLeftRightIcon className="w-7 h-7 text-sky-400" />} 
                         onClick={onDiscuss} 
                     />
                     <DetailedActionButton 
                         label="Journal" 
-                        icon={<BookOpenIcon className="w-6 h-6" />} 
+                        icon={<BookOpenIcon className="w-7 h-7" />} 
                         onClick={onOpenJournal} 
                     />
                     <DetailedActionButton 
                         label="Share" 
-                        icon={<ShareIcon className="w-6 h-6" />} 
+                        icon={<ShareIcon className="w-7 h-7" />} 
                         onClick={handleShare} 
                     />
                 </div>
 
                 <div className="pt-2">
                     <DetailedActionButton 
-                        label="Nominate Pick" 
-                        icon={<TrophyIcon className={`w-6 h-6 ${isWeeklyPick ? 'text-yellow-500' : ''}`} />} 
+                        label="Weekly Pick" 
+                        icon={<TrophyIcon className={`w-7 h-7 ${isWeeklyPick ? 'text-yellow-500' : ''}`} />} 
                         isActive={isWeeklyPick}
                         className="w-full !h-16"
                         onClick={() => setIsNominationModalOpen(true)} 
@@ -459,11 +490,11 @@ const EpisodeDetailModal: React.FC<EpisodeDetailModalProps> = ({
                 >
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary-accent/10 rounded-2xl text-primary-accent">
-                            <ListBulletIcon className="w-6 h-6" />
+                            <ListBulletIcon className="w-7 h-7" />
                         </div>
                         <div className="text-left">
-                            <span className="text-lg font-black text-text-primary uppercase tracking-tighter block leading-none">Go To Full Show Page</span>
-                            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-widest mt-1 opacity-60">View all seasons and discussions</span>
+                            <span className="text-xl font-black text-text-primary uppercase tracking-tighter block leading-none">Go To Full Show Page</span>
+                            <span className="text-sm font-bold text-text-secondary uppercase tracking-widest mt-1 opacity-60">View all seasons and discussions</span>
                         </div>
                     </div>
                     <ChevronRightIcon className="w-8 h-8 text-text-secondary group-hover:text-primary-accent transition-all group-hover:translate-x-1" />

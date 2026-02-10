@@ -48,7 +48,7 @@ interface DashboardProps {
   timeFormat: '12h' | '24h';
   reminders: Reminder[];
   onToggleReminder: (newReminder: Reminder | null, reminderId: string) => void;
-  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
+  onToggleEpisodeWithHistory: (showId: number, season: number, episode: number, currentStatus: number, showInfo: TrackedItem, episodeName?: string) => void;
   shortcutSettings: ShortcutSettings;
   preferences: AppPreferences;
   onRemoveWeeklyPick: (pick: any) => void;
@@ -57,9 +57,10 @@ interface DashboardProps {
   onStartLiveWatch: (mediaInfo: LiveWatchMediaInfo) => void;
   onToggleFavoriteEpisode: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   onRateEpisode: (showId: number, seasonNumber: number, episodeNumber: number, rating: number) => void;
+  onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
   onSaveJournal: (showId: number, season: number, episode: number, entry: JournalEntry | null) => void;
   onAddWatchHistory: (item: TrackedItem, seasonNumber: number, episodeNumber: number, timestamp?: string, note?: string, episodeName?: string) => void;
-  onToggleWeeklyFavorite: (item: WeeklyPick, replacementId?: number) => void;
+  onUpdateLists: (item: TrackedItem, oldList: WatchStatus | null, newList: WatchStatus | null) => void;
 }
 
 const ApiKeyWarning: React.FC = () => (
@@ -98,7 +99,6 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onSelectShow={onSelectShow}
                 completed={userData.completed}
                 reminders={reminders}
-                /* // FIX: Changed handleToggleReminder to onToggleReminder to match destructured props */
                 onToggleReminder={onToggleReminder}
                 onUpdateLists={onUpdateLists}
                 onOpenAddToListModal={onOpenAddToListModal}
@@ -108,7 +108,6 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onSelectShow={onSelectShow}
                 completed={userData.completed}
                 reminders={reminders}
-                /* // FIX: Changed handleToggleReminder to onToggleReminder to match destructured props */
                 onToggleReminder={onToggleReminder}
                 onUpdateLists={onUpdateLists}
                 onOpenAddToListModal={onOpenAddToListModal}
@@ -134,7 +133,6 @@ const DiscoverContent: React.FC<DiscoverContentProps> =
                 onToggleEpisode={onToggleEpisode} 
                 onStartLiveWatch={onStartLiveWatch} 
                 preferences={preferences}
-                /* // FIX: Corrected handler names to match destructured props (handleToggleFavoriteEpisode -> onToggleFavoriteEpisode etc.) */
                 onToggleFavoriteEpisode={onToggleFavoriteEpisode}
                 onRateEpisode={onRateEpisode}
                 onSaveJournal={onSaveJournal}
@@ -215,24 +213,34 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       } catch (e) { console.error(e); }
   };
 
+  /**
+   * The "Live Watch Hub" on the homepage should only show the actively running session.
+   * If a session is stopped/paused, it is removed from here but remains in the Profile tab.
+   */
   const activeLiveSessions = useMemo(() => {
-    const result: { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; isPaused: boolean }[] = [];
+    const result: { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; isPaused: boolean; pausedAt: string }[] = [];
+    
+    // Only include the current active session
     if (liveWatchMedia) {
-        result.push({ mediaInfo: liveWatchMedia, elapsedSeconds: liveWatchElapsedSeconds, isPaused: liveWatchIsPaused });
+        result.push({ 
+            mediaInfo: liveWatchMedia, 
+            elapsedSeconds: liveWatchElapsedSeconds, 
+            isPaused: liveWatchIsPaused,
+            pausedAt: new Date().toISOString()
+        });
     }
-    (Object.values(pausedLiveSessions) as { mediaInfo: LiveWatchMediaInfo; elapsedSeconds: number; pausedAt: string }[]).forEach(session => {
-        if (!liveWatchMedia || session.mediaInfo.id !== liveWatchMedia.id) {
-            result.push({ mediaInfo: session.mediaInfo, elapsedSeconds: session.elapsedSeconds, isPaused: true });
-        }
-    });
+
     return result;
-  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused, pausedLiveSessions]);
+  }, [liveWatchMedia, liveWatchElapsedSeconds, liveWatchIsPaused]);
 
   const handleDiscardSession = (id: number) => {
       if (window.confirm("Permanently discard this live session? All current progress will be lost.")) {
           setPausedLiveSessions(prev => {
               const next = { ...prev };
-              delete next[id];
+              // We need to check all sessions to find the matching TMDB ID since keys are sessionIds
+              Object.keys(next).forEach(k => {
+                  if (next[k].mediaInfo.id === id) delete next[k];
+              });
               return next;
           });
           if (liveWatchMedia?.id === id) {
@@ -258,16 +266,13 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
             {activeLiveSessions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {activeLiveSessions.map(session => (
-                        <div key={session.mediaInfo.id} className="relative">
+                        <div key={session.mediaInfo.sessionId || session.mediaInfo.id} className="relative">
                              <LiveWatchControls 
                                 mediaInfo={session.mediaInfo} 
                                 elapsedSeconds={session.elapsedSeconds} 
                                 isPaused={session.isPaused} 
-                                onTogglePause={() => {
-                                    if (liveWatchMedia && session.mediaInfo.id === liveWatchMedia.id) onLiveWatchTogglePause();
-                                    else onStartLiveWatch(session.mediaInfo);
-                                }} 
-                                onStop={() => {}} 
+                                onTogglePause={onLiveWatchTogglePause} 
+                                onStop={onLiveWatchStop} 
                                 onDiscard={() => handleDiscardSession(session.mediaInfo.id)}
                                 onMarkWatched={() => onMarkShowAsWatched(session.mediaInfo)}
                                 isDashboardWidget={true} 
@@ -277,7 +282,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 </div>
             ) : (
                 <div className="bg-bg-secondary/20 rounded-3xl p-10 text-center border border-dashed border-white/10 shadow-inner">
-                    <h3 className="text-xl font-black text-text-primary uppercase tracking-widest opacity-20">No Active Registry Streams</h3>
+                    <h3 className="text-xl font-black text-text-primary uppercase tracking-widest opacity-20">No Active Live Watch</h3>
                     <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-30">Initiate a live session from any title detail page.</p>
                 </div>
             )}
