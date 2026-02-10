@@ -97,6 +97,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
                                 loading="lazy"
                             />
+
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent flex items-end p-4">
                                 <div className="w-full group-hover/card:translate-y-[-4px] transition-transform duration-300 text-center">
                                     <h3 className="text-white text-[11px] sm:text-xs font-black uppercase tracking-tight leading-tight [text-shadow:0_2px_4px_rgba(0,0,0,0.8)]">
@@ -112,13 +113,21 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     <button onClick={(e) => { e.stopPropagation(); onToggleFavoriteShow({id: item.id, title: title, media_type: item.media_type, poster_path: item.poster_path} as TrackedItem); }} className={`flex items-center justify-center py-2.5 rounded-xl transition-all shadow-md border ${isFavorite ? 'bg-primary-accent/30 border-primary-accent text-primary-accent' : 'bg-bg-secondary/40 border-white/10 text-white'}`} title="Favorite">
                         <HeartIcon filled={isFavorite} className="w-5 h-5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onMarkShowAsWatched(item); }} disabled={isCompleted} className="flex items-center justify-center py-2.5 rounded-xl bg-bg-secondary/40 border border-white/10 text-white hover:text-primary-accent transition-all shadow-md disabled:opacity-30" title="Quick Log">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMarkShowAsWatched(item); }} 
+                        className={`flex items-center justify-center py-2.5 rounded-xl transition-all shadow-md border ${isCompleted ? 'bg-green-500/30 border-green-500/50 text-green-400' : 'bg-bg-secondary/40 border-white/10 text-white hover:text-primary-accent'}`} 
+                        title={isCompleted ? "Logged as Watched" : "Quick Log"}
+                    >
                         <CheckCircleIcon className="w-5 h-5" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); onOpenAddToListModal(item); }} className="flex items-center justify-center py-2.5 rounded-xl bg-bg-secondary/40 border border-white/10 text-white hover:text-primary-accent transition-all shadow-md" title="Add to List">
                         <PlusIcon className="w-5 h-5" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); setMarkAsWatchedModalState({isOpen: true, item}); }} disabled={isCompleted} className="flex items-center justify-center py-2.5 rounded-xl bg-bg-secondary/40 border border-white/10 text-white hover:text-primary-accent transition-all shadow-md disabled:opacity-30" title="Log with Date">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setMarkAsWatchedModalState({isOpen: true, item}); }} 
+                        className={`flex items-center justify-center py-2.5 rounded-xl transition-all shadow-md border ${isCompleted ? 'bg-green-500/10 border-green-500/20 text-green-400/60 opacity-60' : 'bg-bg-secondary/40 border-white/10 text-white hover:text-primary-accent'}`} 
+                        title="Log with Date"
+                    >
                         <CalendarIcon className="w-5 h-5" />
                     </button>
                 </div>

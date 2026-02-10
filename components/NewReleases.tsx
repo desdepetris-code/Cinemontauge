@@ -140,24 +140,18 @@ const NewReleaseCard: React.FC<{
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                          {releaseDate && <p className="text-xs text-white/80">{formatDate(releaseDate, timezone)}</p>}
                     </div>
-                    {isCompleted && (
-                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white pointer-events-none">
-                            <CheckCircleIcon className="w-10 h-10" />
-                            <span className="font-bold mt-1">Watched</span>
-                        </div>
-                    )}
                 </div>
                 <div className="w-full mt-2 grid grid-cols-4 gap-1.5">
                     <button onClick={handleFavoriteClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-colors ${isFavorite ? 'bg-primary-accent/20 text-primary-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Favorite">
                         <HeartIcon filled={isFavorite} className="w-4 h-4" />
                     </button>
-                    <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Mark as Watched">
+                    <button onClick={handleMarkWatchedClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-all ${isCompleted ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
                     <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100" title="Set Watched Date">
+                    <button onClick={handleCalendarClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-all ${isCompleted ? 'bg-green-500/10 text-green-400/70 opacity-60' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Set Watched Date">
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                 </div>

@@ -65,7 +65,7 @@ const TrendingCard: React.FC<{
         if (r === 'PG-13') return 'bg-[#00008B] text-white';
         if (r === 'TV-14') return 'bg-[#800000] text-white';
         if (r === 'R') return 'bg-[#FF00FF] text-black font-black shadow-md';
-        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20';
+        if (['TV-MA', 'NC-17'].includes(r)) return 'bg-[#000000] text-white border border-white/20 shadow-xl';
         return 'bg-stone-500 text-white';
     };
 
@@ -115,7 +115,7 @@ const TrendingCard: React.FC<{
             <div className="w-72 flex-shrink-0 h-full">
                 <div 
                     className="relative rounded-lg overflow-hidden shadow-lg group cursor-pointer"
-                    onClick={() => onSelect(item.id, item.media_type)}
+                    onClick={() => onSelect(item.id, item.media_type as 'tv' | 'movie')}
                 >
                     {isNew && <NewReleaseOverlay position="top-left" color="cyan" />}
                     {ageRating && (
@@ -135,24 +135,18 @@ const TrendingCard: React.FC<{
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
                          <h3 className="text-white font-bold text-md truncate">{title}</h3>
                     </div>
-                    {isCompleted && (
-                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white pointer-events-none">
-                            <CheckCircleIcon className="w-10 h-10" />
-                            <span className="font-bold mt-1">Watched</span>
-                        </div>
-                    )}
                 </div>
                 <div className="w-full mt-2 grid grid-cols-4 gap-1.5">
                     <button onClick={handleFavoriteClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-colors ${isFavorite ? 'bg-primary-accent/20 text-primary-accent' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Favorite">
                         <HeartIcon filled={isFavorite} className="w-4 h-4" />
                     </button>
-                    <button onClick={handleMarkWatchedClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Mark as Watched">
+                    <button onClick={handleMarkWatchedClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-all ${isCompleted ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Mark as Watched">
                         <CheckCircleIcon className="w-4 h-4" />
                     </button>
                     <button onClick={handleAddClick} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors" title="Add to List">
                         <PlusIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={handleCalendarClick} disabled={isCompleted} className="flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md bg-bg-secondary text-text-primary hover:brightness-125 transition-colors disabled:opacity-50" title="Set Watched Date">
+                    <button onClick={handleCalendarClick} className={`flex items-center justify-center space-x-1.5 py-2 px-2 text-xs font-semibold rounded-md transition-all ${isCompleted ? 'bg-green-500/10 text-green-400/70 opacity-60' : 'bg-bg-secondary text-text-primary hover:brightness-125'}`} title="Set Watched Date">
                         <CalendarIcon className="w-4 h-4" />
                     </button>
                 </div>
@@ -241,7 +235,7 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ mediaType, title, onS
                 <div className="flex overflow-x-auto py-2 -mx-2 px-6 space-x-4 hide-scrollbar">
                     {media.map(item => (
                         <TrendingCard 
-                            key={`${item.id}-${item.media_type}`}
+                            key={item.id}
                             item={item}
                             onSelect={onSelectShow}
                             onAdd={onOpenAddToListModal}

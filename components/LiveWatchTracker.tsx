@@ -140,8 +140,8 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                     <button onClick={(e) => { e.stopPropagation(); onTogglePause(); }} className="p-1.5 hover:bg-white/10 rounded-lg">
                         {isPaused ? <PlayIcon className="w-4 h-4 text-white" /> : <PauseIcon className="w-4 h-4 text-white" />}
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-1.5 hover:bg-white/10 rounded-lg">
-                        <XMarkIcon className="w-4 h-4 text-text-secondary" />
+                    <button onClick={(e) => { e.stopPropagation(); onMarkWatched(mediaInfo); }} className="p-1.5 hover:bg-white/10 rounded-lg text-green-400">
+                        <CheckCircleIcon className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -207,6 +207,14 @@ const LiveWatchTracker: React.FC<LiveWatchTrackerProps> = (props) => {
                         ) : (
                             <><PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> Pause</>
                         )}
+                    </button>
+
+                    <button 
+                        onClick={() => onMarkWatched(mediaInfo)}
+                        className="p-4 rounded-2xl bg-green-500/10 text-green-500 hover:bg-green-600 hover:text-white transition-all border border-green-500/20 shadow-lg flex-shrink-0"
+                        title="Finish Early & Log"
+                    >
+                        <CheckCircleIcon className="w-6 h-6" />
                     </button>
                 </div>
                 

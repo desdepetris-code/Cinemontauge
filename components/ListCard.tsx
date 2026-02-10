@@ -72,8 +72,8 @@ const ListCard: React.FC<ListCardProps> = ({ list, onClick }) => {
                 <h3 className="text-lg font-black text-text-primary uppercase tracking-tight group-hover:text-primary-accent transition-colors truncate">
                     {list.name}
                 </h3>
-                <p className="text-xs text-text-secondary font-medium line-clamp-2 mt-1 opacity-60 h-8">
-                    {list.description || "A curated cinematic collection."}
+                <p className="text-xs text-text-secondary font-medium line-clamp-2 mt-1 opacity-80 h-8">
+                    {list.description || (["watchlist", "upcoming-tv-watchlist", "upcoming-movie-watchlist"].includes(list.id) ? "Primary collection registry." : "A curated cinematic collection.")}
                 </p>
                 
                 <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-text-secondary/40">
