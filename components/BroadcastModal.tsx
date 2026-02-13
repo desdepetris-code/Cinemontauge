@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { XMarkIcon, MegaphoneIcon, SparklesIcon, InformationCircleIcon } from './Icons';
 
@@ -10,7 +9,7 @@ interface BroadcastModalProps {
 }
 
 const BroadcastModal: React.FC<BroadcastModalProps> = ({ isOpen, onClose, onSend, deviceCount }) => {
-    const [title, setTitle] = useState('🎬 CineMontauge: System Update');
+    const [title, setTitle] = useState('🎬 SceneIt: System Update');
     const [message, setMessage] = useState('');
 
     if (!isOpen) return null;

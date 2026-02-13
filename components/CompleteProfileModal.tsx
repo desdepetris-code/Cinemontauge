@@ -97,7 +97,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, mis
 
         <div className="bg-primary-accent/5 rounded-2xl p-4 mb-8 border border-primary-accent/10">
             <p className="text-[10px] text-text-secondary leading-relaxed font-medium text-center italic">
-                Choose a unique handle to identify yourself as on CineMontauge.
+                Choose a unique handle to identify yourself as on SceneIt.
             </p>
         </div>
 

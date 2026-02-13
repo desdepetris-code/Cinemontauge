@@ -46,7 +46,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         </linearGradient>
 
         {/* Monogram Text Gradient */}
-        <linearGradient id="grad-text-cm-complex" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="grad-text-si-complex" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#1e3a8a" />
           <stop offset="25%" stopColor="#2563eb" />
           <stop offset="50%" stopColor="#2dd4bf" />
@@ -91,18 +91,18 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         filter="drop-shadow(0 0 2px rgba(255,255,255,0.4))"
       />
 
-      {/* CM Monogram */}
+      {/* SI Monogram */}
       <text 
         x="50%" 
         y="50" 
         fontFamily="Arial Black, sans-serif" 
         fontSize="24" 
         fontWeight="900" 
-        fill="url(#grad-text-cm-complex)" 
+        fill="url(#grad-text-si-complex)" 
         textAnchor="middle"
         letterSpacing="-1"
       >
-        CM
+        SI
       </text>
 
       {/* Upper Sleek Line */}
@@ -127,7 +127,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         textAnchor="middle"
         letterSpacing="1.2"
       >
-        CineMontauge
+        SceneIt
       </text>
       
       {/* Lower Sleek Line */}

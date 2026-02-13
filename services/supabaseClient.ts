@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
- * CINEMONTAUGE REGISTRY SYNC - CORE CLIENT
+ * SCENEIT REGISTRY SYNC - CORE CLIENT
  */
 
 const getEnv = (key: string) => {

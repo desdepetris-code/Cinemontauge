@@ -33,7 +33,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, timezone, 
   const renderOnboarding = () => (
     <div className="animate-fade-in flex flex-col items-center">
         <Logo className="h-20 w-20 mx-auto mb-6 drop-shadow-2xl" />
-        <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-2 leading-none">CineMontauge</h2>
+        <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-2 leading-none">SceneIt</h2>
         <p className="text-sm text-text-secondary mb-10 font-medium leading-relaxed px-4 text-center">Your personal gallery of cinematic moments. Start tracking and journaling your favorite shows and movies today.</p>
         
         <div className="text-left w-full space-y-6 mb-10">

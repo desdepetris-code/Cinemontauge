@@ -19,7 +19,7 @@ export const getAIRecommendations = async (historyTitles: string[]): Promise<{ r
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `You are a cinematic expert for the app CineMontauge. Recommend why a user might like these specific titles ${historyContext}. 
+      contents: `You are a cinematic expert for the app SceneIt. Recommend why a user might like these specific titles ${historyContext}. 
       
       Titles to evaluate: ${combined.map(m => m.title || m.name).join(', ')}
       
