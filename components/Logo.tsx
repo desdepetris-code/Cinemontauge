@@ -91,7 +91,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         filter="drop-shadow(0 0 2px rgba(255,255,255,0.4))"
       />
 
-      {/* SI Monogram */}
+      {/* CM Monogram */}
       <text 
         x="50%" 
         y="50" 
@@ -102,7 +102,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         textAnchor="middle"
         letterSpacing="-1"
       >
-        SI
+        CM
       </text>
 
       {/* Upper Sleek Line */}
@@ -127,7 +127,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         textAnchor="middle"
         letterSpacing="1.2"
       >
-        SceneIt
+        CineMontauge
       </text>
       
       {/* Lower Sleek Line */}

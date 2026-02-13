@@ -27,7 +27,7 @@ const LogoModal: React.FC<LogoModalProps> = ({ isOpen, onClose }) => {
         
         <div className="mt-8 text-center space-y-4">
           <div>
-            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-2">SceneIt</h2>
+            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter mb-2">CineMontauge</h2>
             <p className="text-text-secondary font-black uppercase tracking-[0.4em] text-xs opacity-60">Elite Cinematic Registry</p>
           </div>
         </div>

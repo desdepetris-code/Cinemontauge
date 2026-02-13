@@ -185,7 +185,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
                     </div>
                     <div className="p-4 bg-primary-accent/5 rounded-xl border border-primary-accent/10">
                         <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest leading-relaxed">
-                            Check your inbox (and spam) to finalize your entry into the SceneIt registry.
+                            Check your inbox (and spam) to finalize your entry into the CineMontauge registry.
                         </p>
                     </div>
                     <button 
@@ -301,7 +301,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onGoogl
         <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full text-text-secondary hover:bg-bg-secondary"><XMarkIcon className="w-5 h-5" /></button>
         
         <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-text-primary uppercase tracking-tighter">SceneIt</h1>
+            <h1 className="text-3xl font-bold text-text-primary uppercase tracking-tighter">CineMontauge</h1>
         </div>
 
         <div className="bg-card-gradient rounded-xl p-6 border border-white/5 shadow-2xl">

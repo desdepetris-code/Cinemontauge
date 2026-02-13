@@ -8,7 +8,7 @@ const PrivacyPolicy: React.FC = () => {
         <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Last updated: {new Date().toLocaleDateString()}</p>
       </header>
 
-      <p className="text-sm font-medium">Your privacy is paramount. This policy details how SceneIt manages your cinematic data and personal identifiers.</p>
+      <p className="text-sm font-medium">Your privacy is paramount. This policy details how CineMontauge manages your cinematic data and personal identifiers.</p>
 
       <section>
         <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">1. Data Collection</h2>
@@ -21,7 +21,7 @@ const PrivacyPolicy: React.FC = () => {
 
       <section>
         <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">2. Utilization of Data</h2>
-        <p className="text-sm">Data is used strictly to power the SceneIt experience: visualizing your progress, calculating personalized stats, facilitating social interactions, and ensuring your library follows you across devices.</p>
+        <p className="text-sm">Data is used strictly to power the CineMontauge experience: visualizing your progress, calculating personalized stats, facilitating social interactions, and ensuring your library follows you across devices.</p>
       </section>
 
       <section>
@@ -35,7 +35,7 @@ const PrivacyPolicy: React.FC = () => {
 
       <section>
         <h2 className="text-lg font-black uppercase tracking-widest text-primary-accent mb-3">4. Third-Party Data Exchange</h2>
-        <p className="text-sm">SceneIt does not sell user data. We interface with the following strictly for metadata purposes:</p>
+        <p className="text-sm">CineMontauge does not sell user data. We interface with the following strictly for metadata purposes:</p>
         <ul className="list-disc ml-6 space-y-2 text-sm opacity-80">
           <li><span className="text-white font-bold">TMDb:</span> For title metadata (No personal user data is ever shared).</li>
           <li><span className="text-white font-bold">Trakt:</span> For optional, user-initiated history synchronization.</li>
