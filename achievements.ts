@@ -15,15 +15,19 @@ const generateTieredMerits = (
   return Array.from({ length: 25 }).map((_, i) => {
     const tierNum = i + 1;
     const goal = baseVal + (i * increment);
+    
+    // Difficulty calculation based on tier index
+    const difficulty: 'Easy' | 'Medium' | 'Hard' = i < 8 ? 'Easy' : i < 18 ? 'Medium' : 'Hard';
+
     return {
       id: `${prefix}_tier_${tierNum}`,
       name: `${nameBase} ${["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV", "XXV"][i]}`,
       description: `Surpass ${goal} total points of activity in the ${category} sector.`,
       category,
-      tier: (Math.floor(i / 6) + 1) as any,
+      tier: ((Math.floor(i / 6.25) + 1) % 5 || 1) as 1 | 2 | 3 | 4,
       visibility: i < 5 ? 'visible' : 'hinted',
       scope: 'global',
-      // FIX: Typed the check function parameters to resolve "Property ... does not exist on type unknown" errors.
+      difficulty,
       check: (d: UserData, s: CalculatedStats) => {
           let val = 0;
           switch(prefix) {
@@ -33,7 +37,6 @@ const generateTieredMerits = (
               case 'list_v': val = d.customLists.reduce((acc, l) => acc + l.items.length, 0); break;
               case 'streak': val = s.longestStreak; break;
               case 'mood': val = s.distinctMoodsCount; break;
-              // FIX: Added explicit type cast (v as any) to resolve "Property does not exist on type unknown" errors.
               case 'cust_p': val = Object.values(d.customImagePaths).filter((v: any) => !!v.poster_path).length; break;
               case 'cust_b': val = Object.values(d.customImagePaths).filter((v: any) => !!v.backdrop_path).length; break;
               case 'disc': val = s.watchedGenreCount; break;
@@ -65,10 +68,17 @@ export const allAchievements: Achievement[] = [
   ...generateTieredMerits('Power User', 'pwr', 'Registry Cleaner', 5, 20),
 
   // --- UNIQUE MILESTONES ---
-  { id: 'watch_midnight', name: 'Midnight Movie', description: 'Log a movie between 12 AM and 3 AM.', category: 'Watching', tier: 2, visibility: 'hidden', scope: 'global', check: (d) => ({ progress: d.history.some(h => { const hr = new Date(h.timestamp).getHours(); return hr >= 0 && hr <= 3; }) ? 1 : 0, goal: 1 }) },
-  { id: 'journ_long', name: 'Analytical Mind', description: 'Write a journal entry over 200 words.', category: 'Journaling', tier: 3, visibility: 'hinted', scope: 'global', check: (d) => {
-      const long = Object.values(d.watchProgress).some(sh => Object.values(sh).some(se => Object.values(se).some(ep => (ep as any).journal?.text?.split(' ').length > 200)));
-      return { progress: long ? 1 : 0, goal: 1 };
+  { 
+      id: 'watch_midnight', name: 'Midnight Movie', description: 'Log a movie between 12 AM and 3 AM.', 
+      category: 'Watching', tier: 2, visibility: 'hidden', scope: 'global', difficulty: 'Medium',
+      check: (d) => ({ progress: d.history.some(h => { const hr = new Date(h.timestamp).getHours(); return hr >= 0 && hr <= 3; }) ? 1 : 0, goal: 1 }) 
+  },
+  { 
+      id: 'journ_long', name: 'Analytical Mind', description: 'Write a journal entry over 200 words.', 
+      category: 'Journaling', tier: 3, visibility: 'hinted', scope: 'global', difficulty: 'Hard',
+      check: (d) => {
+        const long = Object.values(d.watchProgress).some(sh => Object.values(sh).some(se => Object.values(se).some(ep => (ep as any).journal?.text?.split(' ').length > 200)));
+        return { progress: long ? 1 : 0, goal: 1 };
   }},
 ];
 

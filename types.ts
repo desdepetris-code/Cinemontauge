@@ -62,6 +62,16 @@ export interface TmdbMedia {
   vote_count?: number;
 }
 
+// FIX: Added missing TmdbPerson interface
+export interface TmdbPerson {
+  id: number;
+  name: string;
+  media_type: 'person';
+  profile_path: string | null;
+  popularity?: number;
+  known_for?: TmdbMedia[];
+}
+
 export interface TmdbMediaDetails extends TmdbMedia {
   overview?: string;
   tagline?: string;
@@ -127,11 +137,11 @@ export interface Episode {
   airtime?: string;
 }
 
+// FIX: Added missing EpisodeWithAirtime interface
 export interface EpisodeWithAirtime extends Episode {
   airtime: string;
 }
 
-// FIX: Added missing EpisodeTag definition to resolve multiple import errors.
 export interface EpisodeTag {
   text: string;
   className: string;
@@ -206,12 +216,6 @@ export interface TrackedItem {
   addedAt?: string;
 }
 
-export interface TmdbPerson {
-  id: number;
-  name: string;
-  profile_path: string | null;
-}
-
 export interface CalendarItem {
   id: number;
   media_type: 'tv' | 'movie';
@@ -271,11 +275,10 @@ export interface UserData {
   failedRecommendationReports: TrackedItem[];
 }
 
-// FIX: Added missing Follows definition to resolve multiple import errors.
 export type Follows = Record<string, string[]>;
 
 export interface EpisodeProgress {
-  status: 0 | 1 | 2; // 0: unwatched, 1: watching, 2: watched
+  status: 0 | 1 | 2; 
   journal?: JournalEntry;
 }
 
@@ -353,7 +356,7 @@ export interface CustomList {
   items: CustomListItem[];
   createdAt: string;
   visibility: ListVisibility;
-  likes: string[]; // User IDs
+  likes: string[];
 }
 
 export interface CustomListItem extends TrackedItem {}
@@ -428,7 +431,7 @@ export interface LiveWatchMediaInfo {
   seasonNumber?: number;
   episodeNumber?: number;
   episodeTitle?: string;
-  sessionId?: string; // UNIQUE IDENTIFIER FOR MULTI-SESSION SUPPORT
+  sessionId?: string; 
 }
 
 export interface LiveWatchSession {
@@ -565,6 +568,7 @@ export interface Achievement {
   visibility: 'visible' | 'hinted' | 'hidden';
   scope: 'global' | 'title';
   check: (userData: UserData, stats: CalculatedStats) => { progress: number; goal: number };
+  difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
 export type AchievementCategory = 'Watching' | 'Journaling' | 'Ratings & Mood' | 'Lists & Organization' | 'Consistency & Time' | 'Customization' | 'Discovery' | 'Series Progress' | 'Rewatching' | 'Social' | 'Power User' | 'Archive & Cleanup';
@@ -574,7 +578,6 @@ export interface UserAchievementStatus extends Achievement {
   progress: number;
   goal: number;
   unlockDate?: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
 export interface Badge {
