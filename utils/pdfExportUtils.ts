@@ -15,6 +15,108 @@ interface SummaryData {
 }
 
 /**
+ * Specialized generator for the Editorial Recommendation Checklist.
+ */
+export const generateRecTrackingPDF = (
+    data: { title: string; type: string; year: string; genres: string; id: number; status: string }[]
+): { blob: Blob; fileName: string } => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const tableWidth = pageWidth - (margin * 2);
+    
+    // Header Branding
+    doc.setFontSize(22);
+    doc.setTextColor(65, 105, 225); // Royal Blue
+    doc.setFont("helvetica", "bold");
+    doc.text("CineMontauge Editorial Registry", margin, 25);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Media Recommendation Tracking Checklist • ${new Date().toLocaleString()}`, margin, 32);
+    
+    // Summary Section
+    doc.setFillColor(245, 247, 255);
+    doc.roundedRect(margin, 38, tableWidth, 25, 3, 3, 'F');
+    
+    doc.setFontSize(11);
+    doc.setTextColor(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("WORKFLOW SUMMARY", margin + 5, 48);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(60);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Registry Items in current batch (Max 100): ${data.length}`, margin + 5, 56);
+    
+    // Table Column Definitions
+    const colTitleWidth = 65;
+    const colTypeWidth = 25;
+    const colYearWidth = 20;
+    const colIdWidth = 30;
+    const colGenresWidth = tableWidth - colTitleWidth - colTypeWidth - colYearWidth - colIdWidth;
+
+    const xTitle = margin;
+    const xType = xTitle + colTitleWidth;
+    const xYear = xType + colTypeWidth;
+    const xId = xYear + colYearWidth;
+    const xGenres = xId + colIdWidth;
+
+    const drawTableHeader = (y: number) => {
+        doc.setFontSize(9);
+        doc.setTextColor(255);
+        doc.setFillColor(30, 30, 30);
+        doc.rect(margin, y - 5, tableWidth, 8, 'F');
+        doc.text("Media Title", xTitle + 2, y);
+        doc.text("Type", xType + 2, y);
+        doc.text("Year", xYear + 2, y);
+        doc.text("TMDB ID", xId + 2, y);
+        doc.text("Genre Set", xGenres + 2, y);
+    };
+
+    let y = 75;
+    drawTableHeader(y);
+    y += 8;
+    
+    data.forEach((row, index) => {
+        const wrappedGenres = doc.splitTextToSize(row.genres, colGenresWidth - 4);
+        const rowHeight = Math.max(10, wrappedGenres.length * 5 + 4);
+
+        if (y + rowHeight > 280) {
+            doc.addPage();
+            y = 30;
+            drawTableHeader(y);
+            y += 8;
+        }
+
+        // Shading
+        if (index % 2 === 0) {
+            doc.setFillColor(252, 252, 252);
+            doc.rect(margin, y - 5, tableWidth, rowHeight, 'F');
+        }
+
+        doc.setFontSize(8);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "normal");
+        
+        doc.text(doc.splitTextToSize(row.title, colTitleWidth - 4), xTitle + 2, y);
+        doc.text(row.type, xType + 2, y);
+        doc.text(row.year, xYear + 2, y);
+        doc.text(String(row.id), xId + 2, y);
+        doc.text(wrappedGenres, xGenres + 2, y);
+        
+        y += rowHeight;
+    });
+
+    const fileName = `Media_Recommendation_Tracking.pdf`;
+    return {
+        blob: doc.output('blob'),
+        fileName
+    };
+};
+
+/**
  * Generates a professional registry report with a summary section and data tables.
  * Returns the PDF blob for storage upload.
  */
@@ -53,8 +155,8 @@ export const generateSummaryReportPDF = (
     doc.setFont("helvetica", "normal");
     doc.text(`Report Title: ${title}`, margin + 5, 56);
     doc.text(`Target Criteria: ${summary.criteria}`, margin + 5, 62);
-    doc.text(`Total Scanned: ${summary.totalScanned}`, margin + 5, 68);
-    doc.text(`Matches Found: ${summary.matchesFound}`, margin + 5, 74);
+    doc.text(`Scanning Batch Size: 100 Items`, margin + 5, 68);
+    doc.text(`Matches Found in Batch: ${summary.matchesFound}`, margin + 5, 74);
     
     doc.setFontSize(12);
     doc.setTextColor(65, 105, 225);
@@ -122,96 +224,6 @@ export const generateSummaryReportPDF = (
     };
 };
 
-/**
- * Legacy: Refined show-level truth audit report for the CineMontauge registry.
- */
-export const generateAirtimePDF = (title: string, data: ReportRow[], part: number = 1): void => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 14;
-    const tableWidth = pageWidth - (margin * 2);
-    
-    doc.setFontSize(22);
-    doc.setTextColor(65, 105, 225); 
-    doc.text("CineMontauge Registry Audit", margin, 22);
-    
-    doc.setFontSize(14);
-    doc.setTextColor(100);
-    doc.text(`${title} (Part ${part})`, margin, 32);
-    
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.setFont("helvetica", "normal");
-    doc.text(`CineMontauge Admin Export • ${new Date().toLocaleString()}`, margin, 40);
-    
-    const colNoWidth = 10;
-    const colTitleWidth = 75;
-    const colStatusWidth = 35;
-    const colDetailsWidth = tableWidth - colNoWidth - colTitleWidth - colStatusWidth;
-
-    const xNo = margin;
-    const xTitle = xNo + colNoWidth;
-    const xStatus = xTitle + colTitleWidth;
-    const xDetails = xStatus + colStatusWidth;
-
-    const drawHeader = (y: number) => {
-        doc.setFontSize(10);
-        doc.setTextColor(255);
-        doc.setFillColor(20, 20, 20); 
-        doc.rect(margin, y - 5, tableWidth, 8, 'F');
-        doc.text("#", xNo + 2, y);
-        doc.text("Registry Title", xTitle + 2, y);
-        doc.text("Status/Part", xStatus + 2, y);
-        doc.text("Audit Log / Gap Signature", xDetails + 2, y);
-    };
-
-    drawHeader(51);
-    
-    let y = 58;
-    let entryCount = 0;
-    doc.setTextColor(0);
-
-    for (let i = 0; i < data.length; i++) {
-        const row = data[i];
-        const wrappedDetails = doc.splitTextToSize(row.details, colDetailsWidth - 4);
-        const rowHeight = Math.max(8, wrappedDetails.length * 5);
-
-        if (y + rowHeight > 280) {
-            doc.addPage();
-            y = 20;
-            drawHeader(y);
-            y += 10;
-            doc.setTextColor(0);
-        }
-        
-        entryCount++;
-        if (entryCount % 2 !== 0) {
-            doc.setFillColor(245, 247, 255); 
-            doc.rect(margin, y - 4, tableWidth, rowHeight, 'F');
-        }
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(`${entryCount}`, xNo + 2, y);
-        doc.text(row.title.substring(0, 50), xTitle + 2, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(row.status.substring(0, 20), xStatus + 2, y);
-        doc.setFontSize(8);
-        doc.text(wrappedDetails, xDetails + 2, y);
-        y += rowHeight;
-    }
-    
-    const totalPages = (doc as any).internal.getNumberOfPages();
-    for (let j = 1; j <= totalPages; j++) {
-        doc.setPage(j);
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`CineMontauge Archive • Part ${part} • Page ${j} of ${totalPages}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-    }
-    
-    doc.save(`CineMontauge_Truth_Audit_Part_${part}.pdf`);
-};
-
 export const generateSupabaseSpecPDF = (): void => {
     const doc = new jsPDF();
     const margin = 14;
@@ -240,7 +252,7 @@ export const generateSupabaseSpecPDF = (): void => {
 
     addText("1. Core Registry & Meta-Cache", 14, 'bold');
     addText("profiles: (id uuid pk, username text unique, avatar_url text, timezone text, user_xp int, app_settings jsonb)");
-    addText("library: (id uuid pk, user_id uuid fk, tmdb_id int, media_type text, status text, added_at timestamptz)");
+    addText("library: (id uuid pk, user_id uuid fk, tmdb_id int, media_type text, status text, recommendation_status text default 'Pending', added_at timestamptz)");
     addText("episode_progress: (id uuid pk, user_id uuid fk, tmdb_id int, season_int int, ep_int int, status int)");
     addText("media_registry_cache: (tmdb_id int pk, title text, poster_path text, backdrop_path text, media_type text, first_air_date text)");
     addText("custom_media: (id uuid pk, user_id uuid fk, tmdb_id int, asset_type text, url text, season_int int, ep_int int)");

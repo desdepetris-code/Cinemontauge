@@ -3,13 +3,15 @@ export type ProfileTab = 'overview' | 'history' | 'progress' | 'updates' | 'ongo
 
 export type WatchStatus = 'watching' | 'planToWatch' | 'completed' | 'onHold' | 'dropped' | 'allCaughtUp' | 'favorites';
 
+export type RecommendationStatus = 'Pending' | 'Completed';
+
 export type ParticleEffectName = 'snow' | 'hearts' | 'leaves' | 'confetti' | 'fireworks' | 'sparkles' | 'cherry_blossoms' | 'bats' | 'flowers' | 'pumpkins' | 'ghosts' | 'eggs';
 
 export type ListVisibility = 'public' | 'private' | 'followers';
 
 export type CommentVisibility = 'public' | 'private' | 'followers';
 
-export type ReportType = 'missing_airtime_tv' | 'missing_runtime_ep' | 'missing_runtime_movie' | 'missing_airdate_movie' | 'missing_airdate_ep' | 'no_recs_movie' | 'no_recs_tv' | 'missing_cast_images' | 'missing_poster_tv' | 'missing_poster_movie' | 'missing_backdrop_tv' | 'missing_backdrop_movie';
+export type ReportType = 'missing_airtime_tv' | 'missing_runtime_ep' | 'missing_runtime_movie' | 'missing_airdate_movie' | 'missing_airdate_ep' | 'missing_cast_images' | 'missing_poster_tv' | 'missing_poster_movie' | 'missing_backdrop_tv' | 'missing_backdrop_movie';
 
 export type ActivityType = 'WATCHED_EPISODE' | 'WATCHED_MOVIE' | 'RATED_ITEM' | 'CREATED_LIST';
 
@@ -60,6 +62,15 @@ export interface TmdbMedia {
   popularity?: number;
   vote_average?: number;
   vote_count?: number;
+}
+
+export interface TmdbPerson {
+  id: number;
+  name: string;
+  media_type: 'person';
+  profile_path: string | null;
+  popularity?: number;
+  known_for?: TmdbMedia[];
 }
 
 export interface TmdbMediaDetails extends TmdbMedia {
@@ -131,7 +142,6 @@ export interface EpisodeWithAirtime extends Episode {
   airtime: string;
 }
 
-// FIX: Added missing EpisodeTag definition to resolve multiple import errors.
 export interface EpisodeTag {
   text: string;
   className: string;
@@ -204,12 +214,7 @@ export interface TrackedItem {
   genre_ids?: number[];
   release_date?: string;
   addedAt?: string;
-}
-
-export interface TmdbPerson {
-  id: number;
-  name: string;
-  profile_path: string | null;
+  recommendation_status?: RecommendationStatus;
 }
 
 export interface CalendarItem {
@@ -271,11 +276,10 @@ export interface UserData {
   failedRecommendationReports: TrackedItem[];
 }
 
-// FIX: Added missing Follows definition to resolve multiple import errors.
 export type Follows = Record<string, string[]>;
 
 export interface EpisodeProgress {
-  status: 0 | 1 | 2; // 0: unwatched, 1: watching, 2: watched
+  status: 0 | 1 | 2; 
   journal?: JournalEntry;
 }
 
@@ -353,7 +357,7 @@ export interface CustomList {
   items: CustomListItem[];
   createdAt: string;
   visibility: ListVisibility;
-  likes: string[]; // User IDs
+  likes: string[];
 }
 
 export interface CustomListItem extends TrackedItem {}
@@ -428,7 +432,7 @@ export interface LiveWatchMediaInfo {
   seasonNumber?: number;
   episodeNumber?: number;
   episodeTitle?: string;
-  sessionId?: string; // UNIQUE IDENTIFIER FOR MULTI-SESSION SUPPORT
+  sessionId?: string; 
 }
 
 export interface LiveWatchSession {
@@ -565,6 +569,7 @@ export interface Achievement {
   visibility: 'visible' | 'hinted' | 'hidden';
   scope: 'global' | 'title';
   check: (userData: UserData, stats: CalculatedStats) => { progress: number; goal: number };
+  difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
 export type AchievementCategory = 'Watching' | 'Journaling' | 'Ratings & Mood' | 'Lists & Organization' | 'Consistency & Time' | 'Customization' | 'Discovery' | 'Series Progress' | 'Rewatching' | 'Social' | 'Power User' | 'Archive & Cleanup';
@@ -574,7 +579,6 @@ export interface UserAchievementStatus extends Achievement {
   progress: number;
   goal: number;
   unlockDate?: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
 export interface Badge {

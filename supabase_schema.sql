@@ -1,7 +1,16 @@
--- CineMontauge: Advanced Registry Schema v2.0
--- Copy and paste these blocks into your Supabase SQL Editor.
 
--- 1. SOCIAL & COMMUNITY GROWTH --
+-- CineMontauge: Advanced Registry Schema v2.1
+-- Migration: Added Editorial Recommendation Tracking
+
+-- 1. EXTEND LIBRARY CORE --
+ALTER TABLE public.library 
+ADD COLUMN IF NOT EXISTS recommendation_status TEXT DEFAULT 'Pending' 
+CHECK (recommendation_status IN ('Pending', 'Completed'));
+
+-- Indexing for performance in the Owner Portal PDF generation
+CREATE INDEX IF NOT EXISTS idx_recommendation_status ON public.library(recommendation_status) WHERE recommendation_status = 'Pending';
+
+-- 2. SOCIAL & COMMUNITY GROWTH --
 
 -- Tracks unlocked visual badges/icons for user profiles
 CREATE TABLE IF NOT EXISTS public.user_badges (
@@ -36,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.user_reports (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. DEEP PERSONALIZATION --
+-- 3. DEEP PERSONALIZATION --
 
 -- Calculated interest scores based on user behavior
 CREATE TABLE IF NOT EXISTS public.user_affinities (
@@ -65,7 +74,7 @@ CREATE TABLE IF NOT EXISTS public.media_tags (
     PRIMARY KEY (tag_id, tmdb_id)
 );
 
--- 3. DATA INTEGRITY --
+-- 4. DATA INTEGRITY --
 
 -- Local cache for 'Where to Watch' data to save API calls
 CREATE TABLE IF NOT EXISTS public.provider_registry_cache (
@@ -94,7 +103,7 @@ CREATE TABLE IF NOT EXISTS public.collection_registry (
     last_synced TIMESTAMPTZ DEFAULT now()
 );
 
--- 4. ADMIN & BROADCAST --
+-- 5. ADMIN & BROADCAST --
 
 -- System-wide announcements
 CREATE TABLE IF NOT EXISTS public.system_announcements (

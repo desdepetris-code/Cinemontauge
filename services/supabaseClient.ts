@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1';
 
 /**
@@ -76,6 +77,45 @@ export const syncLibraryItemToDb = async (userId: string, tmdbId: number, mediaT
             }, { onConflict: 'user_id,tmdb_id' });
         if (error) console.error("Cloud Registry Sync Error:", error);
     }
+};
+
+/**
+ * RECOMMENDATION TRACKING
+ */
+
+export const syncRecommendationStatus = async (tmdbId: number, status: 'Pending' | 'Completed') => {
+    const { error } = await supabase
+        .from('library')
+        .update({ recommendation_status: status })
+        .match({ tmdb_id: tmdbId });
+    if (error) throw error;
+};
+
+export const fetchGlobalMediaStats = async () => {
+    const { data, error } = await supabase
+        .from('library')
+        .select('recommendation_status, media_type');
+    
+    if (error) throw error;
+    
+    const stats = {
+        total: data.length,
+        pending: data.filter(i => i.recommendation_status === 'Pending').length,
+        completed: data.filter(i => i.recommendation_status === 'Completed').length
+    };
+    return stats;
+};
+
+export const fetchGlobalRegistryBatch = async (status: 'Pending' | 'Completed' | 'all', limit: number = 100) => {
+    let query = supabase.from('library').select('tmdb_id, media_type, recommendation_status');
+    
+    if (status !== 'all') {
+        query = query.eq('recommendation_status', status);
+    }
+    
+    const { data, error } = await query.limit(limit);
+    if (error) throw error;
+    return data;
 };
 
 /**
