@@ -1,3 +1,4 @@
+
 // TMDB API Key. For a production app, this should be in an environment variable.
 // Attempt to use VITE_TMDB_KEY from environment, fallback to hardcoded key if not present.
 export const TMDB_API_KEY = (import.meta as any).env?.VITE_TMDB_KEY || 'b7922161a07780ff1d7caf291ecfa9ec';
@@ -7,11 +8,10 @@ export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/';
 /**
  * TRAKT CONFIGURATION
  * Link: https://trakt.tv/oauth/applications
- * We use window.location.origin to make this work on Vercel, StackBlitz, or Localhost automatically.
  */
 export const TRAKT_API_KEY = 'c0c359a34e4183d11f1b744d6d06ab156dc039acf4a31671fec7c20713675b59'; 
 export const TRAKT_API_BASE_URL = 'https://api.trakt.tv';
-export const TRAKT_REDIRECT_URI = `${window.location.origin}/auth/trakt/callback`;
+export const TRAKT_REDIRECT_URI = 'https://cinemontauge-beta.vercel.app/auth/trakt/callback';
 
 export const MAL_CLIENT_ID = 'a755b330561e298533c7c251d7cde369';
 export const MAL_API_BASE_URL = 'https://api.myanimelist.net/v2';

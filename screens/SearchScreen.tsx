@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { searchMediaPaginated, searchPeoplePaginated } from '../services/tmdbService';
 import { TmdbMedia, SearchHistoryItem, TrackedItem, TmdbPerson, UserData, CustomList, PublicCustomList, PublicUser, AppPreferences } from '../types';
@@ -273,6 +272,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
           minRating: stagedMinRating,
           sort: stagedSort
       });
+      // Optionally auto-collapse on mobile if needed, but for now we stay open to let them see result count change
   };
 
   const clearFilters = () => {
@@ -450,6 +450,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
           </div>
         </header>
 
+        {/* --- Unified Filter Accordion Panel --- */}
         {showFiltersToggle && (
             <div className="mb-12 bg-bg-secondary/20 rounded-[2.5rem] p-8 border border-white/5 animate-fade-in shadow-inner space-y-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -501,12 +502,12 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                             <select 
                                 value={stagedMinRating}
                                 onChange={e => setStagedMinRating(Number(e.target.value))}
-                                className="w-full appearance-none bg-bg-secondary border-none rounded-md py-2 px-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                                className="w-full appearance-none bg-bg-primary border border-white/10 rounded-xl py-3 px-4 text-xs font-black uppercase text-text-primary focus:outline-none shadow-md"
                             >
                                 <option value="0">Any Rating</option>
                                 {[9,8,7,6,5,4,3,2,1].map(num => <option key={num} value={num}>{num}.0+</option>)}
                             </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
                         </div>
                     </div>
 
@@ -524,7 +525,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                                 <option value="vote_average.desc">Highest Rated</option>
                                 <option value="alphabetical.asc">A to Z</option>
                             </select>
-                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-secondary pointer-events-none" />
+                            <ChevronDownIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary pointer-events-none" />
                         </div>
                     </div>
                 </div>
@@ -576,7 +577,7 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                 <div className="relative z-10 flex flex-col space-y-5">
                     {localQuery.length > 0 && (
                         <Carousel>
-                            <div className="flex space-x-3 overflow-x-auto hide-scrollbar px-2">
+                            <div className="flex space-x-3 overflow-x-auto pb-1 hide-scrollbar px-2">
                                 <TabButton tabId="media" label="Media" count={filteredAndSortedMedia.length} />
                                 <TabButton tabId="people" label="People" count={peopleResults.length} />
                                 <TabButton tabId="users" label="Users" count={userResults.length} />
@@ -590,11 +591,10 @@ const SearchScreen: React.FC<SearchScreenProps> = (props) => {
                         <SearchBar 
                             onSelectResult={(id, type) => {
                                 const matched = filteredAndSortedMedia.find(m => m.id === id);
-                                if (matched) handleItemSelect(id, type, (matched as any));
+                                if (matched) handleItemSelect(id, type, matched);
                                 else onSelectShow(id, type);
                             }} 
                             onMarkShowAsWatched={onMarkShowAsWatched}
-                            // FIX: Removed duplicate onMarkShowAsWatched attribute
                             value={localQuery}
                             onChange={setLocalQuery}
                             disableDropdown

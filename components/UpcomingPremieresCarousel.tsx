@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { discoverMedia } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, Reminder, WatchStatus } from '../types';
@@ -38,8 +37,7 @@ const UpcomingPremieresCarousel: React.FC<UpcomingPremieresCarouselProps> = (pro
             setLoading(true);
             try {
                 const results = await fetcher();
-                // Increased limit from 10 to 20
-                const limitedResults = results.slice(0, 20);
+                const limitedResults = results.slice(0, 10);
                 setMedia(limitedResults);
             } catch (error) {
                 console.error(`Failed to fetch for carousel`, error);

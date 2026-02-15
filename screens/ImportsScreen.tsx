@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { TraktIcon } from '../components/ServiceIcons';
 import * as tmdbService from '../services/tmdbService';
@@ -21,8 +22,7 @@ const TraktImporter: React.FC<{ onImport: (data: any) => void; userId: string }>
     const [feedback, setFeedback] = useState<string | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     
-    // Updated to point to the local Vercel API route
-    const TRAKT_AUTH_FUNCTION_URL = "/api/trakt-auth";
+    const TRAKT_AUTH_FUNCTION_URL = `https://us-central1-${firebaseConfig.projectId}.cloudfunctions.net/traktAuth`;
 
     useEffect(() => {
         const checkRegistry = async () => {

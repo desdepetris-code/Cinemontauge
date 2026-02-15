@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import { TrackedItem, TmdbMediaDetails, Episode, LiveWatchMediaInfo, UserData, EpisodeProgress } from '../types';
+import { TrackedItem, TmdbMediaDetails, Episode, LiveWatchMediaInfo, UserData } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
 import { PlayIcon, CheckCircleIcon, HeartIcon } from './Icons';
 import BrandedImage from './BrandedImage';

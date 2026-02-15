@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { UserData, AchievementCategory, UserAchievementStatus } from '../types';
 import { useAchievements } from '../hooks/useAchievements';
@@ -125,7 +126,7 @@ const AchievementsScreen: React.FC<{ userData: UserData }> = ({ userData }) => {
         <div>
             <div className="flex items-center gap-3 mb-4">
                 <TrophyIcon className="w-8 h-8 text-primary-accent" />
-                <span className="text-xs font-black uppercase tracking-[0.4em] text-primary-accent">SceneIt Archive</span>
+                <span className="text-xs font-black uppercase tracking-[0.4em] text-primary-accent">CineMontauge Archive</span>
             </div>
             <h1 className="text-6xl font-black text-text-primary uppercase tracking-tighter leading-none">The Gallery of Merit</h1>
             <p className="text-sm font-bold text-text-secondary uppercase tracking-[0.3em] mt-4 opacity-60">Verification of your journey through global cinema</p>

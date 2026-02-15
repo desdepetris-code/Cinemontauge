@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { getUpcomingMovieReleases } from '../services/tmdbService';
 import { TmdbMedia, TrackedItem, Reminder, WatchStatus } from '../types';
@@ -26,8 +25,7 @@ const UpcomingMoviesCarousel: React.FC<UpcomingMoviesCarouselProps> = (props) =>
             setLoading(true);
             try {
                 const data = await getUpcomingMovieReleases(1);
-                // Increased limit from 10 to 20
-                setMedia(data.results.slice(0, 20));
+                setMedia(data.results.slice(0, 10));
             } catch (error) {
                 console.error(`Failed to fetch upcoming movies`, error);
             } finally {

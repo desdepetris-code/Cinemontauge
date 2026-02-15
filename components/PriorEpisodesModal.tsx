@@ -36,7 +36,7 @@ const PriorEpisodesModal: React.FC<PriorEpisodesModalProps> = ({ isOpen, onClose
                 <header className="p-6 bg-card-gradient border-b border-white/10 flex justify-between items-start">
                     <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">SceneIt Logic</h2>
+                            <h2 className="text-xl font-black text-text-primary uppercase tracking-tight">CineMontauge Logic</h2>
                             <button onClick={() => setShowInfo(!showInfo)} className={`p-1 rounded-full transition-colors ${showInfo ? 'bg-primary-accent text-on-accent' : 'text-text-secondary hover:text-text-primary'}`}>
                                 <InformationCircleIcon className="w-5 h-5" />
                             </button>

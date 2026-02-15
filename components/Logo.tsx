@@ -1,3 +1,4 @@
+
 import React, { forwardRef } from 'react';
 
 interface LogoProps {
@@ -46,7 +47,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         </linearGradient>
 
         {/* Monogram Text Gradient */}
-        <linearGradient id="grad-text-si-complex" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="grad-text-cm-complex" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#1e3a8a" />
           <stop offset="25%" stopColor="#2563eb" />
           <stop offset="50%" stopColor="#2dd4bf" />
@@ -98,7 +99,7 @@ const Logo = forwardRef<SVGSVGElement, LogoProps>(({ className = "h-8 w-auto", i
         fontFamily="Arial Black, sans-serif" 
         fontSize="24" 
         fontWeight="900" 
-        fill="url(#grad-text-si-complex)" 
+        fill="url(#grad-text-cm-complex)" 
         textAnchor="middle"
         letterSpacing="-1"
       >

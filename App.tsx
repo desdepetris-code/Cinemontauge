@@ -33,7 +33,7 @@ const App: React.FC = () => {
             .single();
 
         const hasUsername = !!(profile?.username);
-        // Check if user has an email-based identity (meaning they set a password)
+        // Check if user has an email-based identity (password auth)
         const hasPassword = supabaseUser.identities?.some((identity: any) => identity.provider === 'email') || false;
         const hasEmail = !!supabaseUser.email;
 
@@ -159,7 +159,7 @@ const App: React.FC = () => {
             const { error: profileError } = await supabase.from('profiles').upsert({ 
                 id: user.id, 
                 username: data.username,
-                email: user.email || data.email
+                email: user.email
             }, { onConflict: 'id' });
             
             if (profileError) {
@@ -232,7 +232,7 @@ const App: React.FC = () => {
       </div>
     );
 
-    // Only show modal if signed in AND one or more core items are missing
+    // Only show if logged in but missing critical registry details
     const showProfileCompletion = hasSession && (missingUsername || missingPassword || missingEmail);
     
     return (
